@@ -7,5 +7,5 @@ The subpackages available are currently:
 - [EAGOBranchBound](https://github.com/MatthewStuber/EAGOSmoothMcCormick): A fully customizable branch and bound library.
 - [EAGOSmoothMcCormick](https://github.com/MatthewStuber/EAGOSmoothMcCormick): A library of smooth McCormick relaxations.
 - [EAGODAGContractor](https://github.com/MatthewStuber/EAGODAGContractor): A forward-reverse interval contractor routine for constraint propagation on directed graphs with visualization tools.
-- EAGOGlobalSolver: A series of global solvers based on McCormick relaxations.
+- [EAGOGlobalSolver](https://github.com/MatthewStuber/EAGOGlobalSolver): A series of global solvers based on McCormick relaxations.
 - EAGOSemiInfinite: Implements a general nonconvex solver for semi-infinite programs via a restriction of the righthandside approach.
