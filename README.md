@@ -1,5 +1,5 @@
 # EAGO
-A is an open-source development environment for robust and global optimization in Julia. Included in EAGO 
+EAG0 is an open-source development environment for **robust and global optimization** in Julia. 
 
 ## Global Optimization
 
@@ -8,7 +8,7 @@ As a global optimization platform, EAGO's solvers can be used to find the soluti
 ## So what differentiates the EAGO's global solver from currently available offerings (BARON, Antigone, etc.)?
 
 - **McCormick Relaxations**:
-First, the global **EAGONLP_Solver** supports the use of McCormick relaxations to construct the convex lower bounding problem. These relaxations have some appealing properties (2nd order convergence, low computational cost) and can be evaluated directly via overloading schemes. As such, the solver supports standard arithmetic operators, trignometric operators (sin,cos,tan,asin,acos,atan), hyperbolic operators (sinh,cosh,...), and a set of nonsmooth operators (abs,min,max,step,sign). It can easily be extended to additional univariant functions provided that explicit forms of the convex, concave relaxations and interval bounds are known.
+First, the global **EAGONLP_Solver** supports the use of McCormick relaxations to construct the convex lower bounding problem. These relaxations have some appealing properties (2nd order convergence, low computational cost) and can be evaluated directly via overloading schemes. As such, the solver supports standard arithmetic operators, trignometric operators (**sin**, **cos**, **tan**, **asin**, **acos**, **atan**), hyperbolic operators (**sinh**, **cosh**, ...), and a set of nonsmooth operators (**abs**, **min**, **max**, **step**, **sign**). It can easily be extended to additional univariant functions provided that explicit forms of the convex, concave relaxations and interval bounds are known.
 
 - **Relaxation of Implicit Functions** As the evaluation of relaxations proceeds in an operator overloading fashion. Functions implicitly defined by equality constraints h(x,p) = 0 can be relaxed in the p dimension only. This can substantially reduces the problem size and provide a significant perform benefit relative to existing solvers for with large embedded implicit functions.
 
@@ -46,9 +46,9 @@ Second, the majority of the code is written directly in Julia allow for easy man
   * *LP of McCormick Relaxation*: Supports use of any LP solver using the MathProgBases interface.
   * *Local NLP Problem*: Currently, supports using either SNOPT or Ipopt.
 - **Optimization Interface**
-  * MathProgBase support
-  * JuMP interface support
-  * Benchmarking through JuMP interface
+  * *MathProgBase support*
+  * *JuMP interface support*
+  * *Benchmarking through JuMP interface*
 
 ## Description
 This package contains a global solver accessible from JuMP and subroutines for solving semi-infinite programs. The EAGO solver is usable in the JuMP enviroment.
