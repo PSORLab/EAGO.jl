@@ -23,11 +23,32 @@ Second, the majority of the code is written directly in Julia allow for easy man
 
 ## Capabilities as a development platform
 
-- **Native Lower and Upper Bounding Problems**
-- **Domain Reduction Techniques**
 - **McCormick Relaxation Library**
+  * *Standard McCormick Relaxations*: 
+  * *Multivariant McCormick Relaxations*: 
+  * *Differentiable McCormick Relaxations*: 
+  * *Subgradient Interval Bound Tightening*:
+  * *Implicit Fixed-Point Relaxations*:
+- **Domain Reduction Techniques**:
+  * *Forward-Backward Interval Contractor*: Runs forward and reverse interval contractor propagation.
+  * *Standard Range Reduction*: Range Reduction using McCormick relaxations to compute linear relaxtions of function and bounds.
+  * *Implicit Range Reduction*: Range Reduction on decision space only using McCormick relaxations to compute linear relaxations of implicit bounds.
+  * *Probing on Variable Bounds:* Uses McCormick Relaxation to compute linear relaxations and subproblems.
+- **Native Lower Bounding Problem**: 
+  * *Interval Arithmetic*: Calculated using IntervalArithmetic.jl. 
+  * *LP of McCormick Relaxation*: Supports use of any LP solver using the MathProgBases interface.
+  * *Convex NLP of Differentiable McCormick Relaxation*: Currently, supports using either SNOPT or Ipopt.
+  * *Convex NLP AlphaBB*: Currently, solved using Ipopt.
+  * *LP of McCormick Relaxation (with Implicit Bounding Routine)*: Supports use of any LP solver using the MathProgBases interface.
+  * *Convex NLP of Differentiable McCormick Relaxation (with Implicit Bounding Routine)*: Currently, supports using either SNOPT or Ipopt.
+- **Native Upper Bounding Problem**:
+  * *Interval Arithmetic*: Calculated using IntervalArithmetic.jl.
+  * *LP of McCormick Relaxation*: Supports use of any LP solver using the MathProgBases interface.
+  * *Local NLP Problem*: Currently, supports using either SNOPT or Ipopt.
 - **Optimization Interface**
-- **Benchmarking**
+  * MathProgBase support
+  * JuMP interface support
+  * Benchmarking through JuMP interface
 
 ## Description
 This package contains a global solver accessible from JuMP and subroutines for solving semi-infinite programs. The EAGO solver is usable in the JuMP enviroment.
@@ -42,6 +63,7 @@ The currently available subpackages are:
 
 ## Further Work
 We're currently improving the EAGO platform in multiple ways:
+- Adding support for MathOptInterface.
 - Incorporate subroutines to automatically detect implicit functions and reformulate explicitly defined problems.
 - Support for MINLP problem types as well as mixed-integer nonconvex SIPs.
 - A GUI interface to handle flowsheeting type problems and data-fitting problems. 
