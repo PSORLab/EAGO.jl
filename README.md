@@ -50,7 +50,7 @@ We're currently improving the EAGO platform in multiple ways:
 
 ## Related Packages
 
-- **ValidatedNumerics.jl**: Provides the interval arithmetic backbone for the SmoothMcCormickGrad package. It allow contains a series of subroutine that allow for locating roots and minimal of unconstrained functions via interval arithmetic. EAGO allows provides an implementation for interval optimization that can be called through JuMP and MathProgBase. In general, McCormick relaxations exhibit superior convergence properties but will not provide correctly rounded bounds.    
+- **ValidatedNumerics.jl**: Provides the interval arithmetic backbone for the SmoothMcCormickGrad package. It allow contains a series of subroutine that allow for locating roots and minimal of unconstrained functions via interval arithmetic. EAGO allows provides an implementation for interval optimization that can be called through JuMP and MathProgBase. In general, McCormick relaxations exhibit superior convergence properties which may help mitigate clustering but will not guarantee correctly rounded bounds.    
 - JuMP.jl
 
 ## References
