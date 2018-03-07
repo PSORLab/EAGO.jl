@@ -23,7 +23,11 @@ Second, the majority of the code is written directly in Julia allow for easy man
 
 ## Capabilities as a development platform
 
-- **Support for** 
+- **Native Lower and Upper Bounding Problems**
+- **Domain Reduction Techniques**
+- **McCormick Relaxation Library**
+- **Optimization Interface**
+- **Benchmarking**
 
 ## Description
 This package contains a global solver accessible from JuMP and subroutines for solving semi-infinite programs. The EAGO solver is usable in the JuMP enviroment.
