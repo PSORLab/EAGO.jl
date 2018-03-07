@@ -21,7 +21,9 @@ Second, the majority of the code is written directly in Julia allow for easy man
 
 - **Semi-Infinite Equality Constraints**: Nonconvex semi-infinite programming with equality constraints represents an extremely challenging problem. In principle, the problem can be decomposed into a series of semi-infinite constraints and handled with a restriction of the rhs technique. However, the nonexistence of Slater points in the explicit formulation is likely and the thus the above algorithm will lack a guarantee of convergence. By solve, the problem in the implicit space, p, Slater points can be shown to trivially exist and we recover the guarantee of convergence.
 
-## Capabilities
+## Capabilities as a development platform
+
+- **Support for** 
 
 ## Description
 This package contains a global solver accessible from JuMP and subroutines for solving semi-infinite programs. The EAGO solver is usable in the JuMP enviroment.
@@ -48,7 +50,7 @@ We're currently improving the EAGO platform in multiple ways:
 
 ## Related Packages
 
-- ValidatedNumerics.jl
+- **ValidatedNumerics.jl**: Provides the interval arithmetic backbone for the SmoothMcCormickGrad package. It allow contains a series of subroutine that allow for locating roots and minimal of unconstrained functions via interval arithmetic. EAGO allows provides an implementation for interval optimization that can be called through JuMP and MathProgBase. In general, McCormick relaxations exhibit superior convergence properties but will not provide correctly rounded bounds.    
 - JuMP.jl
 
 ## References
