@@ -32,7 +32,7 @@ Second, the majority of the code is written directly in Julia allowing for easy 
 
 - **McCormick Relaxation Library**
   * *Standard McCormick Relaxations*: 
-  * *Multivariant McCormick Relaxations*: 
+  * *Multivariate McCormick Relaxations*: 
   * *Differentiable McCormick Relaxations*: 
   * *Subgradient Interval Bound Tightening*:
   * *Implicit Fixed-Point Relaxations*:
