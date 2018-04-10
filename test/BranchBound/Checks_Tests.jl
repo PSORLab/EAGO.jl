@@ -3,7 +3,7 @@ module Checks_Test
 using Compat
 using Compat.Test
 using IntervalArithmetic
-using EAGOBranchBound
+using EAGO
 
 S = BnBSolver()
 B = BnBModel([Interval(1.0,2.0)])

@@ -14,8 +14,8 @@ X1 = [Interval(1.0,2.0)]
 X2 = [Interval(3.0,5.0)]
 X = [Interval(3.0,5.0)]
 pos = 4
-EAGOBranchBound.BM_breadth!(S,B,tL,tU,X1,X2,pos)
-EAGOBranchBound.BM_Single!(S,B,tL,tU,X,pos)
+EAGO.BM_breadth!(S,B,tL,tU,X1,X2,pos)
+EAGO.BM_Single!(S,B,tL,tU,X,pos)
 B.soln = [7.0]
 B.UBDg = 14.7
 
