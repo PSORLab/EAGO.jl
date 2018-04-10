@@ -1,32 +1,61 @@
 # EAGO
+<<<<<<< HEAD
 EAG0 is an open-source development environment for **robust and global optimization** in Julia.
 
 ## Global Optimization
 
 As a global optimization platform, EAGO's solvers can be used to find the solution to general nonconvex problems with a guaranteed certificate of optimality. However, the performance of global solvers is generally outstripped by convex solvers so for users interested in large applications be warned that problems generally larger a few variables may prove challenging. For certain types of global optimization problems
+=======
+EAGO is an open-source development environment for **robust and global optimization** in Julia. 
+
+[![Build Status](https://travis-ci.org/MatthewStuber/EAGO.jl.svg?branch=master)](https://travis-ci.org/MatthewStuber/EAGO.jl)
+[![Coverage Status](https://coveralls.io/repos/github/MatthewStuber/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/MatthewStuber/EAGO.jl?branch=master)
+[![codecov.io](http://codecov.io/github/MatthewStuber/EAGO.jl/coverage.svg?branch=master)](http://codecov.io/github/MatthewStuber/EAGO.jl?branch=master)
+
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://MatthewStuber.github.io/EAGO.jl/stable)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://MatthewStuber.github.io/EAGO.jl/latest)
+
+## Global Optimization
+
+As a global optimization platform, EAGO's solvers can be used to find solutions of general nonconvex problems with a guaranteed certificate of optimality. However, global solvers suffer from the curse of dimensionality and therefore their performance is  outstripped by convex solvers. For users interested in large-scale applications, be warned that problems generally larger than a few variables may prove challenging for certain types of global optimization problems. 
+>>>>>>> master
 
 ## So what differentiates the EAGO's global solver from currently available offerings (BARON, Antigone, etc.)?
 
 - **McCormick Relaxations**:
-First, the global **EAGONLP_Solver** supports the use of McCormick relaxations to construct the convex lower bounding problem. These relaxations have some appealing properties (2nd order convergence, low computational cost) and can be evaluated directly via overloading schemes. As such, the solver supports standard arithmetic operators, trignometric operators (**sin**, **cos**, **tan**, **asin**, **acos**, **atan**), hyperbolic operators (**sinh**, **cosh**, ...), and a set of nonsmooth operators (**abs**, **min**, **max**, **step**, **sign**). It can easily be extended to additional univariant functions provided that explicit forms of the convex, concave relaxations and interval bounds are known.
+First, the global **EAGONLP_Solver** supports the use of McCormick relaxations to construct the convex lower-bounding problem. These relaxations have some appealing properties (2nd order convergence, low computational cost) and can be evaluated directly via operator overloading schemes. As such, the solver supports standard arithmetic operators, trignometric operators (**sin**, **cos**, **tan**, **asin**, **acos**, **atan**), hyperbolic operators (**sinh**, **cosh**, ...), and a set of nonsmooth operators (**abs**, **min**, **max**, **step**, **sign**). It can easily be extended to additional univariate functions provided that explicit forms of the convex/concave relaxations and interval bounds are known.
 
-- **Relaxation of Implicit Functions** As the evaluation of relaxations proceeds in an operator overloading fashion. Functions implicitly defined by equality constraints h(x,p) = 0 can be relaxed in the p dimension only. This can substantially reduces the problem size and provide a significant perform benefit relative to existing solvers for with large embedded implicit functions.
+- **Relaxation of Implicit Functions** As the evaluation of relaxations proceeds in an operator overloading fashion, functions implicitly defined via equality constraints h(x,p) = 0 can be relaxed in the p dimension only. This can substantially reduce the problem size and provide a significant performance benefit relative to existing solvers for problems with large embedded implicit functions.
 
 - **Expression Handling**:
+<<<<<<< HEAD
 Second, the majority of the code is written directly in Julia allow for easy manipulation of expressions using an AST. This allows for facile identification of implicit functions and
 
 ## What's unique about the robust optimization capabilities?
 
 - **Nonconvex Semi-infinite Programming**: An implementation of this by is available BARON. However, this is the first nonconvex robust optimizer available in Julia.
+=======
+Second, the majority of the code is written directly in Julia allowing for easy manipulation of expressions using an abstract syntax tree (AST). This allows for facile identification of implicit functions.
 
-- **Semi-Infinite Equality Constraints**: Nonconvex semi-infinite programming with equality constraints represents an extremely challenging problem. In principle, the problem can be decomposed into a series of semi-infinite constraints and handled with a restriction of the rhs technique. However, the nonexistence of Slater points in the explicit formulation is likely and the thus the above algorithm will lack a guarantee of convergence. By solve, the problem in the implicit space, p, Slater points can be shown to trivially exist and we recover the guarantee of convergence.
+## What's unique about the robust optimization capabilities?
+
+- **Nonconvex Semi-infinite Programming**: An implementation of this in GAMS is available using the BARON solver. However, this is the first nonconvex robust optimizer available in Julia. 
+>>>>>>> master
+
+- **Semi-Infinite Equality Constraints**: Nonconvex semi-infinite programming with equality constraints represents an extremely challenging problem. In principle, the problem can be decomposed into a series of semi-infinite constraints and handled with a restriction of the right-hand side technique. However, the nonexistence of Slater points in the explicit formulation is likely and  thus the above algorithm will lack a guarantee of convergence. By solving the problem using the reduced-space implicit approach, Slater points can be shown to trivially exist and we recover the convergence guarantee.
 
 ## Capabilities as a development platform
 
 - **McCormick Relaxation Library**
+<<<<<<< HEAD
   * *Standard McCormick Relaxations*:
   * *Multivariant McCormick Relaxations*:
   * *Differentiable McCormick Relaxations*:
+=======
+  * *Standard McCormick Relaxations*: 
+  * *Multivariate McCormick Relaxations*: 
+  * *Differentiable McCormick Relaxations*: 
+>>>>>>> master
   * *Subgradient Interval Bound Tightening*:
   * *Implicit Fixed-Point Relaxations*:
 - **Domain Reduction Techniques**:
