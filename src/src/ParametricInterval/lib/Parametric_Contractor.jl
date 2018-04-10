@@ -712,8 +712,8 @@ function PI_KrawczykCW(X0::Vector{MCInterval{T}},P::Vector{MCInterval{T}},
     #println("B, M calced")
 
     for i=1:nx
-      S1 = Interval(0.0)
-      S2 = Interval(0.0)
+      S1 = MCInterval{T}(0.0)
+      S2 = MCInterval{T}(0.0)
       for j=1:nx
         if (j<i)
           S1 += M[i,j]*(X[j]-x_mid[j])

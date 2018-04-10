@@ -3,7 +3,7 @@ module D1_Interval_Test
 using Compat
 using Compat.Test
 using IntervalArithmetic
-using EAGOBranchBound
+using EAGO
 
 X = [Interval(1,5)]
 model = BnBModel(X)

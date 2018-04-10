@@ -11,10 +11,10 @@ using Ipopt
 LBD_fr = "NS-STD-OFF" #"Diff1-MV-OFF"
 LBD_ps = "LP" #"NLP1"
 # set Interval Contractor type
-intv_style = "NewtonGS"
+intv_style = "KrawczykCW"
 #intv_flag =
 # set MC Contractor type
-MC_style = "NewtonGS"
+MC_style = "KrawczykCW"
 #MC_flag =
 
 ###############################################################################
