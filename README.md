@@ -1,11 +1,4 @@
 # EAGO
-<<<<<<< HEAD
-EAG0 is an open-source development environment for **robust and global optimization** in Julia.
-
-## Global Optimization
-
-As a global optimization platform, EAGO's solvers can be used to find the solution to general nonconvex problems with a guaranteed certificate of optimality. However, the performance of global solvers is generally outstripped by convex solvers so for users interested in large applications be warned that problems generally larger a few variables may prove challenging. For certain types of global optimization problems
-=======
 EAGO is an open-source development environment for **robust and global optimization** in Julia. 
 
 [![Build Status](https://travis-ci.org/MatthewStuber/EAGO.jl.svg?branch=master)](https://travis-ci.org/MatthewStuber/EAGO.jl)
