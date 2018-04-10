@@ -1,0 +1,10 @@
+julia 0.6
+IntervalArithmetic 0.9.1
+IntervalRootFinding 0.1.1
+StaticArrays 0.7.0
+Clp 0.3.1
+MathProgBase 0.6.0
+
+#using ForwardDiff
+#using ReverseDiff
+#using Ipopt
