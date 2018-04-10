@@ -5,5 +5,5 @@ StaticArrays 0.7.0
 Clp 0.3.1
 MathProgBase 0.6.0
 ForwardDiff 0.7.3
-ReverseDiff 0.3.0
+ReverseDiff 0.2.0
 Ipopt 0.3.0
