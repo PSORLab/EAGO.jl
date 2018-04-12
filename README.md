@@ -39,9 +39,6 @@ Second, the majority of the code is written directly in Julia allowing for easy 
 ## Capabilities as a development platform
 
 - **McCormick Relaxation Library**
-  * *Standard McCormick Relaxations*:
-  * *Multivariant McCormick Relaxations*:
-  * *Differentiable McCormick Relaxations*:
   * *Standard McCormick Relaxations*: 
   * *Multivariate McCormick Relaxations*: 
   * *Differentiable McCormick Relaxations*: 
