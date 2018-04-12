@@ -71,6 +71,12 @@ While the EAGO package is independent of the below subpackages. Their functional
 - [EAGOSmoothMcCormickGrad](https://github.com/MatthewStuber/EAGOSmoothMcCormickGrad): A library of smooth McCormick relaxations with an embedded vector storage used for subgradient and gradient calculations. Supports standard, nonsmooth multivariate, and smooth McCormick relaxations. Supports interval bound tightening via using subgradients. Also, contains subroutines for generating relaxations of implicit functions using McCormick relaxations.
 - [EAGODomainReduction](https://github.com/MatthewStuber/EAGODomainReduction): A library for domain reduction techniques used in global optimization. Currently includes: forward-reverse interval constraint propagation, standard range reduction (using McCormick relaxations), duality-based bound tightening, and probing techniques. Further updates planned.
 
+## News
+
+Trying to switch to the latest version of ForwardDiff? See our [upgrade guide](http://www.juliadiff.org/ForwardDiff.jl/stable/user/upgrade.html) for details regarding user-facing changes between releases.
+
+- 4/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages `EAGODomainReduction` into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll take EAGO v0.2.0. 
+
 ## Further Work
 We're currently improving the EAGO platform in multiple ways:
 - Adding support for MathOptInterface.
