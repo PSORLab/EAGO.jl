@@ -75,7 +75,7 @@ While the EAGO package is independent of the below subpackages. Their functional
 
 Trying to switch to the latest version of ForwardDiff? See our [upgrade guide](http://www.juliadiff.org/ForwardDiff.jl/stable/user/upgrade.html) for details regarding user-facing changes between releases.
 
-- 4/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages `EAGODomainReduction` into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll take EAGO v0.2.0. 
+- 4/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages (e.g. `EAGODomainReduction.jl`) into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll take EAGO v0.2.0. 
 
 ## Further Work
 We're currently improving the EAGO platform in multiple ways:
