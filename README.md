@@ -20,7 +20,6 @@ First, the global **EAGONLP_Solver** supports the use of McCormick relaxations t
 - **Relaxation of Implicit Functions** As the evaluation of relaxations proceeds in an operator overloading fashion, functions implicitly defined via equality constraints h(x,p) = 0 can be relaxed in the p dimension only. This can substantially reduce the problem size and provide a significant performance benefit relative to existing solvers for problems with large embedded implicit functions.
 
 - **Expression Handling**:
-<<<<<<< HEAD
 Second, the majority of the code is written directly in Julia allow for easy manipulation of expressions using an AST. This allows for facile identification of implicit functions and
 
 ## What's unique about the robust optimization capabilities?
