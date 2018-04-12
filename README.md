@@ -25,15 +25,11 @@ Second, the majority of the code is written directly in Julia allow for easy man
 
 ## What's unique about the robust optimization capabilities?
 
-- **Nonconvex Semi-infinite Programming**: An implementation of this by is available BARON. However, this is the first nonconvex robust optimizer available in Julia.
-=======
-Second, the majority of the code is written directly in Julia allowing for easy manipulation of expressions using an abstract syntax tree (AST). This allows for facile identification of implicit functions.
+- **Nonconvex Semi-infinite Programming**: An implementation of this by is available BARON. However, this is the first nonconvex robust optimizer available in Julia. Second, the majority of the code is written directly in Julia allowing for easy manipulation of expressions using an abstract syntax tree (AST). This allows for facile identification of implicit functions.
 
 ## What's unique about the robust optimization capabilities?
 
 - **Nonconvex Semi-infinite Programming**: An implementation of this in GAMS is available using the BARON solver. However, this is the first nonconvex robust optimizer available in Julia. 
->>>>>>> master
-
 - **Semi-Infinite Equality Constraints**: Nonconvex semi-infinite programming with equality constraints represents an extremely challenging problem. In principle, the problem can be decomposed into a series of semi-infinite constraints and handled with a restriction of the right-hand side technique. However, the nonexistence of Slater points in the explicit formulation is likely and  thus the above algorithm will lack a guarantee of convergence. By solving the problem using the reduced-space implicit approach, Slater points can be shown to trivially exist and we recover the convergence guarantee.
 
 ## Capabilities as a development platform
