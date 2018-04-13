@@ -16,7 +16,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathProgBa
 
 ## News
 
-- 4/12/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages (e.g. `EAGODomainReduction.jl`) into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll take EAGO v0.2.0. 
+- 4/12/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages (e.g. `EAGODomainReduction.jl`) into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll tag EAGO v0.2.0. 
 
 ## Related Packages
 
