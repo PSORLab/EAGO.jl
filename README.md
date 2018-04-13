@@ -4,9 +4,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 [![Build Status](https://travis-ci.org/MatthewStuber/EAGO.jl.svg?branch=master)](https://travis-ci.org/MatthewStuber/EAGO.jl)
 [![Coverage Status](https://coveralls.io/repos/github/MatthewStuber/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/MatthewStuber/EAGO.jl?branch=master)
 [![codecov.io](http://codecov.io/github/MatthewStuber/EAGO.jl/coverage.svg?branch=master)](http://codecov.io/github/MatthewStuber/EAGO.jl?branch=master)
-
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://MatthewStuber.github.io/EAGO.jl/stable)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://MatthewStuber.github.io/EAGO.jl/latest)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://matthewstuber.github.io/EAGO.jl/)
 
 ## Global Optimization
 
