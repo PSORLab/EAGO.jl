@@ -182,17 +182,17 @@ end
 function convert(::Type{SMCg{N,V,T}},x::S) where {S<:Integer,N,V,T<:AbstractFloat}
           seed::SVector{N,T} = @SVector zeros(T,N)
           SMCg{N,V,T}(convert(T,x),convert(T,x),seed,seed,V(convert(V,x)),
-                    false,[emptyinterval(T)],[zero(T)])
+                    false,SVector{N,V}([entireinterval(T,V) for i=1:N]),SVector{N,T}([zero(T) for i=1:N]))
 end
 function convert(::Type{SMCg{N,V,T}},x::S) where {S<:AbstractFloat,N,V,T<:AbstractFloat}
           seed::SVector{N,T} = @SVector zeros(T,N)
           SMCg{N,V,T}(convert(T,x),convert(T,x),seed,seed,V(convert(V,x)),
-                    false,[emptyinterval(T)],[zero(T)])
+                    false,SVector{N,V}([entireinterval(T,V) for i=1:N]),SVector{N,T}([zero(T) for i=1:N]))
 end
 function convert(::Type{SMCg{N,V,T}},x::S) where {S<:Interval,N,V,T<:AbstractFloat}
-          seed::SVector{N,T} = @SVector zeros(T,N)
+    seed::SVector{N,T} = @SVector zeros(T,N)
           SMCg{N,V,T}(convert(T,x.hi),convert(T,x.lo),seed,seed,convert(V,x),
-                    false,[emptyinterval(T)],[zero(T)])
+                    false,SVector{N,V}([entireinterval(T,V) for i=1:N]),SVector{N,T}([zero(T) for i=1:N]))
 end
 
 promote_rule(::Type{SMCg{N,V,T}}, ::Type{S}) where {S<:Integer,N,V,T<:AbstractFloat} = SMCg{N,V,T}

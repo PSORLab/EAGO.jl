@@ -30,7 +30,7 @@ flt_un = Union{Float16,Float32,Float64}
 
 #abstract type AbstractMC <: Real end
 """
-    SMCg{N,T<:AbstractFloat}
+    SMCg{N,V,T<:AbstractFloat}
 
 `SMCg` is the smooth McCormick (w/ gradient) structure which is used to overload
 standard calculations. The fields are:
@@ -38,13 +38,10 @@ standard calculations. The fields are:
 * `cv::T`: Convex relaxation
 * `cc_grad::SVector{N,T}`: (Sub)gradient of concave relaxation
 * `cv_grad::SVector{N,T}`: (Sub)gradient of convex relaxation
-* `Intv::Interval{T}`: Interval bounds
+* `Intv::V`: Interval bounds
 * `cnst::Bool`: Flag for whether the bounds are constant
-* `IntvBox::Vector{Interval{T}}`: Decision space constraints for the affine interval bound tightening
+* `IntvBox::Vector{V}`: Decision space constraints for the affine interval bound tightening
 * `xref::Vector{T}`: Reference point for affine interval bound tightening
-Affine interval bound tightening is included in the constructor. As well, as a
-validity check options and the cut operator is included if the differentiability
-is set to nonsmooth.
 """
 struct SMCg{N,V,T<:AbstractFloat} <: Real
   cc::T

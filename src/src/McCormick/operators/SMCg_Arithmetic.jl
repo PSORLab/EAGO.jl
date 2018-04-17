@@ -160,6 +160,8 @@ dist(x1::SMCg{N,V,T}, x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = max(abs(x1
 
 eps(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = max(eps(x.cc), eps(x.cv))
 
+mid(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = mid(Intv(x.Intv))
+
 
 #=
 ###### Defines boolean operators

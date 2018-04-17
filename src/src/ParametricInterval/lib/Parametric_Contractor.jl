@@ -219,11 +219,14 @@ function PI_NewtonGS(X0::Vector{MCInterval{T}},P::Vector{MCInterval{T}},
                      hj::Function,h::Function,
                      opt::Vector{Any},Eflag::Bool,
                      Iflag::Bool,eDflag::Bool) where {T<:AbstractFloat}
+
+  println(" PI location 1!")
   # unpacks option file
   kmax::Int64 = opt[1]
   etol::Float64 = opt[2]
   rtol::Float64 = opt[3]
 
+  println(" PI location 2!")
   # Initializes variables
   nx::Int64 = length(X0)
   S1::MCInterval{T} = MCInterval(0.0)
@@ -237,15 +240,20 @@ function PI_NewtonGS(X0::Vector{MCInterval{T}},P::Vector{MCInterval{T}},
   Eflag::Bool = false
   eDflag::Bool = false
 
+  println(" PI location 3!")
   X::Vector{MCInterval{T}} = copy(X0)
   Xi::Vector{MCInterval{T}} = copy(X0)
   N::Vector{MCInterval{T}} = copy(X)
   x_mid::Vector{T} = mid.(X)
   k::Int64 = 1
+  println(" PI location 3a!")
   H::Union{Array{MCInterval{T},2},Vector{MCInterval{T}}} = h(x_mid,P)
+  println(" PI location 3b!")
   J::Union{Array{MCInterval{T},2},Vector{MCInterval{T}}} = hj(X,P)
+  println(" PI location 3c!")
   Y::Union{Array{T,2},Vector{T}} = Preconditioner(hj,X,P,jac="User")
 
+  println(" PI location 4!")
   if (nx == 1)
     B::Vector{MCInterval{T}} = Y.*H
     M::Union{Array{MCInterval{T},2},Vector{MCInterval{T}}} = Y.*J
@@ -254,6 +262,7 @@ function PI_NewtonGS(X0::Vector{MCInterval{T}},P::Vector{MCInterval{T}},
     M = Y*J
   end
 
+  println(" PI location 5!")
   for i=1:nx
     S1 = MCInterval(0.0)
     S2 = MCInterval(0.0)
@@ -304,6 +313,8 @@ function PI_NewtonGS(X0::Vector{MCInterval{T}},P::Vector{MCInterval{T}},
   end
   k += 1
 
+  println(" PI location 6!")
+
   # checks if all components are included
   if (Iflag == false)
     for i=1:nx
@@ -316,6 +327,8 @@ function PI_NewtonGS(X0::Vector{MCInterval{T}},P::Vector{MCInterval{T}},
       end
     end
   end
+
+  println(" PI location 7!")
 
   #
   while ((k<kmax) && isEqual(X,Xi,etol) == false)
@@ -455,9 +468,9 @@ function PI_KrawczykCW(X0::Vector{Interval{T}},P::Vector{Interval{T}},
   X::Vector{Interval{T}} = copy(X0)
   Xi::Vector{Interval{T}} = copy(X)
   N::Vector{Interval{T}} = copy(X)
-  x_mid::Vector{T} = mid.(X)
   k::Int64 = 1
 
+  x_mid::Vector{T} = mid.(X)
   H::Union{Array{Interval{T},2},Vector{Interval{T}}} = h(x_mid,P)
   J::Union{Array{Interval{T},2},Vector{Interval{T}}} = hj(X,P)
   #println("H, J calced")

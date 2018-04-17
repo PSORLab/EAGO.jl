@@ -6,6 +6,15 @@ isempty(x::MCInterval) = x.lo == Inf && x.hi == -Inf
 const ∞ = Inf
 entireMCinterval(::Type{T}) where T<:AbstractFloat = MCInterval{T}(-Inf, Inf)
 entireMCinterval(x::MCInterval{T}) where T<:AbstractFloat = entireMCinterval(T)
+
+function entireinterval(T::Type,V::Type)
+    if (V<:MCInterval{T})
+        return entireMCinterval(T)
+    else
+        return IntervalArithmetic.entireinterval(T)
+    end
+end
+
 isentire(x::MCInterval) = x.lo == -Inf && x.hi == Inf
 isunbounded(x::MCInterval) = x.lo == -Inf || x.hi == Inf
 

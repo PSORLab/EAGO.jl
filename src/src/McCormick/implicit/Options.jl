@@ -22,19 +22,10 @@ Storage type used for parameter options in implicit bounding routine.
 type mc_opts{T<:AbstractFloat}
   lambda::T
   kmax::Int64
-  style::String
-  z_rnd::Bool
-  z_rnd_eps::T
-  z_rnd_all::Bool
-  z_rnd_all_eps::T
-  aff_rnd::Bool
-  aff_rnd_eps::T
-  aff_rnd_all::Bool
-  aff_rnd_all_eps::T
-  hhj_rnd::Bool
-  hhj_rnd_eps::T
-  hhj_rnd_all::Bool
-  hhj_rnd_all_eps::T
+  LAlg::Symbol   # Type of symbol
+  CTyp::Symbol   #
+  np::Int64
+  nx::Int64
   aff_correct_eps::T
 end
 
@@ -46,10 +37,7 @@ contractor style `.style = KrawczykCW`, the number of iterations to `.kmax = 2`,
 and the affine correction tolerance as `.aff_correct_eps = 1E-12`. Other rounding
 options disabled.
 """
-mc_opts(T) = mc_opts{T}(0.5,2,"KrawczykCW",
-                        false,0.0,false,0.0,
-                        false,0.0,false,0.0,
-                        false,0.0,false,0.0,1E-12)
+mc_opts(T) = mc_opts{T}(0.5*one(T),2,:Dense,:Krawczyk,0,0,zero(T))
 
 mc_opts() = mc_opts(Float64)
 """
@@ -63,18 +51,7 @@ options disabled.
 function set_default!(x::mc_opts{T}) where {T<:AbstractFloat}
   x.lambda = 0.5
   x.kmax = 2
-  x.style = "KrawczykCW"
-  x.z_rnd = false
-  x.z_rnd_eps = 0.0
-  x.z_rnd_all= false
-  x.z_rnd_all_eps = 0.0
-  x.aff_rnd= false
-  x.aff_rnd_eps = 0.0
-  x.aff_rnd_all= false
-  x.aff_rnd_all_eps = 0.0
-  x.hhj_rnd= false
-  x.hhj_rnd_eps = 0.0
-  x.hhj_rnd_all= false
-  x.hhj_rnd_all_eps = 0.0
-  x.aff_correct_eps = 1E-12
+  LAlg = :Dense
+  CTyp = :Krawczyk
+#x.aff_correct_eps = 1E-12
 end

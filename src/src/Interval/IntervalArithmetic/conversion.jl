@@ -1,19 +1,23 @@
 
 # additive conversion from float to Interval
-+(a::MCInterval{T}, b::T) where {T<:AbstractFloat} = MCInterval(a.lo+b,a.hi+b)
-+(b::T, a::MCInterval{T}) where {T<:AbstractFloat} = MCInterval(a.lo+b,a.hi+b)
-+(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = MCInterval(a.lo+convert(T,b),a.hi+convert(T,b))
-+(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = MCInterval(a.lo+convert(T,b),a.hi+convert(T,b))
-+(a::MCInterval{T}, b::S) where {S,T<:AbstractFloat} = MCInterval(a.lo+convert(T,b),a.hi+convert(T,b))
-+(b::S, a::MCInterval{T}) where {S,T<:AbstractFloat} = MCInterval(a.lo+convert(T,b),a.hi+convert(T,b))
++(a::MCInterval{T}, b::T) where {T<:AbstractFloat} = MCInterval{T}(a.lo+b,a.hi+b)
++(b::T, a::MCInterval{T}) where {T<:AbstractFloat} = MCInterval{T}(a.lo+b,a.hi+b)
++(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = MCInterval{T}(a.lo+convert(T,b),a.hi+convert(T,b))
++(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = MCInterval{T}(a.lo+convert(T,b),a.hi+convert(T,b))
+
+# additive conversion from integer to Interval
++(a::MCInterval{T}, b::S) where {S<:Integer,T<:AbstractFloat} = MCInterval{T}(a.lo+convert(T,b),a.hi+convert(T,b))
++(b::S, a::MCInterval{T}) where {S<:Integer,T<:AbstractFloat} = MCInterval{T}(a.lo+convert(T,b),a.hi+convert(T,b))
 
 # substractive conversion from float to Interval
--(a::MCInterval{T}, b::T) where {T<:AbstractFloat} = MCInterval(a.lo-b,a.hi-b)
--(b::T, a::MCInterval{T}) where {T<:AbstractFloat} = MCInterval(b-a.hi,b-a.lo)
--(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = -(a,convert(T,b))
--(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = -(convert(T,b),a)
--(a::MCInterval{T}, b::S) where {S,T<:AbstractFloat} = -(a,convert(T,b))
--(b::S, a::MCInterval{T}) where {S,T<:AbstractFloat} = -(convert(T,b),a)
+-(a::MCInterval{T}, b::T) where {T<:AbstractFloat} = MCInterval{T}(a.lo-b,a.hi-b)
+-(b::T, a::MCInterval{T}) where {T<:AbstractFloat} = MCInterval{T}(b-a.hi,b-a.lo)
+-(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = MCInterval{T}(a.lo-convert(T,b),a.hi-convert(T,b))
+-(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = MCInterval{T}(convert(T,b)-a.hi,convert(T,b)-a.lo)
+
+# substractive conversion from integer to Interval
+-(a::MCInterval{T}, b::S) where {S<:Integer,T<:AbstractFloat} = MCInterval{T}(a.lo-convert(T,b),a.hi-convert(T,b))
+-(b::S, a::MCInterval{T}) where {S<:Integer,T<:AbstractFloat} = MCInterval{T}(convert(T,b)-a.hi,convert(T,b)-a.lo)
 
 # multiplication conversion from float to Interval
 function *(b::T, a::MCInterval{T}) where {T<:AbstractFloat}
@@ -36,8 +40,8 @@ end
 *(a::MCInterval{T}, b::T) where {T<:AbstractFloat} = b*a
 *(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = *(a,convert(T,b))
 *(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = *(convert(T,b),a)
-*(a::MCInterval{T}, b::S) where {S,T<:AbstractFloat} = *(a,convert(T,b))
-*(b::S, a::MCInterval{T}) where {S,T<:AbstractFloat} = *(convert(T,b),a)
+*(a::MCInterval{T}, b::S) where {S<:Integer,T<:AbstractFloat} = *(a,convert(T,b))
+*(b::S, a::MCInterval{T}) where {S<:Integer,T<:AbstractFloat} = *(convert(T,b),a)
 
 # division conversion from float to Interval
 function /(a::T, b::MCInterval{T}) where {T<:AbstractFloat}
@@ -71,8 +75,8 @@ end
 /(a::MCInterval{T},b::T) where {T<:AbstractFloat} = inv(b)*a
 /(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = /(a,convert(T,b))
 /(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = /(convert(T,b),a)
-/(a::MCInterval{T}, b::S) where {S,T<:AbstractFloat} = /(a,convert(T,b))
-/(b::S, a::MCInterval{T}) where {S,T<:AbstractFloat} = /(convert(T,b),a)
+/(a::MCInterval{T}, b::S) where {S<:Integer,T<:AbstractFloat} = /(a,convert(T,b))
+/(b::S, a::MCInterval{T}) where {S<:Integer,T<:AbstractFloat} = /(convert(T,b),a)
 
 # minimization conversion from float to Interval
 function min(a::MCInterval{T}, b::T) where {T<:AbstractFloat}
@@ -85,8 +89,8 @@ function min(b::T, a::MCInterval{T}) where {T<:AbstractFloat}
 end
 min(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = min(a,convert(T,b))
 min(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = min(convert(T,b),a)
-min(a::MCInterval{T}, b::S) where {S,T<:AbstractFloat} = min(a,convert(T,b))
-min(b::S, a::MCInterval{T}) where {S,T<:AbstractFloat} = min(convert(T,b),a)
+min(a::MCInterval{T}, b::S) where {S<:Integer,T<:AbstractFloat} = min(a,convert(T,b))
+min(b::S, a::MCInterval{T}) where {S<:Integer,T<:AbstractFloat} = min(convert(T,b),a)
 
 # maximization conversion from float to Interval
 function max(a::MCInterval{T}, b::T) where {T<:AbstractFloat}
@@ -99,8 +103,8 @@ function max(b::T, a::MCInterval{T}) where {T<:AbstractFloat}
 end
 max(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = max(a,convert(T,b))
 max(b::S, a::MCInterval{T}) where {S<:AbstractFloat,T<:AbstractFloat} = max(convert(T,b),a)
-max(a::MCInterval{T}, b::S) where {S,T<:AbstractFloat} = max(a,convert(T,b))
-max(b::S, a::MCInterval{T}) where {S,T<:AbstractFloat} = max(convert(T,b),a)
+max(a::MCInterval{T}, b::S) where {S<:Integer,T<:AbstractFloat} = max(a,convert(T,b))
+max(b::S, a::MCInterval{T}) where {S<:Integer,T<:AbstractFloat} = max(convert(T,b),a)
 
 # nonoverloaded conversion
 flttoMCI(x::Float64) = MCInterval{Float64}(x,x)

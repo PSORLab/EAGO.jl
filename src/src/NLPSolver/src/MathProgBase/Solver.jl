@@ -41,7 +41,7 @@ are as follows:
 type ImplicitSolver
     flag::Bool
     opts::mc_opts
-    ParamInt::Vector{Any}
+    ParamInt::PIntvParams{Float64}
     f::Function
     g
     h
@@ -55,9 +55,8 @@ type ImplicitSolver
     gU_Loc
     gL
     gU
-    Inplace
 end
-ImplicitSolver() = ImplicitSolver(false,mc_opts(),Any[],
+ImplicitSolver() = ImplicitSolver(false,mc_opts(),PIntvParams(0,0),
                                     x->x,x->x,x->x,x->x,0,
                                     "NewtonGS",-1,-1,[],[],[],[],[],false)
 
