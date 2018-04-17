@@ -26,7 +26,7 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
     feas_Pre::Bool = true
     feas_Post::Bool = true
     if (k_int == 0)
-      println("pre-check")
+      (x.Verbosity == "Full") && println("pre-check")
       nsBox1 = copy(nsBox)
       yUBDg1 = copy(y.UBDg)
       yLBDg1 = copy(y.LBDg)
@@ -34,14 +34,14 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
       pos1 = copy(pos)
       xopt1 = copy(x.opt)
       x.Preprocess(feas_Pre,nsBox1,yUBDg1,kint1,pos1,xopt1,LBDn,UBDn,x,y)
-      println("preprocess-check")
+      (x.Verbosity == "Full") && println("preprocess-check")
       D_valt, LBD_solt, LBD_feast, temp_objtL = x.Lower_Prob(nsBox1,kint1,pos1,xopt1,yUBDg1)
-      println("lower-check")
+      (x.Verbosity == "Full") && println("lower-check")
       UBD_valt, UBD_solt, UBD_feast, temp_objtU = x.Upper_Prob(nsBox1,kint1,pos1,xopt1,yUBDg1)
-      println("upper-check")
+      (x.Verbosity == "Full") && println("upper-check")
       x.Postprocess(feas_Post,nsBox1,kint1,pos1,xopt1,
                     temp_objtL,temp_objtU,yLBDg1,yUBDg1)
-      println("postprocess-check")
+      (x.Verbosity == "Full") && println("postprocess-check")
     end
     feas_Pre = true
     feas_Post = true

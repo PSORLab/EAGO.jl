@@ -177,10 +177,10 @@ function Ipopt_UBD(X,
                 addOption(prob, "tol", 1E-4)
             end
             # solve problem and unpacks variables
-            TT = STDOUT
-            redirect_stdout()
+            #TT = STDOUT
+            #redirect_stdout()
             status = solveProblem(prob)
-            redirect_stdout(TT)
+            #redirect_stdout(TT)
             pnt::Vector{Float64} = prob.x
             val::Float64 = prob.obj_val
             if (status == 0 || status == 1 || status == 6)

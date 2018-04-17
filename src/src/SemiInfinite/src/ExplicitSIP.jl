@@ -49,7 +49,7 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
     r = SIPopt.r0
   end
 
-  println("ran to algo start #1")
+  #println("ran to algo start #1")
   ##### checks for convergence #####
   for k=1:SIPopt.kmax
 
@@ -64,11 +64,11 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
     gL_LBP = [-Inf for i=1:length(P_LBD)]
     gU_LBP = [0.0 for i=1:length(P_LBD)]
     mLBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.LBP_Opt))
-      println("sarted lower problem load")
+    #  println("sarted lower problem load")
     MathProgBase.loadproblem!(mLBP, nx, length(P_LBD), X_low, X_high,
                               gL_LBP, gU_LBP, :Min, f, gLBP)
 
-    println("finished lower problem load")
+    #println("finished lower problem load")
     if SIPopt.LBP_Opt.DAG_depth>0
       if (SIPopt.gSIPExp == Expr[])
         error("Must provide expression for gSIP in order to use DAG contractor")
@@ -76,10 +76,10 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
         mLBP.Opts.DAG_tlist = Generate_Fixed_TapeList(x->gSIP(x[1:nx],x[(nx+1):(nx+np)]),nx,gL_LBP,gU_LBP,P_LBD)
       end
     end
-    println("lower tapelist")
+    #println("lower tapelist")
 
     MathProgBase.optimize!(mLBP)
-    println("lower solve")
+    #println("lower solve")
     LBDg = MathProgBase.getobjval(mLBP)
     xbar = MathProgBase.getsolution(mLBP)
     feas = getfeasibility(mLBP)
@@ -87,7 +87,7 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
     sip_sto.LBP_time += tLBP
     sip_sto.LBD = LBDg
     sip_sto.xbar = xbar
-      println("lower recall")
+    #  println("lower recall")
     if (SIPopt.Verbosity == "Full" || SIPopt.Verbosity == "Normal")
       println("solved LBD: ",LBDg," ",xbar," ",feas)
     end

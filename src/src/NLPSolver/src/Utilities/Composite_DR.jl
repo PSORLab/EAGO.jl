@@ -68,7 +68,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished DAG Contractor")
+  (bnbs.Verbosity == "Full") && (println("Finished DAG Contractor"))
   # Standard Range Reduction
   if (feas == true && (opt[1].solver.STD_RR_depth >= pos))
     STD_Linear_RR!(X,opt,UBD)
@@ -79,7 +79,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Standard Range Reduction")
+  (bnbs.Verbosity == "Full") && (println("Finished Standard Range Reduction"))
   # Implicit Range Reduction
   if (opt[1].solver.Implicit_Options.flag)
     if (feas == true && (opt[1].solver.Implicit_Options.Imp_RR_depth >= pos))
@@ -92,7 +92,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Implicit Range Reduction")
+  (bnbs.Verbosity == "Full") && (println("Finished Implicit Range Reduction"))
   # Standard  Probing
   if (feas == true && (opt[1].solver.probe_depth >= pos))
     STD_LP_Probe!(X,opt,UBD)
@@ -103,7 +103,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Standard Probing")
+  (bnbs.Verbosity == "Full") && (println("Finished Standard Probing"))
   # Implicit Probing
   if (opt[1].solver.Implicit_Options.flag)
     if (feas == true && (opt[1].solver.Implicit_Options.Imp_probe_depth >= pos))
@@ -116,7 +116,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Implicit Probing")
+  (bnbs.Verbosity == "Full") && (println("Finished Implicit Probing"))
   # Implicit Interval Contractor
   if (opt[1].solver.Implicit_Options.flag && (feas == true))
     Eflag = false
@@ -181,7 +181,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       X = copy(Y1)
     end
   end
-  println("Finished Implicit Contractor")
+  (bnbs.Verbosity == "Full") && (println("Finished Implicit Contractor"))
   return feas,X
 end
 

@@ -26,6 +26,7 @@ X1 = [MCInterval(-1000.0,1000.0),MCInterval(-1000.0,1000.0)]
 P1 = [MCInterval(0.0,1.0)]
 SIPoutput1 = Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
 
+#=
 # solves example SIP #1 with DAG contractor enabled
 SIPopt2 = SIP_opts()
 sep2lu = EAGO_NLPSolver(probe_depth = -1,
@@ -65,3 +66,4 @@ gSIP3(x,p) = x[1]*(p[1]+p[2]^2+1.0)+x[2]*(p[1]*p[2]-p[2]^2)+x[3]*(p[1]*p[2]+p[2]
 X3 = [MCInterval(-1000,1000),MCInterval(-1000,1000),MCInterval(-1000,1000)]
 P3 = [MCInterval(0,1),MCInterval(0,1)]
 SIPoutput2 = Explicit_SIP_Solve(f3,gSIP3,X3,P3,SIPopt3)
+=#

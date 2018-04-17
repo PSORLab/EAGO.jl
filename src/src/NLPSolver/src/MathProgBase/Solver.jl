@@ -58,7 +58,7 @@ type ImplicitSolver
 end
 ImplicitSolver() = ImplicitSolver(false,mc_opts(),PIntvParams(0,0),
                                     x->x,x->x,x->x,x->x,0,
-                                    "NewtonGS",-1,-1,[],[],[],[],[],false)
+                                    "NewtonGS",-1,-1,[],[],[],[],[])
 
 """
     EAGO_NLPSolver
