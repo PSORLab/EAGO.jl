@@ -1,6 +1,6 @@
 workspace()
 
-using EAGOSmoothMcCormickGrad
+using EAGO
 using IntervalArithmetic
 using StaticArrays
 
@@ -38,13 +38,13 @@ y0 = line_seg(2,1,0,6,10)
 dy0 = dline_seg(2,1,0,6,10)
 
 # converts float/integer to SMCg
-promoted1 = promote_rule(EAGOSmoothMcCormickGrad.SMCg{3,Float64}, Int64)
-promoted2 = promote_rule(EAGOSmoothMcCormickGrad.SMCg{3,Int64}, Float64)
-promoted3 = promote_rule(EAGOSmoothMcCormickGrad.SMCg{3,Float64}, Interval{Float64})
-promoted4 = promote_rule(EAGOSmoothMcCormickGrad.SMCg{3,Float64}, Real)
+promoted1 = promote_rule(EAGO.SMCg{3,Float64}, Int64)
+promoted2 = promote_rule(EAGO.SMCg{3,Int64}, Float64)
+promoted3 = promote_rule(EAGO.SMCg{3,Float64}, Interval{Float64})
+promoted4 = promote_rule(EAGO.SMCg{3,Float64}, Real)
 
-conv_float = convert(EAGOSmoothMcCormickGrad.SMCg{3,Float64},1.0)
-conv_int = convert(EAGOSmoothMcCormickGrad.SMCg{3,Float64},3)
+conv_float = convert(EAGO.SMCg{3,Float64},1.0)
+conv_int = convert(EAGO.SMCg{3,Float64},3)
 
 # test subgradient refinement
 Intv1 = tighten_subgrad(2.0,1.0,b,b,Interval(-100.0,100.0),[Interval(-1.0,1.0)],[0.0])

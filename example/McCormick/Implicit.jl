@@ -4,7 +4,7 @@ using EAGO
 using IntervalArithmetic
 using StaticArrays
 
-opts1 =  mc_opts{Float64}(0.5,1,:Dense,:Newton,1,1,0.0)
+opts1 =  mc_opts{Float64}(0.5,1,:Dense,:Newton,1,1,1E-10)
 
 #=
 generates the expansion point parameters for the function using the opts
@@ -25,7 +25,7 @@ function h1(x,p)
     println("4.0: $(t3)")
     t4 = t1 + t2
     println("t4 : $(t4 )")
-    t5 = t2 + t3
+    t5 = t4 + t3
     println("t5: $(t5)")
     return [t5]
 end

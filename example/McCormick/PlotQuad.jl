@@ -19,7 +19,7 @@ function h1(x,p)
     t2 = x[1]*p[1]
     t3 = 4.0
     t4 = t1 + t2
-    t5 = t2 + t3
+    t5 = t4 + t3
     return [t5]
 end
 hj1(x,p) = [2.0*x[1]+p[1]]

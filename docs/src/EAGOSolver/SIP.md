@@ -34,3 +34,5 @@ SIPoutput1 = Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
 ```
 
 ## Solving Semi-Infinite Programs with Equality Constraints
+
+WILL BE ADDED SHORTLY. 

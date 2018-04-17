@@ -1,25 +1,29 @@
 ## Solvers with a guarantee of global optimality
-For unconstrained problems, the following lower/upper bounding problem modes will
+For unconstrained problems, the following upper bounding problem modes will
 provide a solution that is globally optimal to within an epsilon tolerance:
-- Explicit LP
--
--
--
+- Interval
+- LP (Explicit)
 
-The following solvers can provide a valid solution to constrained problems:
--
--
--
--
+The following upper bounding problems solvers can also provide a valid solution to constrained problems:
+- SNOPT
+- Ipopt
+- MPBNonlinear
 
-The following solvers are currently under-construction and will likely furnish incorrect answers/errors.
-- AlphaBB:
-- QCQP McCormick:
+The following lower bounding solvers are currently under-construction and will likely furnish incorrect answers/errors.
+- AlphaBB
+- Quadratic
+- Ipopt
 
+Lower bounding problem options are:
+- Interval
+- SNOPT
+- LP
+
+The solver contains a hook into JuMP that can be used to solve simple explicit problems
+as shown below: 
 
 ## Solving a basic problem problem
 ```julia
-println("Test Problem 5 (Mult):")
 jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,

@@ -8,8 +8,7 @@ are as follows:
 * `flag::Bool`: A flag indicating whether or not implicit bounding routines should
                 be used to solve subproblems.
 * `opts::mc_opts`: Option type used for McCormick fixed point bounding routine.
-* `ParamInt::Vector`: Options used for parametric interval calculations
-                      (iteration #, equality tolerance, extended Newton parameter)
+* `ParamInt::PIntvParams{Float64}`: Optionsparametric interval calculations
 * `f`: The objective function used in implicit calculations. Takes the form: f(x,p)
        where x = y[1:nx] and p = y[(nx+1):end].
 * `g`: Inequality constraints used in implicit calculations. Takes the form: g(x,p)
@@ -69,15 +68,12 @@ modified over the course of the optimization problem. The fields are given below
                           to the solve function EAGOBranchBound. (Default = BnBSolver())
 * `Implicit_Options::ImplicitSolver`: Solver options for implicit bounding routines. (Default = ImplicitSolver())
 * `LBD_func_relax::String`: Relaxation type used in lower bounding problem. (Default = "NS-STD-OFF")
-* `LBD_problem_relax::String`: Type of problem relaxation to use when solving lower problem. (Default = "LP")
-* `LBD_problem_solver::String`: Solver for use in problem lower problem. (Default = "Clp")
-* `UBD_func_relax::String`: Relaxation type used in lower bounding problem. (Default = "Original")
-* `UBD_problem_relax::String`: Type of problem relaxation to use when solving lower problem. (Default = "NLP2")
-* `UBD_problem_solver::String`: Solver for use in problem upper problem. (Default = "Ipopt")
+* `LBDsolvertype::String`: Type of problem relaxation to use when solving lower problem. (Default = "LP")
+* `UBDsolvertype::String`: Type of problem relaxation to use when solving upper problem. (Default = "MPBNonlinear")
 * `LP_solver`: LP solver for use in contraction routines. (Default = ClpSolver())
 * `abs_tol_LBD::Float64`: Absolute tolerance spec for lower subproblem. (Default = 1E-5)
 * `max_int_LBD::Int64`: Maximum iterations for lower subproblem. (Default = 5E5)
-* `UBD_feas_depth`: Depth below which problems are solved to feasilibity only (Default = 100)
+* `UBD_full_depth`: Depth below which problems are solved to feasilibity only (Default = 100)
 * `abs_tol_UBD::Float64`: Absolute tolerance spec for upper subproblem. (Default = 1E-5)
 * `max_int_UBD::Int64`: Maximum iterations for upper subproblem. (Default = 5E5)
 * `STD_RR_depth::Int64`: Depth in tree to perform standard range reduction until. (Default = 1E10)
@@ -93,15 +89,17 @@ modified over the course of the optimization problem. The fields are given below
 * `verbosity::String`: Verbosity of solution routine passed to BnB solve. (Default = "Normal")
 * `iter_limit::Int64`: Iteration limit for branch and bound. (Default = "Normal")
 * `node_limit::Int64`: Node limit for branch and bound. (Default = "Normal")
+* `UBDsolver`: Default upper bounding solver
+* `validated::Bool`: Flag indicating the interval calculation should be correctly rounded.
 """
 type EAGO_NLPSolver <: AbstractMathProgSolver
 
     # Branch and Bound Solver Object
-    BnBSolver::BnBSolver
-    Implicit_Options::ImplicitSolver
+    BnBSolver::BnBSolver                  # The BnB solver object that that is modified then passed to the solve function EAGOBranchBound. (Default = BnBSolver())
+    Implicit_Options::ImplicitSolver      # Solver options for implicit bounding routines. (Default = ImplicitSolver())
 
     # Solver types
-    LBD_func_relax::String
+    LBD_func_relax::String                # Relaxation type used in lower bounding problem. (Default = "NS-STD-OFF")
     LBDsolvertype::String
     UBDsolvertype::String
 
@@ -122,8 +120,8 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
     dual_tol::Float64
 
     # FBBT options
-    DAG_depth::Int64 # Depth in tree to run DAG constraint propagation
-    DAG_pass::Int64  # Number of passes to run DAG constraint propagation
+    DAG_depth::Int64
+    DAG_pass::Int64
     max_reduce_rept::Int64
     tol_reduce_rept::Float64
 
