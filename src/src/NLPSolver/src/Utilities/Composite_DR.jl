@@ -68,7 +68,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished DAG Contractor")
+  (bnbs.Verbosity == "Full") && (println("Finished DAG Contractor"))
   # Standard Range Reduction
   if (feas == true && (opt[1].solver.STD_RR_depth >= pos))
     STD_Linear_RR!(X,opt,UBD)
@@ -79,7 +79,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Standard Range Reduction")
+  (bnbs.Verbosity == "Full") && (println("Finished Standard Range Reduction"))
   # Implicit Range Reduction
   if (opt[1].solver.Implicit_Options.flag)
     if (feas == true && (opt[1].solver.Implicit_Options.Imp_RR_depth >= pos))
@@ -92,7 +92,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Implicit Range Reduction")
+  (bnbs.Verbosity == "Full") && (println("Finished Implicit Range Reduction"))
   # Standard  Probing
   if (feas == true && (opt[1].solver.probe_depth >= pos))
     STD_LP_Probe!(X,opt,UBD)
@@ -103,7 +103,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Standard Probing")
+  (bnbs.Verbosity == "Full") && (println("Finished Standard Probing"))
   # Implicit Probing
   if (opt[1].solver.Implicit_Options.flag)
     if (feas == true && (opt[1].solver.Implicit_Options.Imp_probe_depth >= pos))
@@ -116,166 +116,72 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       end
     end
   end
-  println("Finished Implicit Probing")
+  (bnbs.Verbosity == "Full") && (println("Finished Implicit Probing"))
   # Implicit Interval Contractor
   if (opt[1].solver.Implicit_Options.flag && (feas == true))
     Eflag = false
     Iflag = false
     eDflag = false
-    if (opt[1].solver.Implicit_Options.Inplace)
-      if (opt[1].solver.Implicit_Options.Intv_Cntr == "NewtonGS")
-        #println("Started Inplace Newton")
-        newtonGS = PId_NewtonGS(X[1:opt[1].solver.Implicit_Options.nx],
-                                X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)],
-                                opt[1].solver.Implicit_Options.hj,
-                                opt[1].solver.Implicit_Options.h,
-                                opt[1].solver.Implicit_Options.ParamInt,
-                                Eflag,Iflag,eDflag)
-        X[1:opt[1].solver.Implicit_Options.nx] = newtonGS[1]
-        if (newtonGS[3] == true)
-          feas = false
-        else (newtonGS[5] == true)
-          feas = false
-          # Solves LBD & UBD for node #1
-          LBD1, LBDsol1, LBDfeas1, tempL1 = bnbs.Lower_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          if (LBDfeas1)
-            UBD1, UBDsol1, UBDfeas1, tempU1 = bnbs.Upper_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          else
-            UBD1 = copy(UBDn)
-            UBDsol1 = mid.(X)
-            UBDfeas1 = false
-            tempU1 = []
-          end
+    Y1,Y2,Eflag,Iflag,eDflag,incLow,incHigh = Param_Intv_Contractor(opt[1].solver.Implicit_Options.h,opt[1].solver.Implicit_Options.hj,
+                                                                    X[1:opt[1].solver.Implicit_Options.nx],
+                                                                    X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)],
+                                                                    Eflag,Iflag,eDflag,
+                                                                    opt[1].solver.Implicit_Options.ParamInt)
+    if Eflag
+      feas = false
+    elseif eDflag
+      feas = false
+      # Solves LBD & UBD for node #1
+      LBD1, LBDsol1, LBDfeas1, tempL1 = bnbs.Lower_Prob(Y1,k,pos,bnbs.opt,bnbm.UBDg)
+      if (LBDfeas1)
+        UBD1, UBDsol1, UBDfeas1, tempU1 = bnbs.Upper_Prob(Y1,k,pos,bnbs.opt,bnbm.UBDg)
+      else
+        UBD1 = copy(UBDn)
+        UBDsol1 = mid.(Y)
+        UBDfeas1 = false
+        tempU1 = []
+      end
 
-          # Solves LBD & UBD for node #1
-          LBD2, LBDsol2, LBDfeas2, tempL2 = bnbs.Lower_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          if (LBDfeas1)
-            UBD2, UBDsol2, UBDfeas2, tempU2 = bnbs.Upper_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          else
-            UBD2 = copy(UBDn)
-            UBDsol2 = mid.(X)
-            UBDfeas2 = false
-            tempU2 = []
-          end
+      # Solves LBD & UBD for node #1
+      LBD2, LBDsol2, LBDfeas2, tempL2 = bnbs.Lower_Prob(Y2,k,pos,bnbs.opt,bnbm.UBDg)
+      if (LBDfeas1)
+        UBD2, UBDsol2, UBDfeas2, tempU2 = bnbs.Upper_Prob(Y2,k,pos,bnbs.opt,bnbm.UBDg)
+      else
+        UBD2 = copy(UBDn)
+        UBDsol2 = mid.(Y2)
+        UBDfeas2 = false
+        tempU2 = []
+      end
 
-          # Stores if feasible
-          if ((LBDfeas1 && UBDfeas1) && (LBDfeas2 && UBDfeas2))
-            push!(bnbm.box,vcat(newtonGS[1],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)])
-                          ,vcat(newtonGS[2],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
-            push!(bnbm.LBD,LBD1,LBD2)
-            push!(bnbm.UBD,UBD1,UBD2)
-            push!(bnbm.id,bnbm.max_id+1,bnbm.max_id+2)
-            push!(bnbm.pos,pos+1,pos+1)
-            bnbm.max_id += 2
-          elseif (LBDfeas1 && UBDfeas1)
-            push!(bnbm.box,vcat(newtonGS[1],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
-            push!(bnbm.LBD,LBD1)
-            push!(bnbm.UBD,UBD1)
-            push!(bnbm.id,bnbm.max_id+1)
-            push!(bnbm.pos,pos+1)
-            bnbm.max_id += 1
-          elseif (LBDfeas2 && UBDfeas2)
-            push!(bnbm.box,vcat(newtonGS[2],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
-            push!(bnbm.LBD,LBD2)
-            push!(bnbm.UBD,UBD2)
-            push!(bnbm.id,bnbm.max_id+1)
-            push!(bnbm.pos,pos+1)
-            bnbm.max_id += 1
-          end
-        end
-      elseif (opt[1].solver.Implicit_Options.Intv_Cntr == "KrawczykCW")
-        println("Started Inplace Krawczyk")
-        krawczykCW = PId_KrawczykCW(X[1:opt[1].solver.Implicit_Options.nx],
-                              X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)],
-                              opt[1].solver.Implicit_Options.hj,
-                              opt[1].solver.Implicit_Options.h,
-                              opt[1].solver.Implicit_Options.ParamInt,
-                              Eflag,Iflag)
-        X[1:opt[1].solver.Implicit_Options.nx] = krawczykCW[1]
-        if (krawczykCW[2] == true)
-          feas = false
-        end
+      # Stores if feasible
+      if ((LBDfeas1 && UBDfeas1) && (LBDfeas2 && UBDfeas2))
+        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)])
+                      ,vcat(Y2,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
+        push!(bnbm.LBD,LBD1,LBD2)
+        push!(bnbm.UBD,UBD1,UBD2)
+        push!(bnbm.id,bnbm.max_id+1,bnbm.max_id+2)
+        push!(bnbm.pos,pos+1,pos+1)
+        bnbm.max_id += 2
+      elseif (LBDfeas1 && UBDfeas1)
+        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
+        push!(bnbm.LBD,LBD1)
+        push!(bnbm.UBD,UBD1)
+        push!(bnbm.id,bnbm.max_id+1)
+        push!(bnbm.pos,pos+1)
+        bnbm.max_id += 1
+      elseif (LBDfeas2 && UBDfeas2)
+        push!(bnbm.box,vcat(Y2,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
+        push!(bnbm.LBD,LBD2)
+        push!(bnbm.UBD,UBD2)
+        push!(bnbm.id,bnbm.max_id+1)
+        push!(bnbm.pos,pos+1)
+        bnbm.max_id += 1
       end
     else
-      if (opt[1].solver.Implicit_Options.Intv_Cntr == "NewtonGS")
-        println("Started Outplace Newton")
-        newtonGS = PI_NewtonGS(X[1:opt[1].solver.Implicit_Options.nx],
-                                X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)],
-                                opt[1].solver.Implicit_Options.hj,
-                                opt[1].solver.Implicit_Options.h,
-                                opt[1].solver.Implicit_Options.ParamInt,
-                                Eflag,Iflag,eDflag)
-        X[1:opt[1].solver.Implicit_Options.nx] = newtonGS[1]
-        if (newtonGS[3] == true)
-          feas = false
-        else (newtonGS[5] == true)
-          feas = false
-          # Solves LBD & UBD for node #1
-          LBD1, LBDsol1, LBDfeas1, tempL1 = bnbs.Lower_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          if (LBDfeas1)
-            UBD1, UBDsol1, UBDfeas1, tempU1 = bnbs.Upper_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          else
-            UBD1 = copy(UBDn)
-            UBDsol1 = mid.(X)
-            UBDfeas1 = false
-            tempU1 = []
-          end
-
-          # Solves LBD & UBD for node #1
-          LBD2, LBDsol2, LBDfeas2, tempL2 = bnbs.Lower_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          if (LBDfeas1)
-            UBD2, UBDsol2, UBDfeas2, tempU2 = bnbs.Upper_Prob(X,k,pos,bnbs.opt,bnbm.UBDg)
-          else
-            UBD2 = copy(UBDn)
-            UBDsol2 = mid.(X)
-            UBDfeas2 = false
-            tempU2 = []
-          end
-
-          # Stores if feasible
-          if ((LBDfeas1 && UBDfeas1) && (LBDfeas2 && UBDfeas2))
-            push!(bnbm.box,vcat(newtonGS[1],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)])
-                          ,vcat(newtonGS[2],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
-            push!(bnbm.LBD,LBD1,LBD2)
-            push!(bnbm.UBD,UBD1,UBD2)
-            push!(bnbm.id,bnbm.max_id+1,bnbm.max_id+2)
-            push!(bnbm.pos,pos+1,pos+1)
-            bnbm.max_id += 2
-          elseif (LBDfeas1 && UBDfeas1)
-            push!(bnbm.box,vcat(newtonGS[1],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
-            push!(bnbm.LBD,LBD1)
-            push!(bnbm.UBD,UBD1)
-            push!(bnbm.id,bnbm.max_id+1)
-            push!(bnbm.pos,pos+1)
-            bnbm.max_id += 1
-          elseif (LBDfeas2 && UBDfeas2)
-            push!(bnbm.box,vcat(newtonGS[2],X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
-            push!(bnbm.LBD,LBD2)
-            push!(bnbm.UBD,UBD2)
-            push!(bnbm.id,bnbm.max_id+1)
-            push!(bnbm.pos,pos+1)
-            bnbm.max_id += 1
-          end
-        end
-      elseif (opt[1].solver.Implicit_Options.Intv_Cntr == "KrawczykCW")
-        println("Started Outplace Krawczyk")
-        krawczykCW = PI_KrawczykCW(X[1:opt[1].solver.Implicit_Options.nx],
-                              X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)],
-                              opt[1].solver.Implicit_Options.hj,
-                              opt[1].solver.Implicit_Options.h,
-                              opt[1].solver.Implicit_Options.ParamInt,
-                              Eflag,Iflag)
-        X[1:opt[1].solver.Implicit_Options.nx] = krawczykCW[1]
-        if (krawczykCW[2] == true)
-          feas = false
-        end
-      end
+      X = copy(Y1)
     end
   end
-  println("Finished Interval Contractor")
-  #println("feas: $feas")
-  #println("end preprocessing: ")
-
+  (bnbs.Verbosity == "Full") && (println("Finished Implicit Contractor"))
   return feas,X
 end
 

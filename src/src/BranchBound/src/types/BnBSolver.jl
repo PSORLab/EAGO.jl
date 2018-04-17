@@ -1,6 +1,5 @@
 """
     BnBSolver
-
 Stores solver specific functions used to solve BnB problem. Has the following fields:
 * `Lower_Prob::Any`:        Stores lower problem function (default = [])
 * `Upper_Prob::Any`:        Stores upper problem function (default = [])

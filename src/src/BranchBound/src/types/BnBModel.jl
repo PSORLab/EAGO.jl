@@ -1,6 +1,5 @@
 """
     BnBModel
-
 Stores attributes of stack used to solve BnB problem. Has the following fields:
 * `Init_Box::Vector{Interval{Float64}}`:        stores initial interval box used
 * `box::Vector{Vector{Interval{Float64}}}`      interval box storage stack

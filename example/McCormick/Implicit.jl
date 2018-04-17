@@ -1,14 +1,10 @@
-#workspace()
+workspace()
 
 using EAGO
 using IntervalArithmetic
 using StaticArrays
 
-# sets up initial options
-opts1 = mc_opts(Float64)          # sets options for relaxtion
-opts1.kmax = 3             # sets number of iterations
-#opts.style = "NewtonGS"   # sets style of contractor
-opts1.style = "KrawczykCW"   # sets style of contractor
+opts1 =  mc_opts{Float64}(0.5,1,:Dense,:Newton,1,1,1E-10)
 
 #=
 generates the expansion point parameters for the function using the opts
@@ -18,11 +14,19 @@ f(x,p) = x[1]*p[1]+p[1]
 g(x,p) = [x[1]*p[1]+p[1];
           x[1]*p[1]+2*p[1]]
 function h1(x,p)
+    println("function eval: ")
+    println("x[1]: $(x[1])")
+    println("p[1]: $(p[1])")
     t1 = x[1]^2
+    println("x[1]^2: $(t1)")
     t2 = x[1]*p[1]
+    println("x[1]*p[1]: $(t2)")
     t3 = 4.0
+    println("4.0: $(t3)")
     t4 = t1 + t2
-    t5 = t2 + t3
+    println("t4 : $(t4 )")
+    t5 = t4 + t3
+    println("t5: $(t5)")
     return [t5]
 end
 hj1(x,p) = [2*x[1]+p[1]]
@@ -42,38 +46,23 @@ np = 1
 szero = @SVector zeros(np)
 sone = @SVector ones(np)
 p_mc = [SMCg{np,Interval{Float64},Float64}(p[i],p[i],sone,sone,@interval(P[i].lo,P[i].hi),false,xIBox,mBox) for i=1:np]
-
+param = GenExpansionParams(h1,hj1,X,P,pmid,opts1)
 #=
-generates the expansion point parameters for the function using the opts
-options using in place LDU full pivot conditioner with sparse calc
-=#
-f1(x,p) = x[1]*p[1]+p[1]
-g1(x,p) = [x[1]*p[1]+p[1];
-          x[1]*p[1]+2*p[1]]
-function h1!(hout,x,p)
-    t1 = x[1]^2
-    t2 = x[1]*p[1]
-    t3 = 4.0
-    t4 = t1 + t2
-    t5 = t2 + t3
-    hout[1] = t5
-end
-function hj1!(hout,x,p)
-    hout[1] = 2*x[1]+p[1]
-end
-P1 = [Interval(6.0,9.0)]
-X1 = [Interval(-0.78,-0.4)]
-p1 = [7.5]
-pmid1 = mid.(P1)
-
-np1 = 1
-szero1 = @SVector zeros(np1)
-sone1 = @SVector ones(np1)
-p_mc1 = [SMCg{np,Interval{Float64},Float64}(p1[i],p1[i],sone1,sone1,@interval(P1[i].lo,P1[i].hi),false,xIBox,mBox) for i=1:np1]
+hbnds = MC_impRelax(h1,hj1,p_mc,pmid,X,P,opts1,param)
+fbnds = impRelax_f(f,h1,hj1,X,P,p,pmid,opts1,param)
+fgbnds = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts1,param)
 
 param = GenExpansionParams(h1,hj1,X,P,pmid,opts1)
 # param[2][1].cc = -0.46623417721518967
 # param[2][1].cv = -0.5792721518987343
+println("typeof h1: $(typeof(h1))")
+println("typeof hj1: $(typeof(hj1))")
+println("typeof p_mc: $(typeof(p_mc))")
+println("typeof pmid: $(typeof(pmid))")
+println("typeof X: $(typeof(X))")
+println("typeof P: $(typeof(P))")
+println("typeof opts1: $(typeof(opts1))")
+println("typeof param_ns_sr: $(typeof(param_ns_sr))")
 hbnds = MC_impRelax(h1,hj1,p_mc,pmid,X,P,opts1,param)
 # hbnds[1].cc = -0.4907369110006179
 # hbnds[1].cv = -0.5758134311908059
@@ -88,45 +77,7 @@ fgbnds = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts1,param)
 # fgbnds[2][2].cc = 11.455578533996293
 # fgbnds[2][2].cv = 10.494727834914691
 
-param1 = InGenExpansionParams(h1!,hj1!,X1,P1,pmid1,opts1)
-# param1[2][1].cc = -0.46623417721518967
-# param1[2][1].cv = -0.5792721518987343
-# relaxation of f(x,p) & g(x,p) at (x(p),p) SPARSE SOLVER
-hbnds1 = MC_NimpRelax(h1!,hj1!,p_mc1,pmid1,X1,P1,opts1,param1)
-# hbnds1[1].cc = -0.4907369110006179
-# hbnds1[1].cv = -0.5758134311908059
-fbnds1 = NimpRelax_f(f1,h1!,hj1!,X1,P1,p,pmid1,opts1,param1)
-# fbnds1.cc = 3.955578533996293
-# fbnds1.cv = 2.9947278349146904
-fgbnds1 = NimpRelax_fg(f1,g1,h1!,hj1!,X1,P1,p,pmid1,opts1,param1)
-# fgbnds1[1].cc = 3.955578533996293
-# fgbnds1[1].cv = 2.9947278349146904
-# fgbnds1[2][1].cc = 3.955578533996293
-# fgbnds1[2][1].cv = 2.9947278349146904
-# fgbnds1[2][2].cc = 11.455578533996293
-# fgbnds1[2][2].cv = 10.494727834914691
-
-# relaxation of f(x,p) & g(x,p) at (x(p),p) DIRECT SOLVER
-param2 = IndGenExpansionParams(h1!,hj1!,X1,P1,pmid1,opts1)
-# param2[2][1].cc = -0.46623417721518967
-# param2[2][1].cv = -0.5792721518987343
-hbnds2 = MC_NdimpRelax(h1!,hj1!,p_mc1,pmid1,X1,P1,opts1,param2)
-# hbnds2[1].cc = -0.4907369110006179
-# hbnds2[1].cv = -0.5758134311908059
-fbnds2 = NdimpRelax_f(f1,h1!,hj1!,X1,P1,p,pmid1,opts1,param2)
-# fbnds2.cc = 3.955578533996293
-# fbnds2.cv = 2.9947278349146904
-fgbnds2 = NdimpRelax_fg(f1,g1,h1!,hj1!,X1,P1,p,pmid1,opts1,param2)
-# fgbnds2[1].cc = 3.955578533996293
-# fgbnds2[1].cv = 2.9947278349146904
-# fgbnds2[2][1].cc = 3.955578533996293
-# fgbnds2[2][1].cv = 2.9947278349146904
-# fgbnds2[2][2].cc = 11.455578533996293
-# fgbnds2[2][2].cv = 10.494727834914691
-
-opts2 = mc_opts(Float64)   # sets options for relaxtion
-opts2.kmax = 3             # sets number of iterations
-opts2.style = "NewtonGS"   # sets style of contractor
+opts2 =  mc_opts{Float64}(0.5,3,:Dense,:Newton,1,1,0.0)
 
 param3 = GenExpansionParams(h1,hj1,X,P,pmid,opts2)
 # param3[2][1].cc = -0.4593323920935859
@@ -144,38 +95,31 @@ fgbnds3 = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts2,param)
 # fgbnds3[2][1].cv = 3.0592452208305847
 # fgbnds3[2][2].cc = 11.391338991828658
 # fgbnds3[2][2].cv = 10.559245220830585
-
-param4 = InGenExpansionParams(h1!,hj1!,X1,P1,pmid1,opts2)
-# param4[2][1].cc = -0.4593323920935859
-# param4[2][1].cv = -0.5667248956273347
-hbnds4 = MC_NimpRelax(h1!,hj1!,p_mc1,pmid1,X1,P1,opts2,param1)
-# hbnds4[1].cc = -0.5014435013618905
-# hbnds4[1].cv = -0.5667248956273346
-fbnds4 = NimpRelax_f(f1,h1!,hj1!,X1,P1,p,pmid1,opts2,param1)
-# fbnds4.cc = 3.891338991828657
-# fbnds4.cv = 3.0592452208305865
-fgbnds4 = NimpRelax_fg(f1,g1,h1!,hj1!,X1,P1,p,pmid1,opts2,param1)
-# fgbnds4[1].cc = 3.891338991828657
-# fgbnds4[1].cv = 3.0592452208305865
-# fgbnds4[2][1].cc = 3.891338991828657
-# fgbnds4[2][1].cv = 3.0592452208305865
-# fgbnds4[2][2].cc = 11.391338991828658
-# fgbnds4[2][2].cv = 10.559245220830586
-
-# relaxation of f(x,p) & g(x,p) at (x(p),p) DIRECT SOLVER
-param5 = IndGenExpansionParams(h1!,hj1!,X1,P1,pmid1,opts2)
-# param5[2][1].cc = -0.4593323920935859
-# param5[2][1].cv = -0.5667248956273347
-hbnds5 = MC_NdimpRelax(h1!,hj1!,p_mc1,pmid1,X1,P1,opts2,param2)
-# hbnds5[1].cc = -0.5014435013618904
-# hbnds5[1].cv = -0.5667248956273347
-fbnds5 = NdimpRelax_f(f1,h1!,hj1!,X1,P1,p,pmid1,opts2,param2)
-# fbnds5.cc = 3.891338991828657
-# fbnds5.cv = 3.0592452208305847
-fgbnds5 = NdimpRelax_fg(f1,g1,h1!,hj1!,X1,P1,p,pmid1,opts2,param2)
-# fgbnds5[1].cc = 3.891338991828657
-# fgbnds5[1].cv = 3.0592452208305847
-# fgbnds5[2][1].cc = 3.891338991828657
-# fgbnds5[2][1].cv = 3.0592452208305847
-# fgbnds5[2][2].cc = 11.391338991828658
-# fgbnds5[2][2].cv = 10.559245220830585
+=#
+#=
+np = 2
+opts3 =  mc_opts{Float64}(0.5,3,:Dense,:Krawczyk,2,2,0.0)
+opts4 =  mc_opts{Float64}(0.5,3,:Dense,:Newton,2,2,0.0)
+P2 = [Interval(5.0,7.0),Interval(5.0,7.0)]
+pmid2 = mid.(P2)
+p2 = copy(pmid2)
+Z2 = [Interval(-1.5, 0.0),Interval(0.0, 0.5)]
+Z2c = copy(Z2)
+h2(z,p) = [z[1]^2+z[2]^2+p[1]*z[1]+4.0;
+           z[1]+p[2]*z[2]]
+hj2(z,p) = [(z[1]+p[1]) (z[2]);
+              one(p[1])  p[2]]
+sone = @SVector ones(np)
+xIntv1 = Interval(1.0,3.0)
+xIBox2 = SVector{2,Interval{Float64}}([xIntv1, xIntv1])
+mBox2 = mid.(xIBox2)
+p_mc2 = [SMCg{np,Interval{Float64},Float64}(p2[i],p2[i],sone,sone,@interval(P2[i].lo,P2[i].hi),false,xIBox2,mBox2) for i=1:np]
+param4 = GenExpansionParams(h2,hj2,Z2,P2,pmid2,opts3)
+hbnds4 = MC_impRelax(h2,hj2,p_mc2,pmid2,Z2,P2,opts3,param4)
+fbnds4 = impRelax_f(f,h2,hj2,Z2,P2,p2,pmid2,opts3,param4)
+fgbnds4 = impRelax_fg(f,g,h2,hj2,Z2,P2,p2,pmid2,opts3,param4)
+param5 = GenExpansionParams(h2,hj2,Z2c,P2,pmid2,opts4)
+hbnds5 = MC_impRelax(h2,hj2,p_mc2,pmid2,Z2c,P2,opts4,param5)
+fbnds5 = impRelax_f(f,h2,hj2,Z2c,P2,p2,pmid2,opts4,param5)
+fgbnds5 = impRelax_fg(f,g,h2,hj2,Z2c,P2,p2,pmid2,opts4,param5)
+=#

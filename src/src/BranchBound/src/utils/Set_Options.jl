@@ -61,7 +61,7 @@ end
 """
     set_to_default!(x::BnBSolver)
 
-Returns the B&B solver to the default settings (does not include problems or processing routines.
+Returns the B&B solver to the default settings (does not include problems or processing routines).
 """
 function set_to_default!(x::BnBSolver)
   x.Term_Check = Term_Check

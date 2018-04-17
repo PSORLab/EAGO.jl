@@ -23,6 +23,7 @@ using ReverseDiff
 using Ipopt
 using Clp
 using StaticArrays
+using BandedMatrices
 
 # imports base functions to extend
 import Base:
@@ -48,7 +49,6 @@ try
 end
 
 include("src/Interval/EAGOIntervalArithmetic.jl")
-include("src/LinAlg/EAGOLinAlg.jl")
 include("src/ParametricInterval/EAGOParametricInterval.jl")
 include("src/BranchBound/EAGOBranchBound.jl")
 include("src/McCormick/EAGOSmoothMcCormickGrad.jl")

@@ -37,7 +37,7 @@ and other solution information is accessible via start solver interface function
 """
 function MathProgBase.optimize!(s::EAGO_NLP_Model)
 
-    println("Start Optimization Data Structure Setup")
+    #println("Start Optimization Data Structure Setup")
     call_sto = callback_storage()
 
     # sets the McCormick library options as necessary
@@ -215,11 +215,11 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
 
     s.Opts.solver.BnBSolver.opt = deepcopy([s.Opts,call_sto])
     s.Opts.solver.BnBSolver.Verbosity = s.Opts.solver.verbosity
-    println("End Optimization Data Structure Setup")
+    #println("End Optimization Data Structure Setup")
 
-    println("ran to solve BnB")
+    #println("ran to solve BnB")
     solveBnB!(s.Opts.solver.BnBSolver,s.BnBModel)
-    println("ran post solve BnB")
+    #println("ran post solve BnB")
     if (s.Opts.sense == :Max)
         s.BnBModel.soln_val = -s.BnBModel.soln_val
     end
