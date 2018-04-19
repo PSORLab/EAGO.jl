@@ -5,7 +5,7 @@ os:
   - osx    #build never started in travis CI, will trouble shoot later
 julia:
   - 0.6 
-  - nightly
+##  - nightly
 notifications:
   email: false
 git:
@@ -16,8 +16,8 @@ git:
 matrix:
   allow_failures:
   - osx: v0.6
-  - osx: nightly
-  - julia: nightly
+##  - osx: nightly
+##  - julia: nightly
 
 ## uncomment and modify the following lines to manually install system packages
 addons:
