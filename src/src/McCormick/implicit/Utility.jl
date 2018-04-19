@@ -1,3 +1,42 @@
+function PreconditionSMCg(h::Function,
+                          hj::Function,
+                          z_mc::Vector{SMCg{N,V,T}},
+                          aff_mc::Vector{SMCg{N,V,T}},
+                          p_mc::Vector{SMCg{N,V,T}},
+                          opt::mc_opts{T}) where {N,V,T<:AbstractFloat}
+    if (opt.LAlg == :DenseBand)
+        H,J = SMCg_DenseBand_Precondition!(h,hj,z_mc,aff_mc,p_mc,opt)
+    elseif (opt.LAlg == :DenseBlockDiag)
+        H,J = SMCg_DenseBlockDiag_Precondition!(h,hj,z_mc,aff_mc,p_mc,opt)
+    elseif (opt.LAlg == :Dense)
+        H,J = SMCg_Dense_Precondition!(h,hj,z_mc,aff_mc,p_mc,opt)
+    else
+        error("Unsupported Linear Algebra Style")
+    end
+    return H,J
+end
+
+function SMCg_Dense_Precondition!(h::Function,
+                             hj::Function,
+                             z_mc::Vector{SMCg{N,V,T}},
+                             aff_mc::Vector{SMCg{N,V,T}},
+                             p_mc::Vector{SMCg{N,V,T}},
+                             opt::mc_opts{T}) where {N,V,T<:AbstractFloat}
+    H::Vector{SMCg{N,V,T}} = h(z_mc,p_mc)
+    J::VecOrMat{SMCg{N,V,T}} = hj(aff_mc,p_mc)
+    Y = [mid(J[i,j].Intv) for i=1:opt.nx, j=1:opt.nx]
+    if (opt.nx == 1)
+        YH::Vector{SMCg{N,V,T}} = H/Y[1]
+        YJ::VecOrMat{SMCg{N,V,T}} = J/Y[1]
+    else
+        F = lufact(Y)
+        YH = F\H
+        YJ = F\J
+    end
+    return YH,YJ
+end
+
+
 """
     Smooth_Cut(x_mc::SMCg{N,T},x_mc_int::SMCg{N,T})
 
@@ -5,8 +44,8 @@ An operator that cuts the `x_mc` object using the `x_mc_int bounds` in a
 differentiable fashion.
 """
 function Smooth_Cut(x_mc::SMCg{N,V,T},x_mc_int::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
-  t_cv::SMCg{N,V,T} = max(x_mc,x_mc_int.Intv.lo)
-  t_cc::SMCg{N,V,T} = min(x_mc,x_mc_int.Intv.hi)
+  t_cv::SMCg{N,V,T} = x_mc + max(zero(T),x_mc_int-x_mc)
+  t_cc::SMCg{N,V,T} = x_mc + min(zero(T),x_mc-x_mc_int)
   return SMCg{N,V,T}(t_cc.cc,t_cv.cv,t_cc.cc_grad,t_cv.cv_grad,
                    (x_mc.Intv ∩ x_mc_int.Intv),(t_cv.cnst && t_cc.cnst),
                    x_mc.IntvBox,x_mc.xref)
@@ -104,6 +143,9 @@ function Rnd_Out_H_Intv(z_mct::Vector{SMCg{N,V,T}},Y_mct::Array{SMCg{N,V,T},2},e
   return temp1,temp2
 end
 
+
+
+#=
 """
     Precondition(hm::Vector{SMCg{N,T}},hJm::Union{Vector{SMCg{N,T}},Array{SMCg{N,T},2}},
                  Y::Union{Vector{T},Array{T,2}},nx::Int64)
@@ -181,3 +223,4 @@ function Precondition!(hm::Vector{SMCg{N,V,T}},hJm::Array{SMCg{N,V,T},2},
   end
   return hm,hJm
 end
+=#

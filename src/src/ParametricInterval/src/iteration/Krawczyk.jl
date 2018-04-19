@@ -3,7 +3,7 @@
 
 Applies a Krawczyk iteration componentwise using a dense data format for J.
 """
-function Dense_Krawczyk_CW(H::Vector{Th},J::Array{Tj,2},N::Vector{V},
+function Dense_Krawczyk_CW(H::Vector{Th},J::VecOrMat{Tj},N::Vector{V},
                            S::V,X1::Vector{V},X2::Vector{V},
                            incl::Vector{Bool},inclL::Vector{Bool},
                            inclH::Vector{Bool},opt::PIntvParams{T}) where {Tj,Th,V,T}
