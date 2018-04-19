@@ -41,8 +41,8 @@ ind4,B4,C4 = EAGO.extDivide(A4)
 @test C3 == Interval(-Inf,-Inf)
 @test C4 == Interval(0.5,Inf)
 
-param = EAGO.Param_Bisect_Opts()
-@test param.DAGflag == false
+#param = EAGO.Param_Bisect_Opts()
+#@test param.DAGflag == false
 
 N =  Interval(-5,5)
 X = Interval(-5,5)
