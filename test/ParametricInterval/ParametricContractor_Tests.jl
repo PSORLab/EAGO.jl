@@ -5,12 +5,8 @@ using Compat.Test
 using IntervalArithmetic
 using EAGO
 
-# sets options for contractor
-opt1 = Any[100    #Int64: Number of iterations
-       1.0E-30 #Float64: Tolerance for equality of
-       1.0E-6 #Float64: Add Interval(1E-8,1E8) to add to M[i,i] when
-              #         processing extended interval division.
-      ]
+opt1 = PIntvParams(:Dense,:Newton,1E-30,1E-6,2,2,100)
+opt2 = PIntvParams(:Dense,:Krawczyk,1E-30,1E-6,2,2,100)
 
 # Test Problem #1 Out of place
 P1 = [Interval(5.0,7.0),Interval(5.0,7.0)]
@@ -22,8 +18,8 @@ hj1(z,p) = [(2*z[1]+p[1]) (2*z[2]);
 Eflag = false
 Iflag = false
 eDflag = false
-newtonGS1 = PI_NewtonGS(Z1,P1,hj1,h1,opt1,Eflag,Iflag,eDflag)
-krawczykCW1 = PI_KrawczykCW(Z1,P1,hj1,h1,opt1,Eflag,Iflag)
+newtonGS1 = Param_Intv_Contractor(h1,hj1,Z1,P1,Eflag,Iflag,eDflag,opt1)
+krawczykCW1 = Param_Intv_Contractor(h1,hj1,Z1,P1,Eflag,Iflag,eDflag,opt2)
 
 @test -1E-4 <= newtonGS1[1][1].lo + 1.04243 <= 1E-4
 @test -1E-4 <= newtonGS1[1][1].hi + 0.492759 <= 1E-4
@@ -34,36 +30,9 @@ krawczykCW1 = PI_KrawczykCW(Z1,P1,hj1,h1,opt1,Eflag,Iflag)
 @test -1E-4 <= krawczykCW1[1][2].lo - 0.0473789 <= 1E-4
 @test -1E-4 <= krawczykCW1[1][2].hi - 0.208486 <= 1E-4
 
-
-# Test Problem #1 In place
-function h1!(h,z,p)
-   h[1] = z[1]^2+z[2]^2+p[1]*z[1]+4
-   h[2] = z[1]+p[2]*z[2]
-end
-
-function hj1!(h,z,p)
-   h[1,1] = (2*z[1]+p[1])
-   h[1,2] = 2*z[2]
-   h[2,1] = 1
-   h[2,2] = p[2]
-end
-
-Eflag = false
-Iflag = false
-eDflag = false
-newtonGS2 = PIn_NewtonGS(Z1,P1,hj1!,h1!,opt1,Eflag,Iflag,eDflag)
-krawczykCW2 = PIn_KrawczykCW(Z1,P1,hj1!,h1!,opt1,Eflag,Iflag)
-
-@test -1E-4 <= newtonGS2[1][1].lo + 1.04243 <= 1E-4
-@test -1E-4 <= newtonGS2[1][1].hi + 0.492759 <= 1E-4
-@test -1E-4 <= newtonGS2[1][2].lo - 0.0473789 <= 1E-4
-@test -1E-4 <= newtonGS2[1][2].hi - 0.208486 <= 1E-4
-@test -1E-4 <= krawczykCW2[1][1].lo + 1.04243 <= 1E-4
-@test -1E-4 <= krawczykCW2[1][1].hi + 0.492759 <= 1E-4
-@test -1E-4 <= krawczykCW2[1][2].lo - 0.0473789 <= 1E-4
-@test -1E-4 <= krawczykCW2[1][2].hi - 0.208486 <= 1E-4
-
 # Starts testing problem # 2
+opt1a = PIntvParams(:Dense,:Newton,1E-30,1E-6,1,1,100)
+opt2a = PIntvParams(:Dense,:Krawczyk,1E-30,1E-6,1,1,100)
 P2 = [Interval(6.0,9.0)]
 Z2 = [Interval(-1.78, -0.1)]
 
@@ -73,92 +42,57 @@ hj2(x,p) = [2*x[1]+p[1]]
 Eflag = false
 Iflag = false
 eDflag = false
-newtonGS3 = PI_NewtonGS(Z2,P2,hj2,h2,opt1,Eflag,Iflag,eDflag)
-krawczykCW3 = PI_KrawczykCW(Z2,P2,hj2,h2,opt1,Eflag,Iflag)
+Z2c = copy(Z2)
+newtonGS3 = Param_Intv_Contractor(h2,hj2,Z2,P2,Eflag,Iflag,eDflag,opt1a)
+krawczykCW3 = Param_Intv_Contractor(h2,hj2,Z2c,P2,Eflag,Iflag,eDflag,opt2a)
 @test -0.772413 - 1E-4 <= krawczykCW3[1][1].lo <= -0.772413 + 1E-4
 @test -0.383299 - 1E-4 <= krawczykCW3[1][1].hi <= -0.383299 + 1E-4
-@test krawczykCW3[2] == false
-@test krawczykCW3[3] == true
+@test krawczykCW3[3] == false
+@test krawczykCW3[4] == true
 @test -0.769225 - 1E-4 <= newtonGS3[1][1].lo <= -0.769225 + 1E-4
 @test -0.461725 - 1E-4 <= newtonGS3[1][1].hi <= -0.461725 + 1E-4
 @test newtonGS3[3] == false
 @test newtonGS3[4] == true
-
-# Test Problem #2 Inplace
-function h2!(hout,x,p)
-   hout[:] = [x[1]^2 + p[1]*x[1] + 4.0]
-end
-function hj2!(hout,x,p)
-   hout[:] = [2*x[1]+p[1]]
-end
-Eflag = false
-Iflag = false
-eDflag = false
-newtonGS4 = PIn_NewtonGS(Z2,P2,hj2!,h2!,opt1,Eflag,Iflag,eDflag)
-krawczykCW4 = PIn_KrawczykCW(Z2,P2,hj2!,h2!,opt1,Eflag,Iflag)
-@test -0.772413 - 1E-4 <= krawczykCW4[1][1].lo <= -0.772413 + 1E-4
-@test -0.383299 - 1E-4 <= krawczykCW4[1][1].hi <= -0.383299 + 1E-4
-@test krawczykCW4[2] == false
-@test krawczykCW4[3] == true
-@test -0.769225 - 1E-4 <= newtonGS4[1][1].lo <= -0.769225 + 1E-4
-@test -0.461725 - 1E-4 <= newtonGS4[1][1].hi <= -0.461725 + 1E-4
-@test newtonGS4[3] == false
-@test newtonGS4[4] == true
 
 # Test Problem #3 (Exclusion)
 Z2ex = [Interval(-30, -25)]
 Eflag = false
 Iflag = false
 eDflag = false
-newtonGS5 = PI_NewtonGS(Z2ex,P2,hj2,h2,opt1,Eflag,Iflag,eDflag)
-krawczykCW5 = PI_KrawczykCW(Z2ex,P2,hj2,h2,opt1,Eflag,Iflag)
+Z2exc = copy(Z2ex)
+Z2exc1 = copy(Z2ex)
+Z2exc2 = copy(Z2ex)
+newtonGS5 = Param_Intv_Contractor(h2,hj2,Z2ex,P2,Eflag,Iflag,eDflag,opt1a)
+krawczykCW5 = Param_Intv_Contractor(h2,hj2,Z2exc,P2,Eflag,Iflag,eDflag,opt2a)
 @test newtonGS5[3] == true
-@test krawczykCW5[2] == true
+@test krawczykCW5[3] == true
 
 Eflag = false
 Iflag = false
 eDflag = false
-newtonGS6 = PIn_NewtonGS(Z2ex,P2,hj2!,h2!,opt1,Eflag,Iflag,eDflag)
-krawczykCW6 = PIn_KrawczykCW(Z2ex,P2,hj2!,h2!,opt1,Eflag,Iflag)
+newtonGS6 = Param_Intv_Contractor(h2,hj2,Z2exc1,P2,Eflag,Iflag,eDflag,opt1a)
+krawczykCW6 = Param_Intv_Contractor(h2,hj2,Z2exc2,P2,Eflag,Iflag,eDflag,opt2a)
 @test newtonGS6[3] == true
-@test krawczykCW6[2] == true
+@test krawczykCW6[3] == true
 
 # Test Problem #4 (Extended Division)
 Z3 = [Interval(-10, 10)]
-newtonGS7 = PI_NewtonGS(Z3,P2,hj2,h2,opt1,Eflag,Iflag,eDflag)
-newtonGS8 = PIn_NewtonGS(Z3,P2,hj2!,h2!,opt1,Eflag,Iflag,eDflag)
+Z3c = copy(Z3)
+newtonGS7 = Param_Intv_Contractor(h2,hj2,Z3,P2,Eflag,Iflag,eDflag,opt1a)
+newtonGS8 = Param_Intv_Contractor(h2,hj2,Z3c,P2,Eflag,Iflag,eDflag,opt1a)
 @test 0.285713 - 1E-4 <= newtonGS7[1][1].lo <= 0.285713 + 1E-4
-@test 10 - 1E-4 <= newtonGS7[1][1].hi <= 10 + 1E-4
-@test -10 - 1E-4 <= newtonGS7[2][1].lo <= -10 + 1E-4
-@test -0.13793 - 1E-4 <= newtonGS7[2][1].hi <= -0.13793 + 1E-4
-@test newtonGS7[3] == false
+@test 0.548861585037655 - 1E-4 <= newtonGS7[1][1].hi <= 0.548861585037655 + 1E-4
+@test 0.28571374999999993 - 1E-4 <= newtonGS7[2][1].lo <= 0.28571374999999993 + 1E-4
+@test 0.548861585037655 - 1E-4 <= newtonGS7[2][1].hi <= 0.548861585037655 + 1E-4
+@test newtonGS7[3] == true
 @test newtonGS7[4] == false
-@test newtonGS7[5] == true
+@test newtonGS7[5] == false
 @test 0.285713 - 1E-4 <= newtonGS8[1][1].lo <= 0.285713 + 1E-4
-@test 10 - 1E-4 <= newtonGS8[1][1].hi <= 10 + 1E-4
-@test -10 - 1E-4 <= newtonGS8[2][1].lo <= -10 + 1E-4
-@test -0.13793 - 1E-4 <= newtonGS8[2][1].hi <= -0.13793 + 1E-4
-@test newtonGS8[3] == false
+@test 0.548861585037655 - 1E-4 <= newtonGS8[1][1].hi <= 0.548861585037655 + 1E-4
+@test 0.28571374999999993 - 1E-4 <= newtonGS8[2][1].lo <= 0.28571374999999993 + 1E-4
+@test 0.548861585037655 - 1E-4 <= newtonGS8[2][1].hi <= 0.548861585037655 + 1E-4
+@test newtonGS8[3] == true
 @test newtonGS8[4] == false
-@test newtonGS8[5] == true
-
-#=
-Eflag = false
-Iflag = false
-eDflag = false
-newtonGS9 = PId_NewtonGS(Z1,P1,hj1!,h1!,opt1,Eflag,Iflag,eDflag)
-Eflag = false
-Iflag = false
-krawczykCW9 = PId_KrawczykCW(Z1,P1,hj1!,h1!,opt1,Eflag,Iflag)
-
-@test -1E-4 <= newtonGS9[1][1].lo + 1.04243 <= 1E-4
-@test -1E-4 <= newtonGS9[1][1].hi + 0.492759 <= 1E-4
-@test -1E-4 <= newtonGS9[1][2].lo - 0.0473789 <= 1E-4
-@test -1E-4 <= newtonGS9[1][2].hi - 0.208486 <= 1E-4
-@test -1E-4 <= krawczykCW9[1][1].lo + 1.04243 <= 1E-4
-@test -1E-4 <= krawczykCW9[1][1].hi + 0.492759 <= 1E-4
-@test -1E-4 <= krawczykCW9[1][2].lo - 0.0473789 <= 1E-4
-@test -1E-4 <= krawczykCW9[1][2].hi - 0.208486 <= 1E-4
-=#
+@test newtonGS8[5] == false
 
 end

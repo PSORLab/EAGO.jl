@@ -29,7 +29,7 @@ function None_Precondition(h::Function,
                            P::Vector{Interval{T}},
                            opt::PIntvParams) where {T}
         H::Vector{Interval{T}} = h(mid.(X),P)
-        J::Array{Interval{T},2} = hj(X,P)
+        J::VecOrMat{Interval{T}} = hj(X,P)
         return H,J
 end
 
@@ -38,8 +38,8 @@ function None_Precondition(h::Function,
                            X::Vector{MCInterval{T}},
                            P::Vector{MCInterval{T}},
                            opt::PIntvParams) where {T}
-        H::Vector{Interval{T}} = h(mid.(X),P)
-        J::Array{Interval{T},2} = hj(X,P)
+        H::Vector{MCInterval{T}} = h(mid.(X),P)
+        J::VecOrMat{MCInterval{T}} = hj(X,P)
         return H,J
 end
 
@@ -53,11 +53,11 @@ function Dense_Precondition(h::Function,
                             P::Vector{Interval{T}},
                              opt::PIntvParams) where {T}
     H::Vector{Interval{T}} = h(mid.(X),P)
-    J::Array{Interval{T},2} = hj(X,P)
-    Y::Array{T,2} = mid.(J)
+    J::VecOrMat{Interval{T}} = hj(X,P)
+    Y::VecOrMat{T} = mid.(J)
     if (opt.nx == 1)
         YH::Vector{Interval{T}} = H/Y[1,1]
-        YJ::Array{Interval{T},2} = J/Y[1,1]
+        YJ::VecOrMat{Interval{T}} = J/Y[1,1]
     else
         F = lufact(Y)
         YH = F\H
@@ -72,11 +72,11 @@ function Dense_Precondition(h::Function,
                             P::Vector{MCInterval{T}},
                             opt::PIntvParams) where {T}
     H::Vector{MCInterval{T}} = h(mid.(X),P)
-    J::Array{MCInterval{T},2} = hj(X,P)
-    Y::Array{T,2} = mid.(J)
+    J::VecOrMat{MCInterval{T}} = hj(X,P)
+    Y::VecOrMat{T} = mid.(J)
     if (opt.nx == 1)
         YH::Vector{MCInterval{T}} = H/Y[1,1]
-        YJ::Array{MCInterval{T},2} = J/Y[1,1]
+        YJ::VecOrMat{MCInterval{T}} = J/Y[1,1]
     else
         F = lufact(Y)
         YH = F\H

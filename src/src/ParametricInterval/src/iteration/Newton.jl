@@ -1,6 +1,6 @@
 """
 """
-function Dense_Newton_GS(H::Vector{Th},J::Array{Tj,2},N::Vector{V},
+function Dense_Newton_GS(H::Vector{Th},J::VecOrMat{Tj},N::Vector{V},
                          S1::V,S2::V,X1::Vector{V},X2::Vector{V},
                          incl::Vector{Bool},inclL::Vector{Bool},
                          inclH::Vector{Bool},opt::PIntvParams{T}) where {Th,Tj,V,T}

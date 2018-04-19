@@ -8,10 +8,6 @@ println("Testing Utility Functions...")
 t = @elapsed include("Utilities.jl")
 println("done (took $t seconds).")
 
-println("Testing Sparse Preconditioner...")
-t = @elapsed include("SparseCntr.jl")
-println("done (took $t seconds).")
-
 println("Testing McCormick Multiplication Operator...")
 t = @elapsed include("Mult_Test.jl")
 println("done (took $t seconds).")
