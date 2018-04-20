@@ -2,10 +2,10 @@
 language: julia
 os:
   - linux
-#  - osx    #build never started in travis CI, will trouble shoot later
+  - osx    #build never started in travis CI, will trouble shoot later
 julia:
   - 0.6
-##  - nightly
+  - nightly
 notifications:
   email: false
 git:
@@ -13,8 +13,8 @@ git:
 matrix:
   allow_failures:
   - osx: v0.6
-##  - osx: nightly
-##  - julia: nightly
+  - osx: nightly
+  - julia: nightly
 
 addons:
   apt_packages:
@@ -26,7 +26,5 @@ addons:
 script:
   - julia -e 'Pkg.clone(pwd()); Pkg.build("EAGO"); Pkg.test("EAGO"; coverage=true)'
 after_success:
-  # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
-  # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'   # push coverage results to Coveralls
+  - julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'       # push coverage results to Codecov

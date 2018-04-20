@@ -3,7 +3,7 @@
 
 Creates a `x::SVector{N,T}` object that is one at `x[j]` and zero everywhere else.
 """
-function seed_g(T::Type,j::Q,N::Q) where {Q<:Integer}
+function seed_g(T::Type,j::Q1,N::Q2) where {Q1<:Integer,Q2<:Integer}
     return SVector{N,T}([i == j ? 1.0 : 0.0 for i=1:N])
 end
 
