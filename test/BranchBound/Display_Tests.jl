@@ -1,8 +1,8 @@
-#=
+module DisplayTestBB
+
 using Compat
 using Compat.Test
-=#
-
+using EAGO
 using IntervalArithmetic
 
 S = BnBSolver()
@@ -15,4 +15,4 @@ println("test #2:")
 println("test #3:")
 @test_nowarn EAGO.print_results!(S,2.0,[1.5],false,false)
 
-#end
+end

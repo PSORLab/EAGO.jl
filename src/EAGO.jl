@@ -7,8 +7,8 @@ using MathProgBase
 importall MathProgBase.SolverInterface
 
 # call ValidatedNumerics interval libraries
-using IntervalArithmetic
 using IntervalContractors
+using IntervalArithmetic
 import IntervalArithmetic: mid, isdisjoint, isinterior, mig, mag, precedes,
                            strictprecedes, sup, inf, hull, diam, pow, dist,
                            isthin, isentire, radius, widen, sqr
