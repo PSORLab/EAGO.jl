@@ -12,7 +12,7 @@ end
 
 EAGO.set_diff_relax(0)
 
-a = seed_g(Float64,1,2)
+a = seed_g(Float64,Int64(1),Int64(2))
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
 mBox = mid.(xIBox)
 X = SMCg{2,Interval{Float64},Float64}(4.5,4.5,a,a,xIBox[1],false,xIBox,mBox)
@@ -27,7 +27,7 @@ println("out 1: $out")
 @test about(out.Intv.lo,-3,1E-4)
 @test about(out.Intv.hi,3,1E-4)
 
-a = seed_g(Float64,1,2)
+a = seed_g(Float64,Int64(1),Int64(2))
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
 mBox = mid.(xIBox)
 X = SMCg{2,Interval{Float64},Float64}(4.5,4.5,a,a,xIBox[1],false,xIBox,mBox)
@@ -45,7 +45,7 @@ println("out 2: $out")
 
 EAGO.set_diff_relax(1)
 #=
-a = seed_g(Float64,1,2)
+a = seed_g(Float64,Int64(1),Int64(2))
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
 mBox = mid.(xIBox)
 X = SMCg{2,Interval{Float64},Float64}(4.5,4.5,a,a,xIBox[1],false,xIBox,mBox)
@@ -60,7 +60,7 @@ println("out 3: $out")
 @test about(out.Intv.lo,-3,1E-4)
 @test about(out.Intv.hi,3,1E-4)
 
-a = seed_g(Float64,1,2)
+a = seed_g(Float64,Int64(1),Int64(2))
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
 mBox = mid.(xIBox)
 X = SMCg{2,Interval{Float64},Float64}(4.5,4.5,a,a,xIBox[1],false,xIBox,mBox)

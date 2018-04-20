@@ -20,8 +20,8 @@ EAGO.set_diff_relax(0)
 ################################################################################
 ################### Test Nonsmooth Zero in Both Case (Failing)   ###############
 ################################################################################
-a = seed_g(Float64,1,2)
-b = seed_g(Float64,2,2)
+a = seed_g(Float64,Int64(1),Int64(2))
+b = seed_g(Float64,Int64(2),Int64(2))
 xIBox = SVector{2,Interval{Float64}}([Interval(-2.0,1.0);Interval(-1.0,2.0)])
 mBox = mid.(xIBox)
 X = SMCg{2,Interval{Float64},Float64}(0.0,0.0,a,a,xIBox[1],false,xIBox,mBox)

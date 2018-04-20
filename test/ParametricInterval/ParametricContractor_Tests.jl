@@ -5,8 +5,8 @@ using Compat.Test
 using IntervalArithmetic
 using EAGO
 
-opt1 = PIntvParams(:Dense,:Newton,1E-30,1E-6,2,2,100)
-opt2 = PIntvParams(:Dense,:Krawczyk,1E-30,1E-6,2,2,100)
+opt1 = PIntvParams(:Dense,:Newton,1E-30,1E-6,Int64(2),Int64(2),100)
+opt2 = PIntvParams(:Dense,:Krawczyk,1E-30,1E-6,Int64(2),Int64(2),100)
 
 # Test Problem #1 Out of place
 P1 = [Interval(5.0,7.0),Interval(5.0,7.0)]

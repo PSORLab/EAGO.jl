@@ -7,8 +7,8 @@ using IntervalArithmetic
 using StaticArrays
 
 # create seed gradient
-a = seed_g(Float64,1,2)
-b = seed_g(Float64,2,2)
+a = seed_g(Float64,Int64(1),Int64(2))
+b = seed_g(Float64,Int64(2),Int64(2))
 
 # create SmoothMcCormick seed object for x1 = 2.0 on [1.0,3.0] for relaxing
 # a function f(x1,x2) on the interval box xIbox using mBox as a reference point
@@ -19,7 +19,7 @@ mBox = mid.(xIBox)
 SMCg1 = SMCg{2,Interval{Float64},Float64}(x,x,a,a,xIntv1,false,xIBox,mBox)
 
 # resets gradient to seed gradient with seed at j=2
-grad(SMCg1,2)
+grad(SMCg1,Int64(2))
 @test SMCg1.cv_grad == SVector{2,Float64}([1,0])
 @test SMCg1.cc_grad == SVector{2,Float64}([1,0])
 
@@ -34,9 +34,9 @@ mid_return = mid3(9.0,-3.0,5.0)
 @test mid_return[2] == 3
 
 # checks that mid_grad is working
-mg_return1 = mid_grad(a, b, 1)
-mg_return2 = mid_grad(a, b, 2)
-mg_return3 = mid_grad(a, b, 3)
+mg_return1 = mid_grad(a, b, Int64(1))
+mg_return2 = mid_grad(a, b, Int64(2))
+mg_return3 = mid_grad(a, b, Int64(3))
 @test mg_return1 == SVector{2,Float64}([1,0])
 @test mg_return2 == SVector{2,Float64}([0,1])
 @test mg_return3 == SVector{2,Float64}([0,0])
