@@ -123,7 +123,7 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
       UBD_feas = false
     end
 
-    print_int!(x,k_int,length(y.LBD),id,LBD_val,y.LBDg,y.UBDg,LBD_feas,UBD_feas)
+    print_int!(x,k_int,Int64(length(y.LBD)),id,LBD_val,y.LBDg,y.UBDg,LBD_feas,UBD_feas)
 
     k_int += Int64(1)
 
