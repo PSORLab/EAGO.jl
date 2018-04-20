@@ -55,13 +55,13 @@ function print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,
                            nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)
   if ((B.Verbosity == "Full")||(B.Verbosity == "Normal"))
     # prints header line every B.hdr_intv times
-    if (mod(k_int,B.hdr_intv)==0||k_int==1)
+    if (mod(k_int,B.hdr_intv)==Int64(0)||k_int==Int64(1))
       println("Iteration   NodeID    Current_LBD     Global_LBD     Global_UBD      NodesLeft     Absolute_Gap    Absolute_Ratio     LBD_Feas     UBD_Feas")
     end
     # prints iteration summary every B.itr_intv times
     sbool1 = feasL ? "true" : "false"
     sbool2 = feasU ? "true" : "false"
-    if ((mod(k_int,B.itr_intv)==0))
+    if ((mod(k_int,B.itr_intv)==Int64(0)))
       ptr_arr_temp = [k_int nid lbdp lbd ubd k_nod abs(ubd-lbd) abs(ubd-lbd)/(min(abs(lbd),abs(ubd))) sbool1 sbool2]
       ptr_arr1 = join([@sprintf("%6u",x) for x in ptr_arr_temp[1:2]], ",   ")
       ptr_arr2 = join([@sprintf("%3.7f",x) for x in ptr_arr_temp[3:5]], ",     ")
