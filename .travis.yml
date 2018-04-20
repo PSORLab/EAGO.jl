@@ -2,9 +2,9 @@
 language: julia
 os:
   - linux
-  - osx    #build never started in travis CI, will trouble shoot later
+#  - osx    #build never started in travis CI, will trouble shoot later
 julia:
-  - 0.6 
+  - 0.6
 ##  - nightly
 notifications:
   email: false
