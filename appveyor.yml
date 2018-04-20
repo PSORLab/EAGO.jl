@@ -7,6 +7,7 @@ environment:
 
 matrix:
   allow_failures:
+  - JULIA_URL: "https://julialang-s3.julialang.org/bin/winnt/x86/0.6/julia-0.6-latest-win32.exe"
   - JULIA_URL: "https://julialangnightlies-s3.julialang.org/bin/winnt/x86/julia-latest-win32.exe"
   - JULIA_URL: "https://julialangnightlies-s3.julialang.org/bin/winnt/x64/julia-latest-win64.exe"
 
@@ -46,3 +47,4 @@ test_script:
 
 after_test:
 - C:\projects\julia\bin\julia -e "cd(Pkg.dir(\"EAGO\")); Pkg.add(\"Coverage\"); using Coverage; Codecov.submit(process_folder())"
+- C:\projects\julia\bin\julia -e "cd(Pkg.dir(\"EAGO\")); Pkg.add(\"Coverage\"); using Coverage; Coveralls.submit(process_folder())"

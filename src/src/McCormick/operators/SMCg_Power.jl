@@ -271,7 +271,7 @@ function neg_powpos(x::SMCg{N,V,T},c::Int64) where {N,V,T<:AbstractFloat}
 end
 
 # DONE EXCEPT FOR SUBFUNCTIONS (neg_powneg_even,pos_odd,pos_even,sqr)
-function pow(x::SMCg{N,V,T},c::Int64) where {N,V,T<:AbstractFloat}
+function pow(x::SMCg{N,V,T},c::Q) where {N,V,Q<:Integer,T<:AbstractFloat}
   if (c==0)
     return one(x) # DONE
   elseif (c>0)
@@ -299,7 +299,7 @@ function pow(x::SMCg{N,V,T},c::Int64) where {N,V,T<:AbstractFloat}
   end
 end
 ########### power of a generalized McCormick object raised to c
-function  (^)(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
+function  (^)(x::SMCg{N,V,T},c::Q) where {N,V,Q<:Integer,T<:AbstractFloat}
   pow(x,c)
 end
 function  (^)(x::SMCg{N,V,T},c::Float64) where {N,V,T<:AbstractFloat}
