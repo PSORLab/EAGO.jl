@@ -7,8 +7,8 @@ using IntervalArithmetic
 using StaticArrays
 
 # create seed gradient
-a = seed_g(Float64,Int64(1),Int64(2))
-b = seed_g(Float64,Int64(2),Int64(2))
+a = seed_g(Float64,1,2)
+b = seed_g(Float64,2,2)
 
 # create SmoothMcCormick seed object for x1 = 2.0 on [1.0,3.0] for relaxing
 # a function f(x1,x2) on the interval box xIbox using mBox as a reference point

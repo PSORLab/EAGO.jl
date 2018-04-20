@@ -213,7 +213,6 @@ function UBD1_func(i)
 end
 
 imp_opt1 = ImplicitSolver()
-imp_opt1.opts.style = MC_style #"KrawczykCW" # sets MC contractor style
 imp_opt1.h = h3
 imp_opt1.hj = hj3
 imp_opt1.f = f3
