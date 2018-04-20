@@ -86,9 +86,9 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
 
          # sets implicit function values as appropriate
          # sets state space
-         m.Opts.Implicit_Options.opts.nx = m.Opts.Implicit_Options.nx
-         m.Opts.Implicit_Options.opts.np = nvar - m.Opts.Implicit_Options.nx
-         m.Opts.Implicit_Options.ParamInt.nx = m.Opts.Implicit_Options.nx
+         m.Opts.solver.Implicit_Options.opts.nx = m.Opts.Implicit_Options.nx
+         m.Opts.solver.Implicit_Options.opts.np = nvar - m.Opts.Implicit_Options.nx
+         m.Opts.solver.Implicit_Options.ParamInt.nx = m.Opts.Implicit_Options.nx
 
          if sense == :Min
                   @eval f(x) = $(m.Opts.obj)

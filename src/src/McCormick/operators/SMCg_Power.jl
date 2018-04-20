@@ -203,7 +203,7 @@ function neg_powneg_even(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
 end
 
 # TO DO: CHECK CUT CORRECTED
-function neg_powpos(x::SMCg{N,V,T},c::Int64) where {N,V,T<:AbstractFloat}
+function neg_powpos(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
   xL::T = x.Intv.lo
   xU::T = x.Intv.hi
   xLc::T = xL^c

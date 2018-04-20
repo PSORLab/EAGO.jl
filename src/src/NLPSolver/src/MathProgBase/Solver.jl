@@ -134,6 +134,25 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
 
     UBDsolver
     validated::Bool
+
+    #=
+    ImplicitFlag::Bool
+    PSmcOpt::mc_opts
+    PIntOpt::PIntvParams{Float64}
+    Imp_f::Function
+    Imp_g
+    Imp_h
+    Imp_hj
+    Imp_nx
+    Imp_np
+    Imp_RR_depth
+    Imp_probe_depth
+    Imp_nCons
+    Imp_gL_Loc
+    Imp_gU_Loc
+    Imp_gL
+    Imp_gU
+    =#
 end
 
 function EAGO_NLPSolver(;
