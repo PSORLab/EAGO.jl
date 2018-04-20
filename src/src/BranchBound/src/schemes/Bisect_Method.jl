@@ -40,7 +40,7 @@ end
 Returns two interval boxes 'X1,X2' created by bisecting 'N' in the highest width
 dimension greater than 'nx'.
 """
-function Bisect_Abs_Imp(S::BnBSolver,B::BnBModel{T},N::Vector{T},nx::S) where {T,S<:Integer}
+function Bisect_Abs_Imp(S::BnBSolver,B::BnBModel{T},N::Vector{T},nx::Q) where {T,Q<:Integer}
   i::Int64 = indmax(diam.(N[(nx+1):end]))
   N1::T,N2::T = bisect(N[nx+i])
   X1::Vector{T} = deepcopy(N)
@@ -56,7 +56,7 @@ end
 Returns two interval boxes 'X1,X2' created by bisecting 'N' in the highest width
 dimension greater than 'nx' after scaling by initial box size.
 """
-function Bisect_Rel_Imp(S::BnBSolver,B::BnBModel{T},N::Vector{T},nx::S) where {T,S<:Integer}
+function Bisect_Rel_Imp(S::BnBSolver,B::BnBModel{T},N::Vector{T},nx::Q) where {T,Q<:Integer}
   i::Int64 = indmax(diam.(N[(nx+1):end])./diam.(B.Init_Box[(nx+1):end]))
   N1::T,N2::T = bisect(N[nx+i])
   X1::Vector{T} = deepcopy(N)

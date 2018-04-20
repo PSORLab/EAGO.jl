@@ -34,13 +34,13 @@ function LP_Relax_UBD_Imp(Y::Vector{Interval{Float64}},k::Int64,pos::Int64,opt::
                                    opt[1].solver.Implicit_Options.opts)
     x_mc = param[end]
     p_mc::Vector{SMCg{np,Float64}} = [SMCg{np,Float64}(pmid[i],
-                                                                        pmid[i],
-                                                                        seed_g(Float64,i,np),
-                                                                        seed_g(Float64,i,np),
-                                                                        Y[nx+i],
-                                                                        false,
-                                                                        Y[(nx+1):(nx+np)],
-                                                                        pmid) for i=1:np]
+                                                       pmid[i],
+                                                       seed_g(Float64,i,np),
+                                                       seed_g(Float64,i,np),
+                                                       Y[nx+i],
+                                                       false,
+                                                       Y[(nx+1):(nx+np)],
+                                                       pmid) for i=1:np]
     # relaxation of function
     f::SMCg{np,Float64} = opt[1].solver.Implicit_Options.f(x_mc,p_mc)
     f_cc::Float64 = f.cc
