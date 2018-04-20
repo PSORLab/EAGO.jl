@@ -1,9 +1,9 @@
-#=
+module BBDisplayTest
+
 using Compat
 using Compat.Test
-=#
-
 using IntervalArithmetic
+using EAGO
 
 S = BnBSolver()
 S.Verbosity = "Full"
@@ -15,4 +15,4 @@ println("test #2:")
 println("test #3:")
 @test_nowarn EAGO.print_results!(S,2.0,[1.5],false,false)
 
-#end
+end

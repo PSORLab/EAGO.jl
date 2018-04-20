@@ -1,7 +1,3 @@
-#!/usr/bin/env julia
-
-using EAGO
-
 println("Testing Duality-Based Bound Tightening...")
 t = @elapsed include("TestDual.jl")
 println("done (took $t seconds).")

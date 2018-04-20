@@ -1,7 +1,6 @@
-workspace()
+#!/usr/bin/env julia
 
 using EAGO
-using Base.Test
 
 println("BEGIN TESTING INTERVAL LIBRARY...")
 include("Interval/runtests.jl")

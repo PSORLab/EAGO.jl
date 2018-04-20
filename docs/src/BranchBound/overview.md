@@ -1,4 +1,5 @@
-This package is meant to provide a flexible framework for implementing branch-and-bound based optimization routines in Julia.
+
+This subpart is meant to provide a flexible framework for implementing branch-and-bound based optimization routines in Julia.
 All components of the branch-and-bound routine can be customized by the individual user: lower bounding problem, upper bounding problem.
 The branch and bound routine consists of a main solve algorithm that executes as depicted in the flowchart below.
 Routines for setting the objects to implement standard B&B routines are also provided using a `set_default!()` function.
