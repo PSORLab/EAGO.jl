@@ -8,6 +8,8 @@ EAGO is an open-source development environment for **robust and global optimizat
 [![codecov](https://codecov.io/gh/MatthewStuber/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/MatthewStuber/EAGO.jl)
 [![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
 
+[![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
+
 ## Global Optimization
 
 As a global optimization platform, EAGO's solvers can be used to find solutions of general nonconvex problems with a guaranteed certificate of optimality. However, global solvers suffer from the curse of dimensionality and therefore their performance is  outstripped by convex solvers. For users interested in large-scale applications, be warned that problems generally larger than a few variables may prove challenging for certain types of global optimization problems.
