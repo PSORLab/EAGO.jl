@@ -27,4 +27,4 @@ addons:
 #  - julia -e 'Pkg.clone(pwd()); Pkg.build("EAGO"); Pkg.test("EAGO"; coverage=true)'
 after_success:
 - julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'   # push coverage results to Coveralls
- - julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'        # push coverage results to Codecov
+- julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'        # push coverage results to Codecov
