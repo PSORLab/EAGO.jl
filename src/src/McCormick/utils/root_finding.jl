@@ -99,7 +99,7 @@ the iteration number of the golden section method.
   else
     x = b - (2.0-golden)*(b-a)
   end
-  itr::Int64 = init
+  itr::Q = init
   if (abs(c-a)<MC_param.env_tol*(abs(b)+abs(x))||(itr>MC_param.env_max_int))
     return (c+a)/2.0
   end
