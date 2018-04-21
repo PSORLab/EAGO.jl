@@ -28,8 +28,8 @@ function None_Precondition(h::Function,
                            X::Vector{T},
                            P::Vector{T},
                            opt::PIntvParams) where {T<:AbstractInterval}
-        H::Vector{Interval{T}} = h(mid.(X),P)
-        J::VecOrMat{Interval{T}} = hj(X,P)
+        H::Vector{T} = h(mid.(X),P)
+        J::VecOrMat{T} = hj(X,P)
         return H,J
 end
 
@@ -40,7 +40,7 @@ function Dense_Precondition(h::Function,
                             hj::Function,
                             X::Vector{T},
                             P::Vector{T},
-                             opt::PIntvParams) where {T<:AbstractInterval,S<:AbstractFloat}
+                            opt::PIntvParams{S}) where {T<:AbstractInterval,S<:AbstractFloat}
     H::Vector{T} = h(mid.(X),P)
     J::VecOrMat{T} = hj(X,P)
     Y::VecOrMat{S} = mid.(J)
