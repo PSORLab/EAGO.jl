@@ -1,16 +1,18 @@
 # EAGO: Easy-Advanced Global Optimization
-EAGO is an open-source development environment for **robust and global optimization** in Julia. 
+EAGO is an open-source development environment for **robust and global optimization** in Julia.
 
 [![Build Status](https://travis-ci.org/MatthewStuber/EAGO.jl.svg?branch=master)](https://travis-ci.org/MatthewStuber/EAGO.jl)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://matthewstuber.github.io/EAGO.jl/)
 
 [![Coverage Status](https://coveralls.io/repos/github/MatthewStuber/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/MatthewStuber/EAGO.jl?branch=master)
 [![codecov](https://codecov.io/gh/MatthewStuber/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/MatthewStuber/EAGO.jl)
+[![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
 
+[![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 
 ## Global Optimization
 
-As a global optimization platform, EAGO's solvers can be used to find solutions of general nonconvex problems with a guaranteed certificate of optimality. However, global solvers suffer from the curse of dimensionality and therefore their performance is  outstripped by convex solvers. For users interested in large-scale applications, be warned that problems generally larger than a few variables may prove challenging for certain types of global optimization problems. 
+As a global optimization platform, EAGO's solvers can be used to find solutions of general nonconvex problems with a guaranteed certificate of optimality. However, global solvers suffer from the curse of dimensionality and therefore their performance is  outstripped by convex solvers. For users interested in large-scale applications, be warned that problems generally larger than a few variables may prove challenging for certain types of global optimization problems.
 
 ## Package Capabilities
 
@@ -18,7 +20,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathProgBa
 
 ## News
 
-- 4/12/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages (e.g. `EAGODomainReduction.jl`) into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll tag EAGO v0.2.0. 
+- 4/12/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages (e.g. `EAGODomainReduction.jl`) into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll tag EAGO v0.2.0.
 
 ## Related Packages
 

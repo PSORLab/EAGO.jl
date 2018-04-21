@@ -71,13 +71,13 @@ function set_to_default!(x::BnBSolver)
   x.Verbosity = "Normal"
   x.max_iter = Inf
   x.iter_lim = false
-  x.max_nodes = 1E6
+  x.max_nodes = Int64(1E6)
   x.BnB_atol = 1E-4
   x.BnB_rtol = 1E-4
-  x.itr_intv = 1
-  x.hdr_intv = 20
+  x.itr_intv = Int64(1)
+  x.hdr_intv =  Int64(20)
   x.converged = Conv_Check
-  x.BnB_digits = 3
+  x.BnB_digits =  Int64(3)
   x.hist_return = false
   x.opt = []
   x.exhaust = false

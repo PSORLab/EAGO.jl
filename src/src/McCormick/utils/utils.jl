@@ -3,7 +3,7 @@
 
 Creates a `x::SVector{N,T}` object that is one at `x[j]` and zero everywhere else.
 """
-function seed_g(T::Type,j::Int64,N::Int64)
+function seed_g(T::Type,j::Q1,N::Q2) where {Q1<:Integer,Q2<:Integer}
     return SVector{N,T}([i == j ? 1.0 : 0.0 for i=1:N])
 end
 
@@ -12,7 +12,7 @@ end
 
 sets convex and concave (sub)gradients of length `n` of `x` to be `1` at index `j`
 """
-function grad(x::SMCg{N,V,T},j::Int64) where {N,V,T<:AbstractFloat}
+function grad(x::SMCg{N,V,T},j::Q) where {N,V,Q<:Integer,T<:AbstractFloat}
   sv_grad::SVector{N,T} = seed_g(T,j,N)
   return SMCg{N,V,T}(x.cc,x.cv,sv_grad,sv_grad,x.Intv,x.cnst,x.IntvBox,x.xref)
 end
@@ -45,7 +45,7 @@ Takes the concave relaxation gradient 'cc_grad', the convex relaxation gradient
 'cv_grad', and the index of the midpoint returned 'id' and outputs the appropriate
 gradient according to McCormick relaxation rules.
 """
-function mid_grad(cc_grad::SVector{N,T}, cv_grad::SVector{N,T}, id::Int64) where {N,T<:AbstractFloat}
+function mid_grad(cc_grad::SVector{N,T}, cv_grad::SVector{N,T}, id::Q) where {N,Q<:Integer,T<:AbstractFloat}
   if (id == 1)
     return cc_grad
   elseif (id == 2)
@@ -91,7 +91,7 @@ end
 concave gradient, 'cc', the mid index values 'int1,int2', and the derivative of
 the convex and concave envelope functions 'dcv,dcc'.
 """
-function grad_calc(cv::SVector{N,T},cc::SVector{N,T},int1::Int64,int2::Int64,dcv::T,dcc::T) where {N,T<:AbstractFloat}
+function grad_calc(cv::SVector{N,T},cc::SVector{N,T},int1::Q,int2::Q,dcv::T,dcc::T) where {N,Q<:Integer,T<:AbstractFloat}
   cv_grad::SVector{N,T} = dcv*( int1==1 ? cv :( int1==2 ? cv : zeros(SVector{N,T})))
   cc_grad::SVector{N,T} = dcc*( int2==1 ? cc :( int2==2 ? cc : zeros(SVector{N,T})))
   return cv_grad, cc_grad

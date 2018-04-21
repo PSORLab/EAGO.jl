@@ -1,7 +1,3 @@
-#!/usr/bin/env julia
-
-using EAGO
-
 # write your own tests here
 println("Testing Checks and Utilities...")
 t = @elapsed include("ParamChk_Tests.jl")

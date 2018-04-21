@@ -13,7 +13,7 @@ tU = 5.0
 X1 = [Interval(1.0,2.0)]
 X2 = [Interval(3.0,5.0)]
 X = [Interval(3.0,5.0)]
-pos = 4
+pos = Int64(4)
 EAGO.BM_breadth!(S,B,tL,tU,X1,X2,pos)
 EAGO.BM_Single!(S,B,tL,tU,X,pos)
 B.soln = [7.0]

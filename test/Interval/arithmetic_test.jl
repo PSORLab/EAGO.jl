@@ -1,3 +1,9 @@
+module IntervalArithmetic_Check
+
+using Compat
+using Compat.Test
+using EAGO
+
 a = MCInterval(2.0,3.0)
 b = MCInterval(4.0,6.0)
 
@@ -38,3 +44,5 @@ t29 = EAGOIntervalArithmetic.mid(a)
 t30 = EAGOIntervalArithmetic.diam(a)
 t31 = EAGOIntervalArithmetic.radius(a)
 =#
+
+end

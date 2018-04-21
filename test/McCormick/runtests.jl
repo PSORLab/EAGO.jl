@@ -1,8 +1,3 @@
-workspace()
-
-using EAGO
-using Base.Test
-
 # write your own tests here
 println("Testing Utility Functions...")
 t = @elapsed include("Utilities.jl")

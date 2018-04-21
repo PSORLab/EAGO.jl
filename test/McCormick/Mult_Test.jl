@@ -28,8 +28,6 @@ X = SMCg{2,Interval{Float64},Float64}(0.0,0.0,a,a,xIBox[1],false,xIBox,mBox)
 Y = SMCg{2,Interval{Float64},Float64}(1.0,1.0,b,b,xIBox[2],false,xIBox,mBox)
 out = X*Y
 
-println("out: $out")
-
 @test out.cc == 2.0
 @test out.cv == -1.0
 @test out.cc_grad[1] == 2.0

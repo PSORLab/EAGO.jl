@@ -18,9 +18,9 @@ set_Branch_Scheme!(x,"depth")
 @test x.Node_Select == EAGO.NS_depth_breadth
 @test x.Branch_Sto == EAGO.BM_depth_best!
 
-set_Bisect_Func!(x,"relative midpoint",-1)
+set_Bisect_Func!(x,"relative midpoint",-Int64(1))
 @test x.Bisect_Func == EAGO.Bisect_Rel
-set_Bisect_Func!(x,"absolute midpoint",-1)
+set_Bisect_Func!(x,"absolute midpoint",-Int64(1))
 @test x.Bisect_Func == EAGO.Bisect_Abs
 
 set_Verbosity!(x,"Normal")
@@ -28,10 +28,10 @@ set_Verbosity!(x,"Normal")
 
 @test_throws ErrorException set_Branch_Scheme!(x,"random")
 @test_throws ErrorException  set_Verbosity!(x,"random")
-@test_throws ErrorException  set_Bisect_Func!(x,"random",-1)
-@test_throws ErrorException  set_Bisect_Func!(x,"random",1)
+@test_throws ErrorException  set_Bisect_Func!(x,"random",-Int64(1))
+@test_throws ErrorException  set_Bisect_Func!(x,"random",Int64(1))
 
-@test_nowarn set_Bisect_Func!(x,"relative midpoint",3)
-@test_nowarn set_Bisect_Func!(x,"absolute midpoint",3)
+@test_nowarn set_Bisect_Func!(x,"relative midpoint",Int64(3))
+@test_nowarn set_Bisect_Func!(x,"absolute midpoint",Int64(3))
 
 end

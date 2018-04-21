@@ -25,7 +25,7 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
     # solves preprocessing/LBD/UBD/postprocessing once to get timing right
     feas_Pre::Bool = true
     feas_Post::Bool = true
-    if (k_int == 0)
+    if (k_int == Int64(0))
       (x.Verbosity == "Full") && println("pre-check")
       nsBox1 = copy(nsBox)
       yUBDg1 = copy(y.UBDg)
@@ -57,7 +57,7 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
       tic()
       LBD_val,LBD_sol,LBD_feas,temp_objL = x.Lower_Prob(nsBox,k_int,pos,x.opt,y.UBDg)
       push!(y.LBDgtime,y.LBDgtime[end]+toq())
-      y.lbcnt += 1
+      y.lbcnt += Int64(1)
       print_results!(x,LBD_val,LBD_sol,LBD_feas,true)
       int_info = LBD_val,LBD_sol,LBD_feas,temp_objL,nsBox
 
@@ -72,7 +72,7 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
           tic()
           UBD_val,UBD_sol,UBD_feas,temp_objU = x.Upper_Prob(nsBox,k_int,pos,x.opt,y.UBDg)
           push!(y.UBDgtime,y.UBDgtime[end]+toq())
-          y.ubcnt += 1
+          y.ubcnt += Int64(1)
           print_results!(x,UBD_val,UBD_sol,UBD_feas,false)
 
           # fathoms by value dominance
@@ -123,9 +123,9 @@ function solveBnB!(x::BnBSolver,y::BnBModel)
       UBD_feas = false
     end
 
-    print_int!(x,k_int,length(y.LBD),id,LBD_val,y.LBDg,y.UBDg,LBD_feas,UBD_feas)
+    print_int!(x,k_int,Int64(length(y.LBD)),id,LBD_val,y.LBDg,y.UBDg,LBD_feas,UBD_feas)
 
-    k_int+=1
+    k_int += Int64(1)
 
   end
   y.soln_val = y.UBDg
