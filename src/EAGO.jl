@@ -48,6 +48,7 @@ try
        using Snopt
 end
 
+# Include nonvalidated interval library
 include("src/Interval/EAGOIntervalArithmetic.jl")
 include("src/ParametricInterval/EAGOParametricInterval.jl")
 include("src/BranchBound/EAGOBranchBound.jl")

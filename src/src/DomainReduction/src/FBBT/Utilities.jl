@@ -1,15 +1,4 @@
-function mul_revDR(a::Interval{T},b::Interval{T},c::Interval{T}) where {T<:AbstractFloat}
-    if (in(zero(T),c) && ~in(zero(T),b))
-        c = c ∩ (a / b)
-    elseif (~in(zero(T),c) && in(zero(T),b))
-        b = b ∩ (a / c)
-    elseif (~in(zero(T),c) && ~in(zero(T),b))
-        b = b ∩ (a / c)
-        c = c ∩ (a / b)
-    end
-    return a, b, c
-end
-function mul_revDR(a::MCInterval{T},b::MCInterval{T},c::MCInterval{T}) where {T<:AbstractFloat}
+function mul_revDR(a::T,b::T,c::T) where {T<:AbstractInterval}
     if (in(zero(T),c) && ~in(zero(T),b))
         c = c ∩ (a / b)
     elseif (~in(zero(T),c) && in(zero(T),b))
@@ -58,13 +47,7 @@ function atan_rev(y::MCInterval{T}, x::MCInterval{T}) where {T<:AbstractFloat}
         return y_new, x_new
 end
 
-function sinh_rev(y::Interval{T},x::Interval{T}) where {T<:AbstractFloat}
-    x_new = x ∩ asinh(y)
-
-    return y, x_new
-end
-
-function sinh_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
+function sinh_rev(y::T,x::T) where {T<:AbstractInterval}
     x_new = x ∩ asinh(y)
 
     return y, x_new
@@ -98,13 +81,7 @@ function tanh_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
     return y_new, x_new
 end
 
-function asinh_rev(y::Interval{T},x::Interval{T}) where {T<:AbstractFloat}
-    x_new = x ∩ sinh(y)
-
-    return y, x_new
-end
-
-function asinh_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
+function asinh_rev(y::T,x::T) where {T<:AbstractInterval}
     x_new = x ∩ sinh(y)
 
     return y, x_new
@@ -124,13 +101,7 @@ function acosh_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
     return y_new, x_new
 end
 
-function atanh_rev(y::Interval{T},x::Interval{T}) where {T<:AbstractFloat}
-    x_new = x ∩ tanh(y)
-
-    return y, x_new
-end
-
-function atanh_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
+function atanh_rev(y::T,x::T) where {T<:AbstractInterval}
     x_new = x ∩ tanh(y)
 
     return y, x_new

@@ -4,7 +4,6 @@
 Subfunction to generate output for extended division.
 """
 function extDivide(A::Interval{T}) where {T<:AbstractFloat}
-  #println("start extdivide")
   if ((A.lo == -0.0) && (A.hi == 0.0))
     B::Interval{T} = Interval(-Inf,Inf)
     C::Interval{T} = B
@@ -25,7 +24,6 @@ function extDivide(A::Interval{T}) where {T<:AbstractFloat}
   end
 end
 function extDivide(A::MCInterval{T}) where {T<:AbstractFloat}
-  #println("start extdivide")
   if ((A.lo == -0.0) && (A.hi == 0.0))
     B::MCInterval{T} = MCInterval{T}(-Inf,Inf)
     C::MCInterval{T} = B

@@ -111,6 +111,8 @@ flttoMCI(x::Float64) = MCInterval{Float64}(x,x)
 flttoMCI(x::Float32) = MCInterval{Float32}(x,x)
 flttoMCI(x::Float16) = MCInterval{Float16}(x,x)
 
+MCInterval(x::Q1,y::Q2) where {Q1<:Integer,Q2<:Integer}= MCInterval(Float64(x),Float64(y))
+
 #promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{promote_type(T, S)}
 #convert(::Type{MCInterval{T}}, x::T) where {T<:AbstractFloat} = MCInterval{T}(x)
 #=

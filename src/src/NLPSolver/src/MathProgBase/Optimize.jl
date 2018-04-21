@@ -100,40 +100,12 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     call_sto.IPOPT_UBD_eval_h = (x::Vector{Float64}, mode::Symbol,
                                  rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_UBD_eval_h(x, mode, rows, cols, obj_factor, lambda, values, s.Opts)
 
-    #=
-    X1 = [Interval(0.0,400.0),Interval(0.0,200.0)]
-    x1 = mid.(X1)
-    out1 = call_sto.IPOPT_LBD_eval_f(x1,X1)
-    println("IPOPT_LBD_eval_f: ", out1)
-    println("IPOPT_LBD_eval_f type: ", typeof(out1))
-
-    X2 = [Interval(0.0,400.0),Interval(0.0,200.0)]
-    x2 = [400.0,200.0]
-    out2 = zeros(x1)
-    call_sto.IPOPT_LBD_eval_grad_f!(x2,X2,out2)
-    println("IPOPT_LBD_eval_grad_f!: ", out2)
-    println("IPOPT_LBD_eval_f type: ", typeof(out2))
-    =#
- #=
-    X3 = [Interval(0.0,400.0),Interval(0.0,200.0)]
-    x3 = [400.0,200.0]
-    out3 = zeros(2)
-    call_sto.IPOPT_LBD_eval_g!(x3,X3,out3)
-    println("IPOPT_LBD_eval_g!")
-    call_sto.IPOPT_LBD_eval_jac_g!()
-    println("IPOPT_LBD_eval_jac_g!")
-    call_sto.IPOPT_LBD_eval_h()
-    println("IPOPT_LBD_eval_h")
-    call_sto.IPOPT_LBD_eval_g()
-    println("IPOPT_LBD_eval_g")
-    =#
-
     UBD_error_flag = false
 
     # checks to see whether an implicit solver should be used
-    if (s.Opts.solver.Implicit_Options.flag == true)
+    if (s.Opts.solver.ImplicitFlag == true)
         # checks that implicit solver options are valid
-        set_Bisect_Func!(s.Opts.solver.BnBSolver,"relative midpoint",s.Opts.solver.Implicit_Options.nx)
+        set_Bisect_Func!(s.Opts.solver.BnBSolver,"relative midpoint",s.Opts.solver.Imp_nx)
 
         # loads lower problem
         if s.Opts.solver.LBDsolvertype == "LP"

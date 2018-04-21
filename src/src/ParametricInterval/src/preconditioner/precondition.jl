@@ -8,7 +8,7 @@ function Precondition(h::Function,
                       hj::Function,
                       X::Vector{V},
                       P::Vector{V},
-                      opt::PIntvParams) where {V}
+                      opt::PIntvParams) where {V<:AbstractInterval}
     if (opt.LAlg == :DenseBand)
         H,J = DenseBand_Precondition!(h,hj,X,P,opt)
     elseif (opt.LAlg == :DenseBlockDiag)
@@ -25,24 +25,13 @@ end
 
 function None_Precondition(h::Function,
                            hj::Function,
-                           X::Vector{Interval{T}},
-                           P::Vector{Interval{T}},
-                           opt::PIntvParams) where {T}
+                           X::Vector{T},
+                           P::Vector{T},
+                           opt::PIntvParams) where {T<:AbstractInterval}
         H::Vector{Interval{T}} = h(mid.(X),P)
         J::VecOrMat{Interval{T}} = hj(X,P)
         return H,J
 end
-
-function None_Precondition(h::Function,
-                           hj::Function,
-                           X::Vector{MCInterval{T}},
-                           P::Vector{MCInterval{T}},
-                           opt::PIntvParams) where {T}
-        H::Vector{MCInterval{T}} = h(mid.(X),P)
-        J::VecOrMat{MCInterval{T}} = hj(X,P)
-        return H,J
-end
-
 
 """
     Dense_Precondition!(H,J,Y,opt)

@@ -68,7 +68,7 @@ function exp(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
     cv,cc,cv_grad,cc_grad = cut(expxL,expxU,cv,cc,cv_grad,cc_grad)
   end
 
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(expxL,expxU) : exp(x.Intv)),x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, exp(x.Intv),x.cnst, x.IntvBox, x.xref)
 end
 
 function exp2_cc(x::T,xL::T,xU::T) where {T<:AbstractFloat}

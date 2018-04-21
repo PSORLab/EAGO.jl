@@ -1,65 +1,4 @@
 """
-    ImplicitSolver
-
-ImplicitSolver is an option storage type utilized by the EAGO_NLPSolver to set
-the options used for solve NLPs with embedded implicit calculations. By default,
-it's flag field is set to false and the other fields are effectively unset. It's fields
-are as follows:
-* `flag::Bool`: A flag indicating whether or not implicit bounding routines should
-                be used to solve subproblems.
-* `opts::mc_opts`: Option type used for McCormick fixed point bounding routine.
-* `ParamInt::PIntvParams{Float64}`: Optionsparametric interval calculations
-* `f`: The objective function used in implicit calculations. Takes the form: f(x,p)
-       where x = y[1:nx] and p = y[(nx+1):end].
-* `g`: Inequality constraints used in implicit calculations. Takes the form: g(x,p)
-       where x = y[1:nx] and p = y[(nx+1):end]. Should be in the same order as
-       constraints the explicit calculations omitting the constraints used to
-       form the implicit bounds.
-* `h`: Equality constraints used in implicit calculations to form relaxations of
-       an implicit function. Takes the form: h(x,p) where x = y[1:nx] and
-       p = y[(nx+1):end]. Should be in the same order as constraints the explicit
-       calculations.
-* `hj`: Jacobian of h w.r.t the state space variables 'z' and takes the form
-* `nx`: The number of variables in the state space.
-* `Intv_Cntr`: Style of interval contractor used in pre-processing. Options are
-               "NewtonGS" for Newton Gauss-Siedel and "KrawczykCW" for a componentwise
-               Krawczyk calculation.
-* `Imp_RR_depth`: The depth in the tree to which implicit range reduction in which
-                  the equality constraints are relaxed and g(x(p),p)<0, f(x(p),p)
-                  forms the problem for range-reduction and only p bounds are tightened.
-* `Imp_probe_depth`: The depth in the tree to which implicit range reduction in which
-                      the equality constraints are relaxed and g(x(p),p)<0, f(x(p),p)
-                      forms the problem for probing and only p bounds are tightened.
-* `numConstr`: Number of constraints that remain after removing those which define
-               the implicit function.
-* `gL_Loc`: Indices at which a constraint has finite lower bounds.
-* `gU_Loc`: Indices at which a constraint has finite upper bounds.
-* `gL`: Lower bounds for inequality constraints.
-* `gU`: Upper bounds for inequality constraints.
-"""
-type ImplicitSolver
-    flag::Bool
-    opts::mc_opts
-    ParamInt::PIntvParams{Float64}
-    f::Function
-    g
-    h
-    hj
-    nx
-    Intv_Cntr
-    Imp_RR_depth
-    Imp_probe_depth
-    numConstr
-    gL_Loc
-    gU_Loc
-    gL
-    gU
-end
-ImplicitSolver() = ImplicitSolver(false,mc_opts(),PIntvParams(0,0),
-                                    x->x,x->x,x->x,x->x,0,
-                                    "NewtonGS",-1,-1,[],[],[],[],[])
-
-"""
     EAGO_NLPSolver
 
 Main solver type for EAGO global optimization. Contains all options that are not
@@ -96,7 +35,6 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
 
     # Branch and Bound Solver Object
     BnBSolver::BnBSolver                  # The BnB solver object that that is modified then passed to the solve function EAGOBranchBound. (Default = BnBSolver())
-    Implicit_Options::ImplicitSolver      # Solver options for implicit bounding routines. (Default = ImplicitSolver())
 
     # Solver types
     LBD_func_relax::String                # Relaxation type used in lower bounding problem. (Default = "NS-STD-OFF")
@@ -135,30 +73,32 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
     UBDsolver
     validated::Bool
 
-    #=
     ImplicitFlag::Bool
     PSmcOpt::mc_opts
-    PIntOpt::PIntvParams{Float64}
+    PIntOpt::PIntvParams
+
     Imp_f::Function
-    Imp_g
-    Imp_h
-    Imp_hj
-    Imp_nx
-    Imp_np
-    Imp_RR_depth
-    Imp_probe_depth
-    Imp_nCons
-    Imp_gL_Loc
-    Imp_gU_Loc
-    Imp_gL
-    Imp_gU
-    =#
+    Imp_g::Function
+    Imp_h::Function
+    Imp_hj::Function
+
+    Imp_nx::Int64
+    Imp_np::Int64
+
+    Imp_RR_depth::Int64
+    Imp_probe_depth::Int64
+    Imp_nCons::Int64
+
+    Imp_gL_Loc::Vector{Int64}
+    Imp_gU_Loc::Vector{Int64}
+    Imp_gL::Vector{Float64}
+    Imp_gU::Vector{Float64}
+
 end
 
 function EAGO_NLPSolver(;
 
     BnBobject = BnBSolver(),
-    ImplicitOpts = ImplicitSolver(),
 
     LBD_func_relax = "NS-STD-OFF",
     LBDsolvertype = "LP",
@@ -188,7 +128,28 @@ function EAGO_NLPSolver(;
     iter_limit = 1E9,
     node_limit = 1E7,
     UBDsolver = IpoptSolver(print_level=0),
-    validated = false)
+    validated = false,
+
+    ImplicitFlag = false,
+    PSmcOpt = mc_opts(),
+    PIntOpt = PIntvParams(0,0),
+
+    Imp_f = x->x,
+    Imp_g = x->x,
+    Imp_h = x->x,
+    Imp_hj = x->x,
+
+    Imp_nx = Int64(0),
+    Imp_np = Int64(0),
+
+    Imp_RR_depth = Int64(0),
+    Imp_probe_depth = Int64(0),
+    Imp_nCons = Int64(0),
+
+    Imp_gL_Loc = [Int64(0)],
+    Imp_gU_Loc = [Int64(0)],
+    Imp_gL = [Float64(0)],
+    Imp_gU = [Float64(0)])
 
     set_to_default!(BnBobject)
     set_Verbosity!(BnBobject,verbosity)
@@ -196,7 +157,7 @@ function EAGO_NLPSolver(;
     BnBobject.BnB_atol = atol
     BnBobject.BnB_rtol = rtol
 
-    nlp_solver = EAGO_NLPSolver(deepcopy(BnBobject),deepcopy(ImplicitOpts),
+    nlp_solver = EAGO_NLPSolver(deepcopy(BnBobject),
                                 LBD_func_relax, LBDsolvertype, UBDsolvertype,
                                 LP_solver, abs_tol_LBD, max_int_LBD, UBD_full_depth,
                                 abs_tol_UBD, max_int_UBD, STD_RR_depth,
@@ -204,7 +165,11 @@ function EAGO_NLPSolver(;
                                 DAG_depth, DAG_pass,
                                 max_reduce_rept, tol_reduce_rept,
                                 atol, rtol, verbosity,
-                                iter_limit, node_limit, UBDsolver, validated)
+                                iter_limit, node_limit, UBDsolver, validated,
+                                ImplicitFlag, PSmcOpt, PIntOpt, Imp_f, Imp_g,
+                                Imp_h, Imp_hj, Imp_nx, Imp_np, Imp_RR_depth,
+                                Imp_probe_depth, Imp_nCons, Imp_gL_Loc,
+                                Imp_gU_Loc, Imp_gL, Imp_gU)
 
     #Solver_Relax_Valid_LBD!(nlp_solver)
     #Solver_Relax_Valid_UBD!(nlp_solver)
