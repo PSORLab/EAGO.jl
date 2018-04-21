@@ -1,8 +1,6 @@
 # Nonvalidated Interval Library
 
-abstract type AbstractMCInterval{T} <: Real end
-
-struct MCInterval{T<:AbstractFloat} <: AbstractMCInterval{T}
+struct MCInterval{T<:AbstractFloat} <: AbstractInterval{T}
     lo :: T
     hi :: T
 end

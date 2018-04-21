@@ -5,14 +5,14 @@
 Checks to see how much volume of the box was reduced and if it was reduced below
 tolerance `tol_reduce_rept`.
 """
-function repeat_DR(X::Vector{Interval{Float64}},
-                   X0::Vector{Interval{Float64}},
+function repeat_DR(X::Vector{V},
+                   X0::Vector{V},
                    opt,
-                   k::Int64,
-                   rep::Bool)
+                   k::Q,
+                   rep::Bool) where {Q<:Integer,V<:AbstractInterval}
 
          if (opt.solver.max_reduce_rept < k)
-           vol_diff::Float64 = 0.0
+           vol_diff = 0.0
            for i=1:opt.numVar
              vol_diff += diam(X[i])/diam(X0[i])
            end
@@ -23,23 +23,6 @@ function repeat_DR(X::Vector{Interval{Float64}},
          return rep
 end
 
-function repeat_DR(X::Vector{MCInterval{Float64}},
-                   X0::Vector{MCInterval{Float64}},
-                   opt,
-                   k::Int64,
-                   rep::Bool)
-
-         if (opt.solver.max_reduce_rept < k)
-           vol_diff::Float64 = 0.0
-           for i=1:opt.numVar
-             vol_diff += diam(X[i])/diam(X0[i])
-           end
-           if (opt.solver.tol_reduce_rept>vol_diff)
-             rep = true
-           end
-         end
-         return rep
-end
 
 """
     composite_DR_pre(feas::Bool,X::Vector{Interval{Float64}},UBD::Float64,
@@ -57,7 +40,7 @@ Outputs the feasibility and the X.
 """
 function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
                           k::Int64,pos::Int64,opt,LBDn::Float64,UBDn::Float64,
-                          bnbs::BnBSolver,bnbm::BnBModel{T}) where {T}
+                          bnbs::BnBSolver,bnbm::BnBModel{T}) where {T<:AbstractInterval}
   # Feasibility-Based Bound Tightening via DAG Constraint Propagation
   if (feas == true && (opt[1].solver.DAG_depth >= pos))
     DAGContractor!(X,opt[1].DAG_tlist,opt[1].solver.DAG_pass)
@@ -81,10 +64,10 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
   end
   (bnbs.Verbosity == "Full") && (println("Finished Standard Range Reduction"))
   # Implicit Range Reduction
-  if (opt[1].solver.Implicit_Options.flag)
-    if (feas == true && (opt[1].solver.Implicit_Options.Imp_RR_depth >= pos))
+  if (opt[1].solver.ImplicitFlag)
+    if (feas == true && (opt[1].solver.Imp_RR_depth >= pos))
       Imp_Linear_RR!(X,opt,UBD)
-      for i=(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)
+      for i=(opt[1].solver.Imp_nx+1):(opt[1].numVar)
         if (isempty(X[i]))
           feas = false
           break
@@ -105,10 +88,10 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
   end
   (bnbs.Verbosity == "Full") && (println("Finished Standard Probing"))
   # Implicit Probing
-  if (opt[1].solver.Implicit_Options.flag)
-    if (feas == true && (opt[1].solver.Implicit_Options.Imp_probe_depth >= pos))
+  if (opt[1].solver.ImplicitFlag)
+    if (feas == true && (opt[1].solver.Imp_probe_depth >= pos))
       #Imp_LP_Probe!(X,opt,UBD)
-      for i=(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)
+      for i=(opt[1].solver.Imp_nx+1):(opt[1].numVar)
         if (isempty(X[i]))
           feas = false
           break
@@ -118,15 +101,15 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
   end
   (bnbs.Verbosity == "Full") && (println("Finished Implicit Probing"))
   # Implicit Interval Contractor
-  if (opt[1].solver.Implicit_Options.flag && (feas == true))
+  if (opt[1].solver.ImplicitFlag && (feas == true))
     Eflag = false
     Iflag = false
     eDflag = false
-    Y1,Y2,Eflag,Iflag,eDflag,incLow,incHigh = Param_Intv_Contractor(opt[1].solver.Implicit_Options.h,opt[1].solver.Implicit_Options.hj,
-                                                                    X[1:opt[1].solver.Implicit_Options.nx],
-                                                                    X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)],
+    Y1,Y2,Eflag,Iflag,eDflag,incLow,incHigh = Param_Intv_Contractor(opt[1].solver.Imp_h,opt[1].solver.Imp_hj,
+                                                                    X[1:opt[1].solver.Imp_nx],
+                                                                    X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)],
                                                                     Eflag,Iflag,eDflag,
-                                                                    opt[1].solver.Implicit_Options.ParamInt)
+                                                                    opt[1].solver.PIntOpt)
     if Eflag
       feas = false
     elseif eDflag
@@ -155,22 +138,22 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
 
       # Stores if feasible
       if ((LBDfeas1 && UBDfeas1) && (LBDfeas2 && UBDfeas2))
-        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)])
-                      ,vcat(Y2,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
+        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)])
+                      ,vcat(Y2,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)]))
         push!(bnbm.LBD,LBD1,LBD2)
         push!(bnbm.UBD,UBD1,UBD2)
         push!(bnbm.id,bnbm.max_id+1,bnbm.max_id+2)
         push!(bnbm.pos,pos+1,pos+1)
         bnbm.max_id += 2
       elseif (LBDfeas1 && UBDfeas1)
-        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
+        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)]))
         push!(bnbm.LBD,LBD1)
         push!(bnbm.UBD,UBD1)
         push!(bnbm.id,bnbm.max_id+1)
         push!(bnbm.pos,pos+1)
         bnbm.max_id += 1
       elseif (LBDfeas2 && UBDfeas2)
-        push!(bnbm.box,vcat(Y2,X[(opt[1].solver.Implicit_Options.nx+1):(opt[1].numVar)]))
+        push!(bnbm.box,vcat(Y2,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)]))
         push!(bnbm.LBD,LBD2)
         push!(bnbm.UBD,UBD2)
         push!(bnbm.id,bnbm.max_id+1)
@@ -203,8 +186,8 @@ The inputs are:
 * `UBDg::Float64`: The current global upper bounds.
 Outputs the feasibility and the X.
 """
-function composite_DR_post(feas_Post::Bool,X::Vector{Interval{Float64}},k::Int64,pos::Int64,
-                      opt,temp_objL,temp_objU,LBDg,UBDg)
+function composite_DR_post(feas_Post::Bool,X::Vector{V},k::Q1,pos::Q2,
+                      opt,temp_objL,temp_objU,LBDg,UBDg) where {Q1<:Integer,Q2<:Integer,V<:AbstractInterval}
   #println("start composite DR post")
   # Duality-Based Range Reduction
   if (feas_Post)
@@ -218,39 +201,9 @@ function composite_DR_post(feas_Post::Bool,X::Vector{Interval{Float64}},k::Int64
         UBD = UBDg
       end
 
-      if (opt[1].solver.Implicit_Options.flag)
+      if (opt[1].solver.ImplicitFlag)
         if (opt[1].solver.variable_depth>=pos)
-          Variable_DR_Imp!(X,dual_lo,dual_hi,LBD,UBD,opt[1].solver.Implicit_Options.nx)
-        end
-      else
-        if (opt[1].solver.variable_depth>=pos)
-          Variable_DR!(X,dual_lo,dual_hi,LBD,UBD)
-        end
-      end
-    end
-  end
-  #println("end composite DR post")
-  return feas_Post, X
-end
-
-function composite_DR_post(feas_Post::Bool,X::Vector{MCInterval{Float64}},k::Int64,pos::Int64,
-                      opt,temp_objL,temp_objU,LBDg,UBDg)
-  #println("start composite DR post")
-  # Duality-Based Range Reduction
-  if (feas_Post)
-    if (length(temp_objL) > 0)
-      dual_lo = temp_objL[1]
-      dual_hi = temp_objL[2]
-      LBD = temp_objL[3]
-      if (temp_objU[1])
-        UBD = min(UBDg,temp_objU[2])
-      else
-        UBD = UBDg
-      end
-
-      if (opt[1].solver.Implicit_Options.flag)
-        if (opt[1].solver.variable_depth>=pos)
-          Variable_DR_Imp!(X,dual_lo,dual_hi,LBD,UBD,opt[1].solver.Implicit_Options.nx)
+          Variable_DR_Imp!(X,dual_lo,dual_hi,LBD,UBD,opt[1].solver.Imp_nx)
         end
       else
         if (opt[1].solver.variable_depth>=pos)

@@ -137,7 +137,7 @@ function neg_powneg_odd(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
     gcv2,gdcv2 = cv_negpowneg(x.cc,x.Intv.lo,x.Intv.hi,c)
     cv_grad = max(zero(T),gdcv1)*x.cv_grad + min(zero(T),gdcv2)*x.cc_grad
     cc_grad = min(zero(T),gdcc1)*x.cv_grad + max(zero(T),gdcc2)*x.cc_grad
-    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(xUc,xLc) : x.Intv^c), x.cnst,x.IntvBox,x.xref)
+    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, x.Intv^c, x.cnst,x.IntvBox,x.xref)
   else
     # calc cc
     if (xL < x.cv)
@@ -155,7 +155,7 @@ function neg_powneg_odd(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
       cv = xLc
       cv_grad = zero(SVector{N,T})
       cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(xUc,xLc) : x.Intv^c),x.cnst,x.IntvBox,x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad,x.Intv^c,x.cnst,x.IntvBox,x.xref)
     else
       dcv = (xU^c-xL^c)/(xU-xL) # function decreasing
       if (xU < x.cv)
@@ -169,7 +169,7 @@ function neg_powneg_odd(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
         cv_grad = zero(SVector{N,T})
       end
       cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(xUc,xLc) : x.Intv^c),x.cnst,x.IntvBox,x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, x.Intv^c,x.cnst,x.IntvBox,x.xref)
     end
   end
 end
@@ -231,7 +231,7 @@ function neg_powpos(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
     end
     cv_grad::SVector{N,T} =(min(zero(T),c*x.cc^(c-1)))*x.cc_grad
     cc_grad::SVector{N,T} = m*x.cv_grad
-    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(xUc,xLc) : x.Intv^c), x.cnst,x.IntvBox,x.xref)
+    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, x.Intv^c, x.cnst,x.IntvBox,x.xref)
   else
     xcvc::T = x.cv^c
     xccc::T = x.cc^c
@@ -251,7 +251,7 @@ function neg_powpos(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
       cc = xU
       cc_grad = zero(SVector{N,T})
       cv,cc,cv_grad,cc_grad = cut(xUc,xLc,cv,cc,cv_grad,cc_grad)
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(xUc,xLc) : x.Intv^c), x.cnst,x.IntvBox,x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, x.Intv^c, x.cnst,x.IntvBox,x.xref)
     else
       dcc = (xUc-xLc)/(xU-xL)
       if (xL < x.cv)
@@ -265,7 +265,7 @@ function neg_powpos(x::SMCg{N,V,T},c::Integer) where {N,V,T<:AbstractFloat}
         cc_grad = zero(SVector{N,T})
       end
       cv,cc,cv_grad,cc_grad = cut(xUc,xLc,cv,cc,cv_grad,cc_grad)
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, ((V<:AbstractMCInterval) ? V(xUc,xLc) : x.Intv^c), x.cnst, x.IntvBox, x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, x.Intv^c, x.cnst, x.IntvBox, x.xref)
     end
   end
 end

@@ -43,7 +43,7 @@ standard calculations. The fields are:
 * `IntvBox::Vector{V}`: Decision space constraints for the affine interval bound tightening
 * `xref::Vector{T}`: Reference point for affine interval bound tightening
 """
-struct SMCg{N,V,T<:AbstractFloat} <: Real
+struct SMCg{N,V<:AbstractInterval,T<:AbstractFloat} <: Real
   cc::T
   cv::T
   cc_grad::SVector{N,T}
@@ -55,19 +55,7 @@ struct SMCg{N,V,T<:AbstractFloat} <: Real
 
   function SMCg{N,V,T}(cc1::T,cv1::T,cc_grad1::SVector{N,T},cv_grad1::SVector{N,T},
                 Intv1::V,cnst1::Bool,Intv1Box::SVector{N,V},
-                xref1::SVector{N,T}) where {N,V,T<:AbstractFloat}
-    #=
-    can uncomment and enable for debugging.... really onlu useful then.....
-    if MC_param.valid_check
-      if ((cc1+MC_param.valid_tol)<cv1)
-        error("cc must be greater than or equal to cv. cc is $cc1. cv is $cv1")
-      elseif ((cc1-MC_param.valid_tol)>Intv1.hi)
-        error("cc must be less than or equal to upper interval bound. cc is $cc1. Intv.hi is $(Intv1.hi)")
-      elseif ((cv1+MC_param.valid_tol)<Intv1.lo)
-        error("cv must be greater than or equal to lower interval bound. cv is $cv1. cv is $(Intv1.lo)")
-      end
-    end
-    =#
+                xref1::SVector{N,T}) where {N,V<:AbstractInterval,T<:AbstractFloat}
     new(cc1,cv1,cc_grad1,cv_grad1,Intv1,cnst1,Intv1Box,xref1)
   end
 end
