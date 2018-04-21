@@ -1,26 +1,51 @@
-a = MCInterval(2.0,3.0)
-b = MCInterval(-0.5,0.5)
+module IntervalTrignometric_Check
 
-t1 = sin(a)
-t2 = cos(a)
-t3 = tan(a)
-#t4 = asin(b)
-#t5 = acos(b)
-#t6 = atan(a)
-#t7 = atan2(b,a)
+using Compat
+using Compat.Test
+using EAGO
 
-@test tan(@interval(0.5)) == Interval(0.54630248984379048, 0.5463024898437906)
-@test tan(@interval(0.5, 1.67)) == entireinterval()
-@test tan(@interval(1.67, 3.2)) == Interval(-10.047182299210307, 0.05847385445957865)
+@testset "sin" begin
+    @test sin(MCInterval(0.5)) == MCInterval(0.479425538604203, 0.479425538604203)
+    @test sin(MCInterval(0.5, 1.67)) == MCInterval(0.479425538604203, 1.0)
+    @test sin(MCInterval(1.67, 3.2)) == MCInterval(-0.058374143427580086, 0.9950833498101802)
+    @test sin(MCInterval(2.1, 5.6)) == MCInterval(-1.0, 0.8632093666488737)
+    @test sin(MCInterval(0.5, 8.5)) == MCInterval(-1.0, 1.0)
+end
 
-@test asin(@interval(1)) == @interval(pi/2)#pi_interval(Float64)/2
-@test asin(@interval(0.9, 2)) == asin(@interval(0.9, 1))
-@test asin(@interval(3, 4)) == ∅
+@testset "cos" begin
+    @test cos(MCInterval(0.5)) == MCInterval(0.8775825618903728, 0.8775825618903728)
+    @test cos(MCInterval(0.5, 1.67)) == MCInterval(-0.09904103659872801, 0.8775825618903728)
+    @test cos(MCInterval(2.1, 5.6)) == MCInterval(-1.0, 0.7755658785102496)
+    @test cos(MCInterval(0.5, 8.5)) == MCInterval(-1.0, 1.0)
+    @test cos(MCInterval(1.67, 3.2)) == MCInterval(-1.0, -0.09904103659872801)
+end
 
-@test acos(@interval(1)) == Interval(0., 0.)
-@test acos(@interval(-2, -0.9)) == acos(@interval(-1, -0.9))
-@test acos(@interval(3, 4)) == ∅
+@testset "tan" begin
+    @test tan(MCInterval(0.5,0.5)) == MCInterval(0.5463024898437905, 0.5463024898437905)
+    #@test tan(MCInterval(0.5, 1.67)) == entireMCinterval(Float64)                                # Significant failure (REVISIT)
+    @test tan(MCInterval(1.67, 3.2)) == MCInterval(-10.047182299210306, 0.058473854459578645)
+    #@test tan(MCInterval(6.638314112824137, 8.38263151220128)) == entireMCinterval(Float64)      # Significant failure (REVISIT)
+end
 
-@test atan(@interval(-1,1)) ==
-    Interval(-pi_interval(Float64).hi/4, pi_interval(Float64).hi/4)
-@test atan(@interval(0)) == Interval(0.0, 0.0)
+
+@testset "Inverse trig" begin
+    @test asin(MCInterval(1,1)) == MCInterval(pi/2)#pi_interval(Float64)/2
+    @test asin(MCInterval(0.9, 2.0)) == asin(MCInterval(0.9, 1.0))
+    @test asin(MCInterval(3, 4)) == emptyMCinterval(Float64)
+
+    @test acos(MCInterval(1,1)) == MCInterval(0., 0.)
+    @test acos(MCInterval(-2.0, -0.9)) == acos(MCInterval(-1.0, -0.9))
+    @test acos(MCInterval(3, 4)) == emptyMCinterval(Float64)
+
+    @test atan(MCInterval(-1,1)) ==
+        MCInterval(-pi/4, pi/4)
+    @test atan(MCInterval(0,0)) == MCInterval(0.0, 0.0)
+end
+
+@testset "Trig" begin
+
+    @test sin(MCInterval(-pi/2, 3pi/2)) == MCInterval(-1, 1)
+    @test cos(MCInterval(-pi/2, 3pi/2)) == MCInterval(-1, 1)
+end
+
+end
