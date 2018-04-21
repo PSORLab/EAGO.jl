@@ -2,7 +2,7 @@
 EAGO is an open-source development environment for **robust and global optimization** in Julia.
 
 
-| **Documentation**                                                               | **PackageEvaluator**                                            | ** Linux/OS **                                                                     | ** Windows 32/64 ** |
+| **Documentation**                                                               | **PackageEvaluator**                                            | **Linux/OS**                                                                     | **Windows 32/64** |
 |:-------------------------------------------------------------------------------:|:---------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
 | [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://matthewstuber.github.io/EAGO.jl/) | Coming Soon | [![Build Status](https://travis-ci.org/MatthewStuber/EAGO.jl.svg?branch=master)](https://travis-ci.org/MatthewStuber/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
 
