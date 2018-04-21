@@ -1,4 +1,4 @@
-
+#=
 struct Hybrid_Options{V,T}
     box::SVector{V}
     ref::SVector{T}
@@ -43,7 +43,7 @@ boxhi(x.HybridMC) = hi(x.box)
 function Tighten_Subgrad(x::HybridSMC{N,V,T}) where {N,V,T}
     xIntv = Intv(x)
     lower_cut::T = cc_grad(x)*(ref()-boxlo())
-    upper_cut::T = cv_grad(x)*(ref())-boxhi())
+    upper_cut::T = cv_grad(x)*(ref()-boxhi())
     if (lower_cut > xIntv.lo)
         if (upper_cut < xIntv.hi)
             return HybridSMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(lower_cut,upper_cut)))
@@ -58,3 +58,4 @@ function Tighten_Subgrad(x::HybridSMC{N,V,T}) where {N,V,T}
         end
     end
 end
+=#
