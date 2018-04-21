@@ -95,7 +95,7 @@ Generates the tape of the provided expression `exp::Expr` assuming the expressio
 depends on `nx::Int64` variables and has lower bounds `gL` and upper bounds `gU`.
 The variables in the expression must be off the form `x[1],...,x[nx]`.
 """
-function Generate_Tape(exp::Expr,nx::Int64,gL,gU,V)
+function Generate_Tape(exp::Expr,nx::Q,gL,gU,V) where {Q<:Integer}
 
   gL,gU = Float64(gL),Float64(gU)
 
@@ -127,7 +127,7 @@ depends on `nx::Int64` variables and has lower bounds `gL` and upper bounds `gU`
 The variables in the expression must be off the form `x[1],...,x[nx]`. Variables `x[nx+1]`
 to `x[end]` are fixed to the values in the `vals` array.
 """
-function Generate_Fixed_Tape(exp::Expr,nx::Int64,gL,gU,vals,V)
+function Generate_Fixed_Tape(exp::Expr,nx::Q,gL,gU,vals,V) where {Q<:Integer}
 
   gL,gU = Float64(gL),Float64(gU)
 
@@ -159,7 +159,7 @@ Generates the tape list for each provided expression `exprs[i]` in
 and has lower bounds `gL[i]` and upper bounds `gU[i]`. The variables in the
 expression must be off the form `x[1],...,x[nx]`.
 """
-function Generate_TapeList(exprs::Vector{Expr},nx::Int64,gL::Vector{Float64},gU::Vector{Float64},V)
+function Generate_TapeList(exprs::Vector{Expr},nx::Q,gL::Vector{Float64},gU::Vector{Float64},V) where {Q<:Integer}
   @assert length(exprs) == length(gL) == length(gU)
   tapelist = []
   for i=1:length(exprs)
@@ -177,8 +177,8 @@ and has lower bounds `gL[i]` and upper bounds `gU[i]`. The variables in the
 expression must be off the form `x[1],...,x[nx]`. Variables `x[nx+1]`
 to `x[end]` are fixed to the values in the `vals` array.
 """
-function Generate_Fixed_TapeList(exprs::Vector{Expr},nx::Int64,gL::Vector{Float64},
-                                 gU::Vector{Float64},val_arr,V)
+function Generate_Fixed_TapeList(exprs::Vector{Expr},nx::Q,gL::Vector{Float64},
+                                 gU::Vector{Float64},val_arr,V) where {Q<:Integer}
   @assert length(exprs) == length(gL) == length(gU)
   tapelist = []
   for i=1:length(exprs)
@@ -328,7 +328,7 @@ end
 Generates the directed graph of expression `expr` using the root_list corresponding
 to the indices of `x[i]` that appear in the expression.
 """
-function getDAG(expr::Expr,root_list::Vector{Int64},V)
+function getDAG(expr::Expr,root_list::Vector{Q},V) where {Q<:Integer}
   # generates tape
   tape = Generate_Tape(expr,maximum(root_list),0.0,0.0,V)
 
