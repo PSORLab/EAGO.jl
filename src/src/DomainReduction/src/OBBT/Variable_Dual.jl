@@ -77,7 +77,7 @@ function Variable_DR_Imp!(X::Vector{Interval{Float64}},
                       mult_hi::Vector{Float64},
                       LBD::Float64,
                       UBD::Float64,
-                      nx::Int64)
+                      nx::Q) where {Q<:Integer}
 
   lower_cut::Float64 = 0.0
   upper_cut::Float64 = 0.0
@@ -102,7 +102,7 @@ function Variable_DR_Imp!(X::Vector{MCInterval{Float64}},
                       mult_hi::Vector{Float64},
                       LBD::Float64,
                       UBD::Float64,
-                      nx::Int64)
+                      nx::Q) where {Q<:Integer}
 
   lower_cut::Float64 = 0.0
   upper_cut::Float64 = 0.0
