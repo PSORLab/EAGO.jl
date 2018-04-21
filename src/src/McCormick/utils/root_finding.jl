@@ -91,8 +91,8 @@ are the function `f` evaluated at `a`,`b`, and `c` respectively. The inputs
 `envp1` and `envp2` are the envelope calculation parameters. The value `init` is
 the iteration number of the golden section method.
 """
-@inline function golden_section_it(init::Int64,a::T,fa::T,b::T,fb::T,c::T,
-                                   fc::T,f::Function,envp1::T,envp2::T) where {T<:Real}
+@inline function golden_section_it(init::Q,a::T,fa::T,b::T,fb::T,c::T,
+                                   fc::T,f::Function,envp1::T,envp2::T) where {Q<:Integer,T<:Real}
   b_t_x::Bool = (c-b > b-a)
   if (b_t_x)
     x::T = b + (2.0-golden)*(c-b)
