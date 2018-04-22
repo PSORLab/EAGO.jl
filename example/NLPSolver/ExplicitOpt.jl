@@ -137,7 +137,7 @@ jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Diff2-MV-OFF",
 @NLobjective(jumpmodel4, Min, x*y)
 status2 = solve(jumpmodel4)
 =#
-
+#=
 println("Test Problem 5 (Mult):")
 jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
                                          LBDsolvertype = "LP",
@@ -150,8 +150,36 @@ jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
 @constraint(jumpmodel4, -500 <= x+2y <= 400)
 @NLobjective(jumpmodel4, Min, x*y)
 status2 = solve(jumpmodel4)
+=#
 
+jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                         LBDsolvertype = "LP",
+                                         probe_depth = -1,
+                                         variable_depth = 1000,
+                                         DAG_depth = -1,
+                                         STD_RR_depth = -1))
+@variable(jumpmodel4, -200 <= x <= -100)
+@variable(jumpmodel4, 200 <= y <= 400)
+@constraint(jumpmodel4, -500 <= x+2y <= 400)
+@NLobjective(jumpmodel4, Min, x*y)
+status4 = solve(jumpmodel4)
+objval4 = getobjectivevalue(jumpmodel4)
+Xval4 = getvalue(x)
+Yval4 = getvalue(y)
 
+jumpmodel6 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                         LBDsolvertype = "LP",
+                                         probe_depth = -1,
+                                         variable_depth = 1000,
+                                         DAG_depth = -1,
+                                         STD_RR_depth = -1))
+@variable(jumpmodel6, -5 <= x1 <= 5)
+@variable(jumpmodel6, -5 <= y1 <= 5)
+@NLobjective(jumpmodel6, Min, 2*x1^2-1.05*x1^4+(x1^6)/6+x1*y1+y1^2)
+status6 = solve(jumpmodel6)
+objval6 = getobjectivevalue(jumpmodel6)
+Xval6 = getvalue(x1)
+Yval6 = getvalue(y1)
 #=
 println("Test Problem 6 (Matyas):")
 jumpmodel5 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",

@@ -81,7 +81,11 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
              end
          end
          if (m.Opts.solver.DAG_depth>0)
-             m.Opts.DAG_tlist = Generate_TapeList(expr_Array,nvar,gL,gU)
+             if (m.Opts.solver.validated)
+                 m.Opts.DAG_tlist = Generate_TapeList(expr_Array,nvar,gL,gU,Interval{Float64})
+             else
+                 m.Opts.DAG_tlist = Generate_TapeList(expr_Array,nvar,gL,gU,MCInterval{Float64})
+             end
          end
 
          # sets implicit function values as appropriate

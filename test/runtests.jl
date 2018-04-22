@@ -25,6 +25,7 @@ include("DomainReduction/runtests.jl")
 println("TESTING DOMAIN REDUCTION COMPLETE.")
 
 println("BEGIN TESTING NLP SOLVER")
+include("NLPSolver/ExplicitOpt.jl")
 println("END TESTING NLP SOLVER")
 
 println("BEGIN TESTING SIP SOLVER")
