@@ -62,7 +62,7 @@ using MathProgBase
 
   end
 
-
+#=
  @testset "JuMP Interface Explicit (SNOPT)" begin
 
     jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Diff1-MV-OFF",
@@ -83,6 +83,8 @@ using MathProgBase
     @test isapprox(getobjectivevalue(jumpmodel4),-60000.00119999499,atol=2.0)
 
     end
+=#
+
     #=
 @testset "JuMP Interface Explicit (SNOPT)" begin
 jumpmodel5 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Diff1-MV-OFF",
