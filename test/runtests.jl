@@ -4,7 +4,7 @@ using EAGO
 
 println("BEGIN TESTING INTERVAL LIBRARY...")
 println("Testing Arithmetic...")
-t = @elapsed include("Interval/arithmetic_test.jl")
+t = @elapsed include("Interval/runtests.jl")
 println("done (took $t seconds).")
 println("TEST INTERVAL LIBRARY COMPLETE.")
 

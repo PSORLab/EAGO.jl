@@ -349,10 +349,67 @@ out = log10(X*Y)
 @test about(out.Intv.lo,0.954242,1E-5)
 @test about(out.Intv.hi,1.79935,1E-5)
 
+a = seed_g(Float64,1,2)
+b = seed_g(Float64,2,2)
+xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
+mBox = mid.(xIBox)
+X = SMCg{2,Interval{Float64},Float64}(4.0,4.0,a,a,xIBox[1],false,xIBox,mBox)
+Y = SMCg{2,Interval{Float64},Float64}(7.0,7.0,b,b,xIBox[2],false,xIBox,mBox)
+out = abs(X*Y)
+@test about(out.cc,30.0,1E-7)
+@test about(out.cv,24.0,1E-7)
+@test about(out.cc_grad[1],9.0,1E-5)
+@test about(out.cc_grad[2],3.0,1E-5)
+@test about(out.cv_grad[1],3.0,1E-5)
+@test about(out.cv_grad[2],3.0,1E-5)
+@test about(out.Intv.lo,9.0,1E-5)
+@test about(out.Intv.hi,63.0,1E-5)
+
+out9 = acosh(X)
+@test about(out9.cc,2.0634370688955608,1E-5)
+@test about(out9.cv,1.9805393289917226,1E-5)
+@test about(out9.cc_grad[1],0.258199,1E-5)
+@test about(out9.cc_grad[2],0.0,1E-5)
+@test about(out9.cv_grad[1],0.217792,1E-5)
+@test about(out9.cv_grad[2],0.0,1E-5)
+@test about(out9.Intv.lo,1.76274,1E-5)
+@test about(out9.Intv.hi,2.63392,1E-5)
+
+out8 = cosh(X)
+@test about(out8.cc,144.63000528563632,1E-5)
+@test about(out8.cv,27.308232836016487,1E-5)
+@test about(out8.cc_grad[1],134.562,1E-2)
+@test about(out8.cc_grad[2],0.0,1E-5)
+@test about(out8.cv_grad[1],-27.2899,1E-3)
+@test about(out8.cv_grad[2],0.0,1E-5)
+@test about(out8.Intv.lo,10.0676,1E-3)
+@test about(out8.Intv.hi,548.318,1E-3)
+
 
 ################################################################################
 ######################## Tests Smooth McCormick Relaxations ##################
 ################################################################################
+
+@testset "Cosh" begin
+EAGO.set_diff_relax(1)
+xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
+mBox = mid.(xIBox)
+X = SMCg{2,Interval{Float64},Float64}(4.0,4.0,a,a,xIBox[1],false,xIBox,mBox)
+Y = SMCg{2,Interval{Float64},Float64}(7.0,7.0,b,b,xIBox[2],false,xIBox,mBox)
+Xn = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,-xIBox[1],false,xIBox,mBox)
+Xz = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,Interval(-3.0,1.0),false,xIBox,mBox)
+
+out8 = cosh(X)
+@test about(out8.cc,144.63000528563632,1E-5)
+@test about(out8.cv,27.308232836016487,1E-5)
+@test about(out8.cc_grad[1],134.562,1E-2)
+@test about(out8.cc_grad[2],0.0,1E-5)
+@test about(out8.cv_grad[1],-27.2899,1E-3)
+@test about(out8.cv_grad[2],0.0,1E-5)
+@test about(out8.Intv.lo,10.0676,1E-3)
+@test about(out8.Intv.hi,548.318,1E-3)
+end
+
 
 EAGO.set_diff_relax(1)
 a = seed_g(Float64,1,2)
@@ -839,5 +896,22 @@ out4b = pow(Xz,4)
 @test about(out4b.cv_grad[2],0.0,1E-5)
 @test about(out4b.Intv.lo,0.0,1E-5)
 @test about(out4b.Intv.hi,81.0,1E-5)
+
+######## tests exponent on product ######
+a = seed_g(Float64,1,2)
+b = seed_g(Float64,2,2)
+xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(-5.0,-3.0)])
+mBox = mid.(xIBox)
+X = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,xIBox[1],false,xIBox,mBox)
+Y = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,b,b,xIBox[2],false,xIBox,mBox)
+out = exp(X*Y)
+@test about(out.cc,2.995913476565572e6,1E-1)
+@test about(out.cv,123.8260243522587,1E-1)
+@test about(out.cc_grad[1],-3.47558e5,1E1)
+@test about(out.cc_grad[2],-80639.4,1E1)
+@test about(out.cv_grad[1],-542.687,1E-1)
+@test about(out.cv_grad[2],-103.9259,1E-1)
+@test about(out.Intv.lo,2.06115e-09,1E-1)
+@test about(out.Intv.hi,3.36564e+06,1E1)
 
 end

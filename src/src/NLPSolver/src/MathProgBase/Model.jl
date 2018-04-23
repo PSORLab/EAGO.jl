@@ -1,15 +1,3 @@
-type ImplicitModel
-    f::Function
-    g::Function
-    h::Function
-    hj::Function
-    nx::Int64
-    Imp_RR_depth::Int64
-    Imp_probe_depth::Int64
-end
-ImplicitModel() = ImplicitModel(x->x,x->x,x->x,x->x,0,-1,-1)
-
-
 """
     EAGO_Inner_NLP
 
@@ -30,7 +18,6 @@ Effectively empty when initialized. It has the following fields:
 * `f::Function`: Objective function
 * `g::Function`: Constraint function
 * `solver::EAGO_NLPSolver`: Solve storage object
-* `impmod::ImplicitModel`: Implicit model storage object (not currently used)
 """
 type EAGO_Inner_NLP
     gL::Vector{Float64}
@@ -48,7 +35,6 @@ type EAGO_Inner_NLP
     f::Function
     g::Function
     solver::EAGO_NLPSolver
-    impmod::ImplicitModel
     UBDmodel
     validated
     d
@@ -68,7 +54,6 @@ EAGO_Inner_NLP(s::EAGO_NLPSolver) = EAGO_Inner_NLP([0.0],
                                                     x -> x,
                                                     x -> x,
                                                     s,
-                                                    ImplicitModel(),
                                                     [],
                                                     false,
                                                     nothing)
