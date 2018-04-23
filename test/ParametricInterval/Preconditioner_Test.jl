@@ -20,4 +20,13 @@ opt2 = PIntvParams(:XYZYZYYA,:Newton,1E-30,1E-6,Int64(2),Int64(2),100)
 @test_throws ErrorException EAGO.Precondition(h,hj,X,P,opt2)
 end
 
+@testset "Preconditioner Utilities" begin
+A = speye(spzeros(Float64,9,9))
+A[2,3] = 2.1
+A[8,7] = 3.1
+kl,ku = EAGO.SparseBandwidth(A)
+@test kl == 1
+@test ku == 1
+end
+
 end

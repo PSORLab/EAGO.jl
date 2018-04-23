@@ -114,7 +114,7 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
     if (INNg1+SIPopt.inn_tol<=0)
       xstar = xbar
       UBDg = LBDg
-      return LBDg,UBDg
+      return LBDg,UBDg,sip_sto
     else
       push!(P_LBD,pbar)
     end

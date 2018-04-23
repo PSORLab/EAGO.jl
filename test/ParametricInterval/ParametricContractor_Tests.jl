@@ -95,4 +95,22 @@ newtonGS8 = Param_Intv_Contractor(h2,hj2,Z3c,P2,Eflag,Iflag,eDflag,opt1a)
 @test newtonGS8[4] == false
 @test newtonGS8[5] == false
 
+@testset "Test Contractor Warnings" begin
+opt3a = PIntvParams(:asdada,:Krawczyk,1E-30,1E-6,1,1,100)
+opt3b = PIntvParams(:asdada,:Newton,1E-30,1E-6,1,1,100)
+opt3c = PIntvParams(:asdada,:asdasdasd,1E-30,1E-6,1,1,100)
+
+P1 = [Interval(5.0,7.0),Interval(5.0,7.0)]
+Z1 = [Interval(-1.5, 0.0),Interval(0.0, 0.5)]
+h1(z,p) = [z[1]^2+z[2]^2+p[1]*z[1]+4;
+           z[1]+p[2]*z[2]]
+hj1(z,p) = [(2*z[1]+p[1]) (2*z[2]);
+              1              p[2]]
+Eflag = false
+Iflag = false
+eDflag = false
+@test_throws ErrorException Param_Intv_Contractor(h1,hj1,Z1,P1,Eflag,Iflag,eDflag,opt3a)
+@test_throws ErrorException Param_Intv_Contractor(h1,hj1,Z1,P1,Eflag,Iflag,eDflag,opt3b)
+@test_throws ErrorException Param_Intv_Contractor(h1,hj1,Z1,P1,Eflag,Iflag,eDflag,opt3c)
+end
 end

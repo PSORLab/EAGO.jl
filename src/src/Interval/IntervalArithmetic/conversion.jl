@@ -84,7 +84,7 @@ function min(a::MCInterval{T}, b::T) where {T<:AbstractFloat}
     MCInterval{T}( min(a.lo, b), min(a.hi, b))
 end
 function min(b::T, a::MCInterval{T}) where {T<:AbstractFloat}
-    (isempty(a)) && return emptyinterval(T)
+    (isempty(a)) && return emptyMCinterval(T)
     MCInterval{T}( min(a.lo, b), min(a.hi, b))
 end
 min(a::MCInterval{T}, b::S) where {S<:AbstractFloat,T<:AbstractFloat} = min(a,convert(T,b))

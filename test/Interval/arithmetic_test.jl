@@ -51,6 +51,9 @@ end
     @test 3.0 - x == MCInterval(1.0, 2.0)
     @test 3.1 - x == MCInterval(1.1, 2.1)
     @test 0.1 * MCInterval(1.0, 1.0) == MCInterval(0.1, 0.1)
+    @test (-0.1) * MCInterval(1.0, 1.0) == MCInterval(-0.1, -0.1)
+    @test MCInterval(1.0, 1.0) * 0.1 == MCInterval(0.1, 0.1)
+    @test MCInterval(1.0, 1.0) * 1 == MCInterval(1.0, 1.0)
     @test MCInterval(1.0, 1.0) / 10.0 == MCInterval(0.1, 0.1)
 end
 
@@ -90,6 +93,24 @@ maxe = max(xe,2.0)
 @test minf == MCInterval(1.0,2.0)
 @test maxf == MCInterval(2.0,3.0)
 
+xf = MCInterval(1.0,3.0)
+xe = emptyMCinterval(Float64)
+
+minf = min(2.0,xf)
+mine = min(2.0,xe)
+maxf = max(2.0,xf)
+maxe = max(2.0,xe)
+
+@test mine == xe
+@test maxe == xe
+@test minf == MCInterval(1.0,2.0)
+@test maxf == MCInterval(2.0,3.0)
+
+@test inf(xf) == 1.0
+@test sup(xf) == 3.0
+@test real(xf) == xf
+@test abs(xf) == xf
+@test abs(-xf) == xf
 end
 
 #=

@@ -6,6 +6,31 @@ using IntervalArithmetic
 using EAGO
 
 # Tests strict inclusion procedure for interval vectors
+@testset "Strictly In" begin
+Y = [Interval(0,5),Interval(0,5),Interval(0,5)]
+X1 = [Interval(1,2),Interval(1,2),Interval(1,2)]
+X2 = [Interval(1,2),Interval(-10,10),Interval(1,2)]
+X3 = [Interval(1,2),Interval(1,2),Interval(0,5)]
+flag1 = EAGO.Strict_XinY(X1,Y)
+flag2 = EAGO.Strict_XinY(X2,Y)
+flag3 = EAGO.Strict_XinY(X3,Y)
+@test flag1 == true
+@test flag2 == false
+@test flag3 == false
+
+Y = [MCInterval(0,5),MCInterval(0,5),MCInterval(0,5)]
+X1 = [MCInterval(1,2),MCInterval(1,2),MCInterval(1,2)]
+X2 = [MCInterval(1,2),MCInterval(-10,10),MCInterval(1,2)]
+X3 = [MCInterval(1,2),MCInterval(1,2),MCInterval(0,5)]
+flag1 = EAGO.Strict_XinY(X1,Y)
+flag2 = EAGO.Strict_XinY(X2,Y)
+flag3 = EAGO.Strict_XinY(X3,Y)
+@test flag1 == true
+@test flag2 == false
+@test flag3 == false
+
+end
+
 Y = [Interval(0,5),Interval(0,5),Interval(0,5)]
 X1 = [Interval(1,2),Interval(1,2),Interval(1,2)]
 X2 = [Interval(1,2),Interval(-10,10),Interval(1,2)]

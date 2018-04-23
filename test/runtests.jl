@@ -3,9 +3,7 @@
 using EAGO
 
 println("BEGIN TESTING INTERVAL LIBRARY...")
-println("Testing Arithmetic...")
 t = @elapsed include("Interval/runtests.jl")
-println("done (took $t seconds).")
 println("TEST INTERVAL LIBRARY COMPLETE.")
 
 println("BEGIN TESTING BRANCH AND BOUND LIBRARY...")
@@ -29,4 +27,5 @@ include("NLPSolver/ExplicitOpt.jl")
 println("END TESTING NLP SOLVER")
 
 println("BEGIN TESTING SIP SOLVER")
+include("SemiInfinite/runtests.jl")
 println("END TESTING SIP SOLVER")

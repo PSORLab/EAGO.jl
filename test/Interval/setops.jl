@@ -67,4 +67,13 @@ z = MCInterval(1.0,1.0)
 @test EAGO.entireinterval(Float64,Interval{Float64}) == IntervalArithmetic.entireinterval(Float64)
 end
 
+@testset "Precedes" begin
+y = MCInterval(1.0,2.0)
+z = MCInterval(4.0,5.0)
+@test precedes(y,z)
+@test ~precedes(z,y)
+@test strictprecedes(y,z)
+@test ~strictprecedes(z,y)
+end
+
 end
