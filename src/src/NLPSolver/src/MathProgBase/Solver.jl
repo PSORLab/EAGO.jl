@@ -77,22 +77,22 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
     PSmcOpt::mc_opts
     PIntOpt::PIntvParams
 
-    Imp_f::Function
-    Imp_g::Function
-    Imp_h::Function
-    Imp_hj::Function
+    Imp_f::Function    # Move to model
+    Imp_g::Function    # Move to model
+    Imp_h::Function    # Move to model
+    Imp_hj::Function   # Move to model
 
-    Imp_nx::Int64
-    Imp_np::Int64
+    Imp_nx::Int64      # Move to model
+    Imp_np::Int64      # Move to model
 
     Imp_RR_depth::Int64
     Imp_probe_depth::Int64
-    Imp_nCons::Int64
+    Imp_nCons::Int64   # Move to model
 
-    Imp_gL_Loc::Vector{Int64}
-    Imp_gU_Loc::Vector{Int64}
-    Imp_gL::Vector{Float64}
-    Imp_gU::Vector{Float64}
+    Imp_gL_Loc::Vector{Int64} # Move to model
+    Imp_gU_Loc::Vector{Int64} # Move to model
+    Imp_gL::Vector{Float64}   # Move to model
+    Imp_gU::Vector{Float64}   # Move to model
 
 end
 

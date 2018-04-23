@@ -334,6 +334,7 @@ function plus_xyT!(m,n,X,Y,incx,incy,A)
      end
 end
 =#
+#=
 """
 N - matrix order
 K - number of superdiagonals
@@ -433,3 +434,4 @@ function DenseBand_Precondition!(H::Union{Array{Th,2},Vector{Th}},
         A_ldivB!(J,F,J)
     end
 end
+=#

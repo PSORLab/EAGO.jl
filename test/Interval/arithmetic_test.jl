@@ -77,6 +77,20 @@ end
     @test log10(MCInterval(0.01, 0.1)) == MCInterval(log10(0.01), log10(0.1))
 end
 
+@testset "Min/Max" begin
+xf = MCInterval(1.0,3.0)
+xe = emptyMCinterval(Float64)
+minf = min(xf,2.0)
+mine = min(xe,2.0)
+maxf = max(xf,2.0)
+maxe = max(xe,2.0)
+
+@test mine == xe
+@test maxe == xe
+@test minf == MCInterval(1.0,2.0)
+@test maxf == MCInterval(2.0,3.0)
+
+end
 
 #=
 t1 = zero(a)
