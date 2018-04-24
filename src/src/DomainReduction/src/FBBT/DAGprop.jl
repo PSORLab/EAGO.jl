@@ -76,8 +76,8 @@ Tape() = Tape(MCInterval{Float64})
 A storage object for a list of tapes. Has a single field sto which is an array
 of Tape objects.
 """
-immutable TapeList{V}
-  sto::Any
+mutable struct TapeList
+  sto
 end
 
 """
@@ -85,8 +85,7 @@ end
 
 Initializes an empty tapelist object
 """
-TapeList(::Type{V}) where {V} = TapeList{V}([Tape(V)])
-TapeList() = TapeList{MCInterval{Float64}}([Tape()])
+TapeList() = TapeList([])
 
 """
     Generate_Tape(exp::Expr,nx::Int64,gL,gU)
@@ -161,7 +160,7 @@ expression must be off the form `x[1],...,x[nx]`.
 """
 function Generate_TapeList(exprs::Vector{Expr},nx::Q,gL::Vector{Float64},gU::Vector{Float64},V) where {Q<:Integer}
   @assert length(exprs) == length(gL) == length(gU)
-  tapelist = []
+  tapelist = Tape[]
   for i=1:length(exprs)
     push!(tapelist,Generate_Tape(exprs[i],nx,gL[i],gU[i],V))
   end
@@ -186,7 +185,7 @@ function Generate_Fixed_TapeList(exprs::Vector{Expr},nx::Q,gL::Vector{Float64},
           push!(tapelist,Generate_Fixed_Tape(exprs[i],nx,gL[i],gU[i],val_arr[j],V))
       end
   end
-  return TapeList{V}(tapelist)
+  return TapeList(tapelist)
 end
 
 """
@@ -203,7 +202,7 @@ end
 Sets the terminal interval to `[x.gL[i],x.gU[i]]`  in each tape using the bounds
 in the `x::TapeList[i]`.
 """
-function SetConstraintNode!(x::TapeList{V}) where {V}
+function SetConstraintNode!(x::TapeList)
   for i=1:length(x.sto)
     SetConstraintNode!(x.sto[i])
   end
@@ -225,7 +224,7 @@ end
 Sets nodes in constaint value list of tape according to their value for
 each tape in the tape list.
 """
-function SetConstantNode!(x::TapeList{V}) where {V}
+function SetConstantNode!(x::TapeList)
   for i=1:length(x.sto)
     SetConstantNode!(x.sto[i])
   end
@@ -246,7 +245,7 @@ end
 Sets variable nodes to the interval value in `X::Vector{Interval}` for all
 elements of the TapeList.
 """
-function SetVarBounds!(x::TapeList{V},X::Vector{V}) where {V}
+function SetVarBounds!(x::TapeList,X::Vector{V}) where {V}
   for i=1:length(x)
     SetVarBounds!(x.sto[i],X)
   end
@@ -303,7 +302,7 @@ end
 Performs a forward-interval contactor propagation `r` times using the `x::TapeList`
 and the initial interval bounds `X::Vector{Interval{T}}`.
 """
-function DAGContractor!(X::Vector{V},x::TapeList{V},r) where {V}
+function DAGContractor!(X::Vector{V},x::TapeList,r) where {V}
   Xprev::Vector{V} = copy(X) # sets variable bounds on first Array to Box Bounds
   SetConstraintNode!(x)
   for i=1:r

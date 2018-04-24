@@ -80,10 +80,14 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
                       push!(expr_Array,m.Opts.constrs[i].args[3])
              end
          end
+         isempty(expr_Array) && (m.Opts.solver.DAG_depth = -1)
+
          if (m.Opts.solver.DAG_depth>0)
              if (m.Opts.solver.validated)
+                 Generate_TapeList(expr_Array,nvar,gL,gU,Interval{Float64})
                  m.Opts.DAG_tlist = Generate_TapeList(expr_Array,nvar,gL,gU,Interval{Float64})
              else
+                 Generate_TapeList(expr_Array,nvar,gL,gU,MCInterval{Float64})
                  m.Opts.DAG_tlist = Generate_TapeList(expr_Array,nvar,gL,gU,MCInterval{Float64})
              end
          end

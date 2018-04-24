@@ -1,3 +1,4 @@
+#=
 function Quadratic_ObjCV_Callback(x::Vector{Float64},X::Vector{Interval{Float64}},opt,a::Vector{Float64})
             x_SMC::Vector{SMC} = [SMC(x[i],x[i],X[i]) for i=1:opt.numVar]
             y::SMC = opt.f(x_SMC-a)
@@ -64,3 +65,4 @@ function Quadratic_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opt,UBD:
 
             return val, pnt, feas, X, temp
 end
+=#

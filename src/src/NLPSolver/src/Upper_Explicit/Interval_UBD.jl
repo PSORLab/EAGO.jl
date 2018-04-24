@@ -14,28 +14,14 @@ Returns a tuple `(val,pnt,feas,X,[feas,val])` where
                           solution of the upper bound problem.
 * `feas::Bool`: Returns true if the problem is feasible and false if it is infeasible
 """
-function Interval_UBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opt,temp)
+function Interval_UBD(X::Vector{V},k::Int,pos::Int,opt,temp) where {V<:AbstractInterval}
 
       # solve optimization problem via interval extension
       feas = true
-      FInt::Interval = opt[1].f(X)
-      if (opt[1].numConstr < 1)
-      else
-          GInt::Vector{Interval} = opt[1].g(X)
-          cInt::Vector{Interval{Float64}} = vcat(GInt[opt[1].gU_loc]-opt[1].gU[opt[1].gU_loc],-GInt[opt[1].gL_loc]+opt[1].gL[opt[1].gL_loc])
-          if (opt[1].numConstr < 1)
-          else
-            for i=1:opt[1].numConstr
-                if (cInt[i].lo>0.0)
-                    feas = false
-                    break
-                end
-            end
-          end
-      end
-      val::Float64 = FInt.hi
       pnt::Vector{Float64} = mid.(X)
+      FInt::V = opt[1].f(V.(pnt))
+      val::Float64 = FInt.hi
+      (opt[1].numConstr > 0) && error("Problem must be unconstrained for interval-midpoint upper bound.")
 
-       # output
       return val, pnt, feas, Any[feas,val]
 end

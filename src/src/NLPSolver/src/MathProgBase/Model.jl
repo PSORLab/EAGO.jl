@@ -31,12 +31,23 @@ type EAGO_Inner_NLP
     sense::Symbol
     obj::Expr
     constrs::Vector{Expr}
-    DAG_tlist::TapeList
+    DAG_tlist#::TapeList
     f::Function
     g::Function
     solver::EAGO_NLPSolver
     UBDmodel
-    validated
+    validated::Bool
+    Imp_f::Function
+    Imp_g::Function
+    Imp_h::Function
+    Imp_hj::Function
+    Imp_nx::Int64
+    Imp_np::Int64
+    Imp_gL_Loc::Vector{Int64}
+    Imp_gU_Loc::Vector{Int64}
+    Imp_gL::Vector{Float64}
+    Imp_gU::Vector{Float64}
+    Imp_nCons::Int64
     d
 end
 EAGO_Inner_NLP(s::EAGO_NLPSolver) = EAGO_Inner_NLP([0.0],
@@ -50,12 +61,23 @@ EAGO_Inner_NLP(s::EAGO_NLPSolver) = EAGO_Inner_NLP([0.0],
                                                     Symbol(),
                                                     Expr(:call),
                                                     Expr[],
-                                                    TapeList(),
+                                                    nothing,#TapeList(),
                                                     x -> x,
                                                     x -> x,
                                                     s,
                                                     [],
                                                     false,
+                                                    x->x,
+                                                    x->x,
+                                                    x->x,
+                                                    x->x,
+                                                    Int64(0),
+                                                    Int64(0),
+                                                    [Int64(0)],
+                                                    [Int64(0)],
+                                                    [Float64(0)],
+                                                    [Float64(0)],
+                                                    Int64(0),
                                                     nothing)
 
 """

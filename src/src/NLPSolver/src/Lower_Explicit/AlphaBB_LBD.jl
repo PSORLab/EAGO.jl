@@ -1,3 +1,4 @@
+#=
 function aBB_IPOPT_LBD_eval_h(x::Vector{Float64},
                               X::Vector{Interval{Float64}},
                               mode::Symbol,
@@ -112,3 +113,4 @@ function AlphaBB_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opt,UBD::F
     # Formats output and returns appropriate values
     return val, pnt, feas, X, []
 end
+=#

@@ -77,23 +77,8 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
     PSmcOpt::mc_opts
     PIntOpt::PIntvParams
 
-    Imp_f::Function    # Move to model
-    Imp_g::Function    # Move to model
-    Imp_h::Function    # Move to model
-    Imp_hj::Function   # Move to model
-
-    Imp_nx::Int64      # Move to model
-    Imp_np::Int64      # Move to model
-
     Imp_RR_depth::Int64
     Imp_probe_depth::Int64
-    Imp_nCons::Int64   # Move to model
-
-    Imp_gL_Loc::Vector{Int64} # Move to model
-    Imp_gU_Loc::Vector{Int64} # Move to model
-    Imp_gL::Vector{Float64}   # Move to model
-    Imp_gU::Vector{Float64}   # Move to model
-
 end
 
 function EAGO_NLPSolver(;
@@ -133,23 +118,8 @@ function EAGO_NLPSolver(;
     ImplicitFlag = false,
     PSmcOpt = mc_opts(),
     PIntOpt = PIntvParams(0,0),
-
-    Imp_f = x->x,
-    Imp_g = x->x,
-    Imp_h = x->x,
-    Imp_hj = x->x,
-
-    Imp_nx = Int64(0),
-    Imp_np = Int64(0),
-
-    Imp_RR_depth = Int64(0),
-    Imp_probe_depth = Int64(0),
-    Imp_nCons = Int64(0),
-
-    Imp_gL_Loc = [Int64(0)],
-    Imp_gU_Loc = [Int64(0)],
-    Imp_gL = [Float64(0)],
-    Imp_gU = [Float64(0)])
+    Imp_RR_depth = -1,
+    Imp_probe_depth= -1)
 
     set_to_default!(BnBobject)
     set_Verbosity!(BnBobject,verbosity)
@@ -166,10 +136,8 @@ function EAGO_NLPSolver(;
                                 max_reduce_rept, tol_reduce_rept,
                                 atol, rtol, verbosity,
                                 iter_limit, node_limit, UBDsolver, validated,
-                                ImplicitFlag, PSmcOpt, PIntOpt, Imp_f, Imp_g,
-                                Imp_h, Imp_hj, Imp_nx, Imp_np, Imp_RR_depth,
-                                Imp_probe_depth, Imp_nCons, Imp_gL_Loc,
-                                Imp_gU_Loc, Imp_gL, Imp_gU)
+                                ImplicitFlag, PSmcOpt, PIntOpt, Imp_RR_depth,
+                                Imp_probe_depth)
 
     #Solver_Relax_Valid_LBD!(nlp_solver)
     #Solver_Relax_Valid_UBD!(nlp_solver)

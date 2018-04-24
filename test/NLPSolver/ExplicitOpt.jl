@@ -14,7 +14,7 @@ using MathProgBase
                                            probe_depth = -1,
                                            variable_depth = 1000,
                                            DAG_depth = -1,
-                                           STD_RR_depth = -1))
+                                           STD_RR_depth = 10))
   @variable(jumpmodel4, -200 <= x <= -100)
   @variable(jumpmodel4, 200 <= y <= 400)
   @constraint(jumpmodel4, -500 <= x+2y <= 400)
@@ -48,7 +48,7 @@ using MathProgBase
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = 1000,
-                                         DAG_depth = -1,
+                                         DAG_depth = 10,
                                          STD_RR_depth = -1))
   @variable(jumpmodel6, -5 <= x1 <= 5)
   @variable(jumpmodel6, -5 <= y1 <= 5)

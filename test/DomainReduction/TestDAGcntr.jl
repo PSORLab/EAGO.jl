@@ -7,7 +7,7 @@ using EAGO
 
 single_expr = :(x[1]+x[2]^2-exp(x[1]))
 tape_out = Generate_Tape(single_expr,2,-2,4,Interval{Float64})
-dag_out = getDAG(single_expr,[1,2],Interval{Float64})
+dag_out = EAGO.getDAG(single_expr,[1,2],Interval{Float64})
 @test dag_out[1] == Int64[1; 2; 3; 4; 5; 6; 7]
 @test dag_out[3][4] == Int64[4; 5]
 

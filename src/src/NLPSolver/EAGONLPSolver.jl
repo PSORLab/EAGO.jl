@@ -25,7 +25,6 @@ include("src/Lower_Implicit/LP_Relax_LBD_Imp.jl")
 include("src/Lower_Implicit/SNOPT_LBD_Imp.jl")
 
 include("src/Upper_Explicit/Interval_UBD.jl")
-include("src/Upper_Explicit/LP_Relax_UBD.jl")
 include("src/Upper_Explicit/Ipopt_UBD.jl")
 include("src/Upper_Explicit/SNOPT_UBD.jl")
 include("src/Upper_Explicit/NLPSolve_UBD.jl")
