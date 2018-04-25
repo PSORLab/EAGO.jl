@@ -17,16 +17,15 @@ Returns a tuple (val,pnt,feas,X,[]) where
                 infeasible
 * `[]`:        The last element of the tuple is currently unused for this option.
 """
-function Interval_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,
-                      opt,UBD)
+function Interval_LBD(X::Vector{Q},k::Int64,pos::Int64,opt,UBD) where {Q<:AbstractInterval}
 
       # solve optimization problem via interval extension
-      FInt::Interval = opt[1].f(X)
+      FInt::Q = opt[1].f(X)
       feas::Bool = true
       if (opt[1].numConstr < 1)
       else
-        GInt::Vector{Interval{Float64}} = opt[1].g(X)
-        cInt::Vector{Interval{Float64}} = vcat(GInt[opt[1].gU_loc]-opt[1].gU[opt[1].gU_loc],
+        GInt::Vector{Q} = opt[1].g(X)
+        cInt::Vector{Q} = vcat(GInt[opt[1].gU_loc]-opt[1].gU[opt[1].gU_loc],
                                               -GInt[opt[1].gL_loc]+opt[1].gL[opt[1].gL_loc])
         for i=1:opt[1].gexp
           if (cInt[i].lo>0.0)

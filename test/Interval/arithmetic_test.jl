@@ -44,7 +44,9 @@ end
     @test c/zero(c) == emptyMCinterval(c)
 
     @test (-MCInterval(-30.0,-15.0)) / MCInterval(-5.0,-3.0) == MCInterval(-10.0, -3.0)
+    @test (-MCInterval(-30.0,-15.0)) / MCInterval(-5.0,0.0) == MCInterval(-Inf, -3.0)
     @test (-b)/a == MCInterval(-20.0, -0.8181818181818181)
+    @test (-b)/(-a) == MCInterval(0.8181818181818181,20.0)
     @test (-a)/c == MCInterval(-4.4, -0.025)
     @test (-c)/4.0 == MCInterval(-1.0, -0.0625)
     @test (-c)/zero(c) == emptyMCinterval(c)
