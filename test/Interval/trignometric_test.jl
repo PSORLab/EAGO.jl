@@ -4,6 +4,14 @@ using Compat
 using Compat.Test
 using EAGO
 
+@testset "trig utilities" begin
+
+@test EAGO.two_pi(Float32) == EAGO.pi232
+@test EAGO.two_pi(Float16) == EAGO.pi216
+@test EAGO.half_pi(Float64) == EAGO.pi_MCinterval(Float64) / 2.0
+
+end
+
 @testset "sin" begin
     @test sin(MCInterval(0.5)) == MCInterval(0.479425538604203, 0.479425538604203)
     @test sin(MCInterval(0.5, 1.67)) == MCInterval(0.479425538604203, 1.0)

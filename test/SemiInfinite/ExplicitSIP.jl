@@ -5,6 +5,12 @@ using Compat.Test
 using IntervalArithmetic
 using EAGO
 
+@testset "SemiInfinite Utilities" begin
+X = EAGO.EAGO_NLPSolver()
+sip1 = SIP_opts(X)
+@test sip1.tol == 1E-3
+end
+
 # solves example SIP #1 with DAG contractor disabled
 @testset "SemiInfinite Explicit RHS" begin
 SIPopt1 = SIP_opts()

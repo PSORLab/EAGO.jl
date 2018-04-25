@@ -60,7 +60,7 @@ function sqrt(a::MCInterval{T}) where {T<:AbstractFloat}
     MCInterval{T}(sqrt(a.lo), sqrt(a.hi))  # `sqrt` is correctly-rounded
 end
 
-function pow(x::MCInterval{T}, n::Integer) where {T<:AbstractFloat}  # fast integer power
+function pow(x::MCInterval{T}, n::Q) where {T<:AbstractFloat,Q<:Integer}  # fast integer power
 
     isempty(x) && return x
 

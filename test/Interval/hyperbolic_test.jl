@@ -19,6 +19,18 @@ using Base.Test
     @test tanh(MCInterval(0.5,0.5)) == MCInterval(0.46211715726000974, 0.46211715726000974)
     @test tanh(MCInterval(0.5, 1.67)) == MCInterval(0.46211715726000974, 0.9315516846152082)
     @test tanh(MCInterval(-4.5, 0.1)) == MCInterval(-0.9997532108480275, 0.09966799462495582)
+
+    @test asinh(EAGO.emptyMCinterval(Float64)) == emptyMCinterval(Float64)
+    @test asinh(MCInterval(-4.5, 0.1)) == EAGO.MCInterval{Float64}(-2.209347708615334, 0.09983407889920758)
+
+    @test acosh(EAGO.emptyMCinterval(Float64)) == emptyMCinterval(Float64)
+    @test acosh(MCInterval(0.5, 1.67)) == EAGO.MCInterval{Float64}(0.0, 1.1011083919917022)
+
+    @test atanh(EAGO.emptyMCinterval(Float64)) == emptyMCinterval(Float64)
+    @test atanh(MCInterval(0.5,0.5)) == EAGO.MCInterval{Float64}(0.5493061443340548, 0.5493061443340548)
+    @test atanh(MCInterval(0.5, 1.67)) == EAGO.MCInterval{Float64}(0.5493061443340548, Inf)
+    @test atanh(MCInterval(-4.5, 0.1)) == EAGO.MCInterval{Float64}(-Inf, 0.10033534773107558)
+
 end
 
 end

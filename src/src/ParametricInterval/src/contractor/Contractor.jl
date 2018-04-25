@@ -87,20 +87,12 @@ function PIntv_Kernel(h::Function,hj::Function,
             eDflag,Eflag = Dense_Newton_GS(H,J,N,S1,S2,X1,X2,incl,inclL,inclH,opt)
         elseif (opt.LAlg == :DenseBand)
             eDflag,Eflag = DenseBand_Newton_GS(H,J,N,S1,S2,X1,X2,incl,inclL,inclH,opt)
-        else
-            error("The linear algebra type $(LAlg) is not currently supported. The
-                   linear algebra styles currently supported are :Dense and
-                   :DenseBanded.")
         end
     elseif (opt.CTyp == :Krawczyk)
         if (opt.LAlg == :Dense)
             eDflag,Eflag = Dense_Krawczyk_CW(H,J,N,S1,X1,X2,incl,inclL,inclH,opt)
         elseif (opt.LAlg == :DenseBand)
             eDflag,Eflag = DenseBand_Krawczyk_CW(H,J,N,S1,S2,X1,X2,incl,inclL,inclH,opt)
-        else
-            error("The linear algebra type $(LAlg) is not currently supported. The
-                   linear algebra styles currently supported are :Dense and
-                   :DenseBanded.")
         end
     else
         error("The contractor type $(CType) is not currently supported. The

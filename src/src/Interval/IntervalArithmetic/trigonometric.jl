@@ -19,10 +19,11 @@ range_atan2(::Type{T}) where {T<:AbstractFloat} = MCInterval{T}(-(pi_MCinterval(
 half_range_atan2(::Type{T}) where {T} = (temp = half_pi(T); Interval(-(temp.hi), temp.hi) )
 pos_range_atan2(::Type{T}) where {T<:AbstractFloat} = MCInterval{T}(zero(T), pi_MCinterval(T).hi)
 
-function find_quadrants(x::Float64)
-    temp = x/pih64
+function find_quadrants(x::Q) where {Q<:AbstractFloat}
+    temp = x/half_pi(Q)
     (floor(temp.lo), floor(temp.hi))
 end
+#=
 function find_quadrants(x::Float32)
     temp = x/pih32
     (floor(temp.lo), floor(temp.hi))
@@ -31,7 +32,7 @@ function find_quadrants(x::Float16)
     temp = x/pih16
     (floor(temp.lo), floor(temp.hi))
 end
-
+=#
 function sin(a::MCInterval{T}) where {T<:AbstractFloat}
     isempty(a) && return a
 

@@ -50,6 +50,10 @@ v16 = flttoMCI(Float16(1.5))
 @test typeof(v32) == MCInterval{Float32}
 @test typeof(v16) == MCInterval{Float16}
 
+@test eltype(MCInterval{Float64}(2.0,5.0)) == Float64
+@test MCInterval(MCInterval{Float64}(2.0,5.0)) == MCInterval{Float64}(2.0,5.0)
+@test MCInterval((2.0,5.0)) == MCInterval(2.0,5.0)
+
 end
 
 @testset "Interval Checks" begin

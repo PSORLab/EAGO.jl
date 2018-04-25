@@ -27,14 +27,10 @@ function *(b::T, a::MCInterval{T}) where {T<:AbstractFloat}
         a.lo >= zero(T) && return MCInterval{T}(a.lo*b, a.hi*b)
         a.hi <= zero(T) && return MCInterval{T}(a.lo*b, a.hi*b)
         return MCInterval{T}(a.lo*b, a.hi*b)   # zero(T) ∈ a
-    elseif b <= zero(T)
+    else
         a.lo >= zero(T) && return MCInterval{T}(a.hi*b, a.lo*b)
         a.hi <= zero(T) && return MCInterval{T}(a.hi*b, a.lo*b)
         return MCInterval{T}(a.hi*b, a.lo*b)   # zero(T) ∈ a
-    else
-        a.lo > zero(T) && return MCInterval{T}(a.hi*b, a.hi*b)
-        a.hi < zero(T) && return MCInterval{T}(a.lo*b, a.lo*b)
-        return MCInterval{T}(min(a.lo*b, a.hi*b), max(a.lo*b, a.hi*b))
     end
 end
 *(a::MCInterval{T}, b::T) where {T<:AbstractFloat} = b*a
@@ -51,22 +47,18 @@ function /(a::T, b::MCInterval{T}) where {T<:AbstractFloat}
 
     if b.lo > zero(T) # b strictly positive
         a >= zero(T) && return MCInterval{T}(a/b.hi, a/b.lo)
-        a <= zero(T) && return MCInterval{T}(a/b.lo, a/b.hi)
-        return MCInterval{T}(a.lo/b.lo, a.hi/b.lo)  # zero(T) ∈ a
+        return MCInterval{T}(a/b.lo, a/b.hi)
     elseif b.hi < zero(T) # b strictly negative
         a >= zero(T) && return MCInterval{T}(a/b.hi, a/b.lo)
-        a <= zero(T) && return MCInterval{T}(a/b.lo, a/b.hi)
-        return MCInterval{T}(a/b.hi, a/b.hi)  # zero(T) ∈ a
+        return MCInterval{T}(a/b.lo, a/b.hi)
     else   # b contains zero, but is not zero(b)
         iszero(a) && return MCInterval{T}(zero(T),zero(T))
         if iszero(b.lo)
             a >= zero(T) && return MCInterval{T}(a/b.hi, infty(T))
-            a <= zero(T) && return MCInterval{T}(ninfty(T), a/b.hi)
-            return entireMCinterval(T)
+            return MCInterval{T}(ninfty(T), a/b.hi)
         elseif iszero(b.hi)
             a >= zero(T) && return MCInterval{T}(ninfty(T), a/b.lo)
-            a <= zero(T) && return MCInterval{T}(a/b.lo, infty(T))
-            return entireMCinterval(T)
+            return MCInterval{T}(a/b.lo, infty(T))
         else
             return entireMCinterval(T)
         end
@@ -113,13 +105,16 @@ flttoMCI(x::Float16) = MCInterval{Float16}(x,x)
 
 MCInterval(x::Q1,y::Q2) where {Q1<:Integer,Q2<:Integer}= MCInterval(Float64(x),Float64(y))
 
-#promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{promote_type(T, S)}
-#convert(::Type{MCInterval{T}}, x::T) where {T<:AbstractFloat} = MCInterval{T}(x)
 #=
-promote_rule(::Type{MCInterval{T}}, ::Type{MCInterval{S}}) where {T<:Real, S<:Real} = MCInterval{promote_type(T, S)}
-promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:Real, S<:Real} = MCInterval{promote_type(T, S)}
+promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{promote_type(T, S)}
+promote_rule(::Type{MCInterval{T}}, ::Type{MCInterval{S}}) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{promote_type(T, S)}
+promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:AbstractFloat, S<:Integer} = MCInterval{promote_type(T, S)}
 
-convert(::Type{MCInterval{T}}, x::S) where {S,T} = MCInterval{T}(x)
+convert(::Type{MCInterval{T}}, x::T) where {T<:AbstractFloat} = MCInterval{T}(x)
+convert(::Type{MCInterval{T}}, x::S) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{T}(x)
+convert(::Type{MCInterval{T}}, x::S) where {T<:AbstractFloat, S<:Integer} = MCInterval{T}(x)
+=#
+#=
 convert(::Type{MCInterval{T}}, x::T) where {T} = MCInterval{T}(x)
 convert(::Type{MCInterval{T}}, x::MCInterval{T}) where {T} = x
 convert(::Type{MCInterval{T}}, x::MCInterval{S}) where {S,T} = MCInterval{T}(convert(T,x.lo),convert(T,x.hi))

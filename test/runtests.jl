@@ -3,7 +3,7 @@
 using EAGO
 
 println("BEGIN TESTING INTERVAL LIBRARY...")
-t = @elapsed include("Interval/runtests.jl")
+include("Interval/runtests.jl")
 println("TEST INTERVAL LIBRARY COMPLETE.")
 
 println("BEGIN TESTING BRANCH AND BOUND LIBRARY...")

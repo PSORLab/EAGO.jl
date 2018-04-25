@@ -1,23 +1,5 @@
 length(x::IntervalArithmetic.IntervalBox{N,T}) where {N,T} = N
 
-function lo_hi(x::IntervalArithmetic.Interval)
-  temp1 = x.lo
-  temp2 = x.hi
-  return temp1, temp2
-end
-
-function lo_hi(X::IntervalArithmetic.IntervalBox)
-  if length(X)>1
-    tuple_lo, tuple_hi = lo_hi.(X)
-    arr_lo = collect(tuple_lo)g
-    arr_hi = collect(tuple_hi)
-  else
-    arr_lo = [X[1].lo]
-    arr_hi = [X[1].hi]
-  end
-  return arr_lo,arr_hi
-end
-
 """
 --------------------------------------------------------------------------------
 Function: print_int!

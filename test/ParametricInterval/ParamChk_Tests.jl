@@ -25,10 +25,11 @@ X3 = [MCInterval(1,2),MCInterval(1,2),MCInterval(0,5)]
 flag1 = EAGO.Strict_XinY(X1,Y)
 flag2 = EAGO.Strict_XinY(X2,Y)
 flag3 = EAGO.Strict_XinY(X3,Y)
+flag4 = EAGO.Strict_XinY(X1[1],Y[1])
 @test flag1 == true
 @test flag2 == false
 @test flag3 == false
-
+@test flag4 == true
 end
 
 Y = [Interval(0,5),Interval(0,5),Interval(0,5)]
