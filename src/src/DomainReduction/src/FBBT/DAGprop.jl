@@ -240,27 +240,6 @@ function SetVarBounds!(x::Tape{V},X::Vector{V}) where {V}
 end
 
 """
-    SetVarBounds!(x::TapeList,X::Vector{Interval})
-
-Sets variable nodes to the interval value in `X::Vector{Interval}` for all
-elements of the TapeList.
-"""
-function SetVarBounds!(x::TapeList,X::Vector{V}) where {V}
-  for i=1:length(x)
-    SetVarBounds!(x.sto[i],X)
-  end
-end
-
-"""
-    GetVarBounds(x::Tape)
-
-Unpacks the variable node values and returns an array of intervals.
-"""
-function GetVarBounds(x::Tape)
-  return x.Intv_Storage[1:x.Var_Num]
-end
-
-"""
     ForwardPass!(x::Tape)
 
 Performs a forward contractor pass using tape `x::Tape`.

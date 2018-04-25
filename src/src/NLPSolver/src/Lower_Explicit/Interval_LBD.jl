@@ -22,11 +22,10 @@ function Interval_LBD(X::Vector{Q},k::Int64,pos::Int64,opt,UBD) where {Q<:Abstra
       # solve optimization problem via interval extension
       FInt::Q = opt[1].f(X)
       feas::Bool = true
-      if (opt[1].numConstr < 1)
-      else
+      if (opt[1].numConstr > 0)
         GInt::Vector{Q} = opt[1].g(X)
         cInt::Vector{Q} = vcat(GInt[opt[1].gU_loc]-opt[1].gU[opt[1].gU_loc],
-                                              -GInt[opt[1].gL_loc]+opt[1].gL[opt[1].gL_loc])
+                              -GInt[opt[1].gL_loc]+opt[1].gL[opt[1].gL_loc])
         for i=1:opt[1].gexp
           if (cInt[i].lo>0.0)
             feas = false
