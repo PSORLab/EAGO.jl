@@ -41,8 +41,11 @@ function Dense_Precondition(h::Function,
                             X::Vector{T},
                             P::Vector{T},
                             opt::PIntvParams{S}) where {T<:AbstractInterval,S<:AbstractFloat}
+    println("pre-H")
     H::Vector{T} = h(mid.(X),P)
+    println("post H")
     J::VecOrMat{T} = hj(X,P)
+    println("post HJ")
     Y::VecOrMat{S} = mid.(J)
     if (opt.nx == 1)
         YH::Vector{T} = H/Y[1,1]

@@ -13,13 +13,7 @@ the interval solver.
 println("Test Problem 1")
 f(x) = (x[1]-5)^2 + (x[2]-3)^2
 g(x) = [x[1] - x[2]]
-s1 = EAGO_NLPSolver(LBD_func_relax = "Diff2-MV-OFF",
-                    LBD_problem_relax = "NLP2",
-                    LBD_problem_solver = "Ipopt",
-                    UBD_func_relax = "Interval",
-                    UBD_problem_relax = "Interval",
-                    UBD_problem_solver = "Interval",
-                    probe_depth = -1,
+s1 = EAGO_NLPSolver(probe_depth = -1,
                     variable_depth = -1,
                     DAG_depth = -1,
                     STD_RR_depth = -1)

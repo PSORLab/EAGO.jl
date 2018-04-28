@@ -21,6 +21,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
                                    gL::Vector{Float64},
                                    gU::Vector{Float64},
                                    sense::Symbol, d::MathProgBase.AbstractNLPEvaluator)
+         println("Start Load!")
 
          #println("Began Loading Problem")
          @assert nvar == length(xL) == length(xU)
@@ -93,6 +94,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
          end
 
          # sets implicit function values as appropriate
+         m.Opts.Imp_np = m.Opts.numVar - m.Opts.Imp_nx
 
          if sense == :Min
                   @eval f(x) = $(m.Opts.obj)
@@ -105,6 +107,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
          m.Opts.f = x -> Base.invokelatest(f,x)
          m.Opts.g = x -> Base.invokelatest(g,x)
          #println("Finished Loading Problem")
+         println("End Load!")
          return m
 end
 

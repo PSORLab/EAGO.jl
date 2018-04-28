@@ -1,4 +1,7 @@
+#workspace()
+
 using EAGO
+using JuMP
 
 # Haverly Pooling Problem Implicit Model
 f(x,p) = 6.0*p[1] + 16.0*p[2] + 10.0*p[3] - 9.0*x[2] + 10.0*p[4] - 15.0*x[4]
@@ -20,30 +23,30 @@ jm1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
                                          variable_depth = 1000,
                                          DAG_depth = -1,
                                          STD_RR_depth = -1,
-                                         ImplicitFlag = true))
+                                         ImplicitFlag = true,
+                                         validated = true))
 
-set_Implicit_Model!(jm1,f,h,hj,g)
+@variable(jm1, 0.001 <= x1 <= 300)
+@variable(jm1, 0.001 <= x2 <= 300)
+@variable(jm1, 0.001 <= x3 <= 100)
+@variable(jm1, 0.001 <= x4 <= 100)
+@variable(jm1, 0.001 <= x5 <= 100)
+@variable(jm1, 0.001 <= x6 <= 200)
+@variable(jm1, 0.001 <= x7 <= 200)
+@variable(jm1, 0.001 <= x8 <= 200)
+@variable(jm1, 0.01 <= x9 <= 0.03)
 
-@variable(jm1, -200 <= x1 <= -100)
-@variable(jm1, 200 <= x2 <= 400)
-@variable(jm1, 200 <= x3 <= 400)
-@variable(jm1, 200 <= x4 <= 400)
-@variable(jm1, 200 <= x5 <= 400)
-@variable(jm1, 200 <= x6 <= 400)
-@variable(jm1, 200 <= x7 <= 400)
-@variable(jm1, 200 <= x8 <= 400)
-@variable(jm1, 200 <= x9 <= 400)
+@NLconstraint(jm1, x1 + x2 - 9.0*x3 + x6 == 0.0)
+@NLconstraint(jm1, 0.03*x1 + 0.01*x2 - x3*x9 - x6*x9 == 0.0)
+@NLconstraint(jm1, x3 + x4 - x5 == 0.0)
+@NLconstraint(jm1, x6 + x7 - x8 == 0.0)
+@NLconstraint(jm1, x3*x8 + 0.02*x4 - 0.025*x5 <= 0)
+@NLconstraint(jm1, x6*x8 + 0.02*x7 - 0.015*x8 <= 0)
 
-@constraint(jm1, x+2y == 0.0)
-@constraint(jm1, x+2y == 0.0)
-@constraint(jm1, -x+2y == 0.0)
-@constraint(jm1, x+2y == 0.0)
-@constraint(jm1, x+2y <= 0)
-@constraint(jm1, x+2y <= 0)
+@NLobjective(jm1, Min, 6.0*x1 + 16.0*x2 + 10.0*x4 - 9.0*x5 + 10.0*x7 - 15.0*x8)
 
-@NLobjective(jm1, Min, x*y)
-
-status4 = solve(jm1)
+status = Solve_Implicit(jm1,f,h,hj,g,4)
+#status4 = solve(jm1)
 #objval4 = getobjectivevalue(jm1)
 #Xval4 = getvalue(x)
 #Yval4 = getvalue(y)

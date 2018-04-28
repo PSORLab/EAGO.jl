@@ -105,9 +105,9 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
     Eflag = false
     Iflag = false
     eDflag = false
-    Y1,Y2,Eflag,Iflag,eDflag,incLow,incHigh = Param_Intv_Contractor(opt[1].solver.Imp_h,opt[1].solver.Imp_hj,
-                                                                    X[1:opt[1].solver.Imp_nx],
-                                                                    X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)],
+    Y1,Y2,Eflag,Iflag,eDflag,incLow,incHigh = Param_Intv_Contractor(opt[1].Imp_h,opt[1].Imp_hj,
+                                                                    X[1:opt[1].Imp_nx],
+                                                                    X[(opt[1].Imp_nx+1):(opt[1].numVar)],
                                                                     Eflag,Iflag,eDflag,
                                                                     opt[1].solver.PIntOpt)
     if Eflag
@@ -138,22 +138,22 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
 
       # Stores if feasible
       if ((LBDfeas1 && UBDfeas1) && (LBDfeas2 && UBDfeas2))
-        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)])
-                      ,vcat(Y2,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)]))
+        push!(bnbm.box,vcat(Y1,X[(opt[1].Imp_nx+1):(opt[1].numVar)])
+                      ,vcat(Y2,X[(opt[1].Imp_nx+1):(opt[1].numVar)]))
         push!(bnbm.LBD,LBD1,LBD2)
         push!(bnbm.UBD,UBD1,UBD2)
         push!(bnbm.id,bnbm.max_id+1,bnbm.max_id+2)
         push!(bnbm.pos,pos+1,pos+1)
         bnbm.max_id += 2
       elseif (LBDfeas1 && UBDfeas1)
-        push!(bnbm.box,vcat(Y1,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)]))
+        push!(bnbm.box,vcat(Y1,X[(opt[1].Imp_nx+1):(opt[1].numVar)]))
         push!(bnbm.LBD,LBD1)
         push!(bnbm.UBD,UBD1)
         push!(bnbm.id,bnbm.max_id+1)
         push!(bnbm.pos,pos+1)
         bnbm.max_id += 1
       elseif (LBDfeas2 && UBDfeas2)
-        push!(bnbm.box,vcat(Y2,X[(opt[1].solver.Imp_nx+1):(opt[1].numVar)]))
+        push!(bnbm.box,vcat(Y2,X[(opt[1].Imp_nx+1):(opt[1].numVar)]))
         push!(bnbm.LBD,LBD2)
         push!(bnbm.UBD,UBD2)
         push!(bnbm.id,bnbm.max_id+1)
@@ -203,7 +203,7 @@ function composite_DR_post(feas_Post::Bool,X::Vector{V},k::Q1,pos::Q2,
 
       if (opt[1].solver.ImplicitFlag)
         if (opt[1].solver.variable_depth>=pos)
-          Variable_DR_Imp!(X,dual_lo,dual_hi,LBD,UBD,opt[1].solver.Imp_nx)
+          Variable_DR_Imp!(X,dual_lo,dual_hi,LBD,UBD,opt[1].Imp_nx)
         end
       else
         if (opt[1].solver.variable_depth>=pos)

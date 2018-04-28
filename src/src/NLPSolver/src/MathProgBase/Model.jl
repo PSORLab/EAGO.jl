@@ -50,18 +50,9 @@ type EAGO_Inner_NLP
     Imp_nCons::Int64
     d
 end
-EAGO_Inner_NLP(s::EAGO_NLPSolver) = EAGO_Inner_NLP([0.0],
-                                                    [0.0],
-                                                    0,
-                                                    [0],
-                                                    [0],
-                                                    0,
-                                                    0,
-                                                    Symbol[],
-                                                    Symbol(),
-                                                    Expr(:call),
-                                                    Expr[],
-                                                    nothing,#TapeList(),
+function EAGO_Inner_NLP(s::EAGO_NLPSolver)
+    return EAGO_Inner_NLP([0.0],[0.0],0,[0],[0],0,0,Symbol[],Symbol(),Expr(:call),
+                          Expr[], nothing,#TapeList(),
                                                     x -> x,
                                                     x -> x,
                                                     s,
@@ -79,7 +70,8 @@ EAGO_Inner_NLP(s::EAGO_NLPSolver) = EAGO_Inner_NLP([0.0],
                                                     [Float64(0)],
                                                     Int64(0),
                                                     nothing)
-
+println("ran solver to inner NLP")
+end
 """
     EAGO_NLP_Model
 
@@ -97,6 +89,7 @@ type EAGO_NLP_Model <: MathProgBase.AbstractNonlinearModel
 end
 
 function MathProgBase.NonlinearModel(s::EAGO_NLPSolver)
+    println("ran solver to model conv")
     eiNLP = EAGO_Inner_NLP(s)
     eiNLP.UBDmodel = NonlinearModel(s.UBDsolver)
     if s.validated == true
@@ -106,6 +99,7 @@ function MathProgBase.NonlinearModel(s::EAGO_NLPSolver)
     end
     EAGOmodel = EAGO_NLP_Model(bnb_mod,eiNLP,nothing,:Uninitialized)
     EAGOmodel.Opts.validated = s.validated
+    println("EAGO model: $EAGOmodel")
     return EAGOmodel
 end
 

@@ -1,4 +1,5 @@
-export EAGO_Inner_NLP, EAGO_NLP_Model, EAGO_NLPSolver, ImplicitSolver, ImplicitOptions
+export EAGO_Inner_NLP, EAGO_NLP_Model, EAGO_NLPSolver, ImplicitSolver, ImplicitOptions,
+       Solve_Implicit
 
 include("src/Utilities/Composite_DR.jl")
 include("src/Utilities/General.jl")
@@ -28,6 +29,3 @@ include("src/Upper_Explicit/Interval_UBD.jl")
 include("src/Upper_Explicit/Ipopt_UBD.jl")
 include("src/Upper_Explicit/SNOPT_UBD.jl")
 include("src/Upper_Explicit/NLPSolve_UBD.jl")
-
-#include("src/Upper_Implicit/Imp_Interval_UBD.jl")
-include("src/Upper_Implicit/LP_Relax_UBD_Imp.jl")

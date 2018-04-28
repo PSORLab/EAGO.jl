@@ -5,6 +5,7 @@ module EAGO
 # call mathprogbase inteface
 using MathProgBase
 importall MathProgBase.SolverInterface
+using JuMP
 
 # call ValidatedNumerics interval libraries
 using IntervalContractors

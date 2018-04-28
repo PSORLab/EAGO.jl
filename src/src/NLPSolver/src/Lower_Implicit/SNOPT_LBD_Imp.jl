@@ -23,7 +23,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
                                 Y::Vector{Interval{Float64}},
                                 opt,param,pmid)
 
-    nx::Int64 = opt.solver.Implicit_Options.nx
+    nx::Int64 = opt.Impt_nx
     np::Int64 = opt.numVar - nx
     l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
     u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
@@ -31,61 +31,35 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
 
     # Evaluates the relaxation of objective and constraints
     # relaxation of function
-
-    if opt.solver.Implicit_Options.numConstr>0
-        if (opt.solver.Implicit_Options.Inplace)
-            f_val::SMCg{np,Interval{Float64},Float64},c::Vector{SMCg{np,Interval{Float64},Float64}} = NdimpRelax_fg(opt.solver.Implicit_Options.f,
-                                                                               opt.solver.Implicit_Options.g,
-                                                                               opt.solver.Implicit_Options.h,
-                                                                               opt.solver.Implicit_Options.hj,
-                                                                               Y[1:nx],
-                                                                               Y[(nx+1):opt.numVar],
-                                                                               y,
-                                                                               pmid,
-                                                                               opt.solver.Implicit_Options.opts,
-                                                                               param)
-        else
-            f_val,c = impRelax_fg(opt.solver.Implicit_Options.f,
-                                  opt.solver.Implicit_Options.g,
-                                  opt.solver.Implicit_Options.h,
-                                  opt.solver.Implicit_Options.hj,
-                                  Y[1:nx],
-                                  Y[(nx+1):opt.numVar],
-                                  y,
-                                  pmid,
-                                  opt.solver.Implicit_Options.opts,
-                                  param)
-        end
+    if opt.Imp_nCons>0
+        f_val,c = impRelax_fg(opt.Imp_f,
+                              opt.Imp_g,
+                              opt.Imp_h,
+                              opt.Imp_hj,
+                              Y[1:nx],
+                              Y[(nx+1):opt.numVar],
+                              y,
+                              pmid,
+                              opt.PSmcOpt,
+                              param)
         dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt.solver.Implicit_Options.gL_loc)+length(opt.solver.Implicit_Options.gU_loc),np)
     else
-        if (opt.solver.Implicit_Options.Inplace)
-            f_val = NdimpRelax_f(opt.solver.Implicit_Options.f,
-                                opt.solver.Implicit_Options.h,
-                                opt.solver.Implicit_Options.hj,
-                                Y[1:nx],
-                                Y[(nx+1):opt.numVar],
-                                y,
-                                pmid,
-                                opt.solver.Implicit_Options.opts,
-                                param)
-        else
-            f_val = impRelax_f(opt.solver.Implicit_Options.f,
-                               opt.solver.Implicit_Options.h,
-                               opt.solver.Implicit_Options.hj,
-                               Y[1:nx],
-                               Y[(nx+1):opt.numVar],
-                               y,
-                               pmid,
-                               opt.solver.Implicit_Options.opts,
-                               param)
-        end
+        f_val = impRelax_f(opt.Imp_f,
+                           opt.Imp_h,
+                           opt.Imp_hj,
+                           Y[1:nx],
+                           Y[(nx+1):opt.numVar],
+                           y,
+                           pmid,
+                           opt.PSmcOpt,
+                           param)
         dcdx = spzeros(1,np)
     end
 
     # forms coefficients of linear relaxations
-    if opt.solver.Implicit_Options.numConstr>0
+    if opt.Imp_nCons>0
         cx_ind1::Int64 = 1
-        for i in opt.solver.Implicit_Options.gL_loc
+        for i in opt.Imp_gL_loc
             for j=1:np
                 if (c[i].cv_grad[j] != 0.0)
                     dcdx[cx_ind1,j] = c[i].cv_grad[j]
@@ -93,7 +67,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
             end
             cx_ind1 += 1
         end
-        for i in opt.solver.Implicit_Options.gU_loc
+        for i in opt.Imp_gU_loc
             for j=1:np
                 if (c[i].cc_grad[j] != 0.0)
                     dcdx[cx_ind1,j] = -c[i].cc_grad[j]
@@ -104,20 +78,20 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
     end
 
     # forms rhs of linear relaxations
-    if opt.solver.Implicit_Options.numConstr>0
-        rhs::Vector{Float64} = zeros(Float64,length(opt.solver.Implicit_Options.gL_loc)+length(opt.solver.Implicit_Options.gU_loc))
+    if opt.Imp_nCons>0
+        rhs::Vector{Float64} = zeros(Float64,length(opt.Imp_gL_loc)+length(opt.Imp_gU_loc))
     else
         rhs = zeros(Float64,1)
     end
 
-    if opt.solver.Implicit_Options.numConstr>0
+    if opt.Imp_nCons>0
         cx_ind2::Int64 = 1
-        for i in opt.solver.Implicit_Options.gU_loc
-            rhs[cx_ind2] = sum(pmid[:].*c[i].cv_grad[:])+opt.solver.Implicit_Options.gU[i]-c[i].cv
+        for i in opt.Imp_gU_loc
+            rhs[cx_ind2] = sum(pmid[:].*c[i].cv_grad[:])+opt.Imp_gU[i]-c[i].cv
             cx_ind2 += 1
         end
-        for i in opt.solver.Implicit_Options.gL_loc
-            rhs[cx_ind2] = sum(-pmid[:].*c[i].cc_grad[:])-opt.solver.Implicit_Options.gL[i]+c[i].cc
+        for i in opt.Imp_gL_loc
+            rhs[cx_ind2] = sum(-pmid[:].*c[i].cc_grad[:])-opt.Imp_gL[i]+c[i].cc
             cx_ind2 += 1
         end
     end
@@ -130,7 +104,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
                                 Y::Vector{MCInterval{Float64}},
                                 opt,param,pmid)
 
-    nx::Int64 = opt.solver.Implicit_Options.nx
+    nx::Int64 = opt.solver.Imp_nx
     np::Int64 = opt.numVar - nx
     l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
     u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
@@ -139,60 +113,35 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
     # Evaluates the relaxation of objective and constraints
     # relaxation of function
 
-    if opt.solver.Implicit_Options.numConstr>0
-        if (opt.solver.Implicit_Options.Inplace)
-            f_val::SMCg{np,MCInterval{Float64},Float64},c::Vector{SMCg{np,MCInterval{Float64},Float64}} = NdimpRelax_fg(opt.solver.Implicit_Options.f,
-                                                                               opt.solver.Implicit_Options.g,
-                                                                               opt.solver.Implicit_Options.h,
-                                                                               opt.solver.Implicit_Options.hj,
-                                                                               Y[1:nx],
-                                                                               Y[(nx+1):opt.numVar],
-                                                                               y,
-                                                                               pmid,
-                                                                               opt.solver.Implicit_Options.opts,
-                                                                               param)
-        else
-            f_val,c = impRelax_fg(opt.solver.Implicit_Options.f,
-                                  opt.solver.Implicit_Options.g,
-                                  opt.solver.Implicit_Options.h,
-                                  opt.solver.Implicit_Options.hj,
-                                  Y[1:nx],
-                                  Y[(nx+1):opt.numVar],
-                                  y,
-                                  pmid,
-                                  opt.solver.Implicit_Options.opts,
-                                  param)
-        end
-        dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt.solver.Implicit_Options.gL_loc)+length(opt.solver.Implicit_Options.gU_loc),np)
+    if opt.Imp_nCons>0
+        f_val,c = impRelax_fg(opt.Imp_f,
+                              opt.Imp_g,
+                              opt.Imp_h,
+                              opt.Imp_hj,
+                              Y[1:nx],
+                              Y[(nx+1):opt.numVar],
+                              y,
+                              pmid,
+                              opt.PSmcOpt,
+                              param)
+        dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt.Imp_gL_loc)+length(opt.Imp_gU_loc),np)
     else
-        if (opt.solver.Implicit_Options.Inplace)
-            f_val = NdimpRelax_f(opt.solver.Implicit_Options.f,
-                                opt.solver.Implicit_Options.h,
-                                opt.solver.Implicit_Options.hj,
-                                Y[1:nx],
-                                Y[(nx+1):opt.numVar],
-                                y,
-                                pmid,
-                                opt.solver.Implicit_Options.opts,
-                                param)
-        else
-            f_val = impRelax_f(opt.solver.Implicit_Options.f,
-                               opt.solver.Implicit_Options.h,
-                               opt.solver.Implicit_Options.hj,
-                               Y[1:nx],
-                               Y[(nx+1):opt.numVar],
-                               y,
-                               pmid,
-                               opt.solver.Implicit_Options.opts,
-                               param)
-        end
+        f_val = impRelax_f(opt.Imp_f,
+                           opt.Imp_h,
+                           opt.Imp_hj,
+                           Y[1:nx],
+                           Y[(nx+1):opt.numVar],
+                           y,
+                           pmid,
+                           opt.PSmcOpt,
+                           param)
         dcdx = spzeros(1,np)
     end
 
     # forms coefficients of linear relaxations
-    if opt.solver.Implicit_Options.numConstr>0
+    if opt.Imp_nCons>0
         cx_ind1::Int64 = 1
-        for i in opt.solver.Implicit_Options.gL_loc
+        for i in opt.Imp_gL_loc
             for j=1:np
                 if (c[i].cv_grad[j] != 0.0)
                     dcdx[cx_ind1,j] = c[i].cv_grad[j]
@@ -200,7 +149,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
             end
             cx_ind1 += 1
         end
-        for i in opt.solver.Implicit_Options.gU_loc
+        for i in opt.Imp_gU_loc
             for j=1:np
                 if (c[i].cc_grad[j] != 0.0)
                     dcdx[cx_ind1,j] = -c[i].cc_grad[j]
@@ -211,20 +160,20 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
     end
 
     # forms rhs of linear relaxations
-    if opt.solver.Implicit_Options.numConstr>0
+    if opt.Imp_nCons>0
         rhs::Vector{Float64} = zeros(Float64,length(opt.solver.Implicit_Options.gL_loc)+length(opt.solver.Implicit_Options.gU_loc))
     else
         rhs = zeros(Float64,1)
     end
 
-    if opt.solver.Implicit_Options.numConstr>0
+    if opt.Imp_nCons>0
         cx_ind2::Int64 = 1
-        for i in opt.solver.Implicit_Options.gU_loc
-            rhs[cx_ind2] = sum(pmid[:].*c[i].cv_grad[:])+opt.solver.Implicit_Options.gU[i]-c[i].cv
+        for i in opt.Imp_gU_loc
+            rhs[cx_ind2] = sum(pmid[:].*c[i].cv_grad[:])+opt.Imp_gU[i]-c[i].cv
             cx_ind2 += 1
         end
-        for i in opt.solver.Implicit_Options.gL_loc
-            rhs[cx_ind2] = sum(-pmid[:].*c[i].cc_grad[:])-opt.solver.Implicit_Options.gL[i]+c[i].cc
+        for i in opt.Imp_gL_loc
+            rhs[cx_ind2] = sum(-pmid[:].*c[i].cc_grad[:])-opt.Imp_gL[i]+c[i].cc
             cx_ind2 += 1
         end
     end
@@ -259,7 +208,7 @@ function SNOPT_LBD_Imp(Y::Vector{Interval{Float64}},
                        pos::Int64,
                        opt,
                        UBD::Float64)
-        println("Start Implicit SNOPT")
+
         options = Dict{String, Any}()
         options["Function precision"] = 1.0E-12
         options["Derivative option"] = 1
@@ -268,26 +217,17 @@ function SNOPT_LBD_Imp(Y::Vector{Interval{Float64}},
         options["Minor print level"] = 0
         options["Major optimality tolerance"] = 1e-6
         options["Verify level"] = 0
-        nx::Int64 = opt[1].solver.Implicit_Options.nx
+        nx::Int64 = opt[1].Imp_nx
         np::Int64 = opt[1].numVar - nx
 
         l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
         u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
         pmid::Vector{Float64} = (l + u)/2.0
-        if (opt[1].solver.Implicit_Options.Inplace)
-            param = IndGenExpansionParams(opt[1].solver.Implicit_Options.h,
-                                         opt[1].solver.Implicit_Options.hj,
-                                         Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
-                                         opt[1].solver.Implicit_Options.opts)
-        else
-            param = GenExpansionParams(opt[1].solver.Implicit_Options.h,
-                                       opt[1].solver.Implicit_Options.hj,
-                                       Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
-                                       opt[1].solver.Implicit_Options.opts)
-        end
-        println("generated parameters")
+        param = GenExpansionParams(opt[1].Imp_h,
+                                   opt[1].Imp_hj,
+                                   Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
+                                   opt[1].solver.PSmcOpt)
         pnt::Vector{Float64}, val::Float64, status::Int64, mult::Vector{Float64} = Snopt.snopt(y::Vector{Float64} -> opt[2].fg_SNOPT_LBD_Imp(y,Y,param,pmid), pmid, l, u, options)
-        println("finished callback")
         if (status == 1 || status == 2)
             feas = true
         elseif (status == 11 || status == 12 || status == 13 || status == 14)
@@ -317,7 +257,7 @@ function SNOPT_LBD_Imp(Y::Vector{Interval{Float64}},
             mult_hi = Float64[]
         end
         temp = Any[mult_lo,mult_hi,val]
-        println("End Implicit SNOPT")
+
         # Formats output and returns appropriate values
         return val, pnt, feas, temp
 end
@@ -327,7 +267,6 @@ function SNOPT_LBD_Imp(Y::Vector{MCInterval{Float64}},
                        pos::Int64,
                        opt,
                        UBD::Float64)
-        println("Start Implicit SNOPT")
         options = Dict{String, Any}()
         options["Function precision"] = 1.0E-12
         options["Derivative option"] = 1
@@ -342,20 +281,11 @@ function SNOPT_LBD_Imp(Y::Vector{MCInterval{Float64}},
         l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
         u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
         pmid::Vector{Float64} = (l + u)/2.0
-        if (opt[1].solver.Implicit_Options.Inplace)
-            param = IndGenExpansionParams(opt[1].solver.Implicit_Options.h,
-                                         opt[1].solver.Implicit_Options.hj,
-                                         Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
-                                         opt[1].solver.Implicit_Options.opts)
-        else
-            param = GenExpansionParams(opt[1].solver.Implicit_Options.h,
-                                       opt[1].solver.Implicit_Options.hj,
-                                       Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
-                                       opt[1].solver.Implicit_Options.opts)
-        end
-        println("generated parameters")
+        param = GenExpansionParams(opt[1].Imp_h,
+                                   opt[1].Imp_hj,
+                                   Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
+                                   opt[1].solver.PSmcOpt)
         pnt::Vector{Float64}, val::Float64, status::Int64, mult::Vector{Float64} = Snopt.snopt(y::Vector{Float64} -> opt[2].fg_SNOPT_LBD_Imp(y,Y,param,pmid), pmid, l, u, options)
-        println("finished callback")
         if (status == 1 || status == 2)
             feas = true
         elseif (status == 11 || status == 12 || status == 13 || status == 14)
@@ -385,7 +315,7 @@ function SNOPT_LBD_Imp(Y::Vector{MCInterval{Float64}},
             mult_hi = Float64[]
         end
         temp = Any[mult_lo,mult_hi,val]
-        println("End Implicit SNOPT")
+
         # Formats output and returns appropriate values
         return val, pnt, feas, temp
 end

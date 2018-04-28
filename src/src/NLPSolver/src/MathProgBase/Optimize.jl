@@ -37,6 +37,7 @@ and other solution information is accessible via start solver interface function
 """
 function MathProgBase.optimize!(s::EAGO_NLP_Model)
 
+    println("Start Optim!")
     #println("Start Optimization Data Structure Setup")
     call_sto = callback_storage()
 
@@ -105,7 +106,7 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     # checks to see whether an implicit solver should be used
     if (s.Opts.solver.ImplicitFlag == true)
         # checks that implicit solver options are valid
-        set_Bisect_Func!(s.Opts.solver.BnBSolver,"relative midpoint",s.Opts.solver.Imp_nx)
+        set_Bisect_Func!(s.Opts.solver.BnBSolver,"relative midpoint",s.Opts.Imp_nx)
 
         # loads lower problem
         if s.Opts.solver.LBDsolvertype == "LP"
@@ -189,6 +190,7 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     s.Opts.solver.BnBSolver.Verbosity = s.Opts.solver.verbosity
     #println("End Optimization Data Structure Setup")
 
+    println("Mid Optim!")
     #println("ran to solve BnB")
     solveBnB!(s.Opts.solver.BnBSolver,s.BnBModel)
     #println("ran post solve BnB")
@@ -201,4 +203,5 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     else
         s.status = :Infeasible
     end
+    println("Fin Optim!")
 end
