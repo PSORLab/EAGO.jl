@@ -23,7 +23,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
                                 Y::Vector{Interval{Float64}},
                                 opt,param,pmid)
 
-    nx::Int64 = opt.Impt_nx
+    nx::Int64 = opt.Imp_nx
     np::Int64 = opt.numVar - nx
     l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
     u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
@@ -40,9 +40,9 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
                               Y[(nx+1):opt.numVar],
                               y,
                               pmid,
-                              opt.PSmcOpt,
+                              opt.solver.PSmcOpt,
                               param)
-        dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt.solver.Implicit_Options.gL_loc)+length(opt.solver.Implicit_Options.gU_loc),np)
+        dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt.Imp_gL_loc)+length(opt.Imp_gU_loc),np)
     else
         f_val = impRelax_f(opt.Imp_f,
                            opt.Imp_h,
@@ -51,7 +51,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
                            Y[(nx+1):opt.numVar],
                            y,
                            pmid,
-                           opt.PSmcOpt,
+                           opt.solver.PSmcOpt,
                            param)
         dcdx = spzeros(1,np)
     end
@@ -161,7 +161,7 @@ function snopt_callback_LBD_Imp(y::Vector{Float64},
 
     # forms rhs of linear relaxations
     if opt.Imp_nCons>0
-        rhs::Vector{Float64} = zeros(Float64,length(opt.solver.Implicit_Options.gL_loc)+length(opt.solver.Implicit_Options.gU_loc))
+        rhs::Vector{Float64} = zeros(Float64,length(opt.Imp_gL_loc)+length(opt.Imp_gU_loc))
     else
         rhs = zeros(Float64,1)
     end
@@ -210,12 +210,12 @@ function SNOPT_LBD_Imp(Y::Vector{Interval{Float64}},
                        UBD::Float64)
 
         options = Dict{String, Any}()
-        options["Function precision"] = 1.0E-12
+        options["Function precision"] = 1.0E-10
         options["Derivative option"] = 1
         options["Print file"] = 0
         options["Major print level"] = 0
         options["Minor print level"] = 0
-        options["Major optimality tolerance"] = 1e-6
+        #options["Major optimality tolerance"] = 1e-6
         options["Verify level"] = 0
         nx::Int64 = opt[1].Imp_nx
         np::Int64 = opt[1].numVar - nx
@@ -268,12 +268,12 @@ function SNOPT_LBD_Imp(Y::Vector{MCInterval{Float64}},
                        opt,
                        UBD::Float64)
         options = Dict{String, Any}()
-        options["Function precision"] = 1.0E-12
+        options["Function precision"] = 1.0E-10
         options["Derivative option"] = 1
         options["Print file"] = 0
         options["Major print level"] = 0
         options["Minor print level"] = 0
-        options["Major optimality tolerance"] = 1e-6
+        #options["Major optimality tolerance"] = 1e-6
         options["Verify level"] = 0
         nx::Int64 = opt[1].solver.Implicit_Options.nx
         np::Int64 = opt[1].numVar - nx

@@ -91,6 +91,41 @@ using MathProgBase
   @test isapprox(getvalue(y1b),0.0,atol=1E0)
   @test isapprox(getobjectivevalue(jumpmodel6b),0.0,atol=1E-1)
   @test status6b == :Optimal
+
+  jumpmodel8 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Interval",
+                                         LBDsolvertype = "Interval",
+                                           probe_depth = -1,
+                                           variable_depth = -1,
+                                           DAG_depth = -1,
+                                           STD_RR_depth = -1,
+                                           atol=1E-1))
+  @variable(jumpmodel8, -200 <= x2b <= -100)
+  @variable(jumpmodel8, 200 <= y2b <= 400)
+  @constraint(jumpmodel8, -500 <= x2b+2y2b <= 400)
+  @NLobjective(jumpmodel8, Min, x2b*y2b)
+  status4 = solve(jumpmodel8)
+
+  @test status4 == :Optimal
+  @test isapprox(getvalue(x),-200.0,atol=1E-1)
+  @test isapprox(getvalue(y),300.0,atol=1E-1)
+  @test isapprox(getobjectivevalue(jumpmodel8),-60000.00119999499,atol=2.0)
+
+  jumpmodel8a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                         LBDsolvertype = "LP",
+                                         probe_depth = -1,
+                                         variable_depth = -1,
+                                         DAG_depth = 10,
+                                         STD_RR_depth = -1,
+                                         validated = true,
+                                         atol=1E-1))
+  @variable(jumpmodel8a, -5 <= x3b <= 5)
+  @variable(jumpmodel8a, -5 <= y3b <= 5)
+  @NLobjective(jumpmodel8a, Min, 2*x3b^2-1.05*x3b^4+(x3b^6)/6+x3b*y3b+y3b^2)
+  status6b = solve(jumpmodel8a)
+  @test isapprox(getvalue(x3b),0.0,atol=1E0)
+  @test isapprox(getvalue(y3b),0.0,atol=1E0)
+  @test isapprox(getobjectivevalue(jumpmodel8a),0.0,atol=1E-1)
+  @test status6b == :Optimal
 end
 
 #=
