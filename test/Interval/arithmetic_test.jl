@@ -58,6 +58,7 @@ end
     xz1 = MCInterval(-0.9, 2.0)
     xz2 = MCInterval(0.0, 2.0)
     xz3 = MCInterval(-0.9, 0.0)
+    xz4 = MCInterval(-0.9, -1.0)
 
     @test 4.0/xz1 == MCInterval(-Inf, Inf)
     @test 4.0/xz2 == MCInterval(2.0, Inf)
@@ -68,6 +69,11 @@ end
     @test 0.0/xz1 == MCInterval(0.0, 0.0)
     @test -0.0/xz2 == MCInterval(0.0, 0.0)
     @test 0.0/xz2 == MCInterval(0.0, 0.0)
+    @test -4.0/xz3 == MCInterval(4.444444444444445, Inf)
+    @test -4.0/xz4 == MCInterval(4.444444444444445, 4.0)
+
+    @test inv(MCInterval{Float64}(0.0, 0.0)) == emptyMCinterval(Float64)
+    @test inv(a) == MCInterval{Float64}(0.9090909090909091, 10.0)
 
     x = MCInterval(1.0, 2.0)
 
