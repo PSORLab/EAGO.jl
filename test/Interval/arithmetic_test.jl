@@ -53,6 +53,9 @@ end
     @test (-a)/c == MCInterval(-4.4, -0.025)
     @test (-c)/4.0 == MCInterval(-1.0, -0.0625)
     @test (-c)/zero(c) == emptyMCinterval(c)
+    @test MCInterval(-5.0,3.0)/MCInterval(-5.0,-3.0) == MCInterval(-1.0, 1.6666666666666667)
+    @test MCInterval(-5.0,3.0)/MCInterval(5.0,3.0) == MCInterval(-1.0, 0.6)
+    @test MCInterval(-5.0,3.0)/MCInterval(-5.0,0.0) == MCInterval(-Inf, Inf)
 
     @test (-b)//a == MCInterval(-20.0, -0.8181818181818181)
 
@@ -92,6 +95,8 @@ end
     @test MCInterval(1.0, 1.0) * 1 == MCInterval(1.0, 1.0)
     @test 1 * MCInterval(1.0, 1.0) == MCInterval(1.0, 1.0)
     @test MCInterval(1.0, 1.0) / 10.0 == MCInterval(0.1, 0.1)
+    @test MCInterval(-1.0, 2.0)*MCInterval(1.0, 2.0) == MCInterval(-2.0, 4.0)
+    @test MCInterval(-1.0, 2.0)*MCInterval(-2.0, -2.0) == MCInterval(-4.0, 2.0)
 end
 
 

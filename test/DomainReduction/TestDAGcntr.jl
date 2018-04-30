@@ -113,20 +113,29 @@ o1,o2 = EAGO.exp_revDR(a,b)
 @test o1 == Interval(1.0,2.0)
 @test o2 == ∅
 
+o1,o2 = EAGO.exp_revDR(mb,ma)
+@test o1 == MCInterval(1.0,20.0)
+@test o2 == MCInterval(1.0,2.0)
+
 o1,o2 = EAGO.acos_rev(a,b)
 @test o1 == Interval(1.0,2.0)
 @test o2 == ∅
 
-
 o1,o2 = EAGO.atan_rev(a,b)
-println("atan ")
-println("o1: $(o1)")
-println("o2: $(o2)")
+@test isapprox(o1.hi,1.5708,atol=1E-4)
+@test isapprox(o2.lo,1.5574,atol=1E-4)
+
+o1,o2 = EAGO.atan_rev(ma,mb)
+@test isapprox(o1.hi,1.5708,atol=1E-4)
+@test isapprox(o2.lo,1.5574,atol=1E-4)
 
 o1,o2 = EAGO.sinh_rev(a,b)
-println("sinh ")
-println("o1: $(o1)")
-println("o2: $(o2)")
+@test isapprox(o1.hi,2,atol=1E-4)
+@test isapprox(o2.hi,1.44364,atol=1E-4)
+
+o1,o2 = EAGO.sinh_rev(ma,mb)
+@test isapprox(o1.hi,2,atol=1E-4)
+@test isapprox(o2.hi,1.44364,atol=1E-4)
 
 o1,o2 = EAGO.cosh_rev(a,b)
 println("cosh ")

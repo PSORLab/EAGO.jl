@@ -30,9 +30,13 @@ end
 
 @testset "tan" begin
     @test tan(MCInterval(0.5,0.5)) == MCInterval(0.5463024898437905, 0.5463024898437905)
-    #@test tan(MCInterval(0.5, 1.67)) == entireMCinterval(Float64)                                # Significant failure (REVISIT)
+    @test tan(MCInterval(-1.5, -1.4)) == MCInterval(-14.101419947171719, -5.797883715482887)
+    @test tan(MCInterval(-0.2, -0.1)) == MCInterval(-0.2027100355086725, -0.10033467208545055)
+    @test tan(MCInterval(0.1, 0.2)) == MCInterval(0.10033467208545055, 0.2027100355086725)
+    @test tan(MCInterval(1.4, 1.5)) == MCInterval(5.797883715482887, 14.101419947171719)
+    @test tan(MCInterval(0.5, 9.97)) == entireMCinterval(Float64)                                # Significant failure (REVISIT)
     @test tan(MCInterval(1.67, 3.2)) == MCInterval(-10.047182299210306, 0.058473854459578645)
-    #@test tan(MCInterval(6.638314112824137, 8.38263151220128)) == entireMCinterval(Float64)      # Significant failure (REVISIT)
+    #@test tan(MCInterval(0.0, 3.0)) == entireMCinterval(Float64)      # Significant failure (REVISIT)
 end
 
 
@@ -45,15 +49,16 @@ end
     @test acos(MCInterval(-2.0, -0.9)) == acos(MCInterval(-1.0, -0.9))
     @test acos(MCInterval(3, 4)) == emptyMCinterval(Float64)
 
-    @test atan(MCInterval(-1,1)) ==
-        MCInterval(-pi/4, pi/4)
+    @test atan(MCInterval(-1,1)) == MCInterval(-pi/4, pi/4)
     @test atan(MCInterval(0,0)) == MCInterval(0.0, 0.0)
 end
 
 @testset "Trig" begin
 
     @test sin(MCInterval(-pi/2, 3pi/2)) == MCInterval(-1, 1)
+    @test sin(MCInterval(-100.0, 100.0)) == MCInterval(-1, 1)
     @test cos(MCInterval(-pi/2, 3pi/2)) == MCInterval(-1, 1)
+    @test cos(MCInterval(-100.0, 100.0)) == MCInterval(-1, 1)
 end
 
 end
