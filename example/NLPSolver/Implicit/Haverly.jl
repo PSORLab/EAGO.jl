@@ -25,7 +25,8 @@ jm1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
                                          variable_depth = 1000,
                                          DAG_depth = -1,
                                          STD_RR_depth = 1000,
-                                         #ImplicitFlag = true,
+                                         ImplicitFlag = true,
+                                         verbosity = "Full",
                                          validated = true))
 
 #jm1 = Model(solver=IpoptSolver())

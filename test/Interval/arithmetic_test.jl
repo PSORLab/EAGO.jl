@@ -29,6 +29,9 @@ end
     b = MCInterval(0.9, 2.0)
     c = MCInterval(0.25, 4.0)
 
+    @test fma(entireMCinterval(Float64),b,c) == entireMCinterval(Float64)
+    @test fma(a,entireMCinterval(Float64),c) == entireMCinterval(Float64)
+    @test fma(a,b,c) == MCInterval{Float64}(0.34, 6.2)
 
     ## Basic arithmetic
     @test a == MCInterval(0.1, 1.1)
@@ -50,6 +53,8 @@ end
     @test (-a)/c == MCInterval(-4.4, -0.025)
     @test (-c)/4.0 == MCInterval(-1.0, -0.0625)
     @test (-c)/zero(c) == emptyMCinterval(c)
+
+    @test (-b)//a == MCInterval(-20.0, -0.8181818181818181)
 
     @test MCInterval(0.0, 1.0)/MCInterval(0.0,1.0) == MCInterval(0.0, Inf)
     @test MCInterval(-1.0, 1.0)/MCInterval(0.0,1.0) == entireMCinterval(c)
