@@ -239,7 +239,7 @@ function max_rev(z::MCInterval{T},x::MCInterval{T},y::MCInterval{T}) where {T<:A
     return y_new, x_new
 end
 
-mul_revDR(a,b,c) = div_revDR(promote(a,b,c)...)
+mul_revDR(a,b,c) = mul_revDR(promote(a,b,c)...)
 exp_revDR(a,b) = exp_revDR(promote(a,b)...)
 sinh_rev(a,b) = sinh_rev(promote(a,b)...)
 cosh_rev(a,b) = cosh_rev(promote(a,b)...)
