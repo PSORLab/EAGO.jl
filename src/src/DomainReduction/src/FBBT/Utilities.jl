@@ -188,25 +188,25 @@ function log10_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
 end
 
 function one_rev(y::Interval{T},x::Interval{T}) where {T<:AbstractFloat}
-    y_new = y ∩ Interval{T}(one(T))
+    y_new = y ∩ Interval{T}(one(T),one(T))
 
     return y_new, x
 end
 
 function one_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
-    y_new = y ∩ MCInterval{T}(one(T))
+    y_new = y ∩ MCInterval{T}(one(T),one(T))
 
     return y_new, x
 end
 
 function zero_rev(y::Interval{T},x::Interval{T}) where {T<:AbstractFloat}
-    y_new = y ∩ Interval{T}(zero(T))
+    y_new = y ∩ Interval{T}(zero(T),zero(T))
 
     return y_new, x
 end
 
 function zero_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
-    y_new = y ∩ MCInterval{T}(zero(T))
+    y_new = y ∩ MCInterval{T}(zero(T),zero(T))
 
     return y_new, x
 end
