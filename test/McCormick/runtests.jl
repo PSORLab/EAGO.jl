@@ -1,7 +1,4 @@
 # write your own tests here
-println("Testing Utility Functions...")
-t = @elapsed include("Utilities.jl")
-println("done (took $t seconds).")
 
 println("Testing McCormick Multiplication Operator...")
 t = @elapsed include("Mult_Test.jl")
@@ -14,6 +11,11 @@ println("done (took $t seconds).")
 println("Testing McCormick Extrema Operator...")
 t = @elapsed include("Extrema_Test.jl")
 println("done (took $t seconds).")
+
+println("Testing Utility Functions...")
+t = @elapsed include("Utilities.jl")
+println("done (took $t seconds).")
+
 #=
 println("Implicit Bounding Utilities...")
 t = @elapsed include("Imp_Util_Test.jl")

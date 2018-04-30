@@ -47,6 +47,13 @@ dy0 = dline_seg(2.0,1.0,0.0,6.0,10.0,1.0)
 @test y0 == 2.0
 @test dy0 == 2.0
 
+@testset "Set Options" begin
+@test_nowarn EAGO.set_iterations(2)
+@test_nowarn EAGO.set_tolerance(1.5)
+@test_nowarn EAGO.set_outer_rnd(false,1E-4)
+@test_nowarn EAGO.default_options()
+end
+
 # converts float/integer to SMCg
 #=
 promoted1 = promote_rule(EAGOSmoothMcCormickGrad.SMCg{3,Float64}, Int64)

@@ -10,7 +10,7 @@ Option structure for parametric interval contractor with the following fields:
 - tband::Integer     # Total bandwidth u+l+1
 - kmax::Int64        # Number of iterations to take for contractor
 """
-struct PIntvParams{T}
+mutable struct PIntvParams{T}
     LAlg::Symbol       # Indicates type of linear algebra for preconditioner (:None, :Dense)
     CTyp::Symbol       # Contractor type to be used (:None, :Dense)
     etol::T            # Equality tolerance for interval checks
@@ -19,4 +19,4 @@ struct PIntvParams{T}
     tband::Integer     # Total bandwidth u+l+1
     kmax::Integer        # Number of iterations to take for contractor
 end
-PIntvParams(nx::Integer,band::Integer) = PIntvParams(:Dense,:Krawczyk,1E-6,1E-6,nx,band,5)
+PIntvParams(nx::Integer,band::Integer) = PIntvParams(:Dense,:Krawczyk,1E-6,1E-6,nx,band,100)

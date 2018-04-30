@@ -95,6 +95,9 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
 
          # sets implicit function values as appropriate
          m.Opts.Imp_np = m.Opts.numVar - m.Opts.Imp_nx
+         m.Opts.solver.PSmcOpt.np = m.Opts.Imp_np
+         m.Opts.solver.PSmcOpt.nx = m.Opts.Imp_nx
+         m.Opts.solver.PIntOpt.nx = m.Opts.Imp_nx
 
          if sense == :Min
                   @eval f(x) = $(m.Opts.obj)

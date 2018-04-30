@@ -51,6 +51,11 @@ function GenExpansionParams(h::Function, hj::Function,
   optc = Any[szero,sone]
 
   for k=1:mc_opts.kmax
+    #println("k: $k")
+    #println("z_mc: $z_mc")
+    #println("aff_mc: $aff_mc")
+    #println("p_mc: $p_mc")
+    #println("x_mc: $x_mc")
     PSMCg_Kernel!(h,hj,z_mc,aff_mc,p_mc,x_mc,mc_opts)
     Affine_Exp!(x_mc,p_mc,p_mc,xa_mc,xA_mc,z_mc,mc_opts)
     z_mc = Rnd_Out_Z_All(z_mc,mc_opts.aff_correct_eps)

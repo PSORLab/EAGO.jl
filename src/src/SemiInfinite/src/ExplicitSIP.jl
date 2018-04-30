@@ -60,7 +60,7 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
     end
 
     ##### lower bounding problem #####
-    gLBP = x -> BndProb_reform(x,[],gSIP,P_LBD,0.0) # reformulate constraints
+    gLBP = x -> BndProb_reform(x,nothing,gSIP,P_LBD,0.0) # reformulate constraints
     gL_LBP = [-Inf for i=1:length(P_LBD)]
     gU_LBP = [0.0 for i=1:length(P_LBD)]
     mLBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.LBP_Opt))
@@ -119,7 +119,7 @@ function Explicit_SIP_Solve(f,gSIP,X,P,SIPopt::SIP_opts)
       push!(P_LBD,pbar)
     end
     ##### upper bounding problem #####
-    gUBP = x -> BndProb_reform(x,[],gSIP,P_UBD,eps_g)
+    gUBP = x -> BndProb_reform(x,nothing,gSIP,P_UBD,eps_g)
     gL_UBP = [-Inf for i=1:length(P_UBD)]
     gU_UBP = [0.0 for i=1:length(P_UBD)]
     mUBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.UBP_Opt))

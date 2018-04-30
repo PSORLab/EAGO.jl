@@ -38,6 +38,13 @@ and other solution information is accessible via start solver interface function
 function MathProgBase.optimize!(s::EAGO_NLP_Model)
 
     println("Start Optim!")
+
+    #  Implicit solver load
+    s.Opts.Imp_np = s.Opts.numVar - s.Opts.Imp_nx
+    s.Opts.solver.PSmcOpt.np = s.Opts.Imp_np
+    s.Opts.solver.PSmcOpt.nx = s.Opts.Imp_nx
+    s.Opts.solver.PIntOpt.nx = s.Opts.Imp_nx
+
     #println("Start Optimization Data Structure Setup")
     call_sto = callback_storage()
 

@@ -19,12 +19,12 @@ An array corresponding to the output of the reformulated constraint.
 """
 function BndProb_reform(x,g,gSIP,Pset,eps_g)
   temp = []
-  if (Pset != [])
+  if ~isempty(Pset)
     for i=1:length(Pset)
       push!(temp,gSIP(x,Pset[i])+eps_g)
     end
   end
-  if (g != [])
+  if (g != nothing)
     gval = g(x)
     for i=1:length(gval)
       push!(temp,gval[i])

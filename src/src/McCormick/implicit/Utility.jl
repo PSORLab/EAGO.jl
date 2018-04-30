@@ -22,9 +22,13 @@ function SMCg_Dense_Precondition!(h::Function,
                              aff_mc::Vector{SMCg{N,V,T}},
                              p_mc::Vector{SMCg{N,V,T}},
                              opt::mc_opts{T}) where {N,V,T<:AbstractFloat}
+    #println("opt.nx: $(opt.nx)")
     H::Vector{SMCg{N,V,T}} = h(z_mc,p_mc)
+    #println("size H: $(size(H))")
     J::VecOrMat{SMCg{N,V,T}} = hj(aff_mc,p_mc)
+    #println("size J: $(size(J))")
     Y = [mid(J[i,j].Intv) for i=1:opt.nx, j=1:opt.nx]
+    #println("size Y: $(size(Y))")
     if (opt.nx == 1)
         YH::Vector{SMCg{N,V,T}} = H/Y[1]
         YJ::VecOrMat{SMCg{N,V,T}} = J/Y[1]

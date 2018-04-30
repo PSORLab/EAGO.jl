@@ -28,7 +28,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                           UBD::Float64)
         nx::Int64 = opt[1].Imp_nx
         np::Int64 = opt[1].numVar - nx
-#        try
+        try
             l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
             u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
             pmid::Vector{Float64} = (l + u)/2.0
@@ -42,8 +42,8 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                                                            seed_g(Float64,i,np),
                                                            Y[nx+i],
                                                            false,
-                                                           Y[(nx+1):(nx+np)],
-                                                           pmid) for i=1:np]
+                                                           SVector{np,Interval{Float64}}(Y[(nx+1):(nx+np)]),
+                                                           SVector{np,Float64}(pmid)) for i=1:np]
             f::SMCg{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
             if opt[1].Imp_nCons>0
@@ -107,7 +107,6 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             mult_hi = [tol_eq(u[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
             temp = Any[mult_lo,mult_hi,val]
             return val, pnt, feas, temp
-#=
         catch
             FInt::Interval = opt[1].Imp_f(Y[1:nx],Y[(nx+1):end])
             feas = true
@@ -130,7 +129,6 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             temp = Any[mult_lo,mult_hi,val]
             return val, pnt, feas, temp
         end
-=#
 end
 
 function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
@@ -155,8 +153,8 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
                                                            seed_g(Float64,i,np),
                                                            Y[nx+i],
                                                            false,
-                                                           Y[(nx+1):(nx+np)],
-                                                           pmid) for i=1:np]
+                                                           SVector{np,Interval{Float64}}(Y[(nx+1):(nx+np)]),
+                                                           SVector{np,Float64}(pmid)) for i=1:np]
             f::SMCg{np,MCInterval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
             if opt[1].Imp_nCons>0

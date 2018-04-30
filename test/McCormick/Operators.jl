@@ -392,6 +392,7 @@ mBox = mid.(xIBox)
 X = SMCg{2,Interval{Float64},Float64}(4.0,4.0,a,a,xIBox[1],false,xIBox,mBox)
 Xn = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,-xIBox[1],false,xIBox,mBox)
 Xz = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,Interval(-3.0,1.0),false,xIBox,mBox)
+Xzp = SMCg{2,Interval{Float64},Float64}(0.5,0.5,a,a,Interval(-3.0,1.0),false,xIBox,mBox)
 
 EAGO.set_diff_relax(0)
 out21 = step(X)
@@ -418,6 +419,21 @@ out21b = step(Xz)
 @test about(out21b.cc_grad[1],0.3333333333333333,1E-5)
 @test about(out21b.cc_grad[2],0.0,1E-5)
 @test about(out21b.cv_grad[1],0.0,1E-5)
+@test about(out21b.cv_grad[2],0.0,1E-5)
+@test about(out21b.Intv.lo,0.0,1E-5)
+@test about(out21b.Intv.hi,1.0,1E-5)
+
+out21b = step(Xzp)
+a1 = out21b.cc
+a2 = out21b.cv
+a3 = out21b.cc_grad[1]
+a4 = out21b.cv_grad[1]
+
+@test about(out21b.cc,1.0,1E-5)
+@test about(out21b.cv,0.5,1E-5)
+@test about(out21b.cc_grad[1],0.0,1E-5)
+@test about(out21b.cc_grad[2],0.0,1E-5)
+@test about(out21b.cv_grad[1],1.0,1E-5)
 @test about(out21b.cv_grad[2],0.0,1E-5)
 @test about(out21b.Intv.lo,0.0,1E-5)
 @test about(out21b.Intv.hi,1.0,1E-5)

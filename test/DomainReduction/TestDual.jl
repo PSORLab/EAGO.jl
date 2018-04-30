@@ -35,6 +35,38 @@ Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
 @test 4.0-1E-4 <= Y[3].hi <= 4.0+1E-4
 @test 3.33333-1E-4 <= Y[4].lo <= 3.33333+1E-4
 @test 4.0-1E-4 <= Y[4].hi <= 4.0+1E-4
+#=
+Y = Interval{Float64}[Interval(-4.0,-1.0),Interval(-4.0,-1.0),Interval(-4.0,-1.0),Interval(-4.0,-1.0)]
+ymult_lo = [-50, -1.0, -2.0, -3.0]
+ymult_hi = [0, -1.0, -2.0, -3.0]
+yLBD = -3.0
+yUBD = -1.0
+Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
+Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
+@test -1.0-1E-4 <= Y[1].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[1].lo <= -4.0+1E-4
+@test -1.0-1E-4 <= Y[2].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[2].lo <= -4.0+1E-4
+@test -1.0-1E-4 <= Y[3].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[3].lo <= -4.0+1E-4
+@test -1.0-1E-4 <= Y[4].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[4].lo <= -4.0+1E-4
+
+Y = MCInterval{Float64}[MCInterval(-4.0,-1.0),MCInterval(-4.0,-1.0),MCInterval(-4.0,-1.0),MCInterval(-4.0,-1.0)]
+ymult_lo = [-50, -1.0, -2.0, -3.0]
+ymult_hi = [0, -1.0, -2.0, -3.0]
+yLBD = -3.0
+yUBD = -1.0
+Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
+@test -1.0-1E-4 <= Y[1].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[1].lo <= -4.0+1E-4
+@test -1.0-1E-4 <= Y[2].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[2].lo <= -4.0+1E-4
+@test -1.0-1E-4 <= Y[3].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[3].lo <= -4.0+1E-4
+@test -1.0-1E-4 <= Y[4].hi <= -1.0+1E-4
+@test -4.0-1E-4 <= Y[4].lo <= -4.0+1E-4
+=#
 end
 
 @testset "Test Implicit DR" begin

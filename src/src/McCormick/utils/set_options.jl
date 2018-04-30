@@ -56,7 +56,7 @@ end
 Sets flag for using validity check for McCormick relaxations (cv<=cc).
 """
 function set_validated(val)
-  MC_param.valid_check = valid_check
+  MC_param.valid_check = val
 end
 
 """

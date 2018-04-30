@@ -114,6 +114,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
       feas = false
     elseif eDflag
       feas = false
+
       # Solves LBD & UBD for node #1
       LBD1, LBDsol1, LBDfeas1, tempL1 = bnbs.Lower_Prob(Y1,k,pos,bnbs.opt,bnbm.UBDg)
       if (LBDfeas1)
@@ -161,7 +162,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
         bnbm.max_id += 1
       end
     else
-      X = copy(Y1)
+      X = vcat(Y1,X[(opt[1].Imp_nx+1):(opt[1].numVar)])
     end
   end
   (bnbs.Verbosity == "Full") && (println("Finished Implicit Contractor"))

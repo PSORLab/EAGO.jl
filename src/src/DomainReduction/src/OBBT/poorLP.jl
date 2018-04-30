@@ -1,3 +1,4 @@
+#=
 # Linear Program Contractor
 function poorLP_contractor(f,g,X::Array{Interval},UBD,nx::Int64)
     # gets prior McCormick relaxation setting
@@ -48,3 +49,4 @@ function poorLP_contractor(f,g,X::Array{Interval},UBD,nx::Int64)
     temp_arr = [Interval(l_out[i],u_out[i]) for i=1:nx]
     return temp_arr,true
 end
+=#

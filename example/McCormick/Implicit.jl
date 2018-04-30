@@ -1,11 +1,10 @@
-workspace()
+#workspace()
 
 using EAGO
 using IntervalArithmetic
 using StaticArrays
 
-opts1 =  mc_opts{Float64}(0.5,1,:Dense,:Newton,1,1,1E-10)
-
+opts1 =  mc_opts{Float64}(0.5,2,:Dense,:Newton,1,1,0.0)
 #=
 generates the expansion point parameters for the function using the opts
 options using inverse preconditioner
