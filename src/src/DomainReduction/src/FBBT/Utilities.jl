@@ -210,7 +210,7 @@ function zero_rev(y::MCInterval{T},x::MCInterval{T}) where {T<:AbstractFloat}
 
     return y_new, x
 end
-
+#=
 function min_rev(z::Interval{T},x::Interval{T},y::Interval{T}) where {T<:AbstractFloat}
     y_new = y ∩ Interval{T}(zero(T),∞)
     x_new = x ∩ log(y_new)
@@ -238,7 +238,7 @@ function max_rev(z::MCInterval{T},x::MCInterval{T},y::MCInterval{T}) where {T<:A
 
     return y_new, x_new
 end
-
+=#
 mul_revDR(a,b,c) = mul_revDR(promote(a,b,c)...)
 exp_revDR(a,b) = exp_revDR(promote(a,b)...)
 sinh_rev(a,b) = sinh_rev(promote(a,b)...)

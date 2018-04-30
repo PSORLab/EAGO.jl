@@ -18,16 +18,28 @@ g(x,p) = [x[1]*p[5]+0.02*p[3]-0.025*p[5];
           x[3]*p[5]+0.02*p[4]-0.015*x[4]]
 
 # JuMP Model Setup
-
+#=
 jm1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
-                                         LBDsolvertype = "LP",
-                                         probe_depth = -1,
-                                         variable_depth = 1000,
-                                         DAG_depth = -1,
-                                         STD_RR_depth = 1000,
-                                         ImplicitFlag = true,
-                                         verbosity = "Full",
-                                         validated = true))
+                                  LBDsolvertype = "LP",
+                                  probe_depth = -1,
+                                  variable_depth = 1000,
+                                  DAG_depth = -1,
+                                  STD_RR_depth = 1000,
+                                  ImplicitFlag = true,
+                                  verbosity = "Full",
+                                  validated = true))
+=#
+
+
+jm1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Diff1-MV-OFF",
+                                  LBDsolvertype = "SNOPT",
+                                  probe_depth = -1,
+                                  variable_depth = 1000,
+                                  DAG_depth = -1,
+                                  STD_RR_depth = 1000,
+                                  ImplicitFlag = true,
+                                  verbosity = "Full",
+                                  validated = true))
 
 #jm1 = Model(solver=IpoptSolver())
 

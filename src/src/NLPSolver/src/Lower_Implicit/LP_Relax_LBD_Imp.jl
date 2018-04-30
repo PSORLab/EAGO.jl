@@ -46,6 +46,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                                                            SVector{np,Float64}(pmid)) for i=1:np]
             f::SMCg{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
+            println("f.Intv.lo: $(f.Intv.lo)")
             if opt[1].Imp_nCons>0
                 c::Vector{SMCg{np,Interval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
                 dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].Imp_gL_loc)+length(opt[1].Imp_gU_loc),np)
@@ -108,6 +109,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             temp = Any[mult_lo,mult_hi,val]
             return val, pnt, feas, temp
         catch
+            println("ran catch")
             FInt::Interval = opt[1].Imp_f(Y[1:nx],Y[(nx+1):end])
             feas = true
             if (opt[1].Imp_nCons < 1)
