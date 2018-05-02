@@ -35,8 +35,8 @@ X1 = [MCInterval(-1000.0,1000.0),MCInterval(-1000.0,1000.0)]
 P1 = [MCInterval(0.0,1.0)]
 SIPoutput1 = Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
 
-@test isapprox(SIPoutput1[1],0.19452787006676814,atol=1E-3)
-@test isapprox(SIPoutput1[2],0.19452787006676814,atol=1E-3)
+@test isapprox(SIPoutput1.LBD,0.19452787006676814,atol=1E-3)
+@test isapprox(SIPoutput1.UBD,0.19452787006676814,atol=1E-3)
 
 end
 
