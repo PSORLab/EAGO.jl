@@ -133,7 +133,7 @@ o1,o2 = EAGO.atan_rev(a,b)
 
 o1,o2 = EAGO.atan_rev(ma,mb)
 @test isapprox(o1.hi,1.5708,atol=1E-4)
-@test isapprox(o2.lo,1.5574,atol=1E-4)
+@test isapprox(o2.lo,1.0,atol=1E-4)
 
 o1,o2 = EAGO.sinh_rev(a,b)
 @test isapprox(o1.hi,2,atol=1E-4)

@@ -126,6 +126,24 @@ using MathProgBase
   @test isapprox(getvalue(y3b),0.0,atol=1E0)
   @test isapprox(getobjectivevalue(jumpmodel8a),0.0,atol=1E-1)
   @test status6b == :Optimal
+
+  jumpmodel8b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                         LBDsolvertype = "LP",
+                                         UBDsolvertype = "Interval",
+                                         probe_depth = -1,
+                                         variable_depth = -1,
+                                         DAG_depth = 10,
+                                         STD_RR_depth = -1,
+                                         validated = true,
+                                         atol=1E-1))
+  @variable(jumpmodel8b, -5 <= x3c <= 5)
+  @variable(jumpmodel8b, -5 <= y3c <= 5)
+  @NLobjective(jumpmodel8b, Min, 2*x3c^2-1.05*x3c^4+(x3c^6)/6+x3c*y3c+y3c^2)
+  status6b = solve(jumpmodel8b)
+  @test isapprox(getvalue(x3c),0.0,atol=1E0)
+  @test isapprox(getvalue(y3c),0.0,atol=1E0)
+  @test isapprox(getobjectivevalue(jumpmodel8b),0.0,atol=1E-1)
+  @test status6b == :Optimal
 end
 
 #=

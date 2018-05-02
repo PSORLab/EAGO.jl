@@ -140,7 +140,6 @@ function EAGO_NLPSolver(;
                                 Imp_probe_depth)
 
     #Solver_Relax_Valid_LBD!(nlp_solver)
-    #Solver_Relax_Valid_UBD!(nlp_solver)
 
     return nlp_solver
 end
