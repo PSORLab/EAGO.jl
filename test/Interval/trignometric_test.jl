@@ -18,6 +18,8 @@ end
     @test sin(MCInterval(1.67, 3.2)) == MCInterval(-0.058374143427580086, 0.9950833498101802)
     @test sin(MCInterval(2.1, 5.6)) == MCInterval(-1.0, 0.8632093666488737)
     @test sin(MCInterval(0.5, 8.5)) == MCInterval(-1.0, 1.0)
+    @test sin(MCInterval(0.0, 6.0)) == MCInterval(-1.0, 1.0)
+    @test sin(MCInterval(6.0, 7.0)) == MCInterval(-0.27941549819892586, 0.6569865987187891)
 end
 
 @testset "cos" begin
@@ -26,6 +28,9 @@ end
     @test cos(MCInterval(2.1, 5.6)) == MCInterval(-1.0, 0.7755658785102496)
     @test cos(MCInterval(0.5, 8.5)) == MCInterval(-1.0, 1.0)
     @test cos(MCInterval(1.67, 3.2)) == MCInterval(-1.0, -0.09904103659872801)
+    @test cos(MCInterval(6.0, 7.0)) == MCInterval(0.7539022543433046, 1.0)
+    @test cos(MCInterval(4.0, 6.0)) == MCInterval(-0.6536436208636119, 0.960170286650366)
+    @test cos(MCInterval(2.0, 7.0)) == MCInterval(-1.0, 1.0)
 end
 
 @testset "tan" begin

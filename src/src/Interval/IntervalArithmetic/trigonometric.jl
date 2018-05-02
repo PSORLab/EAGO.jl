@@ -44,9 +44,7 @@ function sin(a::MCInterval{T}) where {T<:AbstractFloat}
     lo_quadrant = min(lo1,lo2)
     hi_quadrant = max(hi1,hi2)
 
-    if hi_quadrant - lo_quadrant > 4  # close to limits
-        return whole_range
-    end
+    (hi_quadrant - lo_quadrant > 4) && (return whole_range)
 
     lo_quadrant = mod(lo_quadrant, 4)
     hi_quadrant = mod(hi_quadrant, 4)
@@ -82,9 +80,7 @@ function cos(a::MCInterval{T}) where {T<:AbstractFloat}
     lo_quadrant = min(lo1,lo2)
     hi_quadrant = max(hi1,hi2)
 
-    if hi_quadrant - lo_quadrant > 4  # close to limits
-        return MCInterval{T}(-one(T), one(T))
-    end
+    (hi_quadrant - lo_quadrant > 4) && (return MCInterval{T}(-one(T), one(T)))
 
     lo_quadrant = mod(lo_quadrant, 4)
     hi_quadrant = mod(hi_quadrant, 4)

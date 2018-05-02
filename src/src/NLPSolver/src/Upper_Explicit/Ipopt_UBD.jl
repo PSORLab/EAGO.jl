@@ -154,7 +154,6 @@ function Ipopt_UBD(X,
             # sets up problem
             x_L::Vector{Float64} = [X[i].lo for i=1:opts[1].numVar]
             x_U::Vector{Float64} = [X[i].hi for i=1:opts[1].numVar]
-
             prob = createProblem(opts[1].numVar, x_L, x_U, opts[1].numConstr, opts[1].gL, opts[1].gU,
                                  opts[1].numVar*opts[1].numConstr, Int64(opts[1].numVar*(opts[1].numVar+1)/2),
                                  x::Vector{Float64} -> opts[1].f(x),
@@ -165,22 +164,20 @@ function Ipopt_UBD(X,
 
 
             prob.x = mid.(X)
-
             if (opts[1].numConstr == 0)
                 addOption(prob, "hessian_approximation", "limited-memory")
             end
             addOption(prob, "print_level", 0)
-            #addOption(prob, "tol", 1E-4)
 
             # solve problem and unpacks variables
-            #TT = STDOUT
-            #redirect_stdout()
             status = solveProblem(prob)
-            #redirect_stdout(TT)
             pnt::Vector{Float64} = prob.x
             val::Float64 = prob.obj_val
-            (status == 0 || status == 1 || status == 6) && (return feas::Bool = true)
-            (status == 2) ? (return feas = false) : error("Solver error code $status in Ipopt. Solution routine terminated.")
+            if (status == 0 || status == 1 || status == 6)
+                feas::Bool = true
+            else
+                (status == 2) ? (feas = false) : error("Solver error code $status in Ipopt. Solution routine terminated.")
+            end
 
             # output
             return val, pnt, feas, Any[feas,val]
