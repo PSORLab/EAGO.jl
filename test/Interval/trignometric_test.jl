@@ -39,9 +39,10 @@ end
     @test tan(MCInterval(-0.2, -0.1)) == MCInterval(-0.2027100355086725, -0.10033467208545055)
     @test tan(MCInterval(0.1, 0.2)) == MCInterval(0.10033467208545055, 0.2027100355086725)
     @test tan(MCInterval(1.4, 1.5)) == MCInterval(5.797883715482887, 14.101419947171719)
-    @test tan(MCInterval(0.5, 9.97)) == entireMCinterval(Float64)                                # Significant failure (REVISIT)
+    @test tan(MCInterval(0.5, 9.97)) == entireMCinterval(Float64)
     @test tan(MCInterval(1.67, 3.2)) == MCInterval(-10.047182299210306, 0.058473854459578645)
-    #@test tan(MCInterval(0.0, 3.0)) == entireMCinterval(Float64)      # Significant failure (REVISIT)
+    @test tan(MCInterval(0.0, 3.0)) == entireMCinterval(Float64)
+    @test tan(MCInterval(-3.13, 3.15)) == entireMCinterval(Float64)      
 end
 
 

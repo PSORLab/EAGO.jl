@@ -119,11 +119,12 @@ function tan(a::MCInterval{T}) where {T<:AbstractFloat}
 
     if lo_quadrant_mod == 0 && hi_quadrant_mod == 1
         # check if really contains singularity:
-        if hi_quadrant * half_pi(T) ⊆ a
+        piq_int = hi_quadrant * half_pi(T)
+        if (piq_int.lo>=a.lo) && (piq_int.hi<=a.hi)
             return entireMCinterval(T)  # crosses singularity
         end
 
-    elseif lo_quadrant_mod == hi_quadrant_mod && hi_quadrant > lo_quadrant
+    elseif (lo_quadrant_mod == hi_quadrant_mod) && (hi_quadrant > lo_quadrant)
         # must cross singularity
         return entireMCinterval(T)
 
