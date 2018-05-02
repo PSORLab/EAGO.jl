@@ -170,12 +170,8 @@ function Ipopt_UBD(X,
                 addOption(prob, "hessian_approximation", "limited-memory")
             end
             addOption(prob, "print_level", 0)
+            #addOption(prob, "tol", 1E-4)
 
-            if (opts[1].solver.UBD_full_depth < pos)
-                addOption(prob, "tol", Inf)
-            else
-                addOption(prob, "tol", 1E-4)
-            end
             # solve problem and unpacks variables
             #TT = STDOUT
             #redirect_stdout()
@@ -183,13 +179,8 @@ function Ipopt_UBD(X,
             #redirect_stdout(TT)
             pnt::Vector{Float64} = prob.x
             val::Float64 = prob.obj_val
-            if (status == 0 || status == 1 || status == 6)
-                feas::Bool = true
-            elseif (status == 2)
-                feas == false
-            else
-                error("Solver error code $status in Ipopt. Solution routine terminated.")
-            end
+            (status == 0 || status == 1 || status == 6) && (return feas::Bool = true)
+            (status == 2) ? (return feas = false) : error("Solver error code $status in Ipopt. Solution routine terminated.")
 
             # output
             return val, pnt, feas, Any[feas,val]

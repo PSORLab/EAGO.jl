@@ -1,20 +1,19 @@
 # write your own tests here
 
 println("Testing McCormick Multiplication Operator...")
-t = @elapsed include("Mult_Test.jl")
-println("done (took $t seconds).")
+include("Mult_Test.jl")
 
 println("Testing McCormick Operators...")
-t = @elapsed include("Operators.jl")
-println("done (took $t seconds).")
+include("Operators.jl")
 
 println("Testing McCormick Extrema Operator...")
-t = @elapsed include("Extrema_Test.jl")
-println("done (took $t seconds).")
+include("Extrema_Test.jl")
 
 println("Testing Utility Functions...")
-t = @elapsed include("Utilities.jl")
-println("done (took $t seconds).")
+include("Utilities.jl")
+
+println("Testing McCormick & Constant Operators...")
+include("Operators/WithConstants.jl")
 
 #=
 println("Implicit Bounding Utilities...")

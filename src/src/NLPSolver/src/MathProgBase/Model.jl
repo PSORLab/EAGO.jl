@@ -52,25 +52,9 @@ type EAGO_Inner_NLP
 end
 function EAGO_Inner_NLP(s::EAGO_NLPSolver)
     return EAGO_Inner_NLP([0.0],[0.0],0,[0],[0],0,0,Symbol[],Symbol(),Expr(:call),
-                          Expr[], nothing,#TapeList(),
-                                                    x -> x,
-                                                    x -> x,
-                                                    s,
-                                                    [],
-                                                    false,
-                                                    x->x,
-                                                    x->x,
-                                                    x->x,
-                                                    x->x,
-                                                    Int64(0),
-                                                    Int64(0),
-                                                    [Int64(0)],
-                                                    [Int64(0)],
-                                                    [Float64(0)],
-                                                    [Float64(0)],
-                                                    Int64(0),
-                                                    nothing)
-println("ran solver to inner NLP")
+                            Expr[], nothing, x -> x, x -> x, s, [], false, x->x, x->x,
+                            x->x, x->x, Int64(0), Int64(0), [Int64(0)], [Int64(0)],
+                            [Float64(0)], [Float64(0)], Int64(0), nothing)
 end
 """
     EAGO_NLP_Model

@@ -23,11 +23,7 @@ mutable struct callback_storage
 
     Quadratic_ObjCV_Callback::Function
 end
-callback_storage() = callback_storage(x->x,[1],[1],x->x,x->x,
-                                      x->x,x->x,x->x,x->x,x->x,
-                                      x->x,x->x,x->x,x->x,x->x,
-                                      [],[],x->x,
-                                      x->x)
+callback_storage() = callback_storage(x->x,[1],[1],x->x,x->x,x->x,x->x,x->x,x->x,x->x,x->x,x->x,x->x,x->x,x->x,[],[],x->x,x->x)
 
 """
     MathProgBase.optimize!(s::EAGO_NLP_Model)
@@ -96,8 +92,7 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     call_sto.IPOPT_LBD_eval_grad_f! = (x::Vector{Float64}, X, f_grad::Vector{Float64}) -> IPOPT_LBD_eval_grad_f!(x, X, f_grad, s.Opts)
     call_sto.IPOPT_LBD_eval_g! = (x::Vector{Float64}, X, g::Vector{Float64}) -> IPOPT_LBD_eval_g!(x, X, g, s.Opts)
     call_sto.IPOPT_LBD_eval_jac_g! = (x::Vector{Float64}, X, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_LBD_eval_jac_g!(x, X, mode, rows, cols, values, s.Opts, call_sto)
-    call_sto.IPOPT_LBD_eval_h = (x::Vector{Float64}, X, mode::Symbol,
-                                 rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_LBD_eval_h(x, X, mode, rows, cols, obj_factor, lambda, values, s.Opts, call_sto)
+    call_sto.IPOPT_LBD_eval_h = (x::Vector{Float64}, X, mode::Symbol,rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_LBD_eval_h(x, X, mode, rows, cols, obj_factor, lambda, values, s.Opts, call_sto)
     call_sto.IPOPT_LBD_eval_g = (x::Vector{Float64}, X::Vector{Interval{Float64}}) -> IPOPT_LBD_eval_g(x, X, s.Opts)
     call_sto.fg_SNOPT_LBD  = (y::Vector{Float64},X) -> snopt_callback_LBD(y,X,s.Opts)
     call_sto.fg_SNOPT_LBD_Imp  = (y::Vector{Float64},X,param,pmid) -> snopt_callback_LBD_Imp(y,X,s.Opts,param,pmid)
@@ -105,8 +100,7 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     call_sto.IPOPT_UBD_eval_grad_f! = (x::Vector{Float64}, f_grad::Vector{Float64}) -> IPOPT_UBD_eval_grad_f!(x, f_grad, s.Opts)
     call_sto.IPOPT_UBD_eval_g! = (x::Vector{Float64}, g::Vector{Float64}) -> IPOPT_UBD_eval_g!(x, g, s.Opts)
     call_sto.IPOPT_UBD_eval_jac_g! = (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values, s.Opts, call_sto)
-    call_sto.IPOPT_UBD_eval_h = (x::Vector{Float64}, mode::Symbol,
-                                 rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_UBD_eval_h(x, mode, rows, cols, obj_factor, lambda, values, s.Opts)
+    call_sto.IPOPT_UBD_eval_h = (x::Vector{Float64}, mode::Symbol,rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_UBD_eval_h(x, mode, rows, cols, obj_factor, lambda, values, s.Opts)
 
     UBD_error_flag = false
 
