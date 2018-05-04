@@ -11,7 +11,6 @@ function NLPSolve_UBD(X,k::Int64,pos::Int64,opts,temp)
     # solves upper model
     optimize!(mod)
     out = status(mod)
-    println("out: $out")
 
     pnt::Vector{Float64} = getsolution(mod)
     val::Float64 = getobjval(mod)

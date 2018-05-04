@@ -19,4 +19,4 @@ mutable struct PIntvParams{T}
     tband::Integer     # Total bandwidth u+l+1
     kmax::Integer        # Number of iterations to take for contractor
 end
-PIntvParams(nx::Integer,band::Integer) = PIntvParams(:Dense,:Krawczyk,1E-6,1E-6,nx,band,100)
+PIntvParams(nx::Integer,band::Integer) = PIntvParams(:Dense,:Krawczyk,1E-6,1E-6,nx,band,5)
