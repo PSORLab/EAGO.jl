@@ -5,8 +5,6 @@ using EAGO
 using Ipopt
 using JuMP
 
-# TESTS LP IMPLICIT SOLVER
-
 # Solves the quadratically constrained problem (Example 5.1, Stuber2015)
 h1(x,p) = [x[1]^2 + p[1]*x[1] + 4.0]
 hj1(x,p) = [2.0*x[1] + p[1]]
@@ -47,6 +45,7 @@ status1b = Solve_Implicit(jm1b,f1,h1,hj1,x->[],1)
 
 
 # Solves Kolev-based problem (Example 5.2, Stuber 2015)
+#=
 function h2(x,p)
     [(1.00*10^(-9))*(exp(38x[1])-1)+p[1]*x[1]-1.6722*x[2]+0.6689*x[3]-8.0267
      (1.98*10^(-9))*(exp(38x[2])-1)+0.6622*x[1]+p[2]*x[2]+0.6622*x[3]+4.0535
@@ -104,7 +103,7 @@ xc = @variable(jm2, [i=1:6], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
 @NLconstraint(jm2, (1.00*10^(-9))*(exp(38xc[3])-1)+xc[1]-xc[2]+xc[6]*xc[3]-6.0 == 0.0 )
 @NLobjective(jm1b, Min, xc[1])
 status1b = Solve_Implicit(jm2,f2,h2,hj2,x->[],3)
-
+=#
 # TEST SNOPT IMPLICIT SOLVER
 
 
