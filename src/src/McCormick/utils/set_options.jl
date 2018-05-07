@@ -51,15 +51,6 @@ function set_diff_relax(val::Integer)
 end
 
 """
-    set_validated(val)
-
-Sets flag for using validity check for McCormick relaxations (cv<=cc).
-"""
-function set_validated(val)
-  MC_param.valid_check = val
-end
-
-"""
     set_subgrad_refine(val)
 
 Set flag for using subgradient refinement of interval bounds.

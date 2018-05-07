@@ -110,7 +110,6 @@ sol1d = getsolution(internalmodel(jm1d))
 ###############################################################################
 # TEST VALIDATED CALCULATIONS WITH INEQUALITY CONSTRAINTS
 ###############################################################################
-println("ran to 1:")
 jm1e = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
@@ -134,7 +133,6 @@ sol1e = getsolution(internalmodel(jm1e))
 @test isapprox(sol1e[1],-8.0,atol=1E-3)
 @test isapprox(sol1e[2],8.50,atol=1E-3)
 @test isapprox(getobjval(internalmodel(jm1e)),-8.0,atol=1E-3) # getobjval returns void???
-println("ran to 2:")
 
 ###############################################################################
 # TEST NONVALIDATED CALCULATIONS WITH INEQUALITY CONSTRAINTS
@@ -164,7 +162,6 @@ sol1f = getsolution(internalmodel(jm1f))
 @test isapprox(sol1f[2],8.50,atol=1E-3)
 @test isapprox(getobjval(internalmodel(jm1f)),-8.0,atol=1E-3) # getobjval returns void???
 
-println("ran to 3:")
 ###############################################################################
 # TEST NEWTON METHOD (1D) WITH INEQUALITY CONSTRANTS
 ###############################################################################
@@ -196,7 +193,6 @@ sol1g = getsolution(internalmodel(jm1g))
 @test isapprox(sol1g[1],-8.0,atol=1E-3)
 @test isapprox(sol1g[2],8.50,atol=1E-3)
 @test isapprox(getobjval(internalmodel(jm1g)),-8.0,atol=1E-3) # getobjval returns void???
-println("ran to 4:")
 
 end
 end

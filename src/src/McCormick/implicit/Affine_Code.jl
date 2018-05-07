@@ -64,11 +64,14 @@ function Correct_Exp!(z_mc::Vector{SMCg{N,V,T}},x_mc::Vector{SMCg{N,V,T}},
                      epsv::Float64) where {N,V,T<:AbstractFloat}
   zero_grad::SVector{N,T} = @SVector zeros(T,N)
   for i = 1:nx
+    if (z_mc[i].Intv.lo-epsv < X[i].lo) && (z_mc[i].Intv.hi+epsv > X[i].hi)
+      x_mc[i] = SMCg{N,V,T}(X[i].hi,X[i].lo,zero_grad,zero_grad,X[i],true,x_mc[i].IntvBox,x_mc[i].xref)
+    end
     if (z_mc[i].Intv.lo-epsv < X[i].lo)
-      x_mc[i] = SMCg{N,V,T}(x_mc[i].cc,X[i].lo,x_mc[i].cc_grad,zero_grad,x_mc[i].Intv,true,x_mc[i].IntvBox,x_mc[i].xref)
+      x_mc[i] = SMCg{N,V,T}(x_mc[i].cc,X[i].lo,x_mc[i].cc_grad,zero_grad,V(X[i].lo,x_mc[i].Intv.hi),true,x_mc[i].IntvBox,x_mc[i].xref)
     end
     if (z_mc[i].Intv.hi+epsv > X[i].hi)
-      x_mc[i] = SMCg{N,V,T}(X[i].hi,x_mc[i].cv,zero_grad,x_mc[i].cv_grad,x_mc[i].Intv,true,x_mc[i].IntvBox,x_mc[i].xref)
+      x_mc[i] = SMCg{N,V,T}(X[i].hi,x_mc[i].cv,zero_grad,x_mc[i].cv_grad,V(x_mc[i].Intv.lo,X[i].hi),true,x_mc[i].IntvBox,x_mc[i].xref)
     end
   end
 end

@@ -15,6 +15,9 @@ include("Utilities.jl")
 println("Testing McCormick & Constant Operators...")
 include("Operators/WithConstants.jl")
 
+println("Implicit Bounding Subroutines...")
+include("ImplicitBnd.jl")
+
 #=
 println("Implicit Bounding Utilities...")
 t = @elapsed include("Imp_Util_Test.jl")
