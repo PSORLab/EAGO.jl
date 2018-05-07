@@ -1,0 +1,47 @@
+module ImplicitSIP_Tests
+
+using Compat
+using Compat.Test
+using IntervalArithmetic
+using EAGO
+
+
+# solves example SIP #1 with DAG contractor disabled
+@testset "SemiInfinite Explicit RHS" begin
+SIPopt1 = SIP_opts()
+sep1lu = EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                        LBDsolvertype = "LP",
+                        probe_depth = -1,
+                        variable_depth = 1000,
+                        DAG_depth = -1,
+                        STD_RR_depth = 1000,
+                        ImplicitFlag = true,
+                        verbosity = "Normal",
+                        validated = true))
+sep1lu.BnBSolver.Verbosity = "None"
+sep1in = EAGO_NLPSolver(BD_func_relax = "NS-STD-OFF",
+                            LBDsolvertype = "LP",
+                            probe_depth = -1,
+                            variable_depth = 1000,
+                            DAG_depth = -1,
+                            STD_RR_depth = 1000,
+                            ImplicitFlag = true,
+                            verbosity = "Normal",
+                            validated = true))
+
+sep1in.BnBSolver.Verbosity = "None"
+SIPopt1.LLP_Opt = sep1in
+SIPopt1.LBP_Opt = sep1lu
+SIPopt1.UBP_Opt = sep1lu
+f1(x) = (1/3)*x[1]^2 + x[2]^2 + x[1]/2
+gSIP1(x,p) = (1.0-(x[1]^2)*(p[1]^2))^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
+X1 = [MCInterval(-1000.0,1000.0),MCInterval(-1000.0,1000.0)]
+P1 = [MCInterval(0.0,1.0)]
+SIPoutput1 = Implicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
+
+@test isapprox(SIPoutput1.LBD,0.19452787006676814,atol=1E-3)
+@test isapprox(SIPoutput1.UBD,0.19452787006676814,atol=1E-3)
+
+end
+
+end

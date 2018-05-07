@@ -7,7 +7,9 @@ using JuMP
 using MathProgBase
 
 @testset "JuMP Implicit (LP)" begin
-
+###############################################################################
+# TEST NONVALIDATED CALCULATIONS WITHOUT INEQUALITY CONSTRAINTS
+###############################################################################
 # Solves the quadratically constrained problem (Example 5.1, Stuber2015)
 h1(x,p) = [x[1]^2 + p[1]*x[1] + 4.0]
 hj1(x,p) = [2.0*x[1] + p[1]]
@@ -59,6 +61,10 @@ sol1b = getsolution(internalmodel(jm1b))
 @test isapprox(sol1b[2],9.00,atol=1E-3)
 @test isapprox(getobjval(internalmodel(jm1b)),-8.531128966881054,atol=1E-3)
 
+
+###############################################################################
+# TEST VALIDATED CALCULATIONS WITHOUT INEQUALITY CONSTRAINTS
+###############################################################################
 jm1c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
@@ -100,6 +106,83 @@ sol1d = getsolution(internalmodel(jm1d))
 @test isapprox(sol1d[1],-8.531128966881054,atol=1E-3)
 @test isapprox(sol1d[2],9.00,atol=1E-3)
 @test isapprox(getobjval(internalmodel(jm1d)),-8.531128966881054,atol=1E-3)
+
+###############################################################################
+# TEST VALIDATED CALCULATIONS WITH INEQUALITY CONSTRAINTS
+###############################################################################
+
+jm1e = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                   LBDsolvertype = "LP",
+                                   probe_depth = -1,
+                                   variable_depth = 1000,
+                                   DAG_depth = -1,
+                                   STD_RR_depth = 1000,
+                                   ImplicitFlag = true,
+                                   verbosity = "Normal",
+                                   validated = true))
+xe = @variable(jm1e, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
+@NLconstraint(jm1e, xe[1]^2 + xe[2]*xe[1] + 4 == 0.0 )
+@NLconstraint(jm1e, -100 <= -xe[1] <= 8.0 )
+@NLobjective(jm1e, Min, xe[1])
+status1e = Solve_Implicit(jm1e,f1,h1,hj1,(x,p)->-x[1],1)
+sol1e = getsolution(internalmodel(jm1e))
+@test status1e == :Optimal
+@test isapprox(sol1e[1],-8.0,atol=1E-3)
+@test isapprox(sol1e[2],8.50,atol=1E-3)
+@test isapprox(getobjval(internalmodel(jm1e)),-8.0,atol=1E-3) # getobjval returns void???
+
+
+###############################################################################
+# TEST NONVALIDATED CALCULATIONS WITH INEQUALITY CONSTRAINTS
+###############################################################################
+
+jm1f = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                   LBDsolvertype = "LP",
+                                   probe_depth = -1,
+                                   variable_depth = 1000,
+                                   DAG_depth = -1,
+                                   STD_RR_depth = 1000,
+                                   ImplicitFlag = true,
+                                   verbosity = "Normal",
+                                   validated = false))
+xf = @variable(jm1f, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
+@NLconstraint(jm1f, xf[1]^2 + xf[2]*xf[1] + 4 == 0.0 )
+@NLconstraint(jm1f, -100 <= -xf[1] <= 8.0 )
+@NLobjective(jm1f, Min, xf[1])
+status1f = Solve_Implicit(jm1f,f1,h1,hj1,(x,p)->-x[1],1)
+sol1f = getsolution(internalmodel(jm1f))
+@test status1f == :Optimal
+@test isapprox(sol1f[1],-8.0,atol=1E-3)
+@test isapprox(sol1f[2],8.50,atol=1E-3)
+@test isapprox(getobjval(internalmodel(jm1f)),-8.0,atol=1E-3) # getobjval returns void???
+
+###############################################################################
+# TEST NEWTON METHOD (1D) WITH INEQUALITY CONSTRANTS
+###############################################################################
+MCOPT = mc_opts()
+set_default!(MCOPT)
+MCOPT.CTyp = :Newton
+
+jm1g = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                   LBDsolvertype = "LP",
+                                   probe_depth = -1,
+                                   variable_depth = 1000,
+                                   DAG_depth = -1,
+                                   STD_RR_depth = 1000,
+                                   ImplicitFlag = true,
+                                   verbosity = "Full",
+                                   validated = true,
+                                   PSmcOpt = MCOPT))
+xg = @variable(jm1g, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
+@NLconstraint(jm1g, xg[1]^2 + xg[2]*xg[1] + 4 == 0.0 )
+@NLconstraint(jm1g, -100 <= -xg[1] <= 8.0 )
+@NLobjective(jm1g, Min, xg[1])
+status1g = Solve_Implicit(jm1g,f1,h1,hj1,(x,p)->-x[1],1)
+sol1g = getsolution(internalmodel(jm1g))
+@test status1g == :Optimal
+@test isapprox(sol1g[1],-8.0,atol=1E-3)
+@test isapprox(sol1g[2],8.50,atol=1E-3)
+@test isapprox(getobjval(internalmodel(jm1g)),-8.0,atol=1E-3) # getobjval returns void???
 
 end
 end
