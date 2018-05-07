@@ -46,15 +46,14 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                                                            SVector{np,Float64}(pmid)) for i=1:np]
             f::SMCg{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
-            println("f.Intv.lo: $(f.Intv.lo)")
             if opt[1].Imp_nCons>0
                 c::Vector{SMCg{np,Interval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
-                dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].Imp_gL_loc)+length(opt[1].Imp_gU_loc),np)
+                dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].Imp_gL_Loc)+length(opt[1].Imp_gU_Loc),np)
             else
                 dcdx = spzeros(1,np)
             end
             if opt[1].Imp_nCons>0
-                cx_ind1::Int64 = 1
+                cx_ind1 = 1
                 for i in opt[1].Imp_gL_Loc
                     for j=1:np
                         if (c[i].cv_grad[j] != 0.0)
@@ -78,7 +77,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                 rhs = zeros(Float64,1)
             end
             if opt[1].Imp_nCons>0
-                cx_ind2::Int64 = 1
+                cx_ind2 = 1
                 for i in opt[1].Imp_gU_Loc
                     rhs[cx_ind2] = sum(pmid[:].*c[i].cv_grad[:])+opt[1].Imp_gU[i]-c[i].cv
                     cx_ind2 += 1
@@ -167,7 +166,7 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
             end
             if opt[1].Imp_nCons>0
                 cx_ind1::Int64 = 1
-                for i in opt[1].Imp_gL_loc
+                for i in opt[1].Imp_gL_Loc
                     for j=1:np
                         if (c[i].cv_grad[j] != 0.0)
                             dcdx[cx_ind1,j] = c[i].cv_grad[j]
@@ -175,7 +174,7 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
                     end
                     cx_ind1 += 1
                 end
-                for i in opt[1].Imp_gU_loc
+                for i in opt[1].Imp_gU_Loc
                     for j=1:np
                         if (c[i].cc_grad[j] != 0.0)
                             dcdx[cx_ind1,j] = -c[i].cc_grad[j]
@@ -191,11 +190,11 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
             end
             if opt[1].Imp_nCons>0
                 cx_ind2::Int64 = 1
-                for i in opt[1].Imp_gU_loc
+                for i in opt[1].Imp_gU_Loc
                     rhs[cx_ind2] = sum(pmid[:].*c[i].cv_grad[:])+opt[1].Imp_gU[i]-c[i].cv
                     cx_ind2 += 1
                 end
-                for i in opt[1].Imp_gL_loc
+                for i in opt[1].Imp_gL_Loc
                     rhs[cx_ind2] = sum(-pmid[:].*c[i].cc_grad[:])-opt[1].Imp_gL[i]+c[i].cc
                     cx_ind2 += 1
                 end
