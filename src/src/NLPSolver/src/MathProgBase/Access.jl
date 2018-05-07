@@ -30,7 +30,12 @@ Sets the functions and dimensionality of the implicit model corresponding to
 the JuMP model containing the EAGO_NLP_model.
 """
 function Solve_Implicit(jm::JuMP.Model,f::Function,h::Function,
-                             hj::Function,g::Function,nx::Int64)
+                             hj::Function,g::Function,nx::Int64;
+                             Imp_gL_Loc = [Int64(0)],
+                             Imp_gU_Loc = [Int64(0)],
+                             Imp_gL = [Float64(0)],
+                             Imp_gU = [Float64(0)],
+                             Imp_nCons = Int64(0))
 
     # Builds the JuMP model and adds the appropriate equations
     JuMP.build(jm)
@@ -40,6 +45,11 @@ function Solve_Implicit(jm::JuMP.Model,f::Function,h::Function,
     m.Opts.Imp_h = h
     m.Opts.Imp_hj = hj
     m.Opts.Imp_nx = nx
+    m.Opts.Imp_gL_Loc = Imp_gL_Loc
+    m.Opts.Imp_gU_Loc = Imp_gU_Loc
+    m.Opts.Imp_gL = Imp_gL
+    m.Opts.Imp_gU = Imp_gU
+    m.Opts.Imp_nCons = Imp_nCons
 
     # Unpacks inner model and solves
     MathProgBase.optimize!(m)
