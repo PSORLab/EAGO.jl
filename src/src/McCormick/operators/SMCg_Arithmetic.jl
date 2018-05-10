@@ -51,101 +51,51 @@ function /(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	end
 end
 
+
+function sqr_cv_NS(x::T,xL::T,xU::T) where {T<:AbstractFloat}
+	return x^2,two(T)*x
+end
+function sqr_cc(x::T,xL::T,xU::T) where {T<:AbstractFloat}
+	if (xU>xL)
+		return xL^2 + (xL+xU)*(x-xL),(xL+xU)
+	else
+		return xU^2,zero(T)
+	end
+end
+function sqr_cv(x::T,xL::T,xU::T) where {T<:AbstractFloat}
+	if (zero(x) <= xL || xU <= zero(x))
+		return x^2,two(T)*x
+	elseif ((xL<zero(x)) && (zero(x) <= xU))
+		return (x^3)/xU,(three(T)*x^2)/xU
+	else
+		return (x^3)/xL,(three(T)*x^2)/xL
+	end
+end
 function sqr(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	Intv::V = x.Intv^2
-	xL::T = x.Intv.lo
-	xU::T = x.Intv.hi
-	xLc::T = xL*xL
-	xUc::T = xU*xU
-	zT::T = zero(T)
-
-	#calculates: eps_min = mid3(xLc,xUc,zT)
-	if (xL>=xU)
-		if (xU<=zT)
-			if (xL>=zT)
-				eps_min::T = zT
-			else
-				eps_min = xL
-			end
-		else
-			eps_min = xU
-		end
-	elseif (xU>=zT)
-		if (xL<=zT)
-			eps_min = zT
-		else
-			eps_min = xL
-		end
-	else
-		eps_min = xU
-	end
-	comp_LU::Bool = (abs(xLc)>=abs(xUc))
-  	eps_max::T = ifelse(comp_LU,xL,xU)
-
-	if (MC_param.mu >= 1)
-
-		# calculate mid3(x.cc,x.cv,eps_max)
-		if (eps_max<x.cv)
-			cc::T = xLc+(xL+xU)*(x.cc-xL)
-		elseif (eps_max>x.cc)
-			cc = xLc+(xL+xU)*(x.cv-xL)
-		else
-			cc = xLc+(xL+xU)*(eps_max-xL)
-		end
-		if comp_LU
-			cc_grad::SVector{N,T} = (xL+xU)*x.cc_grad
-		else
-			cc_grad = (xL+xU)*x.cv_grad
-		end
-
-		# calculate mid3(x.cc,x.cv,min)
-		if (eps_min<x.cv)
-			midcv::T = x.cv
-		elseif (eps_min>x.cc)
-			midcv = x.cc
-		else
-			midcv = eps_min
-		end
-		if (zT<=xL) 		# increasing
-			cv::T = midcv^2
-			cv_grad::SVector{N,T} = (two(T)*midcv)*x.cv_grad
-		elseif (xU<=zT) 	# decreasing
-			cv = midcv^2
-			cv_grad = (two(T)*midcv)*x.cc_grad
-		elseif (zT<=midcv)  # increasing
-			cv = (midcv^3)/xU
-			cv_grad = ((three(T)/xU)*midcv^2)*x.cv_grad
-		elseif (zT>midcv)   # decreasing
-			cv = (midcv^3)/xL
-			cv_grad = ((three(T)/xL)*midcv^2)*x.cc_grad
-		end
-	else
-		# calculate mid3(x.cc,x.cv,min)
-		if (eps_min<x.cv)
-			cv = x.cv^2
-			cv_grad = (two(T)*x.cv)*x.cv_grad
-		elseif (eps_min>x.cc)
-			cv = x.cc^2
-			cv_grad = (two(T)*x.cc)*x.cc_grad
-		else
-			cv = eps_min^2
-			cv_grad = zeros(SVector{N,T})
-		end
-		# calculate mid3(x.cc,x.cv,eps_max)
-		m::T = (xUc-xLc)/(xU-xL)
-		if (eps_max<x.cv)
-			cc = xLc + m*(x.cc-xL)
-			cc_grad = m*x.cc_grad
-		elseif (eps_max>x.cc)
-			cc = xLc + m*(x.cv-xL)
-			cc_grad = m*x.cv_grad
-		else
-			cc = xLc + m*(eps_max-xL)
-			cc_grad = zeros(SVector{N,T})
-		end
-		cv,cc,cv_grad,cc_grad = cut(Intv.lo,Intv.hi,cv,cc,cv_grad,cc_grad)
-	end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, x.Intv^2, x.cnst, x.IntvBox,x.xref)
+    xL::T = x.Intv.lo
+    xU::T = x.Intv.hi
+    xLc::T = Intv.lo
+    xUc::T = Intv.hi
+    eps_max::T = abs(x.Intv.hi) > abs(x.Intv.lo) ?  x.Intv.hi : x.Intv.lo
+    eps_min::T = abs(x.Intv.hi) > abs(x.Intv.lo) ?  x.Intv.lo : x.Intv.hi
+    midcc::T,cc_id::Int64 = mid3(x.cc,x.cv,eps_max)
+    midcv::T,cv_id::Int64 = mid3(x.cc,x.cv,eps_min)
+    cc::T,dcc::T = sqr_cc(midcc,x.Intv.lo,x.Intv.hi)
+    cv::T,dcv::T = sqr_cv_NS(midcv,x.Intv.lo,x.Intv.hi)
+    if (MC_param.mu >= 1)
+      gcc1::T,gdcc1::T = sqr_cc(x.cv,x.Intv.lo,x.Intv.hi)
+  	  gcv1::T,gdcv1::T = sqr_cv(x.cv,x.Intv.lo,x.Intv.hi)
+  	  gcc2::T,gdcc2::T = sqr_cc(x.cc,x.Intv.lo,x.Intv.hi)
+  	  gcv2::T,gdcv2::T = sqr_cv(x.cc,x.Intv.lo,x.Intv.hi)
+  	  cv_grad::SVector{N,T} = max(zero(T),gdcv1)*x.cv_grad + min(zero(T),gdcv2)*x.cc_grad
+  	  cc_grad::SVector{N,T} = min(zero(T),gdcc1)*x.cv_grad + max(zero(T),gdcc2)*x.cc_grad
+    else
+      cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
+      cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
+      cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
+    end
+    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst,x.IntvBox, x.xref)
 end
 
 ########### Defines functions required for linear algebra packages

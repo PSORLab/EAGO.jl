@@ -42,7 +42,7 @@ function -(x::SMCg{N,V,T},c::T) where {N,V,T<:AbstractFloat}
 	            x.cnst, x.IntvBox,x.xref)
 end
 function -(c::T,x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
-	return SMCg{N,V,T}(c-x.cc, c-x.cv, x.cc_grad, x.cv_grad, (c-x.Intv),
+	return SMCg{N,V,T}(c-x.cv, c-x.cc, x.cc_grad, x.cv_grad, (c-x.Intv),
 				x.cnst, x.IntvBox,x.xref)
 end
 # Subtraction (Mixed Floats)
@@ -53,7 +53,7 @@ function -(x::SMCg{N,V,T},c::C) where {N,V,T<:AbstractFloat,C<:AbstractFloat}
 end
 function -(c::C,x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat,C<:AbstractFloat}
 	f::T = convert(T,c)
-	return SMCg{N,V,T}(f-x.cc, f-x.cv, x.cc_grad, x.cv_grad, (f-x.Intv),
+	return SMCg{N,V,T}(f-x.cv, f-x.cc, x.cc_grad, x.cv_grad, (f-x.Intv),
 				x.cnst, x.IntvBox,x.xref)
 end
 # Subtraction (Integers)
@@ -64,7 +64,7 @@ function -(x::SMCg{N,V,T},c::X) where {N,V,T<:AbstractFloat,X<:Integer}
 end
 function -(c::X,x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat,X<:Integer}
 	f::T = convert(T,c)
-	return SMCg{N,V,T}(c-x.cc, c-x.cv, x.cc_grad, x.cv_grad, (c-x.Intv),
+	return SMCg{N,V,T}(c-x.cv, c-x.cc, x.cc_grad, x.cv_grad, (c-x.Intv),
 				x.cnst, x.IntvBox,x.xref)
 end
 

@@ -29,8 +29,10 @@ DAGContractor!(X,ftapelist_out,6)
 @test 20-1E-4 <= X[4].hi <= 20+1E-4
 @test 5-1E-4 <= X[5].hi <= 5+1E-4
 
+#=
 @test Tape() == Tape(MCInterval{Float64})
 @test TapeList().sto == TapeList([]).sto
+=#
 end
 
 @testset "Test Node Finder Construction" begin

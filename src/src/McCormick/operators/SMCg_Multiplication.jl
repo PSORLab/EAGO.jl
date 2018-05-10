@@ -13,14 +13,15 @@ function gCxAcv(alpha::V,beta::V,lambda::V,nu::V,x1::SMCg{N,V,T},x2::SMCg{N,V,T}
 		NuDel::T = nu.hi-nu.lo
 		LmdSum::T = lambda.lo+lambda.hi
 		NuSum::T = nu.lo+nu.hi
+		muT::T = convert(T,MC_param.mu)
 		mu1::Int64 = MC_param.mu+1
 		mu1T::T = convert(T,MC_param.mu+1)
 		mu1n::Int64 = MC_param.mu-1
 
-		xslo::T = lambda.lo+LmdDel*(((nu.hi-betlo)/NuDel)+sigu(-(NuSum)/(mu1T*(NuDel)),mu1T))
-		xshi::T = lambda.lo+LmdDel*(((nu.hi-bethi)/NuDel)+sigu(-(NuSum)/(mu1T*(NuDel)),mu1T))
-		yslo::T = nu.lo+NuDel*(((lambda.hi-alplo)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),mu1T))
-		yshi::T = nu.lo+NuDel*(((lambda.hi-alphi)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),mu1T))
+		xslo::T = lambda.lo+LmdDel*(((nu.hi-betlo)/NuDel)-sigu((NuSum)/(mu1T*(NuDel)),muT)) # correct to minus?, correct internal minus? exponent to mu
+		xshi::T = lambda.lo+LmdDel*(((nu.hi-bethi)/NuDel)-sigu((NuSum)/(mu1T*(NuDel)),muT)) # correct to minus?
+		yslo::T = nu.lo+NuDel*(((lambda.hi-alplo)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),muT))
+		yshi::T = nu.lo+NuDel*(((lambda.hi-alphi)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),muT))
 
 		# calculates term 1
 		if (xslo <= alplo)
@@ -108,14 +109,15 @@ function gCxAcc(alpha::V,beta::V,lambda::V,nu::V,x1::SMCg{N,V,T},x2::SMCg{N,V,T}
 		LmdSum::T = lambda.lo+lambda.hi
 		NuSum::T = nu.lo+nu.hi
 		NuDotLmd::T = lambda.lo*nu.lo+lambda.hi*nu.hi
+		muT::T = convert(T,MC_param.mu)
 		mu1::Int64 = MC_param.mu+1
 		mu1n::Int64 = MC_param.mu-1
 		mu1T::T = convert(T,MC_param.mu+1)
 
-		xslo::T = lambda.lo+LmdDel*(((nu.hi-betlo)/NuDel)+sigu(-(NuSum)/(mu1T*(NuDel)),mu1T))
-		xshi::T = lambda.lo+LmdDel*(((nu.hi-bethi)/NuDel)+sigu(-(NuSum)/(mu1T*(NuDel)),mu1T))
-		yslo::T = nu.lo+NuDel*(((lambda.hi-alplo)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),mu1T))
-		yshi::T = nu.lo+NuDel*(((lambda.hi-alphi)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),mu1T))
+		xslo::T = lambda.lo+LmdDel*(((nu.hi-betlo)/NuDel)-sigu((NuSum)/(mu1T*(NuDel)),muT))
+		xshi::T = lambda.lo+LmdDel*(((nu.hi-bethi)/NuDel)-sigu((NuSum)/(mu1T*(NuDel)),muT))
+		yslo::T = nu.lo+NuDel*(((lambda.hi-alplo)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),muT))
+		yshi::T = nu.lo+NuDel*(((lambda.hi-alphi)/LmdDel)-sigu((LmdSum)/(mu1T*LmdDel),muT))
 
 		# calculates term 1
 		if (xslo <= alplo)
@@ -751,6 +753,7 @@ function *(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	degen2::Bool = ((x2.Intv.hi - x2.Intv.lo) == zero(T))
 
 	if (MC_param.mu >= 1 && ~(degen1||degen2))
+		#println("traces multi")
 		return multiply_MV(x1,x2)
 		#=
 	elseif (MC_param.multivar_refine && ~(degen1||degen2))

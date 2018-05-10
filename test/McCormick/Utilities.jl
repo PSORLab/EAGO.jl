@@ -48,10 +48,22 @@ dy0 = dline_seg(2.0,1.0,0.0,6.0,10.0,1.0)
 @test dy0 == 2.0
 
 @testset "Set Options" begin
-@test_nowarn EAGO.set_iterations(2)
-@test_nowarn EAGO.set_tolerance(1.5)
-@test_nowarn EAGO.set_outer_rnd(false,1E-4)
-@test_nowarn EAGO.default_options()
+    @test_nowarn EAGO.set_iterations(2)
+    @test_nowarn EAGO.set_tolerance(1.5)
+    @test_nowarn EAGO.set_outer_rnd(false,1E-4)
+    @test_nowarn EAGO.default_options()
+end
+
+@testset "Constant Functions" begin
+    @test EAGO.half(Float64) == Float64(0.5)
+    @test EAGO.half(Float32) == Float32(0.5)
+    @test EAGO.half(Float16) == Float16(0.5)
+    @test EAGO.two(Float64) == Float64(2.0)
+    @test EAGO.two(Float32) == Float32(2.0)
+    @test EAGO.two(Float16) == Float16(2.0)
+    @test EAGO.three(Float64) == Float64(3.0)
+    @test EAGO.three(Float32) == Float32(3.0)
+    @test EAGO.three(Float16) == Float16(3.0)
 end
 
 # converts float/integer to SMCg

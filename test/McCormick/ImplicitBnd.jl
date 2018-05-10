@@ -50,19 +50,19 @@ using EAGO
 
     hbnds = MC_impRelax(h1,hj1,p_mc,pmid,X,P,opts1,param)
     @test isapprox(hbnds[1].cc,-0.5209127114919797,atol=1E-4)
-    @test isapprox(hbnds[1].cv,-0.78,atol=1E-4)
+    @test isapprox(hbnds[1].cv,-0.6307841683146562,atol=1E-4)
 
     fbnds = impRelax_f(f,h1,hj1,X,P,p,pmid,opts1,param)
     @test isapprox(fbnds.cc,3.774523731048122,atol=1E-4)
-    @test isapprox(fbnds.cv,1.6619932432432432,atol=1E-4)
+    @test isapprox(fbnds.cv,2.5572882333553046,atol=1E-4)
 
     fgbnds = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts1,param)
     @test isapprox(fgbnds[1].cc,3.774523731048122,atol=1E-4)
-    @test isapprox(fgbnds[1].cv,1.6619932432432432,atol=1E-4)
+    @test isapprox(fgbnds[1].cv,2.5572882333553046,atol=1E-4)
     @test isapprox(fgbnds[2][1].cc,3.774523731048122,atol=1E-4)
-    @test isapprox(fgbnds[2][1].cv,1.6619932432432432,atol=1E-4)
+    @test isapprox(fgbnds[2][1].cv,2.5572882333553046,atol=1E-4)
     @test isapprox(fgbnds[2][2].cc,11.274523731048122,atol=1E-4)
-    @test isapprox(fgbnds[2][2].cv,9.161993243243243,atol=1E-4)
+    @test isapprox(fgbnds[2][2].cv,10.057288233355305,atol=1E-4)
 end
 
 end

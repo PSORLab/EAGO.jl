@@ -362,15 +362,6 @@ out9 = acosh(X)
 @test about(out9.Intv.lo,1.76274,1E-5)
 @test about(out9.Intv.hi,2.63392,1E-5)
 
-out8 = cosh(X)
-@test about(out8.cc,144.63000528563632,1E-5)
-@test about(out8.cv,27.308232836016487,1E-5)
-@test about(out8.cc_grad[1],134.562,1E-2)
-@test about(out8.cc_grad[2],0.0,1E-5)
-@test about(out8.cv_grad[1],-27.2899,1E-3)
-@test about(out8.cv_grad[2],0.0,1E-5)
-@test about(out8.Intv.lo,10.0676,1E-3)
-@test about(out8.Intv.hi,548.318,1E-3)
 
 @testset "Test Step" begin
     a = seed_g(Float64,1,2)
@@ -458,26 +449,6 @@ end
 ################################################################################
 ######################## Tests Smooth McCormick Relaxations ##################
 ################################################################################
-
-@testset "Cosh" begin
-    EAGO.set_diff_relax(1)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    mBox = mid.(xIBox)
-    X = SMCg{2,Interval{Float64},Float64}(4.0,4.0,a,a,xIBox[1],false,xIBox,mBox)
-    Y = SMCg{2,Interval{Float64},Float64}(7.0,7.0,b,b,xIBox[2],false,xIBox,mBox)
-    Xn = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,-xIBox[1],false,xIBox,mBox)
-    Xz = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,Interval(-3.0,1.0),false,xIBox,mBox)
-
-    out8 = cosh(X)
-    @test about(out8.cc,144.63000528563632,1E-5)
-    @test about(out8.cv,27.308232836016487,1E-5)
-    @test about(out8.cc_grad[1],134.562,1E-2)
-    @test about(out8.cc_grad[2],0.0,1E-5)
-    @test about(out8.cv_grad[1],-27.2899,1E-3)
-    @test about(out8.cv_grad[2],0.0,1E-5)
-    @test about(out8.Intv.lo,10.0676,1E-3)
-    @test about(out8.Intv.hi,548.318,1E-3)
-end
 
 
 EAGO.set_diff_relax(1)
@@ -584,24 +555,6 @@ out9 = acosh(X)
 @test about(out9.Intv.lo,1.76274,1E-5)
 @test about(out9.Intv.hi,2.63392,1E-5)
 
-out10 = sinh(X)
-@test about(out10.cc,144.59243701386904,1E-5)
-@test about(out10.cv,27.28991719712775,1E-5)
-@test about(out10.cc_grad[1],134.575,1E-2)
-@test about(out10.cc_grad[2],0.0,1E-1)
-@test about(out10.cv_grad[1],27.3082,1E-2)
-@test about(out10.cv_grad[2],0.0,1E-1)
-@test about(out10.Intv.lo,10.0178,1E-2)
-@test about(out10.Intv.hi,548.317,1E-2)
-out10a = sinh(Xn)
-@test about(out10a.cc,-27.28991719712775,1E-5)
-@test about(out10a.cv,-144.59243701386904,1E-5)
-@test about(out10a.cc_grad[1],27.3082,1E-2)
-@test about(out10a.cc_grad[2],0.0,1E-1)
-@test about(out10a.cv_grad[1],134.575,1E-2)
-@test about(out10a.cv_grad[2],0.0,1E-1)
-@test about(out10a.Intv.lo,-548.317,1E-2)
-@test about(out10a.Intv.hi,-10.0178,1E-2)
 
 out11 = asinh(X)
 @test about(out11.cc,2.0947125472611012,1E-5)
@@ -826,10 +779,10 @@ out23a = sqr(Xn)
 
 out23b = sqr(Xz)
 @test about(out23b.cc,7.0,1E-5)
-@test about(out23b.cv,2.66666666666,1E-5)
+@test about(out23b.cv,4.0,1E-5)
 @test about(out23b.cc_grad[1],-2.0,1E-5)
 @test about(out23b.cc_grad[2],0.0,1E-5)
-@test about(out23b.cv_grad[1],-4.0,1E-5)
+@test about(out23b.cv_grad[1],12.0,1E-5)
 @test about(out23b.cv_grad[2],0.0,1E-5)
 @test about(out23b.Intv.lo,0.0,1E-5)
 @test about(out23b.Intv.hi,9.0,1E-5)
