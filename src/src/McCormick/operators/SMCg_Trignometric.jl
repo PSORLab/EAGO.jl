@@ -196,7 +196,7 @@ end
   midcv::T,cv_id::Int64 = mid3(x.cc,x.cv,eps_min)
   cc::T,dcc::T = cc_tan(midcc,x.Intv.lo,x.Intv.hi)
   cv::T,dcv::T = cv_tan(midcv,x.Intv.lo,x.Intv.hi)
-  if ((x.Intv.lo==-Inf)||(x.Intv.hi==Inf))
+  if ((Intv.lo==-Inf)||(Intv.hi==Inf))
     error("Function unbounded on domain")
   end
   if (MC_param.mu >= 1)
