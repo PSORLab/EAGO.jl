@@ -74,10 +74,10 @@ end
 end
 
 @inline function asinh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return (asinh(z)-asinh(x))/(z-x)-one(T)/sqrt(one(T)+x^2)
+  return sqrt(one(T)+x^2)*(asinh(x)-asinh(y))+(y-x)
 end
 @inline function asinh_envd(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return (asinh(z)-asinh(x))/(z-x)^2+x/(x^2+one(T))^(3/2)-one(T)/((z-x)*sqrt(x^2+one(T)))
+  return x*(asinh(x)-asinh(y))/sqrt(one(T)+x^2)
 end
 @inline function cv_asinh(x::T,xL::T,xU::T) where {T<:AbstractFloat}
   p::T = zero(T)
@@ -86,13 +86,17 @@ end
   elseif (xU<=zero(T))
     return asinh(x),one(T)/sqrt(x^2+one(T))
   else
+    println("cv trace 1")
     try
-      p = newton(xL/2,xL,zero(x),asinh_env,asinh_envd,xL,xU)
+      println("cv trace 2")
+      p = newton(xL/2,xL,zero(x),asinh_env,asinh_envd,xU,xL)
     catch e
+      println("cv trace 3")
       if isa(e, ErrorException)
         p = golden_section(xL,zero(x),asinh_env,xL,xU)
       end
     end
+    println("p: $p")
     if (x<=p)
       return asinh(x),one(T)/sqrt(x^2+one(T))
     else
@@ -107,13 +111,17 @@ end
   elseif (xU<=zero(T))
     return line_seg(x,xL,asinh(xL),xU,asinh(xU)),dline_seg(x,xL,asinh(xL),xU,asinh(xU),one(T)/sqrt(x^2+one(T)))
   else
+    println("cc trace 1")
     try
+      println("cc trace 2")
       p = newton(xU/2,zero(x),xU,asinh_env,asinh_envd,xL,xU)
     catch e
+      println("cc trace 3")
       if isa(e, ErrorException)
         p = golden_section(zero(x),xU,asinh_env,xL,xU)
       end
     end
+    println("p: $p")
     if (x<=p)
       return line_seg(x,xL,asinh(xL),p,asinh(p)),dline_seg(x,xL,asinh(xL),p,asinh(p),one(T)/sqrt(x^2+one(T)))
     else
