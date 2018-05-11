@@ -157,7 +157,7 @@ end
     @test isapprox(out19b.Intv.lo,-0.546303,atol=1E-5)
     @test isapprox(out19b.Intv.hi,0.546303,atol=1E-5)
 
-    EAGO.set_diff_relax(0)
+    EAGO.set_diff_relax(1)
 
     out19c = tan(Xz)
     @test isapprox(out19c.cc,-0.309336,atol=1E-5)

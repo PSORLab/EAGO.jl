@@ -16,9 +16,8 @@ inputs `envp1` and `envp2` are the envelope calculation parameters.
     if (abs(fk)<MC_param.env_tol)
       return xk
     end
-    if (dfk == zero(T))
-      error("NEWTON EXCEPTION")
-    elseif (xk==xL && fk/dfk>zero(T))
+    (dfk == zero(T)) && error("NEWTON EXCEPTION")
+    if (xk==xL && fk/dfk>zero(T))
       return xk
     elseif (xk==xU && fk/dfk<zero(T))
       return xk
@@ -48,9 +47,8 @@ the bounds `xL` and `xU` using `x0` and `x1` as a starting points. The inputs
     if (abs(fk)<MC_param.env_tol)
       return xk
     end
-    if (Bk == zero(T))
-      error("SECANT EXCEPTION")
-    elseif ((xk==xL) && (fk/Bk>zero(T)))
+    (Bk == zero(T)) && error("SECANT EXCEPTION")
+    if ((xk==xL) && (fk/Bk>zero(T)))
       return xk
     elseif ((xk==xU) && (fk/Bk<zero(T)))
       return xk
@@ -75,9 +73,7 @@ calculation parameters.
   fL::T = f(xL,envp1,envp2)
   fU::T = f(xU,envp1,envp2)
 
-  if (fL*fU > zero(fL))
-    error("GOLDEN EXCEPTION")
-  end
+  (fL*fU > zero(fL)) && error("GOLDEN EXCEPTION")
   xm::T = xU-(two(T)-golden)*(xU-xL)
   fm::T = f(xm,envp1,envp2)
   return golden_section_it(1,xL,fL,xm,fm,xU,fU,f,envp1,envp2)
