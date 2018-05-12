@@ -235,7 +235,7 @@ end
     return line_seg(x,xL,asin(xL),xU,asin(xU)),dline_seg(x,xL,asin(xL),xU,asin(xU),one(T)/sqrt(one(T)-x^2))
   else
     try
-      p = newton(xU,xL,xU,asin_env,asin_envd,xL,xU)
+      p = newton(xU/2,xL,xU,asin_env,asin_envd,xL,xU)
     catch e
       if isa(e, ErrorException)
         p = golden_section(zero(x),xU,asin_env,xL,zero(T))

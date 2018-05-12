@@ -4,6 +4,7 @@ println("Testing McCormick Multiplication Operator...")
 include("Mult_Test.jl")
 
 println("Testing McCormick Operators...")
+include("Operators/InvHyperbolic.jl")
 include("Operators/Hyperbolic.jl")
 include("Operators/Trig.jl")
 include("Operators/InvTrig.jl")

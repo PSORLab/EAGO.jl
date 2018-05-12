@@ -76,6 +76,69 @@ end
 end
 
 @testset "Test Atanh" begin
+
+    EAGO.set_diff_relax(1)
+    a = seed_g(Float64,1,2)
+    b = seed_g(Float64,2,2)
+    xIBox = SVector{2,Interval{Float64}}([Interval(0.1,0.7);Interval(-0.3,0.7)])
+    mBox = mid.(xIBox)
+    X = SMCg{2,Interval{Float64},Float64}(0.3,0.3,a,a,xIBox[1],false,xIBox,mBox)
+    Xn = SMCg{2,Interval{Float64},Float64}(-0.3,-0.3,a,a,-xIBox[1],false,xIBox,mBox)
+    Xz = SMCg{2,Interval{Float64},Float64}(0.2,0.2,a,a,xIBox[2],false,xIBox,mBox)
+    Xz1 = SMCg{2,Interval{Float64},Float64}(-0.2,-0.2,a,a,-xIBox[2],false,xIBox,mBox)
+
+    out10 = atanh(X)
+    @test isapprox(out10.cc,0.3559904077187347,atol=1E-5)
+    @test isapprox(out10.cv,0.30951960420311175,atol=1E-5)
+    @test isapprox(out10.cc_grad[1],1.27828,atol=1E-2)
+    @test isapprox(out10.cc_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10.cv_grad[1],1.0989,atol=1E-2)
+    @test isapprox(out10.cv_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10.Intv.lo,0.100335,atol=1E-2)
+    @test isapprox(out10.Intv.hi,0.867301,atol=1E-2)
+
+    out10a = atanh(Xn)
+    @test isapprox(out10a.cc,-0.30951960420311175,atol=1E-5)
+    @test isapprox(out10a.cv,-0.3559904077187347,atol=1E-5)
+    @test isapprox(out10a.cc_grad[1],1.0989,atol=1E-2)
+    @test isapprox(out10a.cc_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10a.cv_grad[1],1.27828,atol=1E-2)
+    @test isapprox(out10a.cv_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10a.Intv.lo,-0.867301,atol=1E-2)
+    @test isapprox(out10a.Intv.hi,-0.100335,atol=1E-2)
+
+    out10b = atanh(Xz)
+    @test isapprox(out10b.cc,0.2788904617454707,atol=1E-5)
+    @test isapprox(out10b.cv,0.2027325540540822,atol=1E-5)
+    @test isapprox(out10b.cc_grad[1],1.17682,atol=1E-2)
+    @test isapprox(out10b.cc_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10b.cv_grad[1],1.04167,atol=1E-2)
+    @test isapprox(out10b.cv_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10b.Intv.lo,-0.30952,atol=1E-2)
+    @test isapprox(out10b.Intv.hi,0.867301,atol=1E-2)
+
+    out10c = atanh(Xz1)
+    @test isapprox(out10c.cc,-0.2027325540540822,atol=1E-5)
+    @test isapprox(out10c.cv,-0.2788904617454707,atol=1E-5)
+    @test isapprox(out10c.cc_grad[1],1.04167,atol=1E-2)
+    @test isapprox(out10c.cc_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10c.cv_grad[1],1.17682,atol=1E-2)
+    @test isapprox(out10c.cv_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10c.Intv.lo,-0.867301,atol=1E-2)
+    @test isapprox(out10c.Intv.hi,0.30952,atol=1E-2)
+
+    EAGO.set_diff_relax(0)
+
+    out10d = atanh(X)
+    @test isapprox(out10d.cc,0.3559904077187347,atol=1E-5)
+    @test isapprox(out10d.cv,0.30951960420311175,atol=1E-5)
+    @test isapprox(out10d.cc_grad[1],1.27828,atol=1E-2)
+    @test isapprox(out10d.cc_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10d.cv_grad[1],1.0989,atol=1E-2)
+    @test isapprox(out10d.cv_grad[2],0.0,atol=1E-1)
+    @test isapprox(out10d.Intv.lo,0.100335,atol=1E-2)
+    @test isapprox(out10d.Intv.hi,0.867301,atol=1E-2)
+
 end
 
 end

@@ -1,5 +1,5 @@
 @inline function sinh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return sinh(y)-sinh(x)-(y-x)*cosh(x)
+  return sinh(x)-sinh(y)+(y-x)*cosh(x)
 end
 @inline function sinh_envd(x::T,y::T,z::T) where {T<:AbstractFloat}
   return (y-x)*sinh(x)
@@ -12,16 +12,16 @@ end
     return line_seg(x,xL,sinh(xL),xU,sinh(xU)),dline_seg(x,xL,sinh(xL),xU,sinh(xU),cosh(x))
   else
     try
-      p = newton(xL,xL,zero(T),sinh_env,sinh_envd,xU,zero(T))
+      p = newton(xU/2,zero(T),xU,sinh_env,sinh_envd,xL,zero(T))
     catch e
       if isa(e, ErrorException)
-        p = golden_section(xL,zero(T),sinh_env,xU,zero(T))
+        p = golden_section(zero(T),xU,sinh_env,xU,zero(T))
       end
     end
     if (x>p)
       return sinh(x),cosh(x)
     else
-      return line_seg(x,p,sinh(p),xU,sinh(xU)),dline_seg(x,p,sinh(p),xU,sinh(xU),cosh(x))
+      return line_seg(x,xL,sinh(xL),p,sinh(p)),dline_seg(x,xL,sinh(xL),p,sinh(p),cosh(x))
     end
   end
 end
@@ -33,14 +33,14 @@ end
     return sinh(x),cosh(x)
   else
     try
-      p = newton(xU,zero(T),xU,sinh_env,sinh_envd,xL,zero(T))
+      p = newton(xL/2,xL,zero(T),sinh_env,sinh_envd,xU,zero(T))
     catch e
       if isa(e, ErrorException)
-        p = golden_section(zero(T),xU,sinh_env,xL,zero(T))
+        p = golden_section(xL,zero(T),sinh_env,xL,zero(T))
       end
     end
     if (x>p)
-      return line_seg(x,xL,sinh(xL),p,sinh(p)),dline_seg(x,xL,sinh(xL),p,sinh(p),cosh(x))
+      return line_seg(x,p,sinh(p),xU,sinh(xU)),dline_seg(x,p,sinh(p),xU,sinh(xU),cosh(x))
     else
       return sinh(x),cosh(x)
     end
@@ -86,17 +86,13 @@ end
   elseif (xU<=zero(T))
     return asinh(x),one(T)/sqrt(x^2+one(T))
   else
-    println("cv trace 1")
     try
-      println("cv trace 2")
       p = newton(xL/2,xL,zero(x),asinh_env,asinh_envd,xU,xL)
     catch e
-      println("cv trace 3")
       if isa(e, ErrorException)
         p = golden_section(xL,zero(x),asinh_env,xL,xU)
       end
     end
-    println("p: $p")
     if (x<=p)
       return asinh(x),one(T)/sqrt(x^2+one(T))
     else
@@ -111,17 +107,13 @@ end
   elseif (xU<=zero(T))
     return line_seg(x,xL,asinh(xL),xU,asinh(xU)),dline_seg(x,xL,asinh(xL),xU,asinh(xU),one(T)/sqrt(x^2+one(T)))
   else
-    println("cc trace 1")
     try
-      println("cc trace 2")
       p = newton(xU/2,zero(x),xU,asinh_env,asinh_envd,xL,xU)
     catch e
-      println("cc trace 3")
       if isa(e, ErrorException)
         p = golden_section(zero(x),xU,asinh_env,xL,xU)
       end
     end
-    println("p: $p")
     if (x<=p)
       return line_seg(x,xL,asinh(xL),p,asinh(p)),dline_seg(x,xL,asinh(xL),p,asinh(p),one(T)/sqrt(x^2+one(T)))
     else
@@ -157,10 +149,10 @@ end
 end
 
 @inline function tanh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return (tanh(y)-tanh(x))/(one(T)-tanh(x)^2)-y+x
+  return (y-x)*sech(x)^2-tanh(y)+tanh(x)
 end
 @inline function tanh_envd(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return -((one(T)-tanh(x)^2)^(-2))*(tanh(y)-tanh(x))
+  return 2(x-y)tanh(x)*(sech(x)^2)
 end
 @inline function cv_tanh(x::T,xL::T,xU::T) where {T<:AbstractFloat}
   p::T = zero(T)
@@ -170,9 +162,9 @@ end
     return tanh(x),sech(x)^2
   else
     try
-      p = newton(xL,xL,zero(T),tanh_env,tanh_envd,xU,zero(T))
+      p = secant(xL,zero(T),xL,zero(T),tanh_env,xU,zero(T))
     catch e
-      if isa(e, ErrorException)
+        if isa(e, ErrorException)
         p = golden_section(xL,zero(T),tanh_env,xU,zero(T))
       end
     end
@@ -190,8 +182,8 @@ end
   elseif (xU<=zero(T))
     return line_seg(x,xL,tanh(xL),xU,tanh(xU)),dline_seg(x,xL,tanh(xL),xU,tanh(xU),sech(x)^2)
   else
-    try
-      p = newton(xU/2,zero(T),xU,tanh_env,tanh_envd,xL,xU)
+      try
+      p = secant(zero(T),xU,zero(T),xU,tanh_env,xL,zero(T))
     catch e
       if isa(e, ErrorException)
         p = golden_section(zero(T),xU,tanh_env,xL,zero(T))
@@ -232,10 +224,10 @@ end
 end
 
 @inline function atanh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return (x-y)-(one(T)-x^2)*(atan(x)-atan(y))
+  return (y-x)/(one(T)-x^2)+atanh(x)-atanh(y)
 end
 @inline function atanh_envd(x::T,y::T,z::T) where {T<:AbstractFloat}
-  return one(T)+2*x*(atan(x)-atan(y))
+  return -2*x*(x-y)/(1-x^2)^2
 end
 @inline function cv_atanh(x::T,xL::T,xU::T) where {T<:AbstractFloat}
   p::T = zero(T)
@@ -245,16 +237,16 @@ end
     return line_seg(x,xL,atanh(xL),xU,atanh(xU)),dline_seg(x,xL,atanh(xL),xU,atanh(xU),one(T)/(one(T)-x^2))
   else
     try
-      p = newton(xU,zero(T),xU,atanh_env,atanh_envd,xL,xU)
+      p = newton(xU/2,zero(T),xU,atanh_env,atanh_envd,xL,xU)
     catch e
       if isa(e, ErrorException)
-        p = golden_section(xL,zero(T),atanh_env,xU,zero(T))
+        p = golden_section(zero(T),xU,atanh_env,xL,zero(T))
       end
     end
     if (x>p)
       return atanh(x),one(T)/(one(T)-x^2)
     else
-      return line_seg(x,p,atanh(p),xU,atanh(xU)),dline_seg(x,p,atanh(p),xU,atanh(xU),one(T)/(one(T)-x^2))
+      return line_seg(x,xL,atanh(xL),p,atanh(p)),dline_seg(x,xL,atanh(xL),p,atanh(p),one(T)/(one(T)-x^2))
     end
   end
 end
@@ -266,10 +258,10 @@ end
     return atanh(x),one(T)/(one(T)-x^2)
   else
     try
-      p = newton(xL,xL,zero(T),atanh_env,atanh_envd,xL,xU)
+      p = newton(xL,xL,zero(T),atanh_env,atanh_envd,xU,xL)
     catch e
       if isa(e, ErrorException)
-        p = golden_section(zero(T),xU,atanh_env,xL,zero(T))
+        p = golden_section(xL,zero(T),atanh_env,xU,zero(T))
       end
     end
     if (x>p)
