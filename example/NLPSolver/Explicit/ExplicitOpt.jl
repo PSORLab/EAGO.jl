@@ -323,3 +323,13 @@ jumpmodel12 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
 @NLobjective(jumpmodel12, Min, sin(y)*exp((1-cos(x))^2)+cos(x)*exp((1-sin(y))^2)+(x-y)^2)
 status10 = solve(jumpmodel12)
 =#
+
+jumpmodel7 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                         LBDsolvertype = "LP",
+                                         probe_depth = -1,
+                                         variable_depth = 1000,
+                                         DAG_depth = -1,
+                                         STD_RR_depth = -1))
+@variable(jumpmodel7, -5 <= x7 <= 5)
+@variable(jumpmodel7, -5 <= y7 <= 5)
+@NLobjective(jumpmodel7, Min, 2*x7^2-1.05*x7^4+(x7^6)/6+x7*y7+y7^2)
