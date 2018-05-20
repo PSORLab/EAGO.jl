@@ -110,6 +110,10 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
                                                                     X[(opt[1].Imp_nx+1):(opt[1].numVar)],
                                                                     Eflag,Iflag,eDflag,
                                                                     opt[1].solver.PIntOpt)
+    #println("Y1: $Y1")
+  #  println("Eflag: $Eflag")
+    #println("Iflag: $Iflag")
+    #println("eDflag: $eDflag")
     if Eflag
       feas = false
     elseif eDflag

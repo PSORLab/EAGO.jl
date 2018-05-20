@@ -164,10 +164,11 @@ function Ipopt_UBD(X,
 
 
             prob.x = mid.(X)
-            if (opts[1].numConstr == 0)
-                addOption(prob, "hessian_approximation", "limited-memory")
-            end
+            #if (opts[1].numConstr == 0)
+            #    addOption(prob, "hessian_approximation", "limited-memory")
+            #end
             addOption(prob, "print_level", 0)
+            addOption(prob, "hessian_approximation", "limited-memory")
 
             # solve problem and unpacks variables
             status = solveProblem(prob)

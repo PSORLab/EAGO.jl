@@ -4,6 +4,7 @@ using IntervalArithmetic
 using EAGO
 
 # solves example SIP #1 with DAG contractor disabled
+#=
 SIPopt1 = SIP_opts()
 sep1lu = EAGO_NLPSolver(probe_depth = -1,
                         variable_depth = 1000,
@@ -25,6 +26,7 @@ gSIP1(x,p) = (1.0-(x[1]^2)*(p[1]^2))^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
 X1 = [MCInterval(-1000.0,1000.0),MCInterval(-1000.0,1000.0)]
 P1 = [MCInterval(0.0,1.0)]
 SIPoutput1 = Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
+=#
 
 #=
 # solves example SIP #1 with DAG contractor enabled

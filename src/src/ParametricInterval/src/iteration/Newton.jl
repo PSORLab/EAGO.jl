@@ -14,11 +14,18 @@ function Dense_Newton_GS(H::Vector{Th},J::VecOrMat{Tj},N::Vector{V},
                 S2 += J[i,j]*(X1[j]-mid.(X1[j]))
             end
         end
+        #println("i: $i")
+        #println("check val: $(J[i,i].lo*J[i,i].hi)")
         if J[i,i].lo*J[i,i].hi > 0.0
           N[i] = mid(X1[i]) - (H[i]+S1+S2)/J[i,i]
+          #println("X1[i]: $(X1[i])")
+          #println("N[i]: $(N[i])")
         else
           Ntemp = copy(N)
           eD,N[i],Ntemp[i] = extProcess(N[i],X1[i],J[i,i],S1,S2,H[i],opt.rtol)
+         # println("eD: $eD")
+         # println("N[i]: $(N[i])")
+         # println("Ntemp[i]: $(Ntemp[i])")
           if eD == 1
             eDflg = true
             X2 = copy(X1)

@@ -9,11 +9,11 @@ solvers utilized are set by manipulating a SIPopt containing the options info.
 Inputs:
 * `f::Function`: Objective in the decision and state space variable.
                  Takes arguments vector, `(x,y)`, The function must be untyped.
-* `h!::Function`: Equality constraints on decision and uncertainty
+* `h::Function`: Equality constraints on decision and uncertainty
                  variables. The arguements of `h` are `(out,x,y,p)` where `x` is the
                  control variable, `y` is the state variable, and p is the
                  uncertain varable.
-* `hj!::Function`: Jacobian of `h(out,x,y,p)` with respect to control & uncertain
+* `hj::Function`: Jacobian of `h(out,x,y,p)` with respect to control & uncertain
                   variables.
 * `gSIP::Function`: Semi-infinite constraint. The arguements of `g` are `(x,y,p)`
                     where `u` is the control variable, `x` is the state variable,
@@ -27,7 +27,7 @@ Returns:
 A SIP_result composite type containing solution information.
 """
 # Currently DAG contractor
-function Implicit_SIP_Solve(f,h!,hj!,gSIP,X,Y,P,SIPopt::SIP_opts,nx)
+function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
 
     # initializes solution
     UBDg = Inf
@@ -51,23 +51,19 @@ function Implicit_SIP_Solve(f,h!,hj!,gSIP,X,Y,P,SIPopt::SIP_opts,nx)
     feas = true
 
     # Turns implicit solver routines on
-    SIPopt.LBP_Opt.Implicit_Options.flag = true
-    SIPopt.LLP_Opt.Implicit_Options.flag = true
-    SIPopt.UBP_Opt.Implicit_Options.flag = true
-
-    # Specifies functions in place
-    SIPopt.LBP_Opt.Implicit_Options.Inplace = true
-    SIPopt.LLP_Opt.Implicit_Options.Inplace = true
-    SIPopt.UBP_Opt.Implicit_Options.Inplace = true
+    SIPopt.LBP_Opt.ImplicitFlag = true
+    SIPopt.LLP_Opt.ImplicitFlag = true
+    SIPopt.UBP_Opt.ImplicitFlag = true
 
     # Sets number of state variables
-    SIPopt.LBP_Opt.Implicit_Options.nx = nx
-    SIPopt.LLP_Opt.Implicit_Options.nx = nx
-    SIPopt.UBP_Opt.Implicit_Options.nx = nx
+    SIPopt.LBP_Opt.PSmcOpt.nx = nx
+    SIPopt.LBP_Opt.PIntOpt.nx = nx
+    SIPopt.LLP_Opt.PSmcOpt.nx = nx
+    SIPopt.LLP_Opt.PIntOpt.nx = nx
+    SIPopt.UBP_Opt.PSmcOpt.nx = nx
+    SIPopt.UBP_Opt.PIntOpt.nx = nx
 
-    # Turns off constraints for LLP
-    SIPopt.LLP_Opt.Implicit_Options.g = []
-
+    # creates results file to store output
     sip_sto = SIP_result()
 
     # checks inputs
@@ -79,6 +75,7 @@ function Implicit_SIP_Solve(f,h!,hj!,gSIP,X,Y,P,SIPopt::SIP_opts,nx)
       eps_g = SIPopt.eps_g0
       r = SIPopt.r0
     end
+
     ##### checks for convergence #####
     for k=1:SIPopt.kmax
 
@@ -89,18 +86,24 @@ function Implicit_SIP_Solve(f,h!,hj!,gSIP,X,Y,P,SIPopt::SIP_opts,nx)
       end
       println("ran to here 1")
       ##### lower bounding problem #####
-      LBD_X_low,LBD_high_nx,refnx,snx = Reform_Imp_Y(X,Y,P_LBD)
+      LBD_X_low,LBD_X_high,refnx,snx = Reform_Imp_Y(X,Y,P_LBD)
       gL_LBP = [-Inf for i=1:((1+2*ny)*length(P_LBD))]
       gU_LBP = [0.0 for i=1:((1+2*ny)*length(P_LBD))]
-      SIPopt.LBP_Opt.Implicit_Options.nx = refnx
-      SIPopt.LBP_Opt.Implicit_Options.f = (y,p) -> f(p,y)
-      SIPopt.LBP_Opt.Implicit_Options.g = (y,p) -> Reform_Imp_G(g,p,y,pUBD,ny,0.0)
-      SIPopt.LBP_Opt.Implicit_Options.h = (hs,y,p) -> Reform_Imp_H(hs,p,y,pLBD,ny)
-      SIPopt.LBP_Opt.Implicit_Options.hj = (hjs,y,p) -> Reform_Imp_HJ(hjs,p,y,pLBD,ny)
-      gLBP = x -> Reform_Imp_HG(gSIP,h,x[(refnx+1):end],x[1:refnx],pLBP,ny,0.0)
       mLBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.LBP_Opt))
-      MathProgBase.loadproblem!(mLBP, snx, length(P_LBD), LBD_X_low, LBD_X_high,
+      mLBP.Opts.Imp_nx = refnx
+      gLBP = x -> Reform_Imp_HG(gSIP,h,x[(refnx+1):end],x[1:refnx],pLBP,ny,0.0)
+      println("snx: $snx")
+      println("refnx: $refnx")
+      println("LBD_X_low: $(length(LBD_X_low))")
+      println("LBD_X_high: $(length(LBD_X_high))")
+      println("gL_LBP: $(length(gL_LBP))")
+      println("gU_LBP: $(length(gU_LBP))")
+      MathProgBase.loadproblem!(mLBP, refnx, snx, LBD_X_low, LBD_X_high,
                                 gL_LBP, gU_LBP, :Min, f, gLBP)
+      mLBP.Opts.Imp_f = (y,p) -> f(p,y)
+      mLBP.Opts.Imp_g = (y,p) -> Reform_Imp_G(g,p,y,P_UBD,ny,0.0)
+      mLBP.Opts.Imp_h = (y,p) -> Reform_Imp_H(p,y,P_LBD,ny)
+      mLBP.Opts.Imp_hj = (y,p) -> Reform_Imp_HJ(p,y,P_LBD,ny)
 
       if SIPopt.LBP_Opt.DAG_depth>0
         if (SIPopt.gSIPExp == Expr[])
@@ -152,13 +155,13 @@ function Implicit_SIP_Solve(f,h!,hj!,gSIP,X,Y,P,SIPopt::SIP_opts,nx)
       UBD_X_low,UBD_X_nx,refnx,snx = Reform_Imp_Y(X,Y,P_UBD)
       gL_UBP = [-Inf for i=1:length(P_UBD)]
       gU_UBP = [0.0 for i=1:length(P_UBD)]
-      SIPopt.UBP_Opt.Implicit_Options.nx = refnx
-      SIPopt.UBP_Opt.Implicit_Options.f = (y,p) -> f(p,y)
-      SIPopt.UBP_Opt.Implicit_OptionsImplicit_Options.g = (y,p) -> Reform_Imp_G(gSIP,p,y,pUBD,ny,eps_g)
-      SIPopt.UBP_Opt.Implicit_Options.h = (hs,y,p) -> Reform_Imp_H(hs,p,y,pUBD,ny)
-      SIPopt.UBP_Opt.Implicit_Options.hj = (hjs,y,p) -> Reform_Imp_HJ(hjs,p,y,pUBD,ny)
       gUBP = x -> Reform_Imp_G(gSIP,x[(refnx+1):end],x[1:refnx],pUBD,ny,eps_g)
       mUBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.UBP_Opt))
+      mUBP.Opts.Imp_nx = refnx
+      mUBP.Opts.Imp_f = (y,p) -> f(p,y)
+      mUBP.Opts.Imp_g = (y,p) -> Reform_Imp_G(gSIP,p,y,P_UBD,ny,eps_g)
+      mUBP.Opts.Imp_h = (y,p) -> Reform_Imp_H(p,y,P_UBD,ny)
+      mUBP.Opts.Imp_hj = (y,p) -> Reform_Imp_HJ(p,y,P_UBD,ny)
       MathProgBase.loadproblem!(mUBP, snx, length(P_UBD), UBD_X_low, UBD_X_nx,
                                 gL_UBP, gU_UBP, :Min, f, gUBP)
       if SIPopt.UBP_Opt.DAG_depth>0

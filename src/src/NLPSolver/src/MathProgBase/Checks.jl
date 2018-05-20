@@ -39,6 +39,12 @@ function Solver_Relax_Valid_LBD!(opt)
     end
 end
 
+
+const SupportedExpr = [:+, :-, :*, :/, :exp, :log, :sin, :cos, :tan, :sinh,
+                 :cosh, :tanh, :exp2, :log2, :exp10, :log10, :min, :max,
+                 :abs, :sqrt, :sqr, :sign, :asin, :acos, :atan, :asinh,
+                 :acosh, :atanh]
+
 verify_support(c) = c
 
 """
@@ -52,10 +58,7 @@ function verify_support(c::Expr)
         return c
     end
     if c.head == :call
-        if c.args[1] in (:+, :-, :*, :/, :exp, :log, :sin, :cos, :tan, :sinh,
-                         :cosh, :tanh, :exp2, :log2, :exp10, :log10, :min, :max,
-                         :abs, :sqrt, :sqr, :sign, :asin, :acos, :atan, :asinh,
-                         :acosh, :atanh)
+        if c.args[1] in SupportedExpr
             return c
         elseif c.args[1] in (:<=, :>=, :(==))
             map(verify_support, c.args[2:end])
@@ -68,4 +71,9 @@ function verify_support(c::Expr)
         end
     end
     return c
+end
+
+function registerEAGO(m::JuMP.Model, s::Symbol, dimension::Integer, f::Function; ad::Bool=false)
+    push!(SupportedExpr,s)
+    JuMP.register(m, s, dimension, f, autodiff=ad)
 end

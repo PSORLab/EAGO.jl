@@ -60,16 +60,11 @@ function SNOPT_UBD(X::Vector{Interval{Float64}},
         x_Ui::Vector{Float64} = [X[i].hi for i=1:opt[1].numVar]
         x0i::Vector{Float64} = (x_Li + x_Ui)/2.0
         options = Dict{String, Any}()
-        options["Derivative option"] = 1
+        options["Derivative option"] = 0
         options["Verify level"] = 0
-
+        options["Major iteration limit"] = 1E5
         # solve problem and unpacks variables
-        if (opt[1].solver.UBD_full_depth < pos)
-            options["Major optimality tolerance"] = Inf
-        else
-            options["Major optimality tolerance"] = 1e-6
-        end
-        options["Major Feasibility Constraint"]
+        #options["Major Feasibility Constraint"]
         TT = STDOUT
         redirect_stdout()
         pnt, val, status, mult = Snopt.snopt(y::Vector{Float64} -> opt[2].fg_SNOPT_UBD(y), x0i, x_Li, x_Ui, options)
@@ -98,15 +93,10 @@ function SNOPT_UBD(X::Vector{MCInterval{Float64}},
         x_Ui::Vector{Float64} = [X[i].hi for i=1:opt[1].numVar]
         x0i::Vector{Float64} = (x_Li + x_Ui)/2.0
         options = Dict{String, Any}()
-        options["Derivative option"] = 1
+        options = Dict{String, Any}()
+        options["Derivative option"] = 0
         options["Verify level"] = 0
-
-        # solve problem and unpacks variables
-        if (opt[1].solver.UBD_full_depth < pos)
-            options["Major optimality tolerance"] = Inf
-        else
-            options["Major optimality tolerance"] = 1e-6
-        end
+        options["Major iteration limit"] = 1E5
         TT = STDOUT
         redirect_stdout()
         pnt, val, status, mult = Snopt.snopt(y::Vector{Float64} -> opt[2].fg_SNOPT_UBD(y), x0i, x_Li, x_Ui, options)

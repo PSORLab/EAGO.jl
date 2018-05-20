@@ -33,7 +33,7 @@ and other solution information is accessible via start solver interface function
 """
 function MathProgBase.optimize!(s::EAGO_NLP_Model)
 
-    println("Start Optim!")
+    println("Start Optimization")
 
     #  Implicit solver load
     s.Opts.Imp_np = s.Opts.numVar - s.Opts.Imp_nx
@@ -191,7 +191,7 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     s.Opts.solver.BnBSolver.Verbosity = s.Opts.solver.verbosity
     #println("End Optimization Data Structure Setup")
 
-    println("Mid Optim!")
+    println("Loaded Callback Functions")
     #println("ran to solve BnB")
     solveBnB!(s.Opts.solver.BnBSolver,s.BnBModel)
     #println("ran post solve BnB")
@@ -204,5 +204,5 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
     else
         s.status = :Infeasible
     end
-    println("Fin Optim!")
+    println("Finished Optimization Routine")
 end

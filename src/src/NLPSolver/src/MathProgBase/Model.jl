@@ -73,7 +73,6 @@ type EAGO_NLP_Model <: MathProgBase.AbstractNonlinearModel
 end
 
 function MathProgBase.NonlinearModel(s::EAGO_NLPSolver)
-    println("ran solver to model conv")
     eiNLP = EAGO_Inner_NLP(s)
     eiNLP.UBDmodel = NonlinearModel(s.UBDsolver)
     if s.validated == true
@@ -83,7 +82,6 @@ function MathProgBase.NonlinearModel(s::EAGO_NLPSolver)
     end
     EAGOmodel = EAGO_NLP_Model(bnb_mod,eiNLP,nothing,:Uninitialized)
     EAGOmodel.Opts.validated = s.validated
-    println("EAGO model: $EAGOmodel")
     return EAGOmodel
 end
 

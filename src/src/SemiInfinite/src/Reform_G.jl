@@ -41,10 +41,10 @@ Reformulates the `h` function `h(x,y,p) = 0` into  pSet into `h(x,y*,p*) =
 [h(x,y[1:ny],pSet[1]), h(x,y[(ny+1):2*ny],pSet[2]),...,h(x,y[(ny+1)*(np-1):ny*np],
 pSet[end])]`for input into implicit global optimization routine.
 """
-function Reform_Imp_H(hsto,h::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64)
-  h_reform = []
+function Reform_Imp_H(h::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64)
+  h_reform = zeros(ny*length(pUBD))
   for i=1:length(pUBD)
-    h(hsto,x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])
+    h_reform[(1+ny*(i-1)):(ny*i)] = h(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])
   end
   return h_reform
 end
@@ -58,27 +58,34 @@ g(x,y[(ny+1)*(np-1):ny*np],pSet[end])]` for input into implicit global
 optimization routine.
 """
 function Reform_Imp_G(g::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64,eps_g)
-  g_reform = []
+  g_reform = zeros(ny*length(pUBD))
   for i=1:length(pUBD)
-    vcat(g_reform,g(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g)
+    g_reform[(1+ny*(i-1)):(ny*i)] = g(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g
   end
   return g_reform
 end
 
 """
-    Reform_Imp_G(h::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64)
+    Reform_Imp_G(h::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64) - TO DO
 
 Reformulates the semi-infinite constraint function `g(x,y,p)` into  pSet into
 `g(x,y*,p*) = [g(x,y[1:ny],pSet[1]), g(x,y[(ny+1):2*ny],pSet[2]),...,
 g(x,y[(ny+1)*(np-1):ny*np],pSet[end])]` for input into implicit global
 optimization routine.
 """
-function Reform_Imp_HG(h::Function,g::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64,eps_g)
-  g_reform = []
-  for i=1:length(pUBD)
-    vcat(g_reform,g(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g)
+function Reform_Imp_HG(h::Function,g::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64,gl::Int64,eps_g)
+  np = length(pUBD)
+  hg_reform = zeros((2*ny+gl)*np)
+  for i=1:np
+      hg_reform[(1+ny*(i-1)):(ny*i)] = h(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g
   end
-  return g_reform
+  for i=1:np
+      hg_reform[(1+ny*(np+i-1)):(2*np+ny*i)] = -h(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])-eps_g
+  end
+  for i=1:np
+      hg_reform[(2*ny*np+1+gl*(i-1)):(2*ny*np+gl*i)] = g(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g
+  end
+  return hg_reform
 end
 
 """
@@ -87,10 +94,12 @@ end
 Reformulates the Jacobian w.r.t y, `hj!`, of `h(x,y,p)` into  pSet into `hj!(H,x,y*)`
 for input into implicit global optimization routine where `y* = [y_1; y_2; ... y_np]`.
 """
-function Reform_Imp_HJ(Hsto,hj::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64)
+function Reform_Imp_HJ(hj::Function,x,y,pUBD::Vector{Vector{Float64}},ny::Int64)
+  hj_reform = zeros(ny*length(pUBD),ny*length(pUBD))
   for i=1:length(pUBD)
-    hj(Hsto[(1+ny*(i-1)):(ny*i),(1+ny*(i-1)):(ny*i)],x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])
+    hj_reform[(1+ny*(i-1)):(ny*i),(1+ny*(i-1)):(ny*i)] = hj(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])
   end
+  return hj_reform
 end
 
 """
@@ -102,12 +111,12 @@ global optimization routine where `y* = [y_1; y_2; ... y_np,x]` returning a vect
 of lower bounds, upper bounds, the state space dimension (for the opt problem), and
 the entire problem dimension.
 """
-function Reform_Imp_Y(X::Vector{Interval{Float64}},Y::Vector{Interval{Float64}},pUBD::Vector{Vector{Float64}})
+function Reform_Imp_Y(X::Vector{Interval{Float64}},Y::Vector{Interval{Float64}},P::Vector{Vector{Float64}})
   nx::Int64 = length(X)
   ny::Int64 = length(Y)
   np::Int64 = length(P)
-  Y_reform_lo::Vector{Float64} = zeros(length(X)+length(Y)*length(P))
-  Y_reform_hi::Vector{Float64} = zeros(length(X)+length(Y)*length(P))
+  Y_reform_lo::Vector{Float64} = zeros(nx+ny*np)
+  Y_reform_hi::Vector{Float64} = zeros(nx+ny*np)
   count::Int64 = 1
   for i=1:np
     for j=1:ny
@@ -121,6 +130,18 @@ function Reform_Imp_Y(X::Vector{Interval{Float64}},Y::Vector{Interval{Float64}},
     Y_reform_hi[count] = X[j].hi
     count += 1
   end
-  Y_reform = vcat(Y_reform,X)
   return Y_reform_lo, Y_reform_hi, ny*np, nx+ny*np
+end
+function Reform_Imp_Y(X::Vector{Interval{Float64}},Y::Vector{Interval{Float64}},P::Vector{Any})
+  nx::Int64 = length(X)
+  ny::Int64 = length(Y)
+  Y_reform_lo::Vector{Float64} = zeros(nx)
+  Y_reform_hi::Vector{Float64} = zeros(nx)
+  count::Int64 = 1
+  for j=1:nx
+    Y_reform_lo[count] = X[j].lo
+    Y_reform_hi[count] = X[j].hi
+    count += 1
+  end
+  return Y_reform_lo, Y_reform_hi, 0, nx
 end

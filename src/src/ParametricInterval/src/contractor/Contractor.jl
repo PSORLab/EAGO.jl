@@ -49,6 +49,7 @@ function Param_Intv_Contractor(h::Function,hj::Function,
     #println("Iflg: $Iflg")                                              # checks for inclusion
 
     while ((k<opt.kmax) && (isEqual(X,Xi,opt.etol) == false))
+        #println("k: $k")
         # Precondition H and J using interval midpoint inverse Jacobian
         Xi = copy(X)
         #println("X start: $X")
@@ -59,6 +60,9 @@ function Param_Intv_Contractor(h::Function,hj::Function,
         Iflg = InclTest(Iflg,inc,opt.nx)                             # checks for inclusion
         #println("Iflg: $Iflg")
         k+=1
+        #println("X: $X")
+        #println("Xi: $Xi")
+        #println("isEqual(X,Xi,opt.etol): $(isEqual(X,Xi,opt.etol))")
     end
 
     X1 = copy(X)    # make a copy of X since no extended division occured
