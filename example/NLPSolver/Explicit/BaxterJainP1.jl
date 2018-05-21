@@ -49,11 +49,12 @@ function Isolated_Pressure(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv
     return P
 end
 
-function Isolated_Pressure_Form(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv::Float64) where T<:Real
+function Isolated_Pressure_Form(R::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv::Float64,r) where T<:Real
 
+    N = 51
     att = R*sqrt(Lpt*Svt/Kt)
     #println("att: $att")
-    r = Vector(linspace(0,R,N))/R
+    #r = Vector(linspace(0,R,N))/R
     dimP = zeros(T,N)
     dimV = zeros(T,N)
     dimP[2:end] = one(T) - sinh.(att*r[2:end])./(sinh(att)*r[2:end])
@@ -72,7 +73,7 @@ end
 
 function MST_Form(t::Float64,c::Vector{T},P::Vector{T},V::Vector{T},N::Int,sigma::Float64,
                 Peff::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv::Float64,
-                Pv::Float64,D::Float64,r::Vector{Float64},dr::Float64,kd::Float64) where T<:Real
+                Pv::Float64,D::Float64,r::Vector{Float64},dr::Vector{Float64},kd::Float64) where T<:Real
 
     co::Float64 = 1.0 # dimensionless drug concentration
     tspan::Float64 = 1.0*3600.0 # length of simulation type
@@ -81,37 +82,61 @@ function MST_Form(t::Float64,c::Vector{T},P::Vector{T},V::Vector{T},N::Int,sigma
     cv::Float64 = co*exp(-t/kd/3600.0)  # vascular concentration of the drug following exponential decay
     coeff1::Float64 = Peff*Svt
     coeff2::T = Lpt*(Svt*Pv*cv*(1.0-sigma))
-    coeff3::Float64 = 2.0*D/dr
-    coeff4::Float64 = D/dr^2
-    f[1] = 2.0*D*(c[2]-c[1])/dr^2 + Peff*Svt*(cv-c[1]) + coeff2*(Pvv-P[1])
+    f[1] = 2.0*D*(c[2]-c[1])/dr[1]^2 + Peff*Svt*(cv-c[1]) + coeff2*(Pvv-P[1])
 
     for j in 2:N-1
+        coeff3 = 2.0*D/dr[j]
+        coeff4 = D/dr[j]^2
         f[j] = ((coeff3/r[j])*((c[j+1]-c[j])) + coeff4*(c[j+1]-2.0*c[j]+c[j-1]) +
-               V[j]*((c[j+1]-c[j])/dr) + coeff1*(cv-c[j])) + coeff2*(Pvv-P[j])
+               V[j]*((c[j+1]-c[j])/dr[j]) + coeff1*(cv-c[j])) + coeff2*(Pvv-P[j])
     end
 
     f[N] = zero(T)
     return f
 end
 
-function RK4_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
+function next_time_step(i::Int64)
+    (i<4) && (return 0.000205)
+    (i<8) && (return 0.001325)
+    (i<12) && (return 0.009336)
+    (i<17) && (return 0.036069)
+    (i<22) && (return 0.066522)
+    (i<26) && (return 0.1)
+    (i<27) && (return 0.04379)
+end
+
+cut_it_high(i,j) = (j>20) ? (1.0 + (0.75/5.0)*i) : (0.5 + (0.5/5.0)*i)
+println("cut_it_high: $(cut_it_high(2,20))")
+
+function cut_iteration(y,i)
+    return [min(max(y[j],0.0),cut_it_high(i,j)) for j=1:length(y)]
+end
+
+y = rand(30)
+println("y: $(y)")
+println("cut_iteration(y,i): $(cut_iteration(y,0))")
+
+function RK4_Form(x0::Float64,y0::Vector{T},n_out::Int,i_out::Int,
                   P::VecOrMat{T},V::Vector{T},N::Int64,sigma::Float64,Peff::Float64,Lpt::T,Svt::Float64,
                   Kt::Float64,Pvv::Float64,Pv::Float64,D::Float64,r::Vector{Float64},
-                  dr::Float64,kd::Float64) where T<:Real
+                  dr::Vector{Float64},kd::Float64) where T<:Real
 
+    h::Float64 = 0.0
     xout = zeros(T,n_out+1)
     yout = zeros(T,n_out+1,length(y0))
     xout[1] = x0
     yout[1,:] = y0
     x = x0
     y = y0
+    h =
     for j = 2:n_out+1
+        h = next_time_step(j)
         for k = 1:i_out
             k1 = MST_Form(x,y,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
             k2 = MST_Form(x+0.5*h,y+0.5*h*k1,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
             k3 = MST_Form(x+0.5*h,y+0.5*h*k2,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
             k4 = MST_Form(x,y+h*k3,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
-            y = min(max(y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4),0.0),1.0)
+            y = cut_iteration(y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4),j)
             #y = y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4)
             x = x + h
         end
@@ -121,11 +146,12 @@ function RK4_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
     return xout, yout
 end
 
-function EE_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
+function EE_Form(x0::Float64,y0::Vector{T},n_out::Int,i_out::Int,
                   P::VecOrMat{T},V::Vector{T},N::Int64,sigma::Float64,Peff::Float64,Lpt::T,Svt::Float64,
                   Kt::Float64,Pvv::Float64,Pv::Float64,D::Float64,r::Vector{Float64},
                   dr::Float64,kd::Float64) where T<:Real
 
+      h::Float64 = 0.0
       xout = zeros(T,n_out+1)
       yout = zeros(T,n_out+1,length(y0))
       xout[1] = x0
@@ -133,8 +159,9 @@ function EE_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
       x = x0
       y = y0
       for j = 2:n_out+1
+          h = next_time_step(j)
           for k = 1:i_out
-              y = max(0.0,min(y + h*MST_Form(x,y,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd),1.0))
+              y = cut_iteration(y + h*MST_Form(x,y,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd),j)
               x = x + h
           end
           xout[j] = x
@@ -145,15 +172,14 @@ end
 
 
 function Isolated_Model_Form(N::Int,Kt::Float64,Lpt::T,Svt::Float64,D::Float64,
-                        sigma::Float64,Peff::Float64,R::Float64,Pv::Float64,
+                        sigma::Float64,Peff::Float64,Pv::Float64,
                         Pvv::Float64,kd::Float64,n_nodes::Int) where T<:Real
 
-    r = Vector(linspace(0,R,N))
-    r = r/R
-    dr = 1.0/(N-1)
+    r = vcat(Vector(0:0.0425:0.85),Vector(0.855:0.005:1.00))
+    dr = diff(r)
 
     # Solution of steady state pressure model
-    P,V = Isolated_Pressure_Form(N,R,Lpt,Svt,Kt,Pvv)
+    P,V = Isolated_Pressure_Form(R,Lpt,Svt,Kt,Pvv,r)
 
     # Initial solute concentration
     c_0 = zeros(T,N)
@@ -173,12 +199,11 @@ function Fitting_Objective(N::Int,Kt::Float64,Lpt::T,Svt::Float64,D::Float64,
                            Pvv::Float64,kd::Float64,n_nodes::Int,n_time::Int,
                            cref::VecOrMat{Float64}) where T<:Real
 
-    r = Vector(linspace(0,R,N))
-    r = r/R
-    dr = 1.0/(N-1)
+    r = vcat(Vector(0:0.0425:0.85),Vector(0.855:0.005:1.00))
+    dr = diff(r)
 
     # Solution of steady state pressure model
-    P,V = Isolated_Pressure_Form(N,R,Lpt,Svt,Kt,Pvv)
+    P,V = Isolated_Pressure_Form(R,Lpt,Svt,Kt,Pvv,r)
 
     # Initial solute concentration
     c_0 = zeros(T,N)
@@ -186,10 +211,9 @@ function Fitting_Objective(N::Int,Kt::Float64,Lpt::T,Svt::Float64,D::Float64,
 
     time_end = 1*3600.0 # length of simulation (seconds)
     n_out = n_nodes - 1
-    h = time_end/n_out;
     i_out = 1
 
-    time, c = RK4_Form(0.0,c_0,h,n_out,i_out,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
+    time, c = RK4_Form(0.0,c_0,n_out,i_out,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
     #println("c[100,30]: $(c[100,30])")
     #println("c: $c")
     SSE = zero(T)
@@ -210,9 +234,9 @@ idx = 2
 #n_nodes = 20 #6000
 #n_time = 20
 
-N = 50
-n_nodes = 50 #6000
-n_time = 50
+N = 51
+n_nodes = 51 #6000
+n_time = 51
 
 # Parameters for creating data for fit
 co = 1
@@ -279,7 +303,7 @@ IntvObj7 = Fitting_Objective(N,Kt,Interval(6e-9,6.000001e-9),Svt,D,sigma,Peff_se
 IntvObj8 = Fitting_Objective(N,Kt,Interval(6e-9,6.00000001e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
 IntvObj9 = Fitting_Objective(N,Kt,Interval(6.000005e-9,6.0000051e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
 #IntvObj = Fitting_Objective(N,Kt,Interval(6e-9,6e-7),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvP,IntvV = Isolated_Pressure_Form(N,R,6e-9,Svt,Kt,Pvv)
+#IntvP,IntvV = Isolated_Pressure_Form(N,R,6e-9,Svt,Kt,Pvv)
 
 
 # Fits the data for control, rhodamine
@@ -305,9 +329,9 @@ MathProgBase.optimize!(m3)
 
 
 # Input known metabolic parameters
-N = 50
-n_nodes = 50 #6000
-n_time = 50
+N = 51
+n_nodes = 51 #6000
+n_time = 51
 
 Peff_set = [8.18378e-07;4.30307e-06;1.62231e-06]
 Kt = 0.9e-7              # Hydraulic conductivity of tumor
