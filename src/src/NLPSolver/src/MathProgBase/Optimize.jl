@@ -126,9 +126,9 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
         end
 
         # loads upper problem
-        if s.Opts.solver.UBDsolvertype == "LP"
+        if s.Opts.solver.UBDsolvertype == "Interval"
             temp_UBP = (X::Vector{Interval{Float64}},k::Int64,pos::Int64,
-                        opt,UBD) -> LP_Relax_UBD_Imp(X,k,pos,opt,UBD)
+                        opt,UBD) -> Imp_Interval_UBD(X,k,pos,opt,UBD)
                         println("LP Assigned 2")
         else
             UBD_error_flag = true
@@ -141,7 +141,7 @@ function MathProgBase.optimize!(s::EAGO_NLP_Model)
             #EAGOSmoothMcCormickGrad.set_outer_rnd(true,1E-9)
             temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> SNOPT_LBD(X,k,pos,opt,UBD)
         elseif s.Opts.solver.LBDsolvertype == "Ipopt"
-                        temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> Ipopt_LBD(X,k,pos,opt,UBD)
+            temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> Ipopt_LBD(X,k,pos,opt,UBD)
         elseif s.Opts.solver.LBDsolvertype == "Interval"
             temp_LBP = (X,k::Int64,pos::Int64,opt,UBD) -> Interval_LBD(X,k,pos,opt,UBD)
         elseif s.Opts.solver.LBDsolvertype == "AlphaBB"

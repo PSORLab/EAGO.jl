@@ -194,5 +194,29 @@ sol1g = getsolution(internalmodel(jm1g))
 @test isapprox(sol1g[2],8.50,atol=1E-3)
 @test isapprox(getobjval(internalmodel(jm1g)),-8.0,atol=1E-3) # getobjval returns void???
 
+###############################################################################
+# TEST NEWTON METHOD (1D) WITHOUT CONSTRANTS (Using Midpoint Upperbound)
+###############################################################################
+jm1z = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                   LBDsolvertype = "LP",
+                                   UBDsolvertype = "Interval",
+                                   probe_depth = -1,
+                                   variable_depth = 1000,
+                                   DAG_depth = -1,
+                                   STD_RR_depth = 1000,
+                                   ImplicitFlag = true,
+                                   verbosity = "Normal",
+                                   validated = true))
+xz = @variable(jm1z, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
+@NLconstraint(jm1z, xz[1]^2 + xz[2]*xz[1] + 4 == 0.0 )
+@NLobjective(jm1z, Min, xz[1])
+status1dn = Solve_Implicit(jm1z,f1,h1,hj1,x->[],1)
+
+sol1dn = getsolution(internalmodel(jm1z))
+@test status1dn == :Optimal
+@test isapprox(sol1dn[1],-8.531128966881054,atol=1E-3)
+@test isapprox(sol1dn[2],9.00,atol=1E-3)
+@test isapprox(getobjval(internalmodel(jm1d)),-8.531128966881054,atol=1E-3)
+
 end
 end
