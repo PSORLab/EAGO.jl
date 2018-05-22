@@ -27,11 +27,13 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                           opt,
                           UBD::Float64)
         nx::Int64 = opt[1].Imp_nx
-        np::Int64 = opt[1].numVar - nx
+        np::Int64 = opt[1].Imp_np
         try
+            #println("try me! 1")
             l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
             u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
             pmid::Vector{Float64} = (l + u)/2.0
+            #println("pmid: $pmid")
             param = GenExpansionParams(opt[1].Imp_h, opt[1].Imp_hj,
                                          Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
                                          opt[1].solver.PSmcOpt)
@@ -44,6 +46,8 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                                                            false,
                                                            SVector{np,Interval{Float64}}(Y[(nx+1):(nx+np)]),
                                                            SVector{np,Float64}(pmid)) for i=1:np]
+            #println("x_mc: $x_mc")
+            #println("P_mc: $p_mc")
             f::SMCg{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
             if opt[1].Imp_nCons>0
@@ -89,6 +93,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             end
             model = buildlp([f.cv_grad[i] for i=1:np], dcdx, '<', rhs, l, u, opt[1].solver.LP_solver)
             result = solvelp(model)
+            #println("result: $result")
             if (result.status == :Optimal)
                 val::Float64 = result.objval + f_cv - sum([pmid[i]*f.cv_grad[i] for i=1:np])
                 pnt::Vector{Float64} = vcat(mid.(Intv.(x_mc)),result.sol)
@@ -108,7 +113,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             temp = Any[mult_lo,mult_hi,val]
             return val, pnt, feas, temp
         catch
-            println("ran catch")
+            #println("catch me! 1")
             FInt::Interval = opt[1].Imp_f(Y[1:nx],Y[(nx+1):end])
             feas = true
             if (opt[1].Imp_nCons < 1)
