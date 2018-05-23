@@ -1,6 +1,6 @@
 # package setup
 
-#workspace()
+workspace()
 using EAGO
 using Ipopt
 using JuMP
@@ -43,7 +43,66 @@ xb = @variable(jm1b, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i)
 @NLobjective(jm1b, Min, xb[1])
 status1b = Solve_Implicit(jm1b,f1,h1,hj1,x->[],1)
 
+LBD1c_func(i) = (i==1) ? (68.8) : (0.5)
+UBD1c_func(i) = (i==1) ? (149.9) : (8.0)
+g2(x,p) = x[1] + cos(p[1]-80/90) - 80
+function h2(y,x)
+    [y[1]-(x[1]-(x[1]^3)/6+(x[1]^5)/120)/sqrt(y[1])-80]
+end
+function hj2(y,x)
+    [1.0+(x[1]-(x[1]^3)/6+(x[1]^5)/120)/(2.0*sqrt(y[1]^3))]
+end
+f2(x,p) = (p[1]-3.5)^4 - 5*(p[1]-3.5)^3 - 2*(p[1]-3.5)^2 + 15*(p[1]-3.5)
 
+
+jm1ca = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                   LBDsolvertype = "LP",
+                                   UBDsolvertype = "Ipopt",
+                                   #LBD_func_relax = "Interval",
+                                   #LBDsolvertype = "Interval",
+                                   probe_depth = -1,
+                                   variable_depth = -1000,
+                                   DAG_depth = -1,
+                                   STD_RR_depth = -1000,
+                                   ImplicitFlag = false,
+                                   verbosity = "Normal",
+                                   validated = true))
+@variable(jm1ca, 68.8 <= a <= 149.9)
+@variable(jm1ca, 0.5 <= b <= 8.0)
+println("ran me 1")
+@NLconstraint(jm1ca, a + cos(b-80/90) - 80 <= 0.0 )
+println("ran me 2")
+@NLconstraint(jm1ca, a-(b-(b^3)/6+(b^5)/120)/sqrt(a)-80 == 0.0 )
+println("ran me 3")
+@NLobjective(jm1ca, Min, (b-3.5)^4 - 5*(b-3.5)^3 - 2*(b-3.5)^2 + 15*(b-3.5))
+println("ran me 4")
+status1b = solve(jm1ca)
+#=
+jm1c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+                                   LBDsolvertype = "LP",
+                                   UBDsolvertype = "Ipopt",
+                                   #LBD_func_relax = "Interval",
+                                   #LBDsolvertype = "Interval",
+                                   probe_depth = -1,
+                                   variable_depth = -1000,
+                                   DAG_depth = -1,
+                                   STD_RR_depth = -1000,
+                                   ImplicitFlag = false,
+                                   verbosity = "Normal",
+                                   validated = true))
+xc = @variable(jm1c, [i=1:2], lowerbound=LBD1c_func(i), upperbound=UBD1c_func(i))
+println("ran me 1")
+@NLconstraint(jm1c, xc[1] + cos(xc[2]-80/90) - 80 <= 0.0 )
+println("ran me 2")
+@NLconstraint(jm1c, 0.0 <= xc[1]-(xc[2]-(xc[2]^3)/6+(xc[2]^5)/120)/sqrt(xc[1])-80 <= 0.0 )
+println("ran me 3")
+@NLobjective(jm1c, Min, (xc[2]-3.5)^4 - 5*(xc[2]-3.5)^3 - 2*(xc[2]-3.5)^2 + 15*(xc[2]-3.5))
+println("ran me 4")
+status1b = solve(jm1c)
+#status1b = Solve_Implicit(jm1c,f2,h2,hj2,g2,1)
+=#
+
+#=
 # Solves Kolev-based problem (Example 5.2, Stuber 2015)
 function h2(x,p)
     [(1.00*10.0^(-9))*(exp(38x[1])-1)+p[1]*x[1]-1.6722*x[2]+0.6689*x[3]-8.0267
@@ -130,6 +189,7 @@ c = [0.602 1.211 3.6]
                        (a[3]*(xc[6]-c[3]))^2 + a[1]*(xc[4]-c[1])-10.0*(-xc[1]+xc[2]+xc[3]) + a[3]*(xc[6]-c[3]))^2)
 status1b = Solve_Implicit(jm2,f2p,h2,hj2,x->[],3)
 # Target = 626.565
+=#
 
 # TEST SNOPT IMPLICIT SOLVER
 

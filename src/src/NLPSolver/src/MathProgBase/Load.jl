@@ -21,7 +21,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
                                    gL::Vector{Float64},
                                    gU::Vector{Float64},
                                    sense::Symbol, d::MathProgBase.AbstractNLPEvaluator)
-         println("Start Load!")
+         #println("Start Load!")
 
          #println("Began Loading Problem")
          @assert nvar == length(xL) == length(xU)
@@ -110,7 +110,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
          m.Opts.f = x -> Base.invokelatest(f,x)
          m.Opts.g = x -> Base.invokelatest(g,x)
          #println("Finished Loading Problem")
-         println("End Load!")
+         #println("End Load!")
          return m
 end
 

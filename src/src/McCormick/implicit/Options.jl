@@ -37,7 +37,7 @@ contractor style `.style = KrawczykCW`, the number of iterations to `.kmax = 2`,
 and the affine correction tolerance as `.aff_correct_eps = 1E-12`. Other rounding
 options disabled.
 """
-mc_opts(T) = mc_opts{T}(0.5*one(T),2,:Dense,:Krawczyk,0,0,(1E-12)*one(T))
+mc_opts(T) = mc_opts{T}(0.5*one(T),2,:Dense,:Newton,0,0,(1E-12)*one(T))
 
 mc_opts() = mc_opts(Float64)
 """

@@ -168,7 +168,8 @@ function Ipopt_UBD(X,
             #    addOption(prob, "hessian_approximation", "limited-memory")
             #end
             addOption(prob, "print_level", 0)
-            addOption(prob, "hessian_approximation", "limited-memory")
+            #addOption(prob, "hessian_approximation", "limited-memory")
+            #addOption(prob, "hessian_approximation", "limited-memory")
 
             # solve problem and unpacks variables
             status = solveProblem(prob)
@@ -176,8 +177,10 @@ function Ipopt_UBD(X,
             val::Float64 = prob.obj_val
             if (status == 0 || status == 1 || status == 6)
                 feas::Bool = true
+            elseif (status == 2 || status == -1 || status == -2 || status == -4 || status == 4 || status == 3)
+                feas = false
             else
-                (status == 2) ? (feas = false) : error("Solver error code $status in Ipopt. Solution routine terminated.")
+                error("Solver error code $status in Ipopt. Solution routine terminated.")
             end
 
             # output

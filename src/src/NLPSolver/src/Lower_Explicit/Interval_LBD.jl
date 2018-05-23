@@ -20,6 +20,8 @@ Returns a tuple (val,pnt,feas,X,[]) where
 function Interval_LBD(X::Vector{Q},k::Int64,pos::Int64,opt,UBD) where {Q<:AbstractInterval}
 
       # solve optimization problem via interval extension
+      println("X: $X")
+      println("f(X): $(opt[1].f(X))")
       FInt::Q = opt[1].f(X)
       feas::Bool = true
       if (opt[1].numConstr > 0)

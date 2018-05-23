@@ -93,13 +93,10 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
         println("Algorithm Converged")
         break
       end
-      println("lower problem")
+      #println("lower problem")
       ##### lower bounding problem #####
       if (~isempty(P_LBD))
           LBD_X_low,LBD_X_high,refnx,snx = Reform_Imp_Y(X,Y,P_LBD)
-          println("LBD_X_low: $LBD_X_low")
-          println("LBD_X_high: $LBD_X_high")
-          println("length(LBD_X: $(LBD_X_low)")
           gL_LBP = [-Inf for i=1:((1+2*ny)*length(P_LBD))]
           gU_LBP = [0.0 for i=1:((1+2*ny)*length(P_LBD))]
           mLBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.LBP_Opt))
@@ -115,6 +112,20 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
           mLBP.Opts.Imp_nx = ny*length(P_LBD)
           mLBP.Opts.Imp_np = nx
 
+          gval1 = Reform_Imp_G(gSIP,p,y,P_LBD,ny,0.0)
+          #gval2 = Reform_Imp_HJ(h,[2.0],[79.0],P_LBD,ny)
+          #gval3 = Reform_Imp_HJ(h,[2.0],[78.5],P_LBD,ny)
+          #gval4 = Reform_Imp_HJ(h,[6.0],[84.0],P_LBD,ny)
+          #gval5 = Reform_Imp_HJ(h,[6.0],[81.0],P_LBD,ny)
+          #gval6 = Reform_Imp_HJ(h,[6.0],[80.0],P_LBD,ny)
+          println("g val1: $gval1")
+          #println("g val4: $gval4")
+          # Location
+          mLBP.Opts.Imp_gL_Loc = Float64[]
+          mLBP.Opts.Imp_gU_Loc = Array(1:length(P_LBD))
+          mLBP.Opts.Imp_gL = Float64[-Inf for i=1:length(P_LBD)]
+          mLBP.Opts.Imp_gU = Float64[0.0 for i=1:length(P_LBD)]
+          mLBP.Opts.Imp_nCons = length(P_LBD)
         else
           mLBP1 = deepcopy(MathProgBase.NonlinearModel(LBP_Opt1))
           MathProgBase.loadproblem!(mLBP1, nx, 0, X_low, X_high,
@@ -157,7 +168,7 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       end
 
       ##### inner program #####
-      println("inner problem #1")
+      #println("inner problem #1")
       mLLP1 = deepcopy(MathProgBase.NonlinearModel(SIPopt.LLP_Opt))
       MathProgBase.loadproblem!(mLLP1, np+ny, 0, vcat(Y_low,P_low), vcat(Y_high,P_high),
                                 Float64[], Float64[], :Min, p -> -gSIP(xbar,p[1:ny],p[(ny+1):(ny+np)]), [])
@@ -185,17 +196,10 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
         push!(P_LBD,pbar[(ny+1):(ny+np)])
       end
       ##### upper bounding problem #####
-      println("upper problem")
+      #println("upper problem")
 
       if (~isempty(P_UBD))
           UBD_X_low,UBD_X_high,refnx,snx = Reform_Imp_Y(X,Y,P_UBD)
-          println("UBD_X_low: $UBD_X_low")
-          println("UBD_X_high: $UBD_X_high")
-          println("length(UBD_X: $(length(UBD_X_low))")
-          println("length(UBD_X: $(length(UBD_X_high))")
-          println("length(P_UBD: $(length(P_UBD))")
-          println("ny: $ny")
-          println("nx: $nx")
           gL_UBP = [-Inf for i=1:((1+2*ny)*length(P_UBD))]
           gU_UBP = [0.0 for i=1:((1+2*ny)*length(P_UBD))]
           mUBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.UBP_Opt))
@@ -204,11 +208,17 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
           MathProgBase.loadproblem!(mUBP, nx+ny*length(P_UBD), (1+2*ny)*length(P_UBD), UBD_X_low, UBD_X_high,
                                     gL_UBP, gU_UBP, :Min, q->f(q[(refnx+1):end]), gUBP)
           mUBP.Opts.Imp_f = (y,p) -> f(p)
-          mUBP.Opts.Imp_g = (y,p) -> Reform_Imp_G(g,p,y,P_UBD,ny,eps_g)
+          mUBP.Opts.Imp_g = (y,p) -> Reform_Imp_G(gSIP,p,y,P_UBD,ny,eps_g)
           mUBP.Opts.Imp_h = (y,p) -> Reform_Imp_H(h,p,y,P_UBD,ny)
           mUBP.Opts.Imp_hj = (y,p) -> Reform_Imp_HJ(hj,p,y,P_UBD,ny)
-          mLBP.Opts.Imp_nx = ny*length(P_UBD)
-          mLBP.Opts.Imp_np = nx
+          mUBP.Opts.Imp_nx = ny*length(P_UBD)
+          mUBP.Opts.Imp_np = nx
+          # Location
+          mUBP.Opts.Imp_gL_Loc = Float64[]
+          mUBP.Opts.Imp_gU_Loc = Array(1:length(P_UBD))
+          mUBP.Opts.Imp_gL = Float64[-Inf for i=1:length(P_UBD)]
+          mUBP.Opts.Imp_gU = Float64[0.0 for i=1:length(P_UBD)]
+          mUBP.Opts.Imp_nCons = length(P_UBD)
       else
           mUBP1 = deepcopy(MathProgBase.NonlinearModel(UBP_Opt1))
           MathProgBase.loadproblem!(mUBP1, nx, 0, X_low, X_high,
@@ -247,7 +257,6 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       end
       if (feas)
         ##### inner program #####
-        println("inner problem 2")
         mLLP2 = deepcopy(MathProgBase.NonlinearModel(SIPopt.LLP_Opt))
         MathProgBase.loadproblem!(mLLP2, np+ny, 0, vcat(Y_low,P_low), vcat(Y_high,P_high),
                                   Float64[], Float64[], :Min, p -> -gSIP(xbar,p[1:ny],p[(ny+1):(ny+np)]), [])
@@ -281,6 +290,8 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       end
 
       print_int!(SIPopt,k,LBDg,UBDg,eps_g,r)
+      println("P_LBD: $(P_LBD)")
+      println("P_UBD: $(P_UBD)")
       sip_sto.k += k
     end
 

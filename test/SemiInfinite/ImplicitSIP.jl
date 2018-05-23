@@ -23,16 +23,11 @@ Y = [Interval(4,5);Interval(5,6)]
 x = [4.5,5.5]
 y = [1.5,3.5]
 Ylo1,Yhi1,st1,p1 = EAGO.Reform_Imp_Y(X,Y,Pset)
-Ylo2,Yhi2,st2,p2 = EAGO.Reform_Imp_Y(X,Y,[])
 
 @test Ylo1 == [4.0, 5.0, 4.0, 5.0, 1.0, 3.0]
 @test Yhi1 == [5.0, 6.0, 5.0, 6.0, 2.0, 4.0]
-@test Ylo2 == [1.0, 3.0]
-@test Yhi2 == [2.0, 4.0]
 @test st1 == 4
-@test st2 == 0
 @test p1 == 6
-@test p2 == 2
 
 yref = [1.5,3.5,1.5,3.5]
 out3 = EAGO.Reform_Imp_H(h,x,yref,Pset,ny)

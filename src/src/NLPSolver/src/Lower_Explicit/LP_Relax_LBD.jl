@@ -38,10 +38,13 @@ function LP_Relax_LBD(X::Vector{Interval{Float64}},
                                                                             SVector{opt[1].numVar,Float64}(x0)) for i=1:opt[1].numVar]
         # relaxation of function
         f::SMCg{opt[1].numVar,Interval{Float64},Float64} = opt[1].f(x_mc)
+        println("f_mc: $f")
+        println("f_Intv: $(opt[1].f(X))")
         f_cv::Float64 = f.cv
 
         if opt[1].numConstr>0
             c::Vector{SMCg{opt[1].numVar,Interval{Float64},Float64}} = opt[1].g(x_mc)
+            #println("c: $c")
             dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].gL_loc)+length(opt[1].gU_loc),opt[1].numVar)
         else
             dcdx = spzeros(1,opt[1].numVar)
@@ -78,20 +81,24 @@ function LP_Relax_LBD(X::Vector{Interval{Float64}},
         if opt[1].numConstr>0
             cx_ind2::Int64 = 1
             for i in opt[1].gU_loc
-                rhs[cx_ind2] = sum(x0[:].*c[i].cv_grad[:])+opt[1].gU[i]-c[i].cv
+                rhs[cx_ind2] = sum(x0[:].*c[i].cv_grad[:])+min(c[i].Intv.hi,opt[1].gU[i])-c[i].cv
                 cx_ind2 += 1
             end
             for i in opt[1].gL_loc
-                rhs[cx_ind2] = sum(-x0[:].*c[i].cc_grad[:])-opt[1].gL[i]+c[i].cc
+                rhs[cx_ind2] = sum(-x0[:].*c[i].cc_grad[:])-max(c[i].Intv.lo,opt[1].gL[i])+c[i].cc
                 cx_ind2 += 1
             end
         end
 
         model = buildlp([f.cv_grad[i] for i=1:opt[1].numVar], dcdx, '<', rhs, l, u, opt[1].solver.LP_solver)
         result = solvelp(model)
+        println("result: $result")
         # Unpacks the results from the LP solver
         if (result.status == :Optimal)
-            val::Float64 = result.objval + f_cv - sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar])
+            println("p1: $(result.objval)")
+            println("p2: $(f_cv)")
+            println("p3: $(sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar]))")
+            val::Float64 = max(f.Intv.lo,result.objval + f_cv - sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar]))
             pnt::Vector{Float64} = result.sol
             feas = true
             mult::Vector{Float64} = result.attrs[:redcost]
@@ -171,11 +178,11 @@ function LP_Relax_LBD(X::Vector{MCInterval{Float64}},
         if opt[1].numConstr>0
             cx_ind2::Int64 = 1
             for i in opt[1].gU_loc
-                rhs[cx_ind2] = sum(x0[:].*c[i].cv_grad[:])+opt[1].gU[i]-c[i].cv
+                rhs[cx_ind2] = sum(x0[:].*c[i].cv_grad[:])+min(c[i].Intv.hi,opt[1].gU[i])-c[i].cv
                 cx_ind2 += 1
             end
             for i in opt[1].gL_loc
-                rhs[cx_ind2] = sum(-x0[:].*c[i].cc_grad[:])-opt[1].gL[i]+c[i].cc
+                rhs[cx_ind2] = sum(-x0[:].*c[i].cc_grad[:])-max(c[i].Intv.lo,opt[1].gL[i])+c[i].cc
                 cx_ind2 += 1
             end
         end
@@ -184,7 +191,7 @@ function LP_Relax_LBD(X::Vector{MCInterval{Float64}},
         result = solvelp(model)
         # Unpacks the results from the LP solver
         if (result.status == :Optimal)
-            val::Float64 = result.objval + f_cv - sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar])
+            val::Float64 = max(f.Intv.lo,result.objval + f_cv - sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar]))
             pnt::Vector{Float64} = result.sol
             feas = true
             mult::Vector{Float64} = result.attrs[:redcost]
