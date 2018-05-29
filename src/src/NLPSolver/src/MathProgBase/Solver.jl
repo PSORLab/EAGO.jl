@@ -97,12 +97,12 @@ function EAGO_NLPSolver(;
     abs_tol_UBD = 1E-5,
     max_int_UBD = 5E5,
 
-    STD_RR_depth = 1E10,
-    probe_depth = 3,
+    STD_RR_depth = -1E10,
+    probe_depth = -3,
     variable_depth = 1E15,
     dual_tol = 1E-7,
 
-    DAG_depth = 1E3,
+    DAG_depth = -10,
     DAG_pass = 3,
     max_reduce_rept = 5,
     tol_reduce_rept = 0.5,

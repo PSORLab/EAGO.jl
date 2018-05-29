@@ -8,7 +8,7 @@ using StaticArrays
 using IntervalArithmetic
 
 # Solves the quadratically constrained problem (Example 5.1, Stuber2015)
-#=
+
 h1(x,p) = [x[1]^2 + p[1]*x[1] + 4.0]
 hj1(x,p) = [2.0*x[1] + p[1]]
 f1(x,p) = x[1]
@@ -45,7 +45,7 @@ xb = @variable(jm1b, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i)
 @NLconstraint(jm1b, xb[1]^2 + xb[2]*xb[1] + 4 == 0.0 )
 @NLobjective(jm1b, Min, xb[1])
 status1b = Solve_Implicit(jm1b,f1,h1,hj1,x->[],1)
-=#
+
 LBD1c_func(i) = (i==1) ? (68.8) : (0.5)
 UBD1c_func(i) = (i==1) ? (149.9) : (8.0)
 g2(y,x) = [y[1] + cos(x[1]-80/90) - 80]
