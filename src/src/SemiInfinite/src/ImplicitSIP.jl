@@ -44,6 +44,7 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
     Y_high = [Y[i].hi for i=1:nx]
     X_low = [X[i].lo for i=1:nx]
     X_high = [X[i].hi for i=1:nx]
+    gBnds = Float64[0.0 for i=1:ny]
     pbar = mid.(P)
     xbar = mid.(X)
     INNg1 = Inf
@@ -56,14 +57,14 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
     SIPopt.UBP_Opt.ImplicitFlag = true
 
     # Sets number of state variables
-    SIPopt.LBP_Opt.PSmcOpt.nx = ny  # SET NP FOR ME!!!!
+    SIPopt.LBP_Opt.PSmcOpt.nx = ny
     SIPopt.LBP_Opt.PIntOpt.nx = ny
 
     SIPopt.LLP_Opt.PSmcOpt.nx = ny
     SIPopt.LLP_Opt.PSmcOpt.np = np
     SIPopt.LLP_Opt.PIntOpt.nx = ny
 
-    SIPopt.UBP_Opt.PSmcOpt.nx = ny # SET NP FOR ME!!!!
+    SIPopt.UBP_Opt.PSmcOpt.nx = ny
     SIPopt.UBP_Opt.PIntOpt.nx = ny
 
     # create solvers for first step
@@ -97,30 +98,24 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       ##### lower bounding problem #####
       if (~isempty(P_LBD))
           LBD_X_low,LBD_X_high,refnx,snx = Reform_Imp_Y(X,Y,P_LBD)
-          gL_LBP = [-Inf for i=1:((1+2*ny)*length(P_LBD))]
-          gU_LBP = [0.0 for i=1:((1+2*ny)*length(P_LBD))]
+          gL_LBP = [ (i <= ny*length(P_LBD)) ? -Inf : 0.0  for i=1:((1+ny)*length(P_LBD))]
+          gU_LBP = [0.0 for i=1:((1+ny)*length(P_LBD))]
+          SIPopt.LBP_Opt.PSmcOpt.nx = ny*length(P_LBD)
+          SIPopt.LBP_Opt.PIntOpt.nx = ny*length(P_LBD)
           mLBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.LBP_Opt))
           mLBP.Opts.Imp_nx = refnx
           gLBP = x -> Reform_Imp_HG(gSIP,h,x[(refnx+1):end],x[1:refnx],P_LBD,ny,1,0.0)
-          MathProgBase.loadproblem!(mLBP, ny*length(P_LBD)+nx, (1+2*ny)*length(P_LBD), LBD_X_low, LBD_X_high,
-                                    gL_LBP, gU_LBP, :Min, q->f(q[(refnx+1):end]), gLBP)
+          newobj = q->f(q[(refnx+1):end])
+          MathProgBase.loadproblem!(mLBP, ny*length(P_LBD)+nx, (1+ny)*length(P_LBD), LBD_X_low, LBD_X_high,
+                                    gL_LBP, gU_LBP, :Min, newobj, gLBP)
 
           mLBP.Opts.Imp_f = (y,p) -> f(p)
           mLBP.Opts.Imp_g = (y,p) -> Reform_Imp_G(gSIP,p,y,P_LBD,ny,0.0)
           mLBP.Opts.Imp_h = (y,p) -> Reform_Imp_H(h,p,y,P_LBD,ny)
           mLBP.Opts.Imp_hj = (y,p) -> Reform_Imp_HJ(hj,p,y,P_LBD,ny)
+
           mLBP.Opts.Imp_nx = ny*length(P_LBD)
           mLBP.Opts.Imp_np = nx
-
-          gval1 = Reform_Imp_G(gSIP,p,y,P_LBD,ny,0.0)
-          #gval2 = Reform_Imp_HJ(h,[2.0],[79.0],P_LBD,ny)
-          #gval3 = Reform_Imp_HJ(h,[2.0],[78.5],P_LBD,ny)
-          #gval4 = Reform_Imp_HJ(h,[6.0],[84.0],P_LBD,ny)
-          #gval5 = Reform_Imp_HJ(h,[6.0],[81.0],P_LBD,ny)
-          #gval6 = Reform_Imp_HJ(h,[6.0],[80.0],P_LBD,ny)
-          println("g val1: $gval1")
-          #println("g val4: $gval4")
-          # Location
           mLBP.Opts.Imp_gL_Loc = Float64[]
           mLBP.Opts.Imp_gU_Loc = Array(1:length(P_LBD))
           mLBP.Opts.Imp_gL = Float64[-Inf for i=1:length(P_LBD)]
@@ -170,8 +165,9 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       ##### inner program #####
       #println("inner problem #1")
       mLLP1 = deepcopy(MathProgBase.NonlinearModel(SIPopt.LLP_Opt))
-      MathProgBase.loadproblem!(mLLP1, np+ny, 0, vcat(Y_low,P_low), vcat(Y_high,P_high),
-                                Float64[], Float64[], :Min, p -> -gSIP(xbar,p[1:ny],p[(ny+1):(ny+np)]), [])
+      MathProgBase.loadproblem!(mLLP1, np+ny, ny, vcat(Y_low,P_low), vcat(Y_high,P_high),
+                                gBnds, gBnds, :Min, p -> -gSIP(xbar,p[1:ny],p[(ny+1):(ny+np)]),
+                                q -> h(xbar,q[1:ny],q[(ny+1):(ny+np)]))
       mLLP1.Opts.Imp_f = (y,p) -> -gSIP(xbar,y,p)
       mLLP1.Opts.Imp_h = (y,p) -> h(xbar,y,p)
       mLLP1.Opts.Imp_hj = (y,p) -> hj(xbar,y,p)
@@ -189,9 +185,9 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
         println("solved INN #1: ",INNg1," ",pbar," ",feas)
       end
       if (INNg1+SIPopt.inn_tol<=0)
-        xstar = xbar
-        UBDg = LBDg
-        return LBDg,UBDg
+        sip_sto.UBD = LBDg
+        sip_sto.xbar = xbar
+        return sip_sto
       else
         push!(P_LBD,pbar[(ny+1):(ny+np)])
       end
@@ -200,13 +196,16 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
 
       if (~isempty(P_UBD))
           UBD_X_low,UBD_X_high,refnx,snx = Reform_Imp_Y(X,Y,P_UBD)
-          gL_UBP = [-Inf for i=1:((1+2*ny)*length(P_UBD))]
-          gU_UBP = [0.0 for i=1:((1+2*ny)*length(P_UBD))]
+          gL_UBP = [ (i <= ny*length(P_UBD)) ? -Inf : 0.0  for i=1:((1+ny)*length(P_UBD))]
+          gU_UBP = [0.0 for i=1:((1+ny)*length(P_UBD))]
           mUBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.UBP_Opt))
           mUBP.Opts.Imp_nx = refnx
+          SIPopt.UBP_Opt.PSmcOpt.nx = ny*length(P_UBD)
+          SIPopt.UBP_Opt.PIntOpt.nx = ny*length(P_UBD)
           gUBP = x -> Reform_Imp_HG(gSIP,h,x[(refnx+1):end],x[1:refnx],P_UBD,ny,1,eps_g)
-          MathProgBase.loadproblem!(mUBP, nx+ny*length(P_UBD), (1+2*ny)*length(P_UBD), UBD_X_low, UBD_X_high,
-                                    gL_UBP, gU_UBP, :Min, q->f(q[(refnx+1):end]), gUBP)
+          newobj = q->f(q[(refnx+1):end])
+          MathProgBase.loadproblem!(mUBP, nx+ny*length(P_UBD), (1+ny)*length(P_UBD), UBD_X_low, UBD_X_high,
+                                    gL_UBP, gU_UBP, :Min, newobj, gUBP)
           mUBP.Opts.Imp_f = (y,p) -> f(p)
           mUBP.Opts.Imp_g = (y,p) -> Reform_Imp_G(gSIP,p,y,P_UBD,ny,eps_g)
           mUBP.Opts.Imp_h = (y,p) -> Reform_Imp_H(h,p,y,P_UBD,ny)
@@ -258,8 +257,9 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       if (feas)
         ##### inner program #####
         mLLP2 = deepcopy(MathProgBase.NonlinearModel(SIPopt.LLP_Opt))
-        MathProgBase.loadproblem!(mLLP2, np+ny, 0, vcat(Y_low,P_low), vcat(Y_high,P_high),
-                                  Float64[], Float64[], :Min, p -> -gSIP(xbar,p[1:ny],p[(ny+1):(ny+np)]), [])
+        MathProgBase.loadproblem!(mLLP2, np+ny, ny, vcat(Y_low,P_low), vcat(Y_high,P_high),
+                                  gBnds, gBnds, :Min, p -> -gSIP(xbar,p[1:ny],p[(ny+1):(ny+np)]),
+                                  q -> h(xbar,q[1:ny],q[(ny+1):(ny+np)]))
         mLLP2.Opts.Imp_f = (y,p) -> -gSIP(xbar,y,p)
         mLLP2.Opts.Imp_h = (y,p) -> h(xbar,y,p)
         mLLP2.Opts.Imp_hj = (y,p) -> hj(xbar,y,p)
@@ -290,9 +290,7 @@ function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
       end
 
       print_int!(SIPopt,k,LBDg,UBDg,eps_g,r)
-      println("P_LBD: $(P_LBD)")
-      println("P_UBD: $(P_UBD)")
-      sip_sto.k += k
+      sip_sto.k = k
     end
 
     return sip_sto

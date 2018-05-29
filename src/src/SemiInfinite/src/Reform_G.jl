@@ -75,15 +75,12 @@ optimization routine.
 """
 function Reform_Imp_HG(h::Function,g::Function,x::Vector{T},y,pUBD,ny::Int64,gl::Int64,eps_g) where T<:Real
   np = length(pUBD)
-  hg_reform = zeros(T,(2*ny+gl)*np)
+  hg_reform = zeros(T,(ny+gl)*np)
   for i=1:np
       hg_reform[(1+ny*(i-1)):(ny*i)] = h(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g
   end
   for i=1:np
-      hg_reform[(1+ny*(np+i-1)):(2*np+ny*i)] = -h(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])-eps_g
-  end
-  for i=1:np
-      hg_reform[(2*ny*np+1+gl*(i-1)):(2*ny*np+gl*i)] = g(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g
+      hg_reform[(ny*np+1+gl*(i-1)):(ny*np+gl*i)] = g(x,y[(1+ny*(i-1)):(ny*i)],pUBD[i])+eps_g
   end
   return hg_reform
 end

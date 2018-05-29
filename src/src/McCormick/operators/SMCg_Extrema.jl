@@ -147,7 +147,10 @@ end
     end
 end
 
-@inline function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
+function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
+    maxIntv = max(x.Intv,y.Intv)
+    maxxL = maxIntv.lo
+    maxxU = maxIntv.hi
     if (MC_param.mu >= 1)
       cc::T = zero(T)
       cv::T = zero(T)
@@ -194,14 +197,14 @@ end
       ccMC::SMCg{N,V,T} = (x+y+abs(x-y))/2
       cc = ccMC.cc
       cc_grad = ccMC.cc_grad
+      cv = max(x.cv,y.cv)
+      cv_grad = (x.cv > y.cv) ? (x.cnst ? zeros(x.cv_grad): x.cv_grad) :
+                                (y.cnst ? zeros(y.cv_grad): y.cv_grad)
       cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
-    end
-    cv = max(x.cv,y.cv)
-    cv_grad = (x.cv > y.cv) ? (x.cnst ? zeros(x.cv_grad): x.cv_grad) :
-                              (y.cnst ? zeros(y.cv_grad): y.cv_grad)
-    cnst = y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) )
+      cnst = y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) )
 
-    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),cnst,x.IntvBox,x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),cnst,x.IntvBox,x.xref)
+    end
 end
 
 @inline function maxcv(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}

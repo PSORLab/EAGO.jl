@@ -102,6 +102,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
   (bnbs.Verbosity == "Full") && (println("Finished Implicit Probing"))
   # Implicit Interval Contractor
   if (opt[1].solver.ImplicitFlag && (feas == true))
+    #println("X[1:opt[1].Imp_nx]: $(X[1:opt[1].Imp_nx])")
     Eflag = false
     Iflag = false
     eDflag = false
@@ -111,7 +112,7 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
                                                                     Eflag,Iflag,eDflag,
                                                                     opt[1].solver.PIntOpt)
     #println("Y1: $Y1")
-  #  println("Eflag: $Eflag")
+    #println("Eflag: $Eflag")
     #println("Iflag: $Iflag")
     #println("eDflag: $eDflag")
     if Eflag

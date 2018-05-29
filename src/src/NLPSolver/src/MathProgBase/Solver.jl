@@ -18,7 +18,7 @@ modified over the course of the optimization problem. The fields are given below
 * `STD_RR_depth::Int64`: Depth in tree to perform standard range reduction until. (Default = 1E10)
 * `probe_depth::Int64`: Depth in tree to perform LP probing until. (Default = 3)
 * `variable_depth::Int64`: Depth in tree to OBBT until. (Default = 1E15)
-* `dual_tol::Float64: Tolerance for recognizing a dual as on the bound. (Default = 1E-7)
+* `dual_tol::Float64`: Tolerance for recognizing a dual as on the bound. (Default = 1E-7)
 * `DAG_depth::Int64`: Depth in tree to run DAG constraint propagation. (Default = 1E3)
 * `DAG_pass::Int64`: Number of passes to run DAG constraint propagation. (Default = 3)
 * `max_reduce_rept::Int64`: Maximum number of times to repeat tightening. (Not used currently.)
@@ -126,6 +126,10 @@ function EAGO_NLPSolver(;
 
     BnBobject.BnB_atol = atol
     BnBobject.BnB_rtol = rtol
+    BnBobject.iter_lim = true
+    BnBobject.max_iter = iter_limit
+    BnBobject.max_nodes = node_limit
+
 
     nlp_solver = EAGO_NLPSolver(deepcopy(BnBobject),
                                 LBD_func_relax, LBDsolvertype, UBDsolvertype,

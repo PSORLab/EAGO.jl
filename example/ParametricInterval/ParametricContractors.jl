@@ -55,3 +55,24 @@ Eflag = false
 Iflag = false
 eDflag = false
 output3b = Param_Intv_Contractor(hcos,hjcos,xBndsc,yBnds,Eflag,Iflag,eDflag,opt2a)
+
+# Stuber SIP contractor example 2
+g2(x,p) = x[1] + cos(p[1]-80/90) - 80
+function h2(y,x)
+    [y[1]-(x[1]-(x[1]^3)/6+(x[1]^5)/120)/sqrt(y[1])-80]
+end
+function hj2(y,x)
+    [1.0+(x[1]-(x[1]^3)/6+(x[1]^5)/120)/(2.0*sqrt(y[1]^3))]
+end
+Xlast = [Interval(80.2046, 80.5215)]
+Plast = [Interval(2.60937, 2.84375)]
+h2val = h2(Xlast,Plast)
+
+Eflag = false
+Iflag = false
+eDflag = false
+outputlasta = Param_Intv_Contractor(h2,hj2,Xlast,Plast,Eflag,Iflag,eDflag,opt1a)
+Eflag = false
+Iflag = false
+eDflag = false
+outputlastb = Param_Intv_Contractor(h2,hj2,Xlast,Plast,Eflag,Iflag,eDflag,opt2a)

@@ -44,7 +44,7 @@ relaxes the equality h(x,p)
 np = 1
 szero = @SVector zeros(np)
 sone = @SVector ones(np)
-p_mc = [SMCg{np,Interval{Float64},Float64}(p[i],p[i],sone,sone,@interval(P[i].lo,P[i].hi),false,xIBox,mBox) for i=1:np]
+p_mc = [SMCg{np,Interval{Float64},Float64}(p[i],p[i],sone,sone,Interval(P[i].lo,P[i].hi),false,xIBox,mBox) for i=1:np]
 param = GenExpansionParams(h1,hj1,X,P,pmid,opts1)
 #=
 hbnds = MC_impRelax(h1,hj1,p_mc,pmid,X,P,opts1,param)

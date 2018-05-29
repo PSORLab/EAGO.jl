@@ -36,10 +36,9 @@ function LP_Relax_LBD(X::Vector{Interval{Float64}},
                                                                             false,
                                                                             SVector{opt[1].numVar,Interval{Float64}}(X),
                                                                             SVector{opt[1].numVar,Float64}(x0)) for i=1:opt[1].numVar]
+
         # relaxation of function
         f::SMCg{opt[1].numVar,Interval{Float64},Float64} = opt[1].f(x_mc)
-        println("f_mc: $f")
-        println("f_Intv: $(opt[1].f(X))")
         f_cv::Float64 = f.cv
 
         if opt[1].numConstr>0
@@ -92,16 +91,29 @@ function LP_Relax_LBD(X::Vector{Interval{Float64}},
 
         model = buildlp([f.cv_grad[i] for i=1:opt[1].numVar], dcdx, '<', rhs, l, u, opt[1].solver.LP_solver)
         result = solvelp(model)
-        println("result: $result")
+
         # Unpacks the results from the LP solver
         if (result.status == :Optimal)
-            println("p1: $(result.objval)")
-            println("p2: $(f_cv)")
-            println("p3: $(sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar]))")
             val::Float64 = max(f.Intv.lo,result.objval + f_cv - sum([x0[i]*f.cv_grad[i] for i=1:opt[1].numVar]))
             pnt::Vector{Float64} = result.sol
             feas = true
             mult::Vector{Float64} = result.attrs[:redcost]
+
+            if (opt[1].numConstr > 0)
+              GInt = opt[1].g(X)
+              cInt = vcat(GInt[opt[1].gU_loc]-opt[1].gU[opt[1].gU_loc],
+                                    -GInt[opt[1].gL_loc]+opt[1].gL[opt[1].gL_loc])
+              for i=1:opt[1].gexp
+                if (cInt[i].lo>0.0)
+                    val = -Inf
+                    pnt = x0
+                    feas = false
+                    mult = x0
+                  break
+                end
+              end
+            end
+
         elseif (result.status == :Infeasible)
             val = -Inf
             pnt = x0
@@ -195,6 +207,23 @@ function LP_Relax_LBD(X::Vector{MCInterval{Float64}},
             pnt::Vector{Float64} = result.sol
             feas = true
             mult::Vector{Float64} = result.attrs[:redcost]
+
+
+                        if (opt[1].numConstr > 0)
+                          GInt = opt[1].g(X)
+                          cInt = vcat(GInt[opt[1].gU_loc]-opt[1].gU[opt[1].gU_loc],
+                                                -GInt[opt[1].gL_loc]+opt[1].gL[opt[1].gL_loc])
+                          for i=1:opt[1].gexp
+                            if (cInt[i].lo>0.0)
+                                val = -Inf
+                                pnt = x0
+                                feas = false
+                                mult = x0
+                              break
+                            end
+                          end
+                        end
+
         elseif (result.status == :Infeasible)
             val = -Inf
             pnt = x0

@@ -9,7 +9,7 @@ settings are controlled in the B&B algorithm using the global_options type. Inpu
 * `k::Int64`: Number of Iterations The B&B Algorithm has taken
 * `pos::Int64`: Depth of Node in B&B Tree
 * `opt`: Option type containing problem information
-* `UBD::Float64: Global upper bound for B&B algorithm
+* `UBD::Float64`: Global upper bound for B&B algorithm
 
 Returns a tuple `(val,pnt,feas,X,[])` where
 * `val::Float64`: Lower bound calculated
@@ -28,13 +28,20 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                           UBD::Float64)
         nx::Int64 = opt[1].Imp_nx
         np::Int64 = opt[1].Imp_np
+        #println("ran lower implicit 1")
         try
+            #println("ran primary")
+            #println("X: $(Y[1:nx])")
+            #println("P $(Y[(nx+1):(opt[1].numVar)])")
+            #println("h vals: $(opt[1].Imp_h(Y[1:nx],Y[(nx+1):(opt[1].numVar)]))")
+            #println("f vals: $(opt[1].Imp_f(Y[1:nx],Y[(nx+1):(opt[1].numVar)]))")
+            #println("g vals: $(opt[1].Imp_g(Y[1:nx],Y[(nx+1):(opt[1].numVar)]))")
             l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
             u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
             pmid::Vector{Float64} = (l + u)/2.0
             #println("pmid: $pmid")
             param = GenExpansionParams(opt[1].Imp_h, opt[1].Imp_hj,
-                                         Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
+                                         Y[1:nx],Y[(nx+1):(opt[1].numVar)],pmid,
                                          opt[1].solver.PSmcOpt)
             x_mc = param[end]
             p_mc::Vector{SMCg{np,Interval{Float64},Float64}} = [SMCg{np,Interval{Float64},Float64}(pmid[i],
@@ -57,9 +64,12 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             else
                 dcdx = spzeros(1,np)
             end
+            #println("opt[1].Imp_nCons: $(opt[1].Imp_nCons)")
+            #println("opt[1].Imp_gL_Loc: $(opt[1].Imp_gL_Loc)")
+            #println("opt[1].Imp_gU_Loc: $(opt[1].Imp_gU_Loc)")
             if opt[1].Imp_nCons>0
                 cx_ind1 = 1
-                for i in opt[1].Imp_gL_Loc
+                for i in opt[1].Imp_gU_Loc
                     for j=1:np
                         if (c[i].cv_grad[j] != 0.0)
                             dcdx[cx_ind1,j] = c[i].cv_grad[j]
@@ -67,7 +77,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                     end
                     cx_ind1 += 1
                 end
-                for i in opt[1].Imp_gU_Loc
+                for i in opt[1].Imp_gL_Loc
                     for j=1:np
                         if (c[i].cc_grad[j] != 0.0)
                             dcdx[cx_ind1,j] = -c[i].cc_grad[j]
@@ -92,14 +102,35 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                     cx_ind2 += 1
                 end
             end
+            #println("dcdx: $dcdx")
+            #println("rhs: $rhs")
             model = buildlp([f.cv_grad[i] for i=1:np], dcdx, '<', rhs, l, u, opt[1].solver.LP_solver)
             result = solvelp(model)
-            #println("result: $result")
+            #println("solved")
+            #println("result.status $(result.status)")
             if (result.status == :Optimal)
-                val::Float64 = result.objval + f_cv - sum([pmid[i]*f.cv_grad[i] for i=1:np])
+                #println("optimal solution 2")
+                val::Float64 = max(f.Intv.lo,result.objval + f_cv - sum([pmid[i]*f.cv_grad[i] for i=1:np]))
                 pnt::Vector{Float64} = vcat(mid.(Intv.(x_mc)),result.sol)
                 feas = true
                 mult::Vector{Float64} = result.attrs[:redcost]
+                #println("opt[1].Imp_nCons: $(opt[1].Imp_nCons)")
+                if (opt[1].Imp_nCons < 1)
+                else
+                    GInt::Vector{Interval{Float64}} = opt[1].Imp_g(Y[1:nx],Y[(nx+1):end])
+                    cInt::Vector{Interval{Float64}} = vcat(GInt[opt[1].Imp_gU_Loc]-opt[1].Imp_gU[opt[1].Imp_gU_Loc],
+                                                          -GInt[opt[1].Imp_gL_Loc]+opt[1].Imp_gL[opt[1].Imp_gL_Loc])
+                    #println("cInt: $cInt")
+                    for i=1:length(cInt)
+                        if (cInt[i].lo>0.0)
+                            val = -Inf
+                            pnt = pmid
+                            feas = false
+                            mult = pmid
+                            break
+                        end
+                    end
+                end
             elseif (result.status == :Infeasible)
                 val = -Inf
                 pnt = pmid
