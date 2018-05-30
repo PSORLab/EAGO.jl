@@ -189,3 +189,4 @@ end
           SIPopt1.UBP_Opt.DAG_depth = 100
           @test_throws ErrorException Implicit_SIP_Solve(f,h,hj,gSIP,xBnds,yBnds,pBnds,SIPopt1)
 end
+end

@@ -162,7 +162,7 @@ function LP_Relax_LBD(X::Vector{MCInterval{Float64}},
         # forms coefficients of linear relaxations
         if opt[1].numConstr>0
             cx_ind1::Int64 = 1
-            for i in opt[1].gL_loc
+            for i in opt[1].gU_loc
                 for j=1:opt[1].numVar
                     if (c[i].cv_grad[j] != 0.0)
                         dcdx[cx_ind1,j] = c[i].cv_grad[j]
@@ -170,7 +170,7 @@ function LP_Relax_LBD(X::Vector{MCInterval{Float64}},
                 end
                 cx_ind1 += 1
             end
-            for i in opt[1].gU_loc
+            for i in opt[1].gL_loc
                 for j=1:opt[1].numVar
                     if (c[i].cc_grad[j] != 0.0)
                         dcdx[cx_ind1,j] = -c[i].cc_grad[j]

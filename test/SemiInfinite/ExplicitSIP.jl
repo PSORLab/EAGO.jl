@@ -62,19 +62,19 @@ end
                         X1 = [MCInterval(-1000.0,1000.0),MCInterval(-1000.0,1000.0)]
                         P1 = [MCInterval(0.0,1.0)]
 
+                        println("error test 1")
                         SIPopt1.r0 = 2.0
                         SIPopt1.eps_g0 = -0.9
                         @test_throws ErrorException Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
 
+                        println("error test 2")
                         SIPopt1.r0 = 0.1
                         SIPopt1.eps_g0 = 0.9
                         @test_throws ErrorException Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
 
+                        println("error test 3")
                         SIPopt1.r0 = 2.0
                         SIPopt1.LBP_Opt.DAG_depth = 100
-                        @test_throws ErrorException Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
-                        SIPopt1.UBP_Opt.DAG_depth = 100
-                        SIPopt1.LBP_Opt.DAG_depth = -100
                         @test_throws ErrorException Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)
 
 end
