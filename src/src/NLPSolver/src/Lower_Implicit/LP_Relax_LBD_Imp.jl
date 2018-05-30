@@ -49,9 +49,7 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                                                            seed_g(Float64,i,np),
                                                            seed_g(Float64,i,np),
                                                            Y[nx+i],
-                                                           false,
-                                                           SVector{np,Interval{Float64}}(Y[(nx+1):(nx+np)]),
-                                                           SVector{np,Float64}(pmid)) for i=1:np]
+                                                           false) for i=1:np]
             #println("x_mc: $x_mc")
             #println("P_mc: $p_mc")
             f::SMCg{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
@@ -189,9 +187,7 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
                                                            seed_g(Float64,i,np),
                                                            seed_g(Float64,i,np),
                                                            Y[nx+i],
-                                                           false,
-                                                           SVector{np,Interval{Float64}}(Y[(nx+1):(nx+np)]),
-                                                           SVector{np,Float64}(pmid)) for i=1:np]
+                                                           false) for i=1:np]
             f::SMCg{np,MCInterval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
             if opt[1].Imp_nCons>0

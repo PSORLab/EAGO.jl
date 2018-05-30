@@ -36,12 +36,12 @@ function Affine_Exp!(x::Vector{SMCg{N,V,T}}, p::Vector{SMCg{N,V,T}}, p_ref,
    temp1::SMCg{N,V,T} = x[i].cv + S1
    temp2::SMCg{N,V,T} = x[i].cc + S2
    temp3::SMCg{N,V,T} = lambda*x[i].cv+(one(T)-lambda)*x[i].cc+S3
-   xa[i] = SMCg{N,V,T}(temp1.cc,temp1.cv,x[i].cv_grad,x[i].cv_grad,temp1.Intv,S1.cnst,x[i].IntvBox,x[i].xref)
-   xA[i] = SMCg{N,V,T}(temp2.cc,temp2.cv,x[i].cc_grad,x[i].cc_grad,temp2.Intv,S2.cnst,x[i].IntvBox,x[i].xref)
+   xa[i] = SMCg{N,V,T}(temp1.cc,temp1.cv,x[i].cv_grad,x[i].cv_grad,temp1.Intv,S1.cnst)
+   xA[i] = SMCg{N,V,T}(temp2.cc,temp2.cv,x[i].cc_grad,x[i].cc_grad,temp2.Intv,S2.cnst)
    z[i] = SMCg{N,V,T}(temp3.cc,temp3.cv,
                     lambda*x[i].cv_grad+(one(T)-lambda)*x[i].cc_grad,
                     lambda*x[i].cv_grad+(one(T)-lambda)*x[i].cc_grad,
-                    temp3.Intv,S3.cnst,x[i].IntvBox,x[i].xref)
+                    temp3.Intv,S3.cnst)
   end
 end
 
@@ -65,13 +65,13 @@ function Correct_Exp!(z_mc::Vector{SMCg{N,V,T}},x_mc::Vector{SMCg{N,V,T}},
   zero_grad::SVector{N,T} = @SVector zeros(T,N)
   for i = 1:nx
     if (z_mc[i].Intv.lo-epsv < X[i].lo) && (z_mc[i].Intv.hi+epsv > X[i].hi)
-      x_mc[i] = SMCg{N,V,T}(X[i].hi,X[i].lo,zero_grad,zero_grad,X[i],true,x_mc[i].IntvBox,x_mc[i].xref)
+      x_mc[i] = SMCg{N,V,T}(X[i].hi,X[i].lo,zero_grad,zero_grad,X[i],true)
     end
     if (z_mc[i].Intv.lo-epsv < X[i].lo)
-      x_mc[i] = SMCg{N,V,T}(x_mc[i].cc,X[i].lo,x_mc[i].cc_grad,zero_grad,V(X[i].lo,x_mc[i].Intv.hi),true,x_mc[i].IntvBox,x_mc[i].xref)
+      x_mc[i] = SMCg{N,V,T}(x_mc[i].cc,X[i].lo,x_mc[i].cc_grad,zero_grad,V(X[i].lo,x_mc[i].Intv.hi),true)
     end
     if (z_mc[i].Intv.hi+epsv > X[i].hi)
-      x_mc[i] = SMCg{N,V,T}(X[i].hi,x_mc[i].cv,zero_grad,x_mc[i].cv_grad,V(x_mc[i].Intv.lo,X[i].hi),true,x_mc[i].IntvBox,x_mc[i].xref)
+      x_mc[i] = SMCg{N,V,T}(X[i].hi,x_mc[i].cv,zero_grad,x_mc[i].cv_grad,V(x_mc[i].Intv.lo,X[i].hi),true)
     end
   end
 end

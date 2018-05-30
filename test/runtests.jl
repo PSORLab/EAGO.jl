@@ -1,5 +1,7 @@
 #!/usr/bin/env julia
 
+workspace()
+
 using EAGO
 
 println("BEGIN TESTING INTERVAL LIBRARY...")

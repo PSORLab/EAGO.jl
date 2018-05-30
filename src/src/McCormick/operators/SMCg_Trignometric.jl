@@ -125,7 +125,7 @@ function cos(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst)
 end
 
 function sin(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
@@ -211,7 +211,7 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst)
 end
 
 @inline function acos(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
@@ -297,7 +297,7 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst)
 end
 
 # pivot point calculation function for convex relaxation of arctangent
@@ -376,5 +376,5 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst)
 end

@@ -70,7 +70,7 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst)
 end
 
 @inline function asinh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
@@ -145,7 +145,7 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, asinh(x.Intv),x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, asinh(x.Intv),x.cnst)
 end
 
 @inline function tanh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
@@ -220,7 +220,7 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, tanh(x.Intv),x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, tanh(x.Intv),x.cnst)
 end
 
 @inline function atanh_env(x::T,y::T,z::T) where {T<:AbstractFloat}
@@ -295,5 +295,5 @@ end
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
   end
-  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, atanh(x.Intv),x.cnst, x.IntvBox, x.xref)
+  return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, atanh(x.Intv),x.cnst)
 end

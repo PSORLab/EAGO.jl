@@ -14,7 +14,7 @@ sets convex and concave (sub)gradients of length `n` of `x` to be `1` at index `
 """
 function grad(x::SMCg{N,V,T},j::Q) where {N,V,Q<:Integer,T<:AbstractFloat}
   sv_grad::SVector{N,T} = seed_g(T,j,N)
-  return SMCg{N,V,T}(x.cc,x.cv,sv_grad,sv_grad,x.Intv,x.cnst,x.IntvBox,x.xref)
+  return SMCg{N,V,T}(x.cc,x.cv,sv_grad,sv_grad,x.Intv,x.cnst)
 end
 
 """
@@ -24,7 +24,7 @@ sets convex and concave (sub)gradients of length `n` to be zero
 """
 function zgrad(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
   grad::SVector{N,T} = @SVector zeros(N)
-  return SMCg{N,V,T}(x.cc,x.cv,grad,grad,x.Intv,x.cnst,x.IntvBox,x.xref)
+  return SMCg{N,V,T}(x.cc,x.cv,grad,grad,x.Intv,x.cnst)
 end
 
 """

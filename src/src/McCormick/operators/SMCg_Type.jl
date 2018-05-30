@@ -7,7 +7,6 @@ mutable struct McCormickParamters
   mu::Int64 # Adjusted
   valid_check::Bool # Adjusted
   valid_tol::Float64
-  subgrad_refine ::Bool# Adjusted
   multivar_refine::Bool # Adjusted
   mv_tol::Float64 # Adjusted
   outer_rnding::Bool # Adjusted
@@ -17,7 +16,6 @@ mutable struct McCormickParamters
                              0,
                              false,
                              1E-8,
-                             false,
                              false,
                              1E-15,
                              false,
@@ -50,13 +48,10 @@ struct SMCg{N,V<:AbstractInterval,T<:AbstractFloat} <: Real
   cv_grad::SVector{N,T}
   Intv::V
   cnst::Bool
-  IntvBox::SVector{N,V}
-  xref::SVector{N,T}
 
   function SMCg{N,V,T}(cc1::T,cv1::T,cc_grad1::SVector{N,T},cv_grad1::SVector{N,T},
-                Intv1::V,cnst1::Bool,Intv1Box::SVector{N,V},
-                xref1::SVector{N,T}) where {N,V<:AbstractInterval,T<:AbstractFloat}
-    new(cc1,cv1,cc_grad1,cv_grad1,Intv1,cnst1,Intv1Box,xref1)
+                Intv1::V,cnst1::Bool) where {N,V<:AbstractInterval,T<:AbstractFloat}
+    new(cc1,cv1,cc_grad1,cv_grad1,Intv1,cnst1)
   end
 end
 
@@ -78,5 +73,5 @@ OtherList = [:sin,:cos,:min,:max,:abs,:step, :sign, :inv, :*, :+, :-, :/,
 
 """SMC(y::Interval) initializes the differentiable McCormick object with an interval
 """
-SMCg{N,V,T}(y::V,IntvBox,xref1) where {N,V,T} = SMCg(y.hi,y.lo,[],[],y,true,IntvBox,xref1)
-SMCg{N,V,T}(val,Intv::V,IntvBox,xref1) where {N,V,T} = SMCg(val,val,[],[],Intv,true,IntvBox,xref1)
+SMCg{N,V,T}(y::V) where {N,V,T} = SMCg(y.hi,y.lo,[],[],y,true)
+SMCg{N,V,T}(val,Intv::V) where {N,V,T} = SMCg(val,val,[],[],Intv,true)

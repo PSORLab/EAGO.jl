@@ -33,9 +33,7 @@ function LP_Relax_LBD(X::Vector{Interval{Float64}},
                                                                             seed_g(Float64,i,opt[1].numVar),
                                                                             seed_g(Float64,i,opt[1].numVar),
                                                                             X[i],
-                                                                            false,
-                                                                            SVector{opt[1].numVar,Interval{Float64}}(X),
-                                                                            SVector{opt[1].numVar,Float64}(x0)) for i=1:opt[1].numVar]
+                                                                            false) for i=1:opt[1].numVar]
 
         # relaxation of function
         f::SMCg{opt[1].numVar,Interval{Float64},Float64} = opt[1].f(x_mc)
@@ -145,9 +143,7 @@ function LP_Relax_LBD(X::Vector{MCInterval{Float64}},
                                                                             seed_g(Float64,i,opt[1].numVar),
                                                                             seed_g(Float64,i,opt[1].numVar),
                                                                             X[i],
-                                                                            false,
-                                                                            SVector{opt[1].numVar,MCInterval{Float64}}(X),
-                                                                            SVector{opt[1].numVar,Float64}(x0)) for i=1:opt[1].numVar]
+                                                                            false) for i=1:opt[1].numVar]
         # relaxation of function
         f::SMCg{opt[1].numVar,MCInterval{Float64},Float64} = opt[1].f(x_mc)
         f_cv::Float64 = f.cv

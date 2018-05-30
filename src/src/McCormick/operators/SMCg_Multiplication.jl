@@ -321,7 +321,7 @@ function multiply_MV(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloa
 		Intv_calc = x1.Intv*x2.Intv
 	end
 	cnst = x2.cnst ? x1.cnst : (x1.cnst ? x2.cnst : x1.cnst || x2.cnst)
-	return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv_calc, cnst, x1.IntvBox,x1.xref)
+	return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv_calc, cnst)
 end
 
 function mul1_u1pos_u2pos(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V,T<:AbstractFloat}
@@ -348,7 +348,7 @@ function mul1_u1pos_u2pos(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V
     cc_grad = x2.Intv.hi*x1.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst,x1.IntvBox,x1.xref)
+  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst)
 end
 function mul1_u1pos_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V,T<:AbstractFloat}
   Intv::V = x1.Intv*x2.Intv
@@ -374,7 +374,7 @@ function mul1_u1pos_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V
     cc_grad = x2.Intv.hi*x1.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst,x1.IntvBox,x1.xref)
+  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst)
 end
 function mul1_u1mix_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V,T<:AbstractFloat}
   Intv::V = x1.Intv*x2.Intv
@@ -401,7 +401,7 @@ function mul1_u1mix_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V
     cc_grad = x2.Intv.hi*x1.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst,x1.IntvBox,x1.xref)
+  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst)
 end
 function mul2_u1pos_u2pos(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	Intv::V = x1.Intv*x2.Intv
@@ -428,7 +428,7 @@ function mul2_u1pos_u2pos(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:Abstrac
 		cc_grad = x2.Intv.hi*x1.cc_grad + x1.Intv.lo*x2.cc_grad
 	end
 	cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv, cnst,x1.IntvBox,x1.xref)
+	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv, cnst)
 end
 function mul2_u1pos_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V,T<:AbstractFloat}
   Intv::V = x1.Intv*x2.Intv
@@ -454,7 +454,7 @@ function mul2_u1pos_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T},cnst::Bool) where {N,V
     cc_grad = x1.Intv.lo*x2.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst,x1.IntvBox,x1.xref)
+  return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst)
 end
 function mul2_u1mix_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	Intv::V = x1.Intv*x2.Intv
@@ -481,7 +481,7 @@ function mul2_u1mix_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:Abstrac
 		cc_grad = x2.Intv.hi*x1.cc_grad + x1.Intv.lo*x2.cv_grad
 	end
 	cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst,x1.IntvBox,x1.xref)
+	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst)
 end
 function mul3_u1pos_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	Intv::V = x1.Intv*x2.Intv
@@ -508,7 +508,7 @@ function mul3_u1pos_u2mix(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:Abstrac
 		cc_grad = x2.Intv.hi*x1.cc_grad + x1.Intv.lo*x2.cc_grad
 	end
 	cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst,x1.IntvBox,x1.xref)
+	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,cnst)
 end
 
 function mul_MV_ns1cv(x1::T,x2::T,MC1::SMCg{N,V,T},MC2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
@@ -675,7 +675,7 @@ function multiply_MV_NS(x1::SMCg{N,V,T},x2::SMCg{N,V,T},ngrad::Int64,cnst::Bool)
 	end
 	cc_grad = term1*sigma_cc1 + term2*sigma_cc2
  end
- return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,x1.Intv*x2.Intv,cnst,x1.IntvBox,x1.xref)
+ return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,x1.Intv*x2.Intv,cnst)
 end
 
 function multiply_STD_NS(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
@@ -740,7 +740,7 @@ function STD_NS_ALT(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	    cc_grad = s_delta1 + s_delta2
 	end
 	Intv::V = x.Intv*y.Intv
-	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,(x.cnst && y.cnst),x.IntvBox,x.xref)
+	return SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,Intv,(x.cnst && y.cnst))
 end
 
 function *(x1::SMCg{N,V,T},x2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}

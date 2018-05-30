@@ -24,8 +24,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(-2.0,1.0);Interval(-1.0,2.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(0.0,0.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(1.0,1.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(0.0,0.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(1.0,1.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == 2.0
@@ -45,8 +45,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(1.0,5.0);Interval(-1.0,2.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(3.0,3.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(1.0,1.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(3.0,3.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(1.0,1.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == 5.0
@@ -66,8 +66,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(-6.0,-2.0);Interval(1.0,3.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(2.0,2.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(2.0,2.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == -6.0
@@ -87,8 +87,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(-6.0,-2.0);Interval(-7.0,-3.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(-5.0,-5.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(-5.0,-5.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == 24.0
@@ -108,8 +108,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(-6.0,-2.0);Interval(-7.0,4.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(-5.0,-5.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(-5.0,-5.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == 24.0
@@ -128,8 +128,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(1.0,4.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(3.0,3.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(3.0,3.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == -5.0
@@ -148,8 +148,8 @@ a = seed_g(Float64,1,2)
 b = seed_g(Float64,2,2)
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(-5.0,-3.0)])
 mBox = mid.(xIBox)
-X = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,xIBox[1],false,xIBox,mBox)
-Y = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,b,b,xIBox[2],false,xIBox,mBox)
+X = SMCg{2,Interval{Float64},Float64}(-2.0,-2.0,a,a,xIBox[1],false)
+Y = SMCg{2,Interval{Float64},Float64}(-4.0,-4.0,b,b,xIBox[2],false)
 out = X*Y
 
 @test out.cc == 9.0
@@ -171,32 +171,32 @@ EAGO.set_diff_relax(1)
 
 seed1 = seed_g(Float64,1,2)
 seed2 = seed_g(Float64,2,2)
-x1 = SMCg{2,Interval{Float64},Float64}(0.0,0.0,seed1,seed1,Interval(-200.0,200.0),false, SVector{2,Interval{Float64}}([Interval(-200.0,200.0),Interval(0.0,400.0)]),SVector{2,Float64}([0.0,200.0]))
-y1 = SMCg{2,Interval{Float64},Float64}(200.0,200.0,seed2,seed2,Interval(0.0,400.0),false, SVector{2,Interval{Float64}}([Interval(-200.0,200.0),Interval(0.0,400.0)]),SVector{2,Float64}([0.0,200.0]))
+x1 = SMCg{2,Interval{Float64},Float64}(0.0,0.0,seed1,seed1,Interval(-200.0,200.0),false)
+y1 = SMCg{2,Interval{Float64},Float64}(200.0,200.0,seed2,seed2,Interval(0.0,400.0),false)
 z1 = x1*y1
 @test XaboutY(z1.cc,40000,1E-4)
 @test XaboutY(z1.cv,-40000,1E-4)
 
-x2 = SMCg{2,Interval{Float64},Float64}(170.0,170.0,seed1,seed1,Interval(100.0,240.0),false, SVector{2,Interval{Float64}}([Interval(100.0,240.0),Interval(100.0,400.0)]),SVector{2,Float64}([170.0,250.0]))
-y2 = SMCg{2,Interval{Float64},Float64}(250.0,250.0,seed2,seed2,Interval(100.0,400.0),false, SVector{2,Interval{Float64}}([Interval(100.0,240.0),Interval(100.0,400.0)]),SVector{2,Float64}([170.0,250.0]))
+x2 = SMCg{2,Interval{Float64},Float64}(170.0,170.0,seed1,seed1,Interval(100.0,240.0),false)
+y2 = SMCg{2,Interval{Float64},Float64}(250.0,250.0,seed2,seed2,Interval(100.0,400.0),false)
 z2 = x2*y2
 @test XaboutY(z2.cc,53000,1E-4)
 @test XaboutY(z2.cv,32000,1E-4)
 
-x3 = SMCg{2,Interval{Float64},Float64}(-200.0,-200.0,seed1,seed1,Interval(-300.0,-100.0),false, SVector{2,Interval{Float64}}([Interval(-300.0,-100.0),Interval(-400.0,-200.0)]),SVector{2,Float64}([-200.0,-300.0]))
-y3 = SMCg{2,Interval{Float64},Float64}(-300.0,-300.0,seed2,seed2,Interval(-400.0,-200.0),false, SVector{2,Interval{Float64}}([Interval(-300.0,-100.0),Interval(-400.0,-200.0)]),SVector{2,Float64}([-200.0,-300.0]))
+x3 = SMCg{2,Interval{Float64},Float64}(-200.0,-200.0,seed1,seed1,Interval(-300.0,-100.0),false)
+y3 = SMCg{2,Interval{Float64},Float64}(-300.0,-300.0,seed2,seed2,Interval(-400.0,-200.0),false)
 z3 = x3*y3
 @test XaboutY(z3.cc,70000,1E-4)
 @test XaboutY(z3.cv,50000,1E-4)
 
-x4 = SMCg{2,Interval{Float64},Float64}(150.0,150.0,seed1,seed1,Interval(100.0,200.0),false, SVector{2,Interval{Float64}}([Interval(100.0,200.0),Interval(-500.0,-100.0)]),SVector{2,Float64}([150.0,-300.0]))
-y4 = SMCg{2,Interval{Float64},Float64}(-250.0,-250.0,seed2,seed2,Interval(-500.0,-100.0),false, SVector{2,Interval{Float64}}([Interval(100.0,200.0),Interval(-500.0,-100.0)]),SVector{2,Float64}([150.0,-300.0]))
+x4 = SMCg{2,Interval{Float64},Float64}(150.0,150.0,seed1,seed1,Interval(100.0,200.0),false)
+y4 = SMCg{2,Interval{Float64},Float64}(-250.0,-250.0,seed2,seed2,Interval(-500.0,-100.0),false)
 z4 = x4*y4
 @test XaboutY(z4.cc,-30000,1E-3)
 @test XaboutY(z4.cv,-47460.9375,1E-3)
 
-x5 = SMCg{2,Interval{Float64},Float64}(-150.0,-150.0,seed1,seed1,Interval(-200.0,-100.0),false, SVector{2,Interval{Float64}}([Interval(-200.0,-100.0),Interval(200.0,400.0)]),SVector{2,Float64}([-150.0,300.0]))
-y5 = SMCg{2,Interval{Float64},Float64}(300.0,300.0,seed2,seed2,Interval(200.0,400.0),false, SVector{2,Interval{Float64}}([Interval(-200.0,-100.0),Interval(200.0,400.0)]),SVector{2,Float64}([-150.0,300.0]))
+x5 = SMCg{2,Interval{Float64},Float64}(-150.0,-150.0,seed1,seed1,Interval(-200.0,-100.0),false)
+y5 = SMCg{2,Interval{Float64},Float64}(300.0,300.0,seed2,seed2,Interval(200.0,400.0),false)
 z5 = x5*y5
 @test XaboutY(z5.cv,-50000,1E-4)
 @test XaboutY(z5.cc,-40000,1E-4)

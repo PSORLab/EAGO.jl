@@ -26,9 +26,7 @@ function snopt_callback_LBD(y::Vector{Float64},
                                                                         seed_g(Float64,i,opt.numVar),
                                                                         seed_g(Float64,i,opt.numVar),
                                                                         X[i],
-                                                                        false,
-                                                                        SVector{opt.numVar,Interval{Float64}}(X),
-                                                                        SVector{opt.numVar,Float64}(y)) for i=1:opt.numVar]
+                                                                        false) for i=1:opt.numVar]
 
     # Evaluates the relaxation of objective and constraints
     # relaxation of function
@@ -98,9 +96,7 @@ function snopt_callback_LBD(y::Vector{Float64},
                                                                         seed_g(Float64,i,opt.numVar),
                                                                         seed_g(Float64,i,opt.numVar),
                                                                         X[i],
-                                                                        false,
-                                                                        SVector{opt.numVar,MCInterval{Float64}}(X),
-                                                                        SVector{opt.numVar,Float64}(y)) for i=1:opt.numVar]
+                                                                        false) for i=1:opt.numVar]
 
     # Evaluates the relaxation of objective and constraints
     # relaxation of function

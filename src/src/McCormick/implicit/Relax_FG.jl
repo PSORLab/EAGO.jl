@@ -13,10 +13,8 @@ function impRelax_f(f::Function,h::Function,hj::Function,X::Vector{V},
                     P::Vector{V},p::Vector{T},pmid::Vector{T},
                     mc_opt::mc_opts{T},param::Vector{Vector{SMCg{N,V,T}}}) where {N,V,T<:AbstractFloat}
   np::Int64 = length(P)
-  SP = SVector{np,V}(P)
-  SP0 = SVector{np,T}(pmid)
   sone::SVector{np,T} = ones(SVector{np,T})
-  p_mc::Vector{SMCg{np,V,T}} = [SMCg{np,V,T}(p[i],p[i],sone,sone,V(P[i].lo,P[i].hi),false,SP,SP0) for i=1:np]
+  p_mc::Vector{SMCg{np,V,T}} = [SMCg{np,V,T}(p[i],p[i],sone,sone,V(P[i].lo,P[i].hi),false) for i=1:np]
   xpMC::Vector{SMCg{np,V,T}} = MC_impRelax(h,hj,p_mc,pmid,X,P,mc_opt,param)
   return f(xpMC,p_mc)
 end
@@ -38,10 +36,8 @@ function impRelax_fg(f::Function,g::Function,h::Function,hj::Function,
                      p::Vector{T},pmid::Vector{T},
                      mc_opt::mc_opts{T},param::Vector{Vector{SMCg{N,V,T}}}) where {N,V,T<:AbstractFloat}
   np::Int64 = length(P)
-  SP = SVector{np,V}(P)
-  SP0 = SVector{np,T}(pmid)
   sone::SVector{np,T} = ones(SVector{np,T})
-  p_mc::Vector{SMCg{np,V,T}} = [SMCg{np,V,T}(p[i],p[i],sone,sone,V(P[i].lo,P[i].hi),false,SP,SP0) for i=1:np]
+  p_mc::Vector{SMCg{np,V,T}} = [SMCg{np,V,T}(p[i],p[i],sone,sone,V(P[i].lo,P[i].hi),false) for i=1:np]
   xpMC::Vector{SMCg{np,V,T}} = MC_impRelax(h,hj,p_mc,pmid,X,P,mc_opt,param)
   return f(xpMC,p_mc),g(xpMC,p_mc)
 end

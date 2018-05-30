@@ -14,7 +14,7 @@ x = 2.0
 xIntv1 = Interval(1.0,3.0)
 xIBox = SVector{2,Interval{Float64}}([xIntv1,xIntv1])
 mBox = mid.(xIBox)
-SMCg = SMCg{2,Interval{Float64},Float64}(x,x,a,a,xIntv1,false,xIBox,mBox)
+SMCg = SMCg{2,Interval{Float64},Float64}(x,x,a,a,xIntv1,false)
 
 # calculates relaxations & gradients of (exp(x1)*x1-x1^3)*sin(x1) for x1 = 2.0 on [1.0,3.0]
 relaxed_f = (exp(SMCg)*SMCg-SMCg^3)*sin(SMCg)

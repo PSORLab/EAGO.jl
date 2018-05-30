@@ -15,9 +15,9 @@ using StaticArrays
     b = seed_g(Float64,2,2)
     xIBox = SVector{2,Interval{Float64}}([Interval(-0.9,-0.5);Interval(-0.5,0.5)])
     mBox = mid.(xIBox)
-    X = SMCg{2,Interval{Float64},Float64}(-0.7,-0.7,a,a,xIBox[1],false,xIBox,mBox)
-    Xn = SMCg{2,Interval{Float64},Float64}(0.7,0.7,a,a,-xIBox[1],false,xIBox,mBox)
-    Xz = SMCg{2,Interval{Float64},Float64}(-0.1,-0.1,a,a,xIBox[2],false,xIBox,mBox)
+    X = SMCg{2,Interval{Float64},Float64}(-0.7,-0.7,a,a,xIBox[1],false)
+    Xn = SMCg{2,Interval{Float64},Float64}(0.7,0.7,a,a,-xIBox[1],false)
+    Xz = SMCg{2,Interval{Float64},Float64}(-0.1,-0.1,a,a,xIBox[2],false)
 
     out17 = asin(X)
     @test isapprox(out17.cc,-0.775397496610753,atol=1E-5)

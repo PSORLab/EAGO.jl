@@ -1,13 +1,12 @@
 function +(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
-	return SMCg{N,V,T}(x.cc+y.cc, x.cv+y.cv, x.cc_grad+y.cc_grad, x.cv_grad+y.cv_grad,
-						 (x.Intv+y.Intv),(x.cnst && y.cnst),x.IntvBox,x.xref)
+	return SMCg{N,V,T}(x.cc+y.cc, x.cv+y.cv, x.cc_grad+y.cc_grad,
+					   x.cv_grad+y.cv_grad, (x.Intv+y.Intv),(x.cnst && y.cnst))
 end
 function -(x::SMCg{N,V,T},c::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	return x + (-c)
 end
 function -(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
-	return SMCg{N,V,T}(-x.cv, -x.cc, -x.cv_grad, -x.cc_grad, -x.Intv,
-							 x.cnst, x.IntvBox, x.xref)
+	return SMCg{N,V,T}(-x.cv, -x.cc, -x.cv_grad, -x.cc_grad, -x.Intv, x.cnst)
 end
 function /(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
 	pos_orth::Bool = (x.Intv.lo >= 0) && (y.Intv.lo >= 0)
@@ -95,14 +94,14 @@ function sqr(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
       cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
       cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
     end
-    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst,x.IntvBox, x.xref)
+    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, Intv,x.cnst)
 end
 
 ########### Defines functions required for linear algebra packages
 
-one(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = SMCg{N,V,T}(one(T),one(T),zeros(SVector{N,T}),zeros(SVector{N,T}),V(one(T)),x.cnst,x.IntvBox,x.xref)
+one(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = SMCg{N,V,T}(one(T),one(T),zeros(SVector{N,T}),zeros(SVector{N,T}),V(one(T)),x.cnst)
 
-zero(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = SMCg{N,V,T}(zero(x.cc),zero(x.cv),zeros(SVector{N,T}),zeros(SVector{N,T}),V(zero(T)),x.cnst,x.IntvBox,x.xref)
+zero(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = SMCg{N,V,T}(zero(x.cc),zero(x.cv),zeros(SVector{N,T}),zeros(SVector{N,T}),V(zero(T)),x.cnst)
 
 real(x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = x
 

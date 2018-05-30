@@ -39,10 +39,10 @@ for i=yl:intv:yu
     for j=xl:intv:xu
         temp1 = SMCg{2,Interval{Float64},Float64}(Float64(j),Float64(j),seed_g(Float64,1,2),
                                  seed_g(Float64,1,2),Interval(xl,xu),
-                                 false, tempbox,tempmid)
+                                 false)
         temp2 = SMCg{2,Interval{Float64},Float64}(Float64(i),Float64(i),seed_g(Float64,2,2),
                                  seed_g(Float64,2,2),Interval(yl,yu),
-                                 false, tempbox,tempmid)
+                                 false)
         x_grid[count2,count1] = j # x
         y_grid[count2,count1] = i # y
         values[count2,count1] = (j)*(i) #x*y

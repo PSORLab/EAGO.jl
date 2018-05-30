@@ -24,9 +24,7 @@ function STD_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
                                                                               seed_g(Float64,i,opt[1].numVar),
                                                                               seed_g(Float64,i,opt[1].numVar),
                                                                               X[i],
-                                                                              false,
-                                                                              X,
-                                                                              x0) for i=1:opt[1].numVar]
+                                                                              false) for i=1:opt[1].numVar]
     # probes upper bound
     f_mc::SMCg{opt[1].numVar,Float64} = opt[1].f(x_SMC)
     f_cv::Float64 = f_mc.cv
@@ -144,9 +142,7 @@ function Imp_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
                                                                               seed_g(Float64,i,opt[1].numVar),
                                                                               seed_g(Float64,i,opt[1].numVar),
                                                                               X[i],
-                                                                              false,
-                                                                              X,
-                                                                              x0) for i=1:opt[1].numVar]
+                                                                              false) for i=1:opt[1].numVar]
     # probes upper bound
     f_mc::SMCg{opt[1].numVar,Float64} = opt[1].f(x_SMC)
     f_cv::Float64 = f_mc.cv

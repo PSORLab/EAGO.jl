@@ -73,7 +73,7 @@ EAGO.set_diff_relax(0)
 EAGO.set_subgrad_refine(false)
 param_ns_sr = GenExpansionParams(h1,hj1,X,P,pmid,opts1)
 temp1 = SMCg{1,Interval{Float64},Float64}[SMCg{1,Interval{Float64},Float64}(Float64(xl),Float64(xl),seed_g(Float64,1,1),
-                         seed_g(Float64,1,1),Interval(xl,xu), false, tempbox,tempmid)]
+                         seed_g(Float64,1,1),Interval(xl,xu), false)]
 temp1_MC = MC_impRelax(h1,hj1,temp1,pmid,X,P,opts1,param_ns_sr)
 count1 = 1
 for j=xl:intv:xu
@@ -82,7 +82,7 @@ for j=xl:intv:xu
     solbranch2[count1] = (-j+sqrt(j^2-16.0))/2.0
     temp1 = SMCg{1,Interval{Float64},Float64}[SMCg{1,Interval{Float64},Float64}(Float64(j),Float64(j),seed_g(Float64,1,1),
                              seed_g(Float64,1,1),Interval(xl,xu),
-                             false, tempbox,tempmid)]
+                             false)]
     temp1_MC = MC_impRelax(h1,hj1,temp1,pmid,X,P,opts1,param_ns_sr)
     ccvalNSnn[count1] = temp1_MC[end].cc
     cvvalNSnn[count1] = temp1_MC[end].cv
@@ -96,7 +96,7 @@ param_ns_nr2 = GenExpansionParams(h2,hj2,X,P,pmid,opts1)
 for j=xl:intv:xu
     temp1 = SMCg{1,Interval{Float64},Float64}[SMCg{1,Interval{Float64},Float64}(Float64(j),Float64(j),seed_g(Float64,1,1),
                                                   seed_g(Float64,1,1),Interval(xl,xu),
-                                                  false, tempbox,tempmid)]
+                                                  false)]
     temp1_MC = MC_impRelax(h1,hj1,temp1,pmid,X,P,opts1,param_ns_nr1)
     temp2_MC = MC_impRelax(h2,hj2,temp1,pmid,X,P,opts1,param_ns_nr2)
     if (count1 == 31)
@@ -121,7 +121,7 @@ count1 = 1
 for j=xl:intv:xu
     temp1 = SMCg{1,Interval{Float64},Float64}[SMCg{1,Interval{Float64},Float64}(Float64(j),Float64(j),seed_g(Float64,1,1),
                              seed_g(Float64,1,1),Interval(xl,xu),
-                             false, tempbox,tempmid)]
+                             false)]
     temp1_MC = MC_impRelax(h1,hj1,temp1,pmid,X,P,opts1,param_diff_nr1)
     temp2_MC = MC_impRelax(h2,hj2,temp1,pmid,X,P,opts1,param_diff_nr2)
     if (count1 == 31)
@@ -143,7 +143,7 @@ count1 = 1
 for j=xl:intv:xu
     temp1 = SMCg{1,Interval{Float64},Float64}[SMCg{1,Interval{Float64},Float64}(Float64(j),Float64(j),seed_g(Float64,1,1),
                              seed_g(Float64,1,1),Interval(xl,xu),
-                             false, tempbox,tempmid)]
+                             false)]
     temp1_MC = MC_impRelax(h1,hj1,temp1,pmid,X,P,opts1,param_diff_sr)
     ccvalNSsn[count1] = temp1_MC[end].cc
     cvvalNSsn[count1] = temp1_MC[end].cv

@@ -36,4 +36,4 @@ include("implicit/Gen_Param.jl")
 include("implicit/Relax_H.jl")
 include("implicit/Relax_FG.jl")
 
-mid(x::SMCg) = SMCg(mid(x.Intv),x.IntvBox,x.xref)
+mid(x::SMCg) = SMCg(mid(x.Intv))

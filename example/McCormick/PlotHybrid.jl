@@ -30,7 +30,7 @@ envcvval = zeros(Float64,nx)
 for i=xl:intv:xu
     temp1 = SMCg{1,Interval{Float64},Float64}(Float64(i),Float64(i),seed_g(Float64,1,1),
                                               seed_g(Float64,1,1),Interval(xl,xu),
-                                              false, tempbox,tempmid)
+                                              false)
 
     x_grid[count2] = i # y
     values[count2] = (i^2-i)*log(i) # x*(x-1)*log*=(x)

@@ -77,7 +77,7 @@ function max(x::SMCg{N,V,T},c::T) where {N,V,T<:AbstractFloat}
       cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
     end
     # ((V<:AbstractMCInterval) ? V(maxxL,maxxU) : max(x.Intv,c))
-    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,c), x.cnst,x.IntvBox,x.xref)
+    return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,c), x.cnst)
 end
 
 # defines functions on which bivariant maximum mapping from Khan 2016
@@ -165,7 +165,7 @@ function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
         cv,cv_grad = psil_max(x.cv,temp_mid,x.Intv,y.Intv,x,y)
       end
       cc,cc_grad::SVector{N,T} = psir_max(x.cc,y.cc,x.cc_grad,y.cv_grad,x.Intv,y.Intv)
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),(x.cnst && y.cnst),x.IntvBox,x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),(x.cnst && y.cnst))
     elseif (x.Intv.hi <= y.Intv.lo)
       cc = y.cc
       cc_grad = y.cnst ? zeros(y.cc_grad) : y.cc_grad
@@ -203,7 +203,7 @@ function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
       cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
       cnst = y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) )
 
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),cnst,x.IntvBox,x.xref)
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),cnst)
     end
 end
 

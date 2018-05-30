@@ -51,8 +51,7 @@ function Smooth_Cut(x_mc::SMCg{N,V,T},x_mc_int::SMCg{N,V,T}) where {N,V,T<:Abstr
   t_cv::SMCg{N,V,T} = x_mc + max(zero(T),x_mc_int-x_mc)
   t_cc::SMCg{N,V,T} = x_mc + min(zero(T),x_mc-x_mc_int)
   return SMCg{N,V,T}(t_cc.cc,t_cv.cv,t_cc.cc_grad,t_cv.cv_grad,
-                   (x_mc.Intv ∩ x_mc_int.Intv),(t_cv.cnst && t_cc.cnst),
-                   x_mc.IntvBox,x_mc.xref)
+                   (x_mc.Intv ∩ x_mc_int.Intv),(t_cv.cnst && t_cc.cnst))
 end
 
 """
@@ -78,7 +77,7 @@ function Final_Cut(x_mc::SMCg{N,V,T},x_mc_int::SMCg{N,V,T}) where {N,V,T<:Abstra
       cv = x_mc_int.cv
       cv_grad = x_mc_int.cv_grad
     end
-    x_mc::SMCg{N,V,T} = SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,(x_mc.Intv ∩ x_mc_int.Intv),x_mc.cnst,x_mc.IntvBox,x_mc.xref)
+    x_mc::SMCg{N,V,T} = SMCg{N,V,T}(cc,cv,cc_grad,cv_grad,(x_mc.Intv ∩ x_mc_int.Intv),x_mc.cnst)
   else
     x_mc = Smooth_Cut(x_mc,x_mc_int)
   end
@@ -94,8 +93,7 @@ function Rnd_Out_Z_Intv(z_mct::Vector{SMCg{N,V,T}},epsvi::S) where {N,V,S<:Abstr
   epsv::T = convert(T,epsvi)
   return [SMCg{N,V,T}(z_mct[i].cc,z_mct[i].cv,
              z_mct[i].cc_grad, z_mct[i].cv_grad,
-             V(z_mct[i].Intv.lo-epsv, z_mct[i].Intv.hi+epsv),
-             z_mct[i].cnst, z_mct[i].IntvBox,z_mct[i].xref) for i=1:length(z_mct)]
+             V(z_mct[i].Intv.lo-epsv, z_mct[i].Intv.hi+epsv),z_mct[i].cnst) for i=1:length(z_mct)]
 end
 
 """
@@ -108,7 +106,7 @@ function Rnd_Out_Z_All(z_mct::Vector{SMCg{N,V,T}},epsvi::S) where {N,V,S<:Abstra
   return [SMCg{N,V,T}(z_mct[i].cc+epsv,z_mct[i].cv-epsv,
              z_mct[i].cc_grad, z_mct[i].cv_grad,
              V(z_mct[i].Intv.lo-epsv, z_mct[i].Intv.hi+epsv),
-             z_mct[i].cnst, z_mct[i].IntvBox,z_mct[i].xref) for i=1:length(z_mct)]
+             z_mct[i].cnst) for i=1:length(z_mct)]
 end
 
 """
@@ -121,11 +119,11 @@ function Rnd_Out_H_All(z_mct::Vector{SMCg{N,V,T}},Y_mct::Array{SMCg{N,V,T},2},ep
   temp1::Vector{SMCg{N,V,T}} = [SMCg{N,V,T}(z_mct[i].cc+epsv,z_mct[i].cv-epsv,
                                         z_mct[i].cc_grad, z_mct[i].cv_grad,
                                         V(z_mct[i].Intv.lo-epsv, z_mct[i].Intv.hi+epsv),
-                                        z_mct[i].cnst, z_mct[i].IntvBox,z_mct[i].xref) for i=1:length(z_mct)]
+                                        z_mct[i].cnst) for i=1:length(z_mct)]
   temp2::Array{SMCg{N,V,T},2} = [SMCg{N,V,T}(Y_mct[i,j].cc+epsv,Y_mct[i,j].cv-epsv,
                                         Y_mct[i,j].cc_grad, Y_mct[i,j].cv_grad,
                                         V(Y_mct[i,j].Intv.lo-epsv, Y_mct[i,j].Intv.hi+epsv),
-                                        Y_mct[i,j].cnst, Y_mct[i,j].IntvBox,Y_mct[i,j].xref) for i=1:length(z_mct), j=1:length(z_mct)]
+                                        Y_mct[i,j].cnst) for i=1:length(z_mct), j=1:length(z_mct)]
   return temp1,temp2
 end
 
@@ -139,11 +137,11 @@ function Rnd_Out_H_Intv(z_mct::Vector{SMCg{N,V,T}},Y_mct::Array{SMCg{N,V,T},2},e
   temp1::Vector{SMCg{N,V,T}} = [SMCg{N,V,T}(z_mct[i].cc,z_mct[i].cv,
              z_mct[i].cc_grad, z_mct[i].cv_grad,
              V(z_mct[i].Intv.lo-epsv, z_mct[i].Intv.hi+epsv),
-             z_mct[i].cnst, z_mct[i].IntvBox,z_mct[i].xref) for i=1:length(z_mct)]
+             z_mct[i].cnst) for i=1:length(z_mct)]
   temp2::Array{SMCg{N,V,T},2} = [SMCg{N,V,T}(Y_mct[i,j].cc,Y_mct[i,j].cv,
              Y_mct[i,j].cc_grad, Y_mct[i,j].cv_grad,
              V(Y_mct[i,j].Intv.lo-epsv, Y_mct[i,j].Intv.hi+epsv),
-             Y_mct[i,j].cnst, Y_mct[i,j].IntvBox,Y_mct[i,j].xref) for i=1:length(z_mct), j=1:length(z_mct)]
+             Y_mct[i,j].cnst) for i=1:length(z_mct), j=1:length(z_mct)]
   return temp1,temp2
 end
 

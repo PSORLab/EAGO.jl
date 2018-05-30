@@ -13,7 +13,7 @@ x = 2.0
 xIntv1 = Interval(1.0,3.0)
 xIBox = [xIntv1;xIntv1]
 mBox = mid.(xIBox)
-SMCg = SMCg{2,Float64}(x,x,a,a,xIntv1,false,xIBox,mBox)
+SMCg = SMCg{2,Float64}(x,x,a,a,xIntv1,false)
 
 # resets gradient to seed gradient with seed at j=2
 grad(SMCg,2)
