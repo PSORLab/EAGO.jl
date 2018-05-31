@@ -17,7 +17,7 @@ UBD1a_func(i) = (i==1) ? (-0.4) : (9.0)
 LBD1b_func(i) = (i==1) ? (-10.0) : (6.0)
 UBD1b_func(i) = (i==1) ? (-5.0) : (9.0)
 
-jm1a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -32,7 +32,7 @@ xa = @variable(jm1a, [i=1:2], lowerbound=LBD1a_func(i), upperbound=UBD1a_func(i)
 status1a = Solve_Implicit(jm1a,f1,h1,hj1,x->[],1)
 
 
-jm1b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -70,7 +70,7 @@ pmid = mid.(P)
 #fgbnds = impRelax_fg(f2,g2,h2,hj2,X,P,p,pmid,opts1,param)
 
 
-jm1ca = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1ca = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    UBDsolvertype = "Ipopt",
                                    #LBD_func_relax = "Interval",

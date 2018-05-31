@@ -27,29 +27,29 @@ Returns:
 A SIP_result composite type containing solution information.
 """
 # Currently DAG contractor
-function Implicit_SIP_Solve(f,h,hj,gSIP,X,Y,P,SIPopt::SIP_opts)
+function Implicit_SIP_Solve(f::Function,h::Function,hj::Function,gSIP::Function,X,Y,P,SIPopt::SIP_opts)
 
     # initializes solution
-    UBDg = Inf
-    LBDg = -Inf
-    k = 0
-    P_LBD = SIPopt.P_LBD
-    P_UBD = SIPopt.P_UBD
-    np = length(P)
-    nx = length(X)
-    ny = length(Y)
-    P_low = [P[i].lo for i=1:np]
-    P_high = [P[i].hi for i=1:np]
-    Y_low = [Y[i].lo for i=1:nx]
-    Y_high = [Y[i].hi for i=1:nx]
-    X_low = [X[i].lo for i=1:nx]
-    X_high = [X[i].hi for i=1:nx]
-    gBnds = Float64[0.0 for i=1:ny]
-    pbar = mid.(P)
-    xbar = mid.(X)
-    INNg1 = Inf
-    INNg2 = Inf
-    feas = true
+    UBDg::Float64 = Inf
+    LBDg::Float64 = -Inf
+    k::Int = 0
+    P_LBD::Vector{Vector{Float64}} = SIPopt.P_LBD
+    P_UBD::Vector{Vector{Float64}} = SIPopt.P_UBD
+    np::Int = length(P)
+    nx::Int = length(X)
+    ny::Int = length(Y)
+    P_low::Vector{Float64} = Float64[P[i].lo for i=1:np]
+    P_high::Vector{Float64} = Float64[P[i].hi for i=1:np]
+    Y_low::Vector{Float64} = Float64[Y[i].lo for i=1:nx]
+    Y_high::Vector{Float64} = Float64[Y[i].hi for i=1:nx]
+    X_low::Vector{Float64} = Float64[X[i].lo for i=1:nx]
+    X_high::Vector{Float64} = Float64[X[i].hi for i=1:nx]
+    gBnds::Vector{Float64} = Float64[0.0 for i=1:ny]
+    pbar::Vector{Float64} = mid.(P)
+    xbar::Vector{Float64} = mid.(X)
+    INNg1::Float64 = Inf
+    INNg2::Float64 = Inf
+    feas::Bool = true
 
     # Turns implicit solver routines on
     SIPopt.LBP_Opt.ImplicitFlag = true

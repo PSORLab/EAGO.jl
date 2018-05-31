@@ -19,7 +19,7 @@ UBD1a_func(i) = (i==1) ? (-0.4) : (9.0)
 LBD1b_func(i) = (i==1) ? (-10.0) : (6.0)
 UBD1b_func(i) = (i==1) ? (-5.0) : (9.0)
 
-jm1a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -34,7 +34,7 @@ xa = @variable(jm1a, [i=1:2], lowerbound=LBD1a_func(i), upperbound=UBD1a_func(i)
 status1a = Solve_Implicit(jm1a,f1,h1,hj1,x->[],1)
 
 
-jm1b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -65,7 +65,7 @@ sol1b = getsolution(internalmodel(jm1b))
 ###############################################################################
 # TEST VALIDATED CALCULATIONS WITHOUT INEQUALITY CONSTRAINTS
 ###############################################################################
-jm1c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -80,7 +80,7 @@ xc = @variable(jm1c, [i=1:2], lowerbound=LBD1a_func(i), upperbound=UBD1a_func(i)
 status1c = Solve_Implicit(jm1c,f1,h1,hj1,x->[],1)
 
 
-jm1d = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1d = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -110,7 +110,7 @@ sol1d = getsolution(internalmodel(jm1d))
 ###############################################################################
 # TEST VALIDATED CALCULATIONS WITH INEQUALITY CONSTRAINTS
 ###############################################################################
-jm1e = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1e = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -138,7 +138,7 @@ sol1e = getsolution(internalmodel(jm1e))
 # TEST NONVALIDATED CALCULATIONS WITH INEQUALITY CONSTRAINTS
 ###############################################################################
 
-jm1f = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1f = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -169,7 +169,7 @@ MCOPT = mc_opts()
 set_default!(MCOPT)
 MCOPT.CTyp = :Newton
 
-jm1g = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1g = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    probe_depth = -1,
                                    variable_depth = 1000,
@@ -197,7 +197,7 @@ sol1g = getsolution(internalmodel(jm1g))
 ###############################################################################
 # TEST NEWTON METHOD (1D) WITHOUT CONSTRANTS (Using Midpoint Upperbound)
 ###############################################################################
-jm1z = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jm1z = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    LBDsolvertype = "LP",
                                    UBDsolvertype = "Interval",
                                    probe_depth = -1,

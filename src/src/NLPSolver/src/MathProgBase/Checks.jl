@@ -1,18 +1,12 @@
 # List of valid function relaxations
-relax_list = ["NS-MV-ON", "NS-MV-OFF", "NS-STD-ON", "NS-STD-OFF",
-              "Diff1-MV-ON", "Diff1-MV-OFF", "Diff2-MV-ON", "Diff2-MV-OFF",
-              "Interval","AlphaBB"]
+relax_list = ["NS-MV", "NS-STD", "Diff1-MV", "Diff2-MV", "Interval","AlphaBB"]
 
 # Defines supported problem relaxations for given function relaxation
 const LBD_f_relax = Dict{Any,Any}()
-    LBD_f_relax["NS-MV-ON"] = ["LP","BNLP"]
-    LBD_f_relax["NS-MV-OFF"] = ["LP","BNLP"]
-    LBD_f_relax["NS-STD-ON"] = ["LP","BNLP"]
-    LBD_f_relax["NS-STD-OFF"] = ["LP","BNLP"]
-    LBD_f_relax["Diff1-MV-ON"] = ["LP","NLP1","BNLP"]
-    LBD_f_relax["Diff1-MV-OFF"] = ["LP","NLP1","BNLP"]
-    LBD_f_relax["Diff2-MV-ON"] = ["LP","QP","QCQP","NLP1","NLP2","BNLP"]
-    LBD_f_relax["Diff2-MV-OFF"] = ["LP","QP","QCQP","NLP1","NLP2","BNLP"]
+    LBD_f_relax["NS-MV"] = ["LP","BNLP"]
+    LBD_f_relax["NS-STD"] = ["LP","BNLP"]
+    LBD_f_relax["Diff1-MV"] = ["LP","NLP1","BNLP"]
+    LBD_f_relax["Diff2-MV"] = ["LP","QP","QCQP","NLP1","NLP2","BNLP"]
     LBD_f_relax["Interval"] = ["Interval"]
     LBD_f_relax["AlphaBB"] = ["AlphaBB"]
 

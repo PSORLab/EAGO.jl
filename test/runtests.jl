@@ -1,7 +1,5 @@
 #!/usr/bin/env julia
 
-workspace()
-
 using EAGO
 
 println("BEGIN TESTING INTERVAL LIBRARY...")
@@ -19,6 +17,10 @@ println("TESTING PARAMETRIC INTERVAL LIBRARY COMPLETE.")
 println("BEGIN TESTING MCCORMICK LIBRARY...")
 include("McCormick/runtests.jl")
 println("TESTING MCCORMICK LIBRARY COMPLETE.")
+
+println("BEGIN TESTING HYBRID MCCORMICK LIBRARY...")
+include("HybridMC/runtests.jl")
+println("TESTING HYBRID MCCORMICK LIBRARY COMPLETE.")
 
 println("BEGIN DOMAIN REDUCTION LIBRARY...")
 include("DomainReduction/runtests.jl")

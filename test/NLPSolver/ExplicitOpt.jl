@@ -9,7 +9,7 @@ using MathProgBase
 
 @testset "JuMP Interface Explicit (LP)" begin
 
-  jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                            LBDsolvertype = "LP",
                                            probe_depth = -1,
                                            variable_depth = 1000,
@@ -26,7 +26,7 @@ using MathProgBase
   @test isapprox(getvalue(y),300.0,atol=1E-6)
   @test isapprox(getobjectivevalue(jumpmodel4),-60000.00119999499,atol=2.0)
 
-  jumpmodel5 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel5 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                            LBDsolvertype = "LP",
                                            probe_depth = -1,
                                            variable_depth = 1000,
@@ -39,7 +39,7 @@ using MathProgBase
   @NLobjective(jumpmodel5, Min, x2*y2)
   status5 = solve(jumpmodel5)
 
-  jumpmodel5a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel5a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                            LBDsolvertype = "LP",
                                            probe_depth = -1,
                                            variable_depth = 1000,
@@ -58,7 +58,7 @@ using MathProgBase
   @test isapprox(getvalue(y2),300.0,atol=1E-6)
   @test isapprox(getobjectivevalue(jumpmodel5),-60000.00119999499,atol=2.0)
 
-  jumpmodel6 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel6 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = 1000,
@@ -110,7 +110,7 @@ using MathProgBase
   @test isapprox(getvalue(y),300.0,atol=1E-1)
   @test isapprox(getobjectivevalue(jumpmodel8),-60000.00119999499,atol=2.0)
 
-  jumpmodel8a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel8a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = -1,
@@ -127,7 +127,7 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel8a),0.0,atol=1E-1)
   @test status6b == :Optimal
 
-  jumpmodel8b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel8b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          UBDsolvertype = "Interval",
                                          probe_depth = -1,
@@ -145,7 +145,7 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel8b),0.0,atol=1E-1)
   @test status6b == :Optimal
 
-  jumpmodel8c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+  jumpmodel8c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                            LBDsolvertype = "LP",
                                            probe_depth = -1,
                                            variable_depth = 1000,

@@ -59,7 +59,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
          end
 
          # sets up DAG contractor
-         expr_Array = Expr[]
+         expr_Array::Vector{Expr} = Expr[]
          gLt::Vector{Float64} = [-Inf for i=1:ncon]
          gUt::Vector{Float64} = [Inf for i=1:ncon]
          for i=1:ncon

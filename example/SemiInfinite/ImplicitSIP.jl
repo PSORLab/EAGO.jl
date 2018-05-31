@@ -7,7 +7,7 @@ using EAGO
 SIPopt1 = SIP_opts()
 
 # create solver with specified options options for lower level problem
-sep1in = EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",  # use standard McCormick relaxations
+sep1in = EAGO_NLPSolver(LBD_func_relax = "NS-STD",  # use standard McCormick relaxations
                         LBDsolvertype = "LP",           # use an LP problem structure for relaxed problems
                         UBDsolvertype = "Ipopt",        # use NLP solver upper bounds (currently preferred solver)
                         probe_depth = -1,               # disable probing
@@ -20,7 +20,7 @@ sep1in = EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",  # use standard McCormick
                         rtol = 1E-5)                    # relative tolerance (May need to play with this)
 
 # create a solver for the lower/upper problems
-sep1lu = EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+sep1lu = EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                         LBDsolvertype = "LP",
                         UBDsolvertype = "Ipopt",
                         probe_depth = -1,

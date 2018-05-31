@@ -25,7 +25,7 @@ g(x,p) = [x[3]*p[5] + 0.02*p[2] - 0.025*p[1];
 implicit = false
 if (~implicit)
           println("Explicit Model")
-          jm1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+          jm1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                   LBDsolvertype = "LP",
                                   probe_depth = -1,
                                   variable_depth = 1000,

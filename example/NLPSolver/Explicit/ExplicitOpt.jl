@@ -3,150 +3,7 @@ using EAGO
 using JuMP
 using MathProgBase
 
-#=
-Solves the optimization problem f(x,y) = (x-5)^2 + (y-3)^2 on the domain
-X = [0,10], Y = [0,10] s.t x-y<1, 0<x-y using the MathProgBase interface and
-the interval solver.
-=#
-
-#=
-println("Test Problem 1")
-f(x) = (x[1]-5)^2 + (x[2]-3)^2
-g(x) = [x[1] - x[2]]
-s1 = EAGO_NLPSolver(probe_depth = -1,
-                    variable_depth = -1,
-                    DAG_depth = -1,
-                    STD_RR_depth = -1)
-tl = []
-m1 = MathProgBase.NonlinearModel(s1)
-MathProgBase.loadproblem!(m1, 2, 1, [0.0, 0.0], [10.0, 10.0],
-            [0.0], [1.0], :Min, f, g)
-MathProgBase.optimize!(m1)
-=#
-
-
-#=
-Solves the optimization problem f(x,y) = (x-5)^2 + (y-3)^2 on the domain
-X = [0,10], Y = [0,10] s.t x-y<1, 0<x-y using the JuMP and the interval solver.
-=#
-#=
-println("Test Problem 2")
-jumpmodel = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Interval",
-                                         LBD_problem_relax = "Interval",
-                                         LBD_problem_solver = "Interval",
-                                         UBD_func_relax = "Interval",
-                                         UBD_problem_relax = "Interval",
-                                         UBD_problem_solver = "Interval",
-                                         probe_depth = -1,
-                                         variable_depth = -1,
-                                         STD_RR_depth = -1))
-@variable(jumpmodel, 0.0 <= x <= 10.0)
-@variable(jumpmodel, 0.0 <= y <= 10.0)
-@constraint(jumpmodel, 0.0 <= x - y <= 1.0 )
-@NLobjective(jumpmodel, Min, (x-5)^2 + (y-3)^2)
-status = solve(jumpmodel)
-=#
-
-#=
-Solves the optimization problem f(x,y) = (x-5)^2 + (y-3)^2 on the domain
-X = [0,10], Y = [0,10] s.t x-y<1, 0<x-y using the JuMP and the LP relaxation solver
-and Ipopt upper bounding problem with dual-based bound tightening and constraint
-propagation enabled.
-=#
-
-#=
-println("Test Problem 3")
-jumpmodel1 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
-                                         LBD_problem_relax = "LP",
-                                         LBD_problem_solver = "Clp",
-                                         UBD_func_relax = "Original",
-                                         UBD_problem_relax = "NLP2",
-                                         UBD_problem_solver = "Ipopt",
-                                         UBD_full_depth = 2,
-                                         probe_depth = -1,
-                                         variable_depth = -1,
-                                         STD_RR_depth = -1))
-@variable(jumpmodel1, 0.0 <= x <= 10.0)
-@variable(jumpmodel1, 0.0 <= y <= 10.0)
-@constraint(jumpmodel1, 0.0 <= x - y <= 1.0 )
-@NLobjective(jumpmodel1, Min, (x-5)^2 + (y-3)^2)
-status1 = solve(jumpmodel1)
-
-println("Test Problem 3a")
-jumpmodel1a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
-                                         LBD_problem_relax = "LP",
-                                         LBD_problem_solver = "Clp",
-                                         UBD_func_relax = "Original",
-                                         UBD_problem_relax = "NLP2",
-                                         UBD_problem_solver = "Ipopt",
-                                         UBD_full_depth = 2,
-                                         probe_depth = -1,
-                                         variable_depth = -1,
-                                         STD_RR_depth = -1))
-@variable(jumpmodel1a, 0.0 <= x <= 10.0)
-@variable(jumpmodel1a, 0.0 <= y <= 10.0)
-@constraint(jumpmodel1a, 0.0 <= x - y <= 1.0 )
-@NLobjective(jumpmodel1a, Min, (x-5)^2 + (y-3)^2)
-status1a = solve(jumpmodel1a)
-=#
-
-#=
-Solves the optimization problem f(x,y) = (x-5)^2 + (y-3)^2 on the domain
-X = [0,10], Y = [0,10] s.t x-y<1, 0<x-y using the JuMP and the NLP relaxation solver.
-=#
-
-#=
-println("Test Problem 4")
-jumpmodel2 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
-                                         LBD_problem_relax = "LP",
-                                         LBD_problem_solver = "Clp",
-                                         UBD_func_relax = "NS-STD-OFF",
-                                         UBD_problem_relax = "LP",
-                                         UBD_problem_solver = "Clp",
-                                         probe_depth = -1,
-                                         variable_depth = -1
-                                         ))
-@variable(jumpmodel2, 0.0 <= x <= 10.0)
-@variable(jumpmodel2, 0.0 <= y <= 10.0)
-@constraint(jumpmodel2, 0.0 <= x - y <= 1.0 )
-@NLobjective(jumpmodel2, Min, (x-5)^2 + (y-3)^2)
-status1 = solve(jumpmodel2)
-=#
-#=
-println("Test Problem 5a (Mult):")
-jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Diff2-MV-OFF",
-                                         LBD_problem_relax = "NLP2",
-                                         LBD_problem_solver = "Ipopt",
-                                         UBD_func_relax = "Original",
-                                         UBD_problem_relax = "NLP2",
-                                         UBD_problem_solver = "Ipopt",
-                                         probe_depth = -1,
-                                         variable_depth = -1,
-                                         DAG_depth = -1,
-                                         STD_RR_depth = -1,
-                                         verbosity = "Full"))
-@variable(jumpmodel4, 0 <= x <= 400)
-@variable(jumpmodel4, 0 <= y <= 200)
-@constraint(jumpmodel4, x+2y == 500)
-@NLobjective(jumpmodel4, Min, x*y)
-status2 = solve(jumpmodel4)
-=#
-#=
-println("Test Problem 5 (Mult):")
-jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
-                                         LBDsolvertype = "LP",
-                                         probe_depth = -1,
-                                         variable_depth = 1000,
-                                         DAG_depth = -1,
-                                         STD_RR_depth = -1))
-@variable(jumpmodel4, -200 <= x <= -100)
-@variable(jumpmodel4, 200 <= y <= 400)
-@constraint(jumpmodel4, -500 <= x+2y <= 400)
-@NLobjective(jumpmodel4, Min, x*y)
-status2 = solve(jumpmodel4)
-=#
-
-jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jumpmodel4 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = 1000,
@@ -161,7 +18,7 @@ objval4 = getobjectivevalue(jumpmodel4)
 Xval4 = getvalue(x)
 Yval4 = getvalue(y)
 
-jumpmodel6 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jumpmodel6 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = 1000,
@@ -324,7 +181,7 @@ jumpmodel12 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
 status10 = solve(jumpmodel12)
 =#
 
-jumpmodel7 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+jumpmodel7 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = 1000,

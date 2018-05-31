@@ -85,7 +85,7 @@ function EAGO_NLPSolver(;
 
     BnBobject = BnBSolver(),
 
-    LBD_func_relax = "NS-STD-OFF",
+    LBD_func_relax = "NS-STD",
     LBDsolvertype = "LP",
     UBDsolvertype = "MPBNonlinear",
 

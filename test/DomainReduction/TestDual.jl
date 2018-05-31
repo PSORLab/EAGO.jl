@@ -11,7 +11,7 @@ ymult_lo = [50, 1.0, 2.0, 3.0]
 ymult_hi = [0, 1.0, 2.0, 3.0]
 yLBD = 1.0
 yUBD = 3.0
-Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
+EAGO.Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
 @test 3.95999-1E-4 <= Y[1].lo <= 3.95999+1E-4
 @test 4.0-1E-4 <= Y[1].hi <= 4.0+1E-4
 @test 2.0-1E-4 <= Y[2].lo <= 2.0+1E-4
@@ -26,7 +26,7 @@ ymult_lo = [50, 1.0, 2.0, 3.0]
 ymult_hi = [0, 1.0, 2.0, 3.0]
 yLBD = 1.0
 yUBD = 3.0
-Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
+EAGO.Variable_DR!(Y,ymult_lo,ymult_hi,yLBD,yUBD)
 @test 3.95999-1E-4 <= Y[1].lo <= 3.95999+1E-4
 @test 4.0-1E-4 <= Y[1].hi <= 4.0+1E-4
 @test 2.0-1E-4 <= Y[2].lo <= 2.0+1E-4

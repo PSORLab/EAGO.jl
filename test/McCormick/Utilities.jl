@@ -66,6 +66,17 @@ end
     @test EAGO.three(Float16) == Float16(3.0)
 end
 
+@testset "Test Golden Section" begin
+    xL = -0.4
+    xU = 0.3
+    loc = EAGO.golden_section(zero(Float64),xU,EAGO.tan_env,xL,zero(Float64))
+    @test loc == 0.15
+
+    xL = -2.0
+    xU = 1.0
+    @test_throws ErrorException EAGO.golden_section(zero(Float64),xU,EAGO.tan_env,xL,zero(Float64))
+end
+
 # converts float/integer to SMCg
 #=
 promoted1 = promote_rule(EAGOSmoothMcCormickGrad.SMCg{3,Float64}, Int64)

@@ -9,6 +9,9 @@ using EAGO
 X = EAGO.EAGO_NLPSolver()
 sip1 = SIP_opts(X)
 @test sip1.tol == 1E-3
+
+out = EAGO.BndProb_reform(1.0,nothing,(x,p)->x+p,[2.1],1.3)
+@test out[1] == 4.4
 end
 
 # solves example SIP #1 with DAG contractor disabled

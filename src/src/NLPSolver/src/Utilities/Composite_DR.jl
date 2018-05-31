@@ -103,9 +103,9 @@ function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
   # Implicit Interval Contractor
   if (opt[1].solver.ImplicitFlag && (feas == true))
     #println("X[1:opt[1].Imp_nx]: $(X[1:opt[1].Imp_nx])")
-    Eflag = false
-    Iflag = false
-    eDflag = false
+    Eflag::Bool = false
+    Iflag::Bool = false
+    eDflag::Bool = false
     Y1,Y2,Eflag,Iflag,eDflag,incLow,incHigh = Param_Intv_Contractor(opt[1].Imp_h,opt[1].Imp_hj,
                                                                     X[1:opt[1].Imp_nx],
                                                                     X[(opt[1].Imp_nx+1):(opt[1].numVar)],

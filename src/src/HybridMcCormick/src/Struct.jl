@@ -1,5 +1,3 @@
-
-#=
 # Defines type
 """
 
@@ -44,4 +42,3 @@ cv_grad(x::HybridMC) = x.SMC.cv_grad
 Access the interval bounds of the hybrid McCormick object.
 """
 Intv(x::HybridMC) = x.SMC.Intv
-=#

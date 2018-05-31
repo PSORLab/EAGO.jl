@@ -98,31 +98,6 @@ function grad_calc(cv::SVector{N,T},cc::SVector{N,T},int1::Q,int2::Q,dcv::T,dcc:
 end
 
 """
-    tighten_subgrad(cc,cv,cc_grad,cv_grad,Xintv,Xbox,xref)
-
-Tightens the interval bounds using subgradients. Inputs:
-* `cc::T`: concave bound
-* `cv::T`: convex bound
-* `cc_grad::SVector{N,T}`: subgradient/gradient of concave bound
-* `cv_grad::SVector{N,T}`: subgradient/gradient of convex bound
-* `Xintv::Interval{T}`: Interval domain of function
-* `Xbox::Vector{Interval{T}}`: Original decision variable bounds
-* `xref::Vector{T}`: Reference point in Xbox
-"""
-function tighten_subgrad(cc::T,cv::T,cc_grad::SVector{N,T},cv_grad::SVector{N,T},
-                         Xintv::V,Xbox::Vector{V},xref::Vector{T}) where {N,V,T<:AbstractFloat}
-  if (length(Xbox)>0 && Xbox[1]!=∅)
-    upper_refine::V = convert(V,cc)
-    lower_refine::V = convert(V,cv)
-    for i=1:N
-      upper_refine = upper_refine + cc_grad[i]*(Xbox[i]-xref[i])
-      lower_refine = lower_refine + cv_grad[i]*(Xbox[i]-xref[i])
-    end
-    return max(lower_refine.lo,Xintv.lo), min(upper_refine.hi,Xintv.hi)
-  end
-end
-
-"""
     outer_rnd!(Intv::Interval{T})
 
 Outer rounds the interval `Intv` by `MC_param.outer_param`.
