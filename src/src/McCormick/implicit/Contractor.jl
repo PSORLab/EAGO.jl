@@ -1,6 +1,6 @@
 function SMCg_Dense_Newton_GS!(z_mc::Vector{SMCg{N,V,T}},x_mc::Vector{SMCg{N,V,T}},
-                        YdH_mc::VecOrMat{SMCg{N,V,T}},
-                        YH_mc::Vector{SMCg{N,V,T}},mc_opts::mc_opts{T}) where {N,V,T<:AbstractFloat}
+                        YdH_mc::VecOrMat{SMCg{N,V,T}},YH_mc::Vector{SMCg{N,V,T}},
+                        mc_opts::mc_opts{T}) where {N,V<:AbstractInterval,T<:AbstractFloat}
     S1::SMCg{N,V,T} = zero(x_mc[1])
     x_mc_int::Vector{SMCg{N,V,T}} = copy(x_mc)
     for i=1:mc_opts.nx

@@ -29,7 +29,7 @@ function MC_impRelax(h::Function, hj::Function, p::Vector{SMCg{N,V,T}}, pmid::Ve
 
     # Begins loop to generate parameters
     for k=1:mc_opts.kmax
-      Affine_Exp!(param[k],p_mc,pmid,xa_mc,xA_mc,z_mc,mc_opts)
+      Affine_Exp!(param[k],p_mc,pref_mc,xa_mc,xA_mc,z_mc,mc_opts)
       aff_mc = SMCg{np,V,Float64}[SMCg{np,V,Float64}(x_mc[i].cc,x_mc[i].cv,szero,szero,
                      V(x_mc[i].cv,x_mc[i].cc),false) for i=1:nx]
       PSMCg_Kernel!(h,hj,z_mc,aff_mc,p_mc,x_mc,mc_opts)

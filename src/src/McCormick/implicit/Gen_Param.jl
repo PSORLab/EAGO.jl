@@ -1,4 +1,6 @@
-function PSMCg_Kernel!(h,hj,z_mc,aff_mc,p_mc,x_mc,opt::mc_opts{T}) where {T}
+function PSMCg_Kernel!(h::Function,hj::Function,z_mc::Vector{SMCg{N,V,T}},
+                       aff_mc::Vector{SMCg{N,V,T}},p_mc::Vector{SMCg{N,V,T}},
+                       x_mc::Vector{SMCg{N,V,T}},opt::mc_opts{T}) where {N,V<:AbstractInterval,T<:AbstractFloat}
   H,J = PreconditionSMCg(h,hj,z_mc,aff_mc,p_mc,opt)
   if (opt.CTyp == :Newton)
     if (opt.LAlg == :Dense)
@@ -21,7 +23,7 @@ end
 function GenExpansionParams(h::Function, hj::Function,
                       X::Vector{V},
                       P::Vector{V},
-                      pmid::Vector{T},mc_opts::mc_opts{T}) where {T<:AbstractFloat,V}
+                      pmid::Vector{T},mc_opts::mc_opts{T}) where {T<:AbstractFloat,V<:AbstractInterval}
 
   nxi::Int64 = length(X)
   np::Int64 = length(P)

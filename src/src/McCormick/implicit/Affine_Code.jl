@@ -17,8 +17,9 @@ Returns the tuple `(xa,xA,z)`:
 * `z::Vector{SMCg{N,T}}`: Affine function in X
 --------------------------------------------------------------------------------
 """
-function Affine_Exp!(x::Vector{SMCg{N,V,T}}, p::Vector{SMCg{N,V,T}}, p_ref,
-                     xa::Vector{SMCg{N,V,T}}, xA::Vector{SMCg{N,V,T}}, z::Vector{SMCg{N,V,T}},
+function Affine_Exp!(x::Vector{SMCg{N,V,T}}, p::Vector{SMCg{N,V,T}},
+                     p_ref::Vector{SMCg{N,V,T}}, xa::Vector{SMCg{N,V,T}},
+                     xA::Vector{SMCg{N,V,T}}, z::Vector{SMCg{N,V,T}},
                      mc_opts::mc_opts{T}) where {N,V,T<:AbstractFloat}
 
   nx::Int64 = mc_opts.nx
