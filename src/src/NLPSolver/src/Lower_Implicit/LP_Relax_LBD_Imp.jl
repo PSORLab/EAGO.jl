@@ -30,19 +30,16 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
         np::Int64 = opt[1].Imp_np
         #println("ran lower implicit 1")
         try
-            #println("ran primary")
-            #println("X: $(Y[1:nx])")
-            #println("P $(Y[(nx+1):(opt[1].numVar)])")
-            #println("h vals: $(opt[1].Imp_h(Y[1:nx],Y[(nx+1):(opt[1].numVar)]))")
-            #println("f vals: $(opt[1].Imp_f(Y[1:nx],Y[(nx+1):(opt[1].numVar)]))")
-            #println("g vals: $(opt[1].Imp_g(Y[1:nx],Y[(nx+1):(opt[1].numVar)]))")
             l::Vector{Float64} = [Y[nx+i].lo for i=1:np]
             u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
             pmid::Vector{Float64} = (l + u)/2.0
+
+            opt[1].solver.SubGradRefine && set_hybrid_box!([Y[nx+i] for i=1:np],pmid,true)
             #println("pmid: $pmid")
             param = GenExpansionParams(opt[1].Imp_h, opt[1].Imp_hj,
                                          Y[1:nx],Y[(nx+1):(opt[1].numVar)],pmid,
                                          opt[1].solver.PSmcOpt)
+            #=
             x_mc = param[end]
             p_mc::Vector{SMCg{np,Interval{Float64},Float64}} = [SMCg{np,Interval{Float64},Float64}(pmid[i],
                                                            pmid[i],
@@ -50,21 +47,28 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                                                            seed_g(Float64,i,np),
                                                            Y[nx+i],
                                                            false) for i=1:np]
-            #println("x_mc: $x_mc")
-            #println("P_mc: $p_mc")
             f::SMCg{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
-            #println("f_mc: $f")
             f_cv::Float64 = f.cv
+            =#
+
+            x_mc::Vector{HybridMC{np,Interval{Float64},Float64}} = param[end]
+            p_mc::Vector{HybridMC{np,Interval{Float64},Float64}} = [HybridMC{np,Interval{Float64},Float64}(
+                                                                    SMCg{np,Interval{Float64},Float64}(pmid[i],
+                                                                                                       pmid[i],
+                                                                                                       seed_g(Float64,i,np),
+                                                                                                       seed_g(Float64,i,np),
+                                                                                                       Y[nx+i],
+                                                                                                       false)) for i=1:np]
+            f::HybridMC{np,Interval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
+            f_cv::Float64 = cv(f)
+
             if opt[1].Imp_nCons>0
-                c::Vector{SMCg{np,Interval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
-                #println("c: $c")
+                #c::Vector{SMCg{np,Interval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
+                c::Vector{HybridMC{np,Interval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
                 dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].Imp_gL_Loc)+length(opt[1].Imp_gU_Loc),np)
             else
                 dcdx = spzeros(1,np)
             end
-            #println("opt[1].Imp_nCons: $(opt[1].Imp_nCons)")
-            #println("opt[1].Imp_gL_Loc: $(opt[1].Imp_gL_Loc)")
-            #println("opt[1].Imp_gU_Loc: $(opt[1].Imp_gU_Loc)")
             if opt[1].Imp_nCons>0
                 cx_ind1 = 1
                 for i in opt[1].Imp_gU_Loc
@@ -100,25 +104,18 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                     cx_ind2 += 1
                 end
             end
-            #println("dcdx: $dcdx")
-            #println("rhs: $rhs")
             model = buildlp([f.cv_grad[i] for i=1:np], dcdx, '<', rhs, l, u, opt[1].solver.LP_solver)
             result = solvelp(model)
-            #println("solved")
-            #println("result.status $(result.status)")
             if (result.status == :Optimal)
-                #println("optimal solution 2")
                 val::Float64 = max(f.Intv.lo,result.objval + f_cv - sum([pmid[i]*f.cv_grad[i] for i=1:np]))
                 pnt::Vector{Float64} = vcat(mid.(Intv.(x_mc)),result.sol)
-                feas = true
+                feas::Bool = true
                 mult::Vector{Float64} = result.attrs[:redcost]
-                #println("opt[1].Imp_nCons: $(opt[1].Imp_nCons)")
                 if (opt[1].Imp_nCons < 1)
                 else
                     GInt::Vector{Interval{Float64}} = opt[1].Imp_g(Y[1:nx],Y[(nx+1):end])
                     cInt::Vector{Interval{Float64}} = vcat(GInt[opt[1].Imp_gU_Loc]-opt[1].Imp_gU[opt[1].Imp_gU_Loc],
                                                           -GInt[opt[1].Imp_gL_Loc]+opt[1].Imp_gL[opt[1].Imp_gL_Loc])
-                    #println("cInt: $cInt")
                     for i=1:length(cInt)
                         if (cInt[i].lo>0.0)
                             val = -Inf
@@ -138,8 +135,8 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
                 error("Solver error code $(result.status) in solver. Solution routine terminated.")
             end
 
-            mult_lo = [tol_eq(l[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
-            mult_hi = [tol_eq(u[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
+            mult_lo::Vector{Float64} = [tol_eq(l[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
+            mult_hi::Vector{Float64} = [tol_eq(u[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
             temp = Any[mult_lo,mult_hi,val]
             return val, pnt, feas, temp
         catch
@@ -178,9 +175,9 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
             u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
             pmid::Vector{Float64} = (l + u)/2.0
             param = GenExpansionParams(opt[1].Imp_h, opt[1].Imp_hj,
-                                         Y[1:nx],Y[(nx+1):opt[1].numVar],pmid,
+                                         Y[1:nx],Y[(nx+1):(opt[1].numVar)],pmid,
                                          opt[1].solver.PSmcOpt)
-
+            #=
             x_mc = param[end]
             p_mc::Vector{SMCg{np,MCInterval{Float64},Float64}} = [SMCg{np,MCInterval{Float64},Float64}(pmid[i],
                                                            pmid[i],
@@ -190,8 +187,23 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
                                                            false) for i=1:np]
             f::SMCg{np,MCInterval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
             f_cv::Float64 = f.cv
+            =#
+
+            opt[1].solver.SubGradRefine && set_hybrid_box!([Y[nx+i] for i=1:np],pmid,true)
+            x_mc::Vector{HybridMC{np,MCInterval{Float64},Float64}} = param[end]
+            p_mc::Vector{HybridMC{np,MCInterval{Float64},Float64}} = [HybridMC{np,MCInterval{Float64},Float64}(
+                                                                      SMCg{np,MCInterval{Float64},Float64}(pmid[i],
+                                                                                                           pmid[i],
+                                                                                                           seed_g(Float64,i,np),
+                                                                                                           seed_g(Float64,i,np),
+                                                                                                           Y[nx+i],
+                                                                                                           false)) for i=1:np]
+            f::HybridMC{np,MCInterval{Float64},Float64} = opt[1].Imp_f(x_mc[1:nx],p_mc)
+            f_cv::Float64 = cv(f)
+
             if opt[1].Imp_nCons>0
-                c::Vector{SMCg{np,MCInterval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
+                #c::Vector{SMCg{np,MCInterval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
+                c::Vector{HybridMC{np,MCInterval{Float64},Float64}} = opt[1].Imp_g(x_mc[1:nx],p_mc)
                 dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].Imp_gL_Loc)+length(opt[1].Imp_gU_Loc),np)
             else
                 dcdx = spzeros(1,np)
@@ -236,7 +248,7 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
             if (result.status == :Optimal)
                 val::Float64 = result.objval + f_cv - sum([pmid[i]*f.cv_grad[i] for i=1:np])
                 pnt::Vector{Float64} = vcat(mid.(Intv.(x_mc)),result.sol)
-                feas = true
+                feas::Bool = true
                 mult::Vector{Float64} = result.attrs[:redcost]
             elseif (result.status == :Infeasible)
                 val = -Inf
@@ -247,12 +259,12 @@ function LP_Relax_LBD_Imp(Y::Vector{MCInterval{Float64}},
                 error("Solver error code $(result.status) in solver. Solution routine terminated.")
             end
 
-            mult_lo = [tol_eq(l[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
-            mult_hi = [tol_eq(u[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
+            mult_lo::Vector{Float64} = [tol_eq(l[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
+            mult_hi::Vector{Float64} = [tol_eq(u[i],pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:np]
             temp = Any[mult_lo,mult_hi,val]
             return val, pnt, feas, temp
         catch
-            FInt::MCInterval = opt[1].Imp_f(Y[1:nx],Y[(nx+1):end])
+            FInt::MCInterval{Float64} = opt[1].Imp_f(Y[1:nx],Y[(nx+1):end])
             feas = true
             if (opt[1].Imp_nCons < 1)
             else

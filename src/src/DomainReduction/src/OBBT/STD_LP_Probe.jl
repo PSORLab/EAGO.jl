@@ -19,37 +19,48 @@ function STD_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
     Xlo::Vector{Float64} = [X[i].lo for i=1:opt[1].numVar]
     Xhi::Vector{Float64} = [X[i].hi for i=1:opt[1].numVar]
     x0::Vector{Float64} = (Xlo + Xhi)/2.0
+#=
     x_SMC::Vector{SMCg{opt[1].numVar,Float64}} = [SMCg{opt[1].numVar,Float64}(x0[i],
                                                                               x0[i],
                                                                               seed_g(Float64,i,opt[1].numVar),
                                                                               seed_g(Float64,i,opt[1].numVar),
                                                                               X[i],
                                                                               false) for i=1:opt[1].numVar]
+=#
+    x_SMC::Vector{HybridMC{opt[1].numVar,Float64}} = [HybridMC{opt[1].numVar,Float64}(x0[i],
+                                                                                      x0[i],
+                                                                                      seed_g(Float64,i,opt[1].numVar),
+                                                                                      seed_g(Float64,i,opt[1].numVar),
+                                                                                      X[i],
+                                                                                      false) for i=1:opt[1].numVar]
+
     # probes upper bound
-    f_mc::SMCg{opt[1].numVar,Float64} = opt[1].f(x_SMC)
-    f_cv::Float64 = f_mc.cv
+    #f_mc::SMCg{opt[1].numVar,Float64} = opt[1].f(x_SMC)
+    f_mc::HybridMC{opt[1].numVar,Float64} = opt[1].f(x_SMC)
+    f_cv::Float64 = f_mc.SMC.cv
     if opt[1].numConstr>0
-        c::Vector{SMCg{opt[1].numVar,Float64}} = opt[1].g(x_SMC)
+        #c::Vector{SMCg{opt[1].numVar,Float64}} = opt[1].g(x_SMC)
+        c::Vector{HybridMC{opt[1].numVar,Float64}} = opt[1].g(x_SMC)
         dcdx::SparseMatrixCSC{Float64,Int64} = spzeros(length(opt[1].gL_loc)+length(opt[1].gU_loc)+1,opt[1].numVar)
     else
         dcdx = spzeros(1,opt[1].numVar)
     end
 
-    dcdx[1,:] = f_mc.cv_grad
+    dcdx[1,:] = f_mc.SMC.cv_grad
     if opt[1].numConstr>0
         cx_ind1::Int64 = 2
         for i in opt[1].gL_loc
             for j=1:opt[1].numVar
-                if (c[i].cv_grad[j] != 0.0)
-                    dcdx[cx_ind1,j] = c[i].cv_grad[j]
+                if (c[i].SMC.cv_grad[j] != 0.0)
+                    dcdx[cx_ind1,j] = c[i].SMC.cv_grad[j]
                 end
             end
             cx_ind1 += 1
         end
         for i in opt[1].gU_loc
             for j=1:opt[1].numVar
-                if (c[i].cc_grad[j] != 0.0)
-                    dcdx[cx_ind1,j] = -c[i].cc_grad[j]
+                if (c[i].SMC.cc_grad[j] != 0.0)
+                    dcdx[cx_ind1,j] = -c[i].SMC.cc_grad[j]
                 end
             end
             cx_ind1 += 1
@@ -62,24 +73,24 @@ function STD_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
     else
         rhs = zeros(Float64,1)
     end
-    rhs[1] = UBD + f_mc.cv - sum(x0.*f_mc.cv_grad)
+    rhs[1] = UBD + f_mc.SMC.cv - sum(x0.*f_mc.SMC.cv_grad)
 
     if opt[1].numConstr>0
         cx_ind2::Int64 = 2
         for i in opt[1].gU_loc
-            rhs[cx_ind2] = sum(x0[:].*c[i].cv_grad[:])+opt[1].gU[i]-c[i].cv
+            rhs[cx_ind2] = sum(x0[:].*c[i].SMC.cv_grad[:])+opt[1].gU[i]-c[i].SMC.cv
             cx_ind2 += 1
         end
         for i in opt[1].gL_loc
-            rhs[cx_ind2] = sum(-x0[:].*c[i].cc_grad[:])-opt[1].gL[i]+c[i].cc
+            rhs[cx_ind2] = sum(-x0[:].*c[i].SMC.cc_grad[:])-opt[1].gL[i]+c[i].SMC.cc
             cx_ind2 += 1
         end
     end
 
     if (opt[1].numConstr>0)
-        temp_model = buildlp([f_mc.cv_grad[i] for i=1:opt[1].numVar], dcdx, '<', rhs, Xlo, Xhi, opt[1].solver.LP_solver)
+        temp_model = buildlp([f_mc.SMC.cv_grad[i] for i=1:opt[1].numVar], dcdx, '<', rhs, Xlo, Xhi, opt[1].solver.LP_solver)
     else
-        temp_model = buildlp([f_mc.cv_grad[i] for i=1:opt[1].numVar], zeros(opt[1].numVar,opt[1].numVar), '<', zeros(opt[1].numVar), Xlo, Xhi, opt[1].solver.LP_solver)
+        temp_model = buildlp([f_mc.SMC.cv_grad[i] for i=1:opt[1].numVar], zeros(opt[1].numVar,opt[1].numVar), '<', zeros(opt[1].numVar), Xlo, Xhi, opt[1].solver.LP_solver)
     end
 
     for i=1:opt[1].numVar
@@ -89,7 +100,7 @@ function STD_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
         MathProgBase.setvarUB!(temp_model,Xhi)
         result = solvelp(temp_model)
         if (result.status == :Optimal)
-            val::Float64 = result.objval + f_cv - sum([x0[i]*f_mc.cv_grad[i] for i=1:opt[1].numVar])
+            val::Float64 = result.objval + f_cv - sum([x0[i]*f_mc.SMC.cv_grad[i] for i=1:opt[1].numVar])
             pnt::Vector{Float64} = result.sol
             mult::Vector{Float64} = result.attrs[:redcost]
             mult_lo::Vector{Float64} = [tol_eq(X[i].lo,pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:opt[1].numVar]
@@ -101,7 +112,7 @@ function STD_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
         MathProgBase.setvarUB!(temp_model,[i == j ? Xhi[i] : Xlo[i] for j=1:opt[1].numVar])
         result = solvelp(temp_model)
         if (result.status == :Optimal)
-            val = result.objval + f_cv - sum([x0[i]*f_mc.cv_grad[i] for i=1:opt[1].numVar])
+            val = result.objval + f_cv - sum([x0[i]*f_mc.SMC.cv_grad[i] for i=1:opt[1].numVar])
             pnt = result.sol
             mult = result.attrs[:redcost]
             mult_lo = [tol_eq(X[i].lo,pnt[i],opt[1].solver.dual_tol) ? mult[i] : 0.0 for i=1:opt[1].numVar]
@@ -131,7 +142,7 @@ is the number of constraints, `gL` is the lower bound, `gU` is the upper bound,
 `gL_Loc` is an index to indicate the lower bound is finite, and `gU_Loc` is an index
 that indicates the upper bound is finite. The upper bound is `UBD::Float64`.
 """
-function Imp_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64)
+function Imp_LP_Probe!(X::Vector{Interval{Float64}},opt,UBD::Float64) # Fix ME!
 
     # constructs LP relaxation
     Xlo::Vector{Float64} = [X[i].lo for i=1:opt[1].numVar]

@@ -1,10 +1,11 @@
-#workspace()
+workspace()
 
 using EAGO
 using IntervalArithmetic
 using StaticArrays
 
-opts1 =  mc_opts{Float64}(0.5,2,:Dense,:Newton,1,1,0.0)
+EAGO.set_diff_relax(0)
+opts1 = mc_opts{Float64}(0.5,1,:Dense,:Newton,1,1,1E-10)
 #=
 generates the expansion point parameters for the function using the opts
 options using inverse preconditioner
@@ -13,19 +14,11 @@ f(x,p) = x[1]*p[1]+p[1]
 g(x,p) = [x[1]*p[1]+p[1];
           x[1]*p[1]+2*p[1]]
 function h1(x,p)
-    println("function eval: ")
-    println("x[1]: $(x[1])")
-    println("p[1]: $(p[1])")
     t1 = x[1]^2
-    println("x[1]^2: $(t1)")
     t2 = x[1]*p[1]
-    println("x[1]*p[1]: $(t2)")
     t3 = 4.0
-    println("4.0: $(t3)")
     t4 = t1 + t2
-    println("t4 : $(t4 )")
     t5 = t4 + t3
-    println("t5: $(t5)")
     return [t5]
 end
 hj1(x,p) = [2*x[1]+p[1]]
@@ -44,9 +37,15 @@ relaxes the equality h(x,p)
 np = 1
 szero = @SVector zeros(np)
 sone = @SVector ones(np)
-p_mc = [SMCg{np,Interval{Float64},Float64}(p[i],p[i],sone,sone,Interval(P[i].lo,P[i].hi),false) for i=1:np]
+nxi = 1
+p_mc = [HybridMC{np,Interval{Float64},Float64}(SMCg{np,Interval{Float64},Float64}(p[i],p[i],sone,sone,Interval{Float64}(P[i].lo,P[i].hi),false)) for i=1:np]
+xa_mc = HybridMC{np,Interval{Float64},Float64}[HybridMC{np,Interval{Float64},Float64}(SMCg{np,Interval{Float64},Float64}(X[i].lo,X[i].lo,szero,szero,Interval{Float64}(X[i].lo,X[i].lo),false)) for i=1:nxi]
+xA_mc = HybridMC{np,Interval{Float64},Float64}[HybridMC{np,Interval{Float64},Float64}(SMCg{np,Interval{Float64},Float64}(X[i].hi,X[i].hi,szero,szero,Interval{Float64}(X[i].hi,X[i].hi),false)) for i=1:nxi]
+z_mc = 0.5*xa_mc+(one(Float64)-0.5)*xA_mc
+h_mc = h1(z_mc,p_mc)
+
 param = GenExpansionParams(h1,hj1,X,P,pmid,opts1)
-#=
+
 hbnds = MC_impRelax(h1,hj1,p_mc,pmid,X,P,opts1,param)
 fbnds = impRelax_f(f,h1,hj1,X,P,p,pmid,opts1,param)
 fgbnds = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts1,param)
@@ -54,14 +53,7 @@ fgbnds = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts1,param)
 param = GenExpansionParams(h1,hj1,X,P,pmid,opts1)
 # param[2][1].cc = -0.46623417721518967
 # param[2][1].cv = -0.5792721518987343
-println("typeof h1: $(typeof(h1))")
-println("typeof hj1: $(typeof(hj1))")
-println("typeof p_mc: $(typeof(p_mc))")
-println("typeof pmid: $(typeof(pmid))")
-println("typeof X: $(typeof(X))")
-println("typeof P: $(typeof(P))")
-println("typeof opts1: $(typeof(opts1))")
-println("typeof param_ns_sr: $(typeof(param_ns_sr))")
+#println("typeof param_ns_sr: $(typeof(param_ns_sr))")
 hbnds = MC_impRelax(h1,hj1,p_mc,pmid,X,P,opts1,param)
 # hbnds[1].cc = -0.4907369110006179
 # hbnds[1].cv = -0.5758134311908059
@@ -94,7 +86,7 @@ fgbnds3 = impRelax_fg(f,g,h1,hj1,X,P,p,pmid,opts2,param)
 # fgbnds3[2][1].cv = 3.0592452208305847
 # fgbnds3[2][2].cc = 11.391338991828658
 # fgbnds3[2][2].cv = 10.559245220830585
-=#
+
 #=
 np = 2
 opts3 =  mc_opts{Float64}(0.5,3,:Dense,:Krawczyk,2,2,0.0)

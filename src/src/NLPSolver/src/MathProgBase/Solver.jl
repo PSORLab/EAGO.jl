@@ -79,6 +79,8 @@ type EAGO_NLPSolver <: AbstractMathProgSolver
 
     Imp_RR_depth::Int64
     Imp_probe_depth::Int64
+
+    SubGradRefine::Bool
 end
 
 function EAGO_NLPSolver(;
@@ -119,7 +121,8 @@ function EAGO_NLPSolver(;
     PSmcOpt = mc_opts(),
     PIntOpt = PIntvParams(0,0),
     Imp_RR_depth = -1,
-    Imp_probe_depth= -1)
+    Imp_probe_depth = -1,
+    SubGradRefine = false)
 
     set_to_default!(BnBobject)
     set_Verbosity!(BnBobject,verbosity)
@@ -141,7 +144,7 @@ function EAGO_NLPSolver(;
                                 atol, rtol, verbosity,
                                 iter_limit, node_limit, UBDsolver, validated,
                                 ImplicitFlag, PSmcOpt, PIntOpt, Imp_RR_depth,
-                                Imp_probe_depth)
+                                Imp_probe_depth, SubGradRefine)
 
     #Solver_Relax_Valid_LBD!(nlp_solver)
 

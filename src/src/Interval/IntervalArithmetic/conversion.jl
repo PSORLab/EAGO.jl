@@ -105,15 +105,15 @@ flttoMCI(x::Float16) = MCInterval{Float16}(x,x)
 
 MCInterval(x::Q1,y::Q2) where {Q1<:Integer,Q2<:Integer}= MCInterval(Float64(x),Float64(y))
 
-#=
+
 promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{promote_type(T, S)}
 promote_rule(::Type{MCInterval{T}}, ::Type{MCInterval{S}}) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{promote_type(T, S)}
 promote_rule(::Type{MCInterval{T}}, ::Type{S}) where {T<:AbstractFloat, S<:Integer} = MCInterval{promote_type(T, S)}
 
-convert(::Type{MCInterval{T}}, x::T) where {T<:AbstractFloat} = MCInterval{T}(x)
-convert(::Type{MCInterval{T}}, x::S) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{T}(x)
-convert(::Type{MCInterval{T}}, x::S) where {T<:AbstractFloat, S<:Integer} = MCInterval{T}(x)
-=#
+convert(::Type{MCInterval{T}}, x::T) where {T<:AbstractFloat} = MCInterval{T}(convert(T,x),convert(T,x))
+convert(::Type{MCInterval{T}}, x::S) where {T<:AbstractFloat, S<:AbstractFloat} = MCInterval{T}(convert(T,x),convert(T,x))
+convert(::Type{MCInterval{T}}, x::S) where {T<:AbstractFloat, S<:Integer} = MCInterval{T}(convert(T,x),convert(T,x))
+
 #=
 convert(::Type{MCInterval{T}}, x::T) where {T} = MCInterval{T}(x)
 convert(::Type{MCInterval{T}}, x::MCInterval{T}) where {T} = x

@@ -58,12 +58,14 @@ using MathProgBase
   @test isapprox(getvalue(y2),300.0,atol=1E-6)
   @test isapprox(getobjectivevalue(jumpmodel5),-60000.00119999499,atol=2.0)
 
+  println("test jumpmodel 6")
   jumpmodel6 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
                                          variable_depth = 1000,
                                          DAG_depth = 10,
-                                         STD_RR_depth = -1))
+                                         STD_RR_depth = -1,
+                                         validated = true))
   @variable(jumpmodel6, -5 <= x1 <= 5)
   @variable(jumpmodel6, -5 <= y1 <= 5)
   @NLobjective(jumpmodel6, Min, 2*x1^2-1.05*x1^4+(x1^6)/6+x1*y1+y1^2)
@@ -74,6 +76,7 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel6),0.0,atol=1E-6)
   @test status6 == :Optimal
 
+  println("test jumpmodel 6b")
   jumpmodel6b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Interval",
                                          LBDsolvertype = "Interval",
                                          probe_depth = -1,
@@ -92,13 +95,15 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel6b),0.0,atol=1E-1)
   @test status6b == :Optimal
 
+  println("test jumpmodel 8")
   jumpmodel8 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Interval",
                                          LBDsolvertype = "Interval",
                                            probe_depth = -1,
                                            variable_depth = -1,
                                            DAG_depth = -1,
                                            STD_RR_depth = -1,
-                                           atol=1E-1))
+                                           atol=1E-1,
+                                           validated = true))
   @variable(jumpmodel8, -200 <= x2b <= -100)
   @variable(jumpmodel8, 200 <= y2b <= 400)
   @constraint(jumpmodel8, -500 <= x2b+2y2b <= 400)
@@ -110,6 +115,7 @@ using MathProgBase
   @test isapprox(getvalue(y),300.0,atol=1E-1)
   @test isapprox(getobjectivevalue(jumpmodel8),-60000.00119999499,atol=2.0)
 
+  println("test jumpmodel 8a")
   jumpmodel8a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          probe_depth = -1,
@@ -127,6 +133,7 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel8a),0.0,atol=1E-1)
   @test status6b == :Optimal
 
+  println("test jumpmodel 8b")
   jumpmodel8b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                          LBDsolvertype = "LP",
                                          UBDsolvertype = "Interval",
@@ -145,18 +152,19 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel8b),0.0,atol=1E-1)
   @test status6b == :Optimal
 
+  println("test jumpmodel 8c")
   jumpmodel8c = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                            LBDsolvertype = "LP",
                                            probe_depth = -1,
                                            variable_depth = 1000,
                                            DAG_depth = 10,
                                            STD_RR_depth = 1,
-                                           validated = false))
+                                           validated = true))
   @variable(jumpmodel8c, -200 <= x2b <= -100)
   @variable(jumpmodel8c, 200 <= y2b <= 400)
   @constraint(jumpmodel8c, -500 <= x2b+2y2b <= 400)
   @NLobjective(jumpmodel8c, Min, x2b*y2b)
-  status5 = solve(jumpmodel5a)
+  status5 = solve(jumpmodel8c)
 end
 
 #=

@@ -23,6 +23,7 @@ include("operators/SMCg_Extrema.jl")
 include("operators/SMCg_Conversions.jl")
 include("operators/SMCg_Other.jl")
 
+#=
 export mc_opts, SetOptions!, MC_KrawczykCW, MC_NewtonGS, GenExpansionParams,
        MC_impRelax, impRelax_f, impRelax_fg, set_default!, InGenExpansionParams,
        MC_NimpRelax, NimpRelax_f, NimpRelax_fg, IndGenExpansionParams,
@@ -35,5 +36,6 @@ include("implicit/Affine_Code.jl")
 include("implicit/Gen_Param.jl")
 include("implicit/Relax_H.jl")
 include("implicit/Relax_FG.jl")
+=#
 
 mid(x::SMCg) = SMCg(mid(x.Intv))

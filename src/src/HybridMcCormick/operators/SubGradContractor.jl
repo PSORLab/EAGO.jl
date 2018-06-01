@@ -4,7 +4,7 @@ mutable struct Hybrid_Options{N,V<:AbstractInterval,T<:AbstractFloat}
     sub_on::Bool
 end
 
-const hybrid_opts = Hybrid_Options[]
+const hybrid_opts = Hybrid_Options[Hybrid_Options{1,Interval{Float64},Float64}(SVector{1,Interval{Float64}}([Interval{Float64}(0.1,1.0)]),SVector{1,Float64}([0.5]),false)]
 
 
 function set_hybrid_box!(box::SVector{N,V},ref::SVector{N,T},subgrad::Bool) where {N,V,T}
@@ -14,7 +14,6 @@ function set_hybrid_box!(box::SVector{N,V},ref::SVector{N,T},subgrad::Bool) wher
         hybrid_opts[1] = Hybrid_Options{N,V,T}(box,ref,subgrad)
     end
 end
-
 
 """
     box
@@ -48,22 +47,22 @@ boxhi(x::Hybrid_Options) = [x.box[i].hi for i=1:length(x.box)]
 """
     Tighten_Subgrad
 """
-function Tighten_Subgrad(x::HybridMC{N,V,T}) where {N,V,T}
-    upper_refine::V = convert(V,cc)
-    lower_refine::V = convert(V,cv)
+function Tighten_Subgrad(x::HybridMC{N,V,T}) where {N,V<:AbstractInterval,T}
+    upper_refine::V = convert(V,cc(x))
+    lower_refine::V = convert(V,cv(x))
     for i=1:N
-      upper_refine = upper_refine + cc_grad[i]*(hybrid_opts[1].box[i]-hybrid_opts[1].ref[i])
-      lower_refine = lower_refine + cv_grad[i]*(hybrid_opts[1].box[i]-hybrid_opts[1].ref[i])
+      upper_refine = upper_refine + x.SMC.cc_grad[i]*(hybrid_opts[1].box[i]-hybrid_opts[1].ref[i])
+      lower_refine = lower_refine + x.SMC.cv_grad[i]*(hybrid_opts[1].box[i]-hybrid_opts[1].ref[i])
     end
-    if (lower_refine.lo > xIntv.lo)
-        if (upper_refine.hi < xIntv.hi)
-            return HybridMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(lower_refine.lo,upper_refine)))
+    if (lower_refine.lo > x.SMC.Intv.lo)
+        if (upper_refine.hi < x.SMC.Intv.hi)
+            return HybridMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(lower_refine.lo,upper_refine.hi),x.SMC.cnst))
         else
-            return HybridMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(lower_refine.lo,xIntv.hi)))
+            return HybridMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(lower_refine.lo,x.SMC.Intv.hi),x.SMC.cnst))
         end
     else
-        if (upper_refine.hi < xIntv.hi)
-            return HybridMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(xIntv.lo,upper_refine)))
+        if (upper_refine.hi < x.SMC.Intv.hi)
+            return HybridMC{N,V,T}(SMCg{N,V,T}(cc(x),cv(x),cc_grad(x),cv_grad(x),V(x.SMC.Intv.lo,upper_refine.hi),x.SMC.cnst))
         else
             return x
         end

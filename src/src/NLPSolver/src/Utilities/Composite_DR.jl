@@ -41,6 +41,7 @@ Outputs the feasibility and the X.
 function composite_DR_pre(feas::Bool,X::Vector{T},UBD::Float64,
                           k::Int64,pos::Int64,opt,LBDn::Float64,UBDn::Float64,
                           bnbs::BnBSolver,bnbm::BnBModel{T}) where {T<:AbstractInterval}
+
   # Feasibility-Based Bound Tightening via DAG Constraint Propagation
   if (feas == true && (opt[1].solver.DAG_depth >= pos))
     DAGContractor!(X,opt[1].DAG_tlist,opt[1].solver.DAG_pass)

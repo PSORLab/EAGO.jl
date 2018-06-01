@@ -26,8 +26,8 @@ jm1a = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    DAG_depth = -1,
                                    STD_RR_depth = 1000,
                                    ImplicitFlag = true,
-                                   verbosity = "Normal",
-                                   validated = false))
+                                   verbosity = "Full",
+                                   validated = true))
 xa = @variable(jm1a, [i=1:2], lowerbound=LBD1a_func(i), upperbound=UBD1a_func(i))
 @NLconstraint(jm1a, xa[1]^2 + xa[2]*xa[1] + 4 == 0.0 )
 @NLobjective(jm1a, Min, xa[1])
@@ -42,7 +42,7 @@ jm1b = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    STD_RR_depth = 1000,
                                    ImplicitFlag = true,
                                    verbosity = "Normal",
-                                   validated = false))
+                                   validated = true))
 xb = @variable(jm1b, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
 @NLconstraint(jm1b, xb[1]^2 + xb[2]*xb[1] + 4 == 0.0 )
 @NLobjective(jm1b, Min, xb[1])
@@ -146,7 +146,7 @@ jm1f = Model(solver=EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                                    STD_RR_depth = 1000,
                                    ImplicitFlag = true,
                                    verbosity = "Normal",
-                                   validated = false))
+                                   validated = true))
 xf = @variable(jm1f, [i=1:2], lowerbound=LBD1b_func(i), upperbound=UBD1b_func(i))
 @NLconstraint(jm1f, xf[1]^2 + xf[2]*xf[1] + 4 == 0.0 )
 @NLconstraint(jm1f, -100 <= -xf[1] <= 8.0 )

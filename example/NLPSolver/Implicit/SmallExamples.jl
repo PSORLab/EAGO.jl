@@ -1,6 +1,6 @@
 # package setup
 
-workspace()
+#workspace()
 using EAGO
 using Ipopt
 using JuMP
