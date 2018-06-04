@@ -211,7 +211,8 @@ Returns a tuple `(val,pnt,feas,X,[])` where
 """
 function Ipopt_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opts::Any,UBD::Float64)
 
-    opts[1].solver.SubGradRefine && set_hybrid_box!(SVector{opts[1].numVar,Interval{Float64}}(X),SVector{opts[1].numVar,Float64}(x0),true)
+    println("ran me!")
+    opts[1].solver.SubGradRefine && set_hybrid_box!(SVector{opts[1].numVar,Interval{Float64}}(X),SVector{opts[1].numVar,Float64}(mid.(X)),true)
 
     # sets up problem
     x_L::Vector{Float64} = [X[i].lo for i=1:opts[1].numVar]
