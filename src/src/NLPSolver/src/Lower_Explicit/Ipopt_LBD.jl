@@ -10,14 +10,12 @@ Returns the convex relaxation of the objective (::Float64).
 function IPOPT_LBD_eval_f(x::Vector{Float64},
                           X::Vector{Interval{Float64}},
                           opts::EAGO_Inner_NLP)
-    f_SMC::SMCg{opts.numVar,Float64} =  opts.f([SMCg{opts.numVar,Float64}(x[i],x[i],
+    f_SMC::HybridMC{opts.numVar,Interval{Float64},Float64} =  opts.f([HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],x[i],
                                                                           seed_g(Float64,i,opts.numVar),
                                                                           seed_g(Float64,i,opts.numVar),
                                                                           X[i],
-                                                                          false,
-                                                                          X,
-                                                                          x) for i=1:opts.numVar])
-    return f_SMC.cv
+                                                                          false)) for i=1:opts.numVar])
+    return f_SMC.SMC.cv
 end
 
 """
@@ -32,14 +30,12 @@ No value returned. The function mutates `f_grad` in place.
 """
 function IPOPT_LBD_eval_grad_f!(x::Vector{Float64},X::Vector{Interval{Float64}},
                                 f_grad::Vector{Float64},opts::EAGO_Inner_NLP)
-    f_SMC::SMCg{opts.numVar,Float64} =  opts.f([SMCg{opts.numVar,Float64}(x[i],x[i],
+    f_SMC::HybridMC{opts.numVar,Interval{Float64},Float64} =  opts.f([HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],x[i],
                                                                           seed_g(Float64,i,opts.numVar),
                                                                           seed_g(Float64,i,opts.numVar),
                                                                           X[i],
-                                                                          false,
-                                                                          X,
-                                                                          x) for i=1:opts.numVar])
-    f_grad[:] = f_SMC.cv_grad
+                                                                          false)) for i=1:opts.numVar])
+    f_grad[:] = f_SMC.SMC.cv_grad
 end
 
 """
@@ -57,15 +53,12 @@ function IPOPT_LBD_eval_g!(x::Vector{Float64},
                            g::Vector{Float64},
                            opts::EAGO_Inner_NLP)
     if opts.numConstr>0
-        x_SMC::Vector{SMCg{opts.numVar,Float64}} = [SMCg{opts.numVar,Float64}(x[i],
+        x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Float64}(x[i],
                                                                               x[i],
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               seed_g(Float64,i,opts.numVar),
-                                                                              X[i],
-                                                                              false,
-                                                                              X,
-                                                                              x) for i=1:opts.numVar]
-        g[:] = [opts.g(x_SMC)[i].cv for i=1:opts.numConstr]
+                                                                              X[i])) for i=1:opts.numVar]
+        g[:] = [opts.g(x_SMC)[i].SMC.cv for i=1:opts.numConstr]
     else
         g[:] = -ones(x[1])
     end
@@ -76,7 +69,7 @@ end
 
 Evaluates the convex relaxation of the constraint function g.
 * `x::Vector{Float64}`: Point to evaluate in X
-* `X::Vector{Interval{Float64}}: Node over which to solve the lower problem
+* `X::Vector{Interval{Float64}}`: Node over which to solve the lower problem
 * `opts`: Option type containing problem information
 Returns the convex relaxation of the constraint function g (::Vector{Float64}).
 """
@@ -84,15 +77,13 @@ function IPOPT_LBD_eval_g(x::Vector{Float64},
                           X::Vector{Interval{Float64}},
                           opts::EAGO_Inner_NLP)
     if opts.numConstr>0
-        x_SMC::Vector{SMCg{opts.numVar,Float64}} = [SMCg{opts.numVar,Float64}(x[i],
+        x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
                                                                               x[i],
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               X[i],
-                                                                              false,
-                                                                              X,
-                                                                              x) for i=1:opts.numVar]
-        return [opts.g(x_SMC)[i].cv for i=1:opts.numConstr]
+                                                                              false)) for i=1:opts.numVar]
+        return [opts.g(x_SMC)[i].SMC.cv for i=1:opts.numConstr]
     else
         return [-ones(x[1])]
     end
@@ -127,15 +118,13 @@ function IPOPT_LBD_eval_jac_g!(x::Vector{Float64},
         rows[:] = cb.col_temp_Ipopt_LBD
         cols[:] = cb.row_temp_Ipopt_LBD
     else
-        x_SMC::Vector{SMCg{opts.numVar,Float64}} = [SMCg{opts.numVar,Float64}(x[i],
+        x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
                                                                               x[i],
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               X[i],
-                                                                              false,
-                                                                              X,
-                                                                              x) for i=1:opts.numVar]
-        g_SMC::Vector{SMCg{opts.numVar,Float64}} = opts.g(x_SMC)
+                                                                              false)) for i=1:opts.numVar]
+        g_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = opts.g(x_SMC)
         g_jac::Array{Float64,2} = [g_SMC[i].cv_grad[j] for i=1:opts.numConstr, j=1:opts.numVar]
         values[:] = transpose(g_jac)
     end
@@ -222,6 +211,8 @@ Returns a tuple `(val,pnt,feas,X,[])` where
 """
 function Ipopt_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opts::Any,UBD::Float64)
 
+    opts[1].solver.SubGradRefine && set_hybrid_box!(SVector{opts[1].numVar,Interval{Float64}}(X),SVector{opts[1].numVar,Float64}(x0),true)
+
     # sets up problem
     x_L::Vector{Float64} = [X[i].lo for i=1:opts[1].numVar]
     x_U::Vector{Float64} = [X[i].hi for i=1:opts[1].numVar]
@@ -252,20 +243,8 @@ function Ipopt_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opts::Any,UB
         error("Solver error code $status in Ipopt. Solution routine terminated.")
     end
 
-    mult_lo::Vector{Float64} = [0.0 for i=1:opts[1].numVar]
-    mult_hi::Vector{Float64} = [0.0 for i=1:opts[1].numVar]
-    for i=1:opts[1].numVar
-        if abs(mult[i])>opts[1].solver.dual_tol
-            if (pnt[i]-X[i].lo)==(X[i].hi-pnt[i])
-                mult_lo[i] = mult[i]
-                mult_hi[i] = mult[i]
-            elseif (pnt[i]-X[i].lo)<(X[i].hi-pnt[i])
-                mult_lo[i] = mult[i]
-            else
-                mult_hi[i] = mult[i]
-            end
-        end
-    end
+    mult_lo::Vector{Float64} = prob.mult_x_L
+    mult_hi::Vector{Float64} = prob.mult_x_U
     temp = Any[mult_lo,mult_hi,val]
 
     # Formats output and returns appropriate values
