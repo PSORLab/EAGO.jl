@@ -44,19 +44,13 @@ function GenExpansionParams(h::Function, hj::Function,
   optc = Any[szero,sone]
 
   for k=1:mc_opts.kmax
-    println("ran to me A")
     PSMCg_Kernel!(h,hj,z_mc,aff_mc,p_mc,x_mc,mc_opts)
-    println("ran to me B")
     Affine_Exp!(x_mc,p_mc,p_mc,xa_mc,xA_mc,z_mc,mc_opts)
-    println("ran to me C")
     z_mc = Rnd_Out_Z_All(z_mc,mc_opts.aff_correct_eps)
-    println("ran to me D")
     Correct_Exp!(z_mc,x_mc,X,nxi,np,mc_opts.aff_correct_eps)
-    println("ran to me E")
     aff_mc = HybridMC{np,V,Float64}[HybridMC{np,V,Float64}(SMCg{np,V,Float64}(xA_mc[i].SMC.cc,
                                     xa_mc[i].SMC.cv,xA_mc[i].SMC.cc_grad,xa_mc[i].SMC.cv_grad,
                                     V(xA_mc[i].SMC.Intv.lo,xA_mc[i].SMC.Intv.hi),false)) for i=1:nxi]
-    println("ran to me F")
     # store relaxation
     sto_out[k+1] = copy(x_mc)
     end

@@ -7,7 +7,7 @@ using BenchmarkTools
 using IntervalArithmetic
 using Plots
 
-function Isolated_Pressure(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv::Float64) where T<:Real
+function Isolated_Pressure(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::T,Pvv::Float64) where T<:Real
 
     # Pressure Profile
     att = R*sqrt(Lpt*Svt/Kt)
@@ -18,8 +18,8 @@ function Isolated_Pressure(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv
     dr = 1/(N-1)
     ivdr2 = 1./dr^2
     att2 = att^2
-    A = zeros(N,N)
-    F = zeros(N,1)
+    A = zeros(T,N,N)
+    F = zeros(T,N,1)
 
     #at = zeros(N,1)
 
@@ -46,7 +46,13 @@ function Isolated_Pressure(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::Float64,Pvv
 
     # Solution of linear problem for pressure distribution
     P = A\F
-    return P
+
+    Pinf = zero(T)
+    Pdel = Pvv - Pinf
+    P = Pdel*P+Pinf
+    V = (Kt*Pdel/R)*dimV
+
+    return P,V
 end
 
 function Isolated_Pressure_Form(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::T,Pvv::Float64) where T<:Real
@@ -56,6 +62,16 @@ function Isolated_Pressure_Form(N::Int,R::Float64,Lpt::T,Svt::Float64,Kt::T,Pvv:
     r = Vector(linspace(0,R,N))/R
     dimP = zeros(T,N)
     dimV = zeros(T,N)
+    println("type of T: $T")
+    println("try one")
+
+    t0 = zero(T)
+    println("try two")
+    to = one(T)
+    println("try three")
+    for i=2:N
+        dimP[i] = one(T) - sinh.(att*r[2:end])./(sinh(att)*r[2:end])
+    end
     dimP[2:end] = one(T) - sinh.(att*r[2:end])./(sinh(att)*r[2:end])
     #dimP[2:end] = [0.01*one(T) for i=2:N]
     dimV[2:end] = (att*r[2:end].*cosh.(att*r[2:end])-sinh.(att*r[2:end]))./(sinh(att)*r[2:end].^2)
@@ -111,8 +127,8 @@ function RK4_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
             k2 = MST_Form(x+0.5*h,y+0.5*h*k1,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
             k3 = MST_Form(x+0.5*h,y+0.5*h*k2,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
             k4 = MST_Form(x,y+h*k3,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
-            y = min(max(y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4),0.0),1.0)
-            #y = y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4)
+            y = min(max(y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4),0.0),3.0)
+            y = y + (h/6.0)*(k1 + 2.0*k2 + 2.0*k3 + k4)
             x = x + h
         end
         xout[j] = x
@@ -122,8 +138,8 @@ function RK4_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
 end
 
 function EE_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
-                  P::VecOrMat{T},V::Vector{T},N::Int64,sigma::Float64,Peff::Float64,Lpt::T,Svt::Float64,
-                  Kt::Float64,Pvv::Float64,Pv::Float64,D::Float64,r::Vector{Float64},
+                  P::VecOrMat{T},V::Vector{T},N::Int64,sigma::T,Peff::T,Lpt::T,Svt::Float64,
+                  Kt::T,Pvv::Float64,Pv::Float64,D::Float64,r::Vector{Float64},
                   dr::Float64,kd::Float64) where T<:Real
 
       xout = zeros(T,n_out+1)
@@ -134,7 +150,7 @@ function EE_Form(x0::Float64,y0::Vector{T},h::Float64,n_out::Int,i_out::Int,
       y = y0
       for j = 2:n_out+1
           for k = 1:i_out
-              y = max(0.0,min(y + h*MST_Form(x,y,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd),1.0))
+              y = max(0.0,min(y + h*MST_Form(x,y,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd),3.0))
               x = x + h
           end
           xout[j] = x
@@ -178,8 +194,8 @@ function Fitting_Objective(N::Int,Kt::T,Lpt::T,Svt::Float64,D::Float64,
     dr = 1.0/(N-1)
 
     # Solution of steady state pressure model
-    P,V = Isolated_Pressure_Form(N,R,Lpt,Svt,Kt,Pvv)
-
+    #P,V = Isolated_Pressure_Form(N,R,Lpt,Svt,Kt,Pvv)
+    P,V = Isolated_Pressure(N,R,Lpt,Svt,Kt,Pvv)
     # Initial solute concentration
     c_0 = zeros(T,N)
     #c_0[N] = one(T)
@@ -189,7 +205,8 @@ function Fitting_Objective(N::Int,Kt::T,Lpt::T,Svt::Float64,D::Float64,
     h = time_end/n_out;
     i_out = 1
 
-    time, c = RK4_Form(0.0,c_0,h,n_out,i_out,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
+    #time, c = RK4_Form(0.0,c_0,h,n_out,i_out,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
+    time, c = EE_Form(0.0,c_0,h,n_out,i_out,P,V,N,sigma,Peff,Lpt,Svt,Kt,Pvv,Pv,D,r,dr,kd)
     #println("c[100,30]: $(c[100,30])")
     #println("c: $c")
     SSE = zero(T)
@@ -262,24 +279,25 @@ idx = 2
 #n_nodes = 20 #6000
 #n_time = 20
 
-N = 50
-n_nodes = 50 #6000
-n_time = 50
+N = 100
+n_nodes = 100 #6000
+n_time = 100
 
 # Parameters for creating data for fit
 co = 1
 t = (3600/n_time).*Array(1:n_time)
-s = EAGO_NLPSolver(LBD_func_relax = "NS-STD-OFF",
+s = EAGO_NLPSolver(LBD_func_relax = "NS-STD",
                    LBDsolvertype = "LP",
-                   LBD_func_relax = "Interval",
-                   LBDsolvertype = "Interval",
+                   #LBD_func_relax = "Interval",
+                   #LBDsolvertype = "Interval",
                    UBDsolvertype = "Interval",
                    #UBDsolvertype = "Ipopt",
                    probe_depth = -1,
-                   variable_depth = -1,
+                   variable_depth = 10000000,
                    DAG_depth = -1,
                    STD_RR_depth = -1,
-                   validated = true)
+                   validated = true,
+                   SubGradRefine = false)
 
 # Input known metabolic parameters for Rhodamine
 Peff_set = [9.59873e-07;4.6098e-06;2.80047e-06]
@@ -319,23 +337,24 @@ cref1 = (co*Peff_set[1]*Svt*kd/(1-Peff_set[1]*Svt*kd))*(exp(-Peff_set[1]*Svt*t)-
 cref2 = (co*Peff_set[2]*Svt*kd/(1-Peff_set[2]*Svt*kd))*(exp(-Peff_set[2]*Svt*t)-exp(-t/kd))
 cref3 = (co*Peff_set[3]*Svt*kd/(1-Peff_set[3]*Svt*kd))*(exp(-Peff_set[3]*Svt*t)-exp(-t/kd))
 
-#=
+#
 println("IntervalEval 1")
-IntvObj = Fitting_Objective(N,Kt,Interval(6e-19,6e-1),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
+IntvObj = Fit_With_Deen(N,[Interval(1.0e-7,0.8e-6),Interval(1.0e-7,1.2e-6)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
 println("IntervalEval 2")
-IntvObj1 = Fitting_Objective(N,Kt,Interval(6e-9,6e-7),Svt,D,sigma,Peff_set[2],R,Pv,Pvv,kd,n_nodes,n_time,cref2)
+IntvObj1 = Fit_With_Deen(N,[Interval(0.7e-6,0.700001e-6),Interval(0.7e-6,0.700001e-6)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
+IntvObj1a = Fit_With_Deen(N,[mid.(Interval(0.7e-6,0.700001e-6)),mid.(Interval(0.7e-6,0.700001e-6))],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
 println("IntervalEval 3")
-IntvObj2 = Fitting_Objective(N,Kt,Interval(6e-9),Svt,D,sigma,Peff_set[2],R,Pv,Pvv,kd,n_nodes,n_time,cref2)
-IntvObj3 = Fitting_Objective(N,Kt,Interval(6e-9,1e-8),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvObj4 = Fitting_Objective(N,Kt,Interval(6e-9,6.01e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvObj5 = Fitting_Objective(N,Kt,Interval(6e-9,6.01e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvObj6 = Fitting_Objective(N,Kt,Interval(6e-9,6.0001e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvObj7 = Fitting_Objective(N,Kt,Interval(6e-9,6.000001e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvObj8 = Fitting_Objective(N,Kt,Interval(6e-9,6.00000001e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvObj9 = Fitting_Objective(N,Kt,Interval(6.000005e-9,6.0000051e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
+IntvObj2 = Fit_With_Deen(N,[Interval(6e-9),Interval(6e-9)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref2)
+IntvObj3 = Fit_With_Deen(N,[Interval(6e-9,1e-8),Interval(6e-9,1e-8)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
+IntvObj4 = Fit_With_Deen(N,[Interval(6e-9,6.01e-9),Interval(6e-9,6.01e-9)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
+#IntvObj5 = Fitting_Objective(N,Interval(6e-9,6.01e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
+IntvObj6 = Fit_With_Deen(N,[Interval(6e-9,6.0001e-9),Interval(6e-9,6.0001e-9)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
+#IntvObj7 = Fitting_Objective(N,Interval(6e-9,6.000001e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
+#IntvObj8 = Fitting_Objective(N,Interval(6e-9,6.00000001e-9),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
+IntvObj9 = Fit_With_Deen(N,[Interval(6.000005e-9,6.0000051e-9),Interval(6.000005e-9,6.0000051e-9)],Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
 #IntvObj = Fitting_Objective(N,Kt,Interval(6e-9,6e-7),Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-IntvP,IntvV = Isolated_Pressure_Form(N,R,6e-9,Svt,Kt,Pvv)
-=#
+#IntvP,IntvV = Isolated_Pressure_Form(N,R,6e-9,Svt,Kt,Pvv)
+
 
 # Fits the data for control, rhodamine
 #tcalc, ccalc = Isolated_Model_Form(N,Kt,Lpt,Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes)
@@ -375,32 +394,33 @@ function multi_start(s,X,r)
     return vmin,pmin
 end
 
+
 f1(x) = Fit_With_Deen(N,x,Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref1)
 m1 = MathProgBase.NonlinearModel(s)
 MathProgBase.loadproblem!(m1, 2, 0, [1.0e-7,1.0e-7], [1.2e-6,0.8e-6],[], [], :Min, f1, [])
 X = [Interval(1.0e-7,1.2e-6), Interval(1.0e-7,0.8e-6)]
-ls = local_solve(m1,X)
-ms = multi_start(m1,X,1)
-#=
+m1.BnBModel.UBDg = 0.003155490293317
 MathProgBase.optimize!(m1)
 
 # Fits the data for 3mg/kg, rhodamine
 f2(x) = Fit_With_Deen(N,x,Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref2)
 m2 = MathProgBase.NonlinearModel(s)
 MathProgBase.loadproblem!(m2, 2, 0, [1.0e-7,0.5e-6], [1.5e-6,2.5e-6],[], [], :Min, f2, [])
+m2.BnBModel.UBDg = 2.36894566429738
 MathProgBase.optimize!(m2)
 
 # Fits the data for 30mg/kg, rhodamine
 f3(x) = Fit_With_Deen(N,x,Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref3)
 m3 = MathProgBase.NonlinearModel(s)
 MathProgBase.loadproblem!(m3, 2, 0, [1.0e-7,1.4e-6], [1.0e-6,2.0e-6],[], [], :Min, f3, [])
+m3.BnBModel.UBDg = 0.813004814119919
 MathProgBase.optimize!(m3)
 
 
 # Input known metabolic parameters
-N = 50
-n_nodes = 50 #6000
-n_time = 50
+N = 100
+n_nodes = 100 #6000
+n_time = 100
 
 Peff_set = [8.18378e-07;4.30307e-06;1.62231e-06]
 #Kt = 0.9e-7              # Hydraulic conductivity of tumor
@@ -420,6 +440,7 @@ cref4 = (co*Peff_set[1]*Svt*kd/(1-Peff_set[1]*Svt*kd))*(exp(-Peff_set[1]*Svt*t)-
 f4(x) = Fit_With_Deen(N,x,Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref4)
 m4 = MathProgBase.NonlinearModel(s)
 MathProgBase.loadproblem!(m4, 2, 0, [2.0e-8,1.0e-6], [1.0e-7,0.8e-6],[], [], :Min, f4, [])
+m4.BnBModel.UBDg = 0.002256580487829
 MathProgBase.optimize!(m4)
 
 # Fits the data for 3mg/kg, rhodamine
@@ -427,6 +448,7 @@ cref5 = (co*Peff_set[2]*Svt*kd/(1-Peff_set[2]*Svt*kd))*(exp(-Peff_set[2]*Svt*t)-
 f5(x) = Fit_With_Deen(N,x,Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,cref5)
 m5 = MathProgBase.NonlinearModel(s)
 MathProgBase.loadproblem!(m5, 2, 0, [1.0e-7,1.5e-6], [1.5e-6,2.5e-6],[], [], :Min, f5, [])
+m5.BnBModel.UBDg = 2.34698358689115
 MathProgBase.optimize!(m5)
 
 # Fits the data for 30mg/kg, rhodamine
@@ -434,6 +456,7 @@ cref6 = (co*Peff_set[3]*Svt*kd/(1-Peff_set[3]*Svt*kd))*(exp(-Peff_set[3]*Svt*t)-
 f6(x) = Fit_With_Deen(N,x,Svt,D,R,Pv,Pvv,kd,rs,n_nodes,n_time,,cref6)
 m6 = MathProgBase.NonlinearModel(s)
 MathProgBase.loadproblem!(m6, 2, 0, [1.0e-7,1.4e-6], [1.5e-6,2.5e-6],[], [], :Min, f6, [])
+m6.BnBModel.UBDg = 0.155272191774502
 MathProgBase.optimize!(m6)
 
 
@@ -441,5 +464,3 @@ tcalc, ccalc = Isolated_Model_Form(N,Kt,Lpt,Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,
 tcalc1, ccalc1 = Isolated_Model_Form(N,Kt,Lpt,Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes)
 objv1 = Fitting_Objective(N,Kt,6e-9,Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
 objv2 = Fitting_Objective(N,Kt,6e-7,Svt,D,sigma,Peff_set[1],R,Pv,Pvv,kd,n_nodes,n_time,cref1)
-
-=#

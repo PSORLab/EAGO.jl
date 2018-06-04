@@ -34,7 +34,8 @@ function LP_Relax_LBD_Imp(Y::Vector{Interval{Float64}},
             u::Vector{Float64} = [Y[nx+i].hi for i=1:np]
             pmid::Vector{Float64} = (l + u)/2.0
 
-            opt[1].solver.SubGradRefine && set_hybrid_box!([Y[nx+i] for i=1:np],pmid,true)
+            opt[1].solver.SubGradRefine && set_hybrid_box!(SVector{opt[1].numVar,Interval{Float64}}([Y[nx+i] for i=1:np]),
+                                                           SVector{opt[1].numVar,Float64}(pmid),true)
             #println("pmid: $pmid")
             param = GenExpansionParams(opt[1].Imp_h, opt[1].Imp_hj,
                                          Y[1:nx],Y[(nx+1):(opt[1].numVar)],pmid,

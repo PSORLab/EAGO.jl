@@ -88,3 +88,24 @@ one(x::HybridMC) = HybridMC(one(x.SMC))
 zero(x::HybridMC) = HybridMC(zero(x.SMC))
 dist(x::HybridMC,y::HybridMC) = HybridMC(dist(x.SMC,y.SMC))
 real(x::HybridMC) = HybridMC(real(x.SMC))
+
+
+
+
+function convert(::Type{HybridMC{N,V,T}},x::S) where {S<:Integer,N,V,T<:AbstractFloat}
+          seed::SVector{N,T} = @SVector zeros(T,N)
+          HybridMC{N,V,T}(SMCg{N,V,T}(convert(T,x),convert(T,x),seed,seed,V(convert(V,x)),false))
+end
+function convert(::Type{HybridMC{N,V,T}},x::S) where {S<:AbstractFloat,N,V,T<:AbstractFloat}
+          seed::SVector{N,T} = @SVector zeros(T,N)
+          HybridMC{N,V,T}(SMCg{N,V,T}(convert(T,x),convert(T,x),seed,seed,V(convert(V,x)),false))
+end
+function convert(::Type{HybridMC{N,V,T}},x::S) where {S<:Interval,N,V,T<:AbstractFloat}
+          seed::SVector{N,T} = @SVector zeros(T,N)
+          HybridMC{N,V,T}(SMCg{N,V,T}(convert(T,x.hi),convert(T,x.lo),seed,seed,convert(V,x),false))
+end
+
+promote_rule(::Type{HybridMC{N,V,T}}, ::Type{S}) where {S<:Integer,N,V,T<:AbstractFloat} = HybridMC{N,V,T}
+promote_rule(::Type{HybridMC{N,V,T}}, ::Type{S}) where {S<:AbstractFloat,N,V,T<:AbstractFloat} = HybridMC{N,V,T}
+promote_rule(::Type{HybridMC{N,V,T}}, ::Type{S}) where {S<:Interval,N,V,T<:AbstractFloat} = HybridMC{N,V,T}
+promote_rule(::Type{HybridMC{N,V,T}}, ::Type{S}) where {S<:Real,N,V,T<:AbstractFloat} = HybridMC{N,V,T}

@@ -6,6 +6,6 @@ include("ExplicitOpt.jl")
 include("ImplicitOpt.jl")
 
 # Tests the API functions for script form problems
-include("API.jl")
+#include("API.jl")
 
 # Marks SNOPT routines as passing testing

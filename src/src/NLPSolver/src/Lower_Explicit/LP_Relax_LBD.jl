@@ -29,7 +29,7 @@ function LP_Relax_LBD(X::Vector{Interval{Float64}},
         u::Vector{Float64} = [X[i].hi for i=1:opt[1].numVar]
         x0::Vector{Float64} = (l + u)/2.0
 
-        opt[1].solver.SubGradRefine && set_hybrid_box!(X,x0,true)
+        opt[1].solver.SubGradRefine && set_hybrid_box!(SVector{opt[1].numVar,Interval{Float64}}(X),SVector{opt[1].numVar,Float64}(x0),true)
 
         #=
         x_mc::Vector{SMCg{opt[1].numVar,Interval{Float64},Float64}} = [SMCg{opt[1].numVar,Interval{Float64},Float64}(x0[i],
