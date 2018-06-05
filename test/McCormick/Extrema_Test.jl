@@ -6,14 +6,30 @@ using EAGO
 using IntervalArithmetic
 using StaticArrays
 
-function about(calc,val,tol)
-    return (val - tol <= calc <= val + tol)
+
+@testset "Test Multivariate Max/Min" begin
+
+    EAGO.set_diff_relax(0)
+
+    seed1 = seed_g(Float64,1,2)
+    seed2 = seed_g(Float64,2,2)
+
+
+    X = SMCg{2,Interval{Float64},Float64}(129.625,129.625,seed1,seed1,Interval(109.349, 149.901),false)
+    Y = SMCg{2,Interval{Float64},Float64}(124.25,124.25,seed2,seed2,Interval(120.5, 139.0),false)
+    out = max(X,Y)
+
+    @test isapprox(out.cc,141.689,atol=1E-1)
+    @test isapprox(out.cv,129.625,atol=1E-1)
+    @test isapprox(out.cc_grad[1],0.497883,atol=1E-4)
+    @test isapprox(out.cc_grad[2],0.502117,atol=1E-4)
+    @test isapprox(out.cv_grad[1],1.0,atol=1E-4)
+    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
+    @test isapprox(out.Intv.lo,120.5,atol=1E-2)
+    @test isapprox(out.Intv.hi,149.901,atol=1E-2)
+
+    EAGO.set_diff_relax(1)
 end
-
-EAGO.set_diff_relax(0)
-
-
-EAGO.set_diff_relax(1)
 #=
 a = seed_g(Float64,Int64(1),Int64(2))
 xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])

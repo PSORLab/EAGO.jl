@@ -53,11 +53,12 @@ function IPOPT_LBD_eval_g!(x::Vector{Float64},
                            g::Vector{Float64},
                            opts::EAGO_Inner_NLP)
     if opts.numConstr>0
-        x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Float64}(x[i],
+        x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
                                                                               x[i],
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               seed_g(Float64,i,opts.numVar),
-                                                                              X[i])) for i=1:opts.numVar]
+                                                                              X[i],
+                                                                              false)) for i=1:opts.numVar]
         g[:] = [opts.g(x_SMC)[i].SMC.cv for i=1:opts.numConstr]
     else
         g[:] = -ones(x[1])
@@ -125,7 +126,7 @@ function IPOPT_LBD_eval_jac_g!(x::Vector{Float64},
                                                                               X[i],
                                                                               false)) for i=1:opts.numVar]
         g_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = opts.g(x_SMC)
-        g_jac::Array{Float64,2} = [g_SMC[i].cv_grad[j] for i=1:opts.numConstr, j=1:opts.numVar]
+        g_jac::Array{Float64,2} = [g_SMC[i].SMC.cv_grad[j] for i=1:opts.numConstr, j=1:opts.numVar]
         values[:] = transpose(g_jac)
     end
 end

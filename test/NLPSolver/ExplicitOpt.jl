@@ -183,6 +183,28 @@ using MathProgBase
   @test isapprox(getvalue(y9),0.0,atol=1E0)
   @test isapprox(getobjectivevalue(jumpmodel9),0.0,atol=1E-1)
   @test status9 == :Optimal
+
+#=
+  println("test jumpmodel 10")
+  jumpmodel10 = Model(solver=EAGO_NLPSolver(LBD_func_relax = "Diff1-MV",
+                                           LBDsolvertype = "Ipopt",
+                                           probe_depth = -1,
+                                           variable_depth = 1000,
+                                           DAG_depth = -1,
+                                           STD_RR_depth = -1,
+                                           atol=1E-1,
+                                           validated = true))
+  @variable(jumpmodel10, -200 <= x10 <= -100)
+  @variable(jumpmodel10, 200 <= y10 <= 400)
+  @constraint(jumpmodel10, -500 <= x10+2y10 <= 400)
+  @NLobjective(jumpmodel10, Min, x10*y10)
+  status4 = solve(jumpmodel10)
+
+  @test status10 == :Optimal
+  @test isapprox(getvalue(x10),-200.0,atol=1E-1)
+  @test isapprox(getvalue(y10),300.0,atol=1E-1)
+  @test isapprox(getobjectivevalue(jumpmodel10),-60000.00119999499,atol=2.0)
+=#
 end
 
 #=
