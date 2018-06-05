@@ -1,3 +1,4 @@
+#=
 function cv_max(x::T,xL::T,xU::T,ca::T) where {T<:AbstractFloat}
         if (xU<=ca)
           return ca, zero(T)
@@ -10,7 +11,7 @@ function cv_max(x::T,xL::T,xU::T,ca::T) where {T<:AbstractFloat}
           return val, dval
         end
 end
-
+=#
 function max(x::SMCg{N,V,T},c::T) where {N,V,T<:AbstractFloat}
     xL::T = x.Intv.lo
     xU::T = x.Intv.hi

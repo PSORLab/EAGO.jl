@@ -202,7 +202,8 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
                      #EAGOSmoothMcCormickGrad.set_outer_rnd(true,1E-9)
                      temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> SNOPT_LBD(X,k,pos,opt,UBD)
                  elseif m.Opts.solver.LBDsolvertype == "Ipopt"
-                     temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> Ipopt_LBD(X,k,pos,opt,UBD)
+                     #temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> Ipopt_LBD(X,k,pos,opt,UBD)
+                     temp_LBP = Ipopt_LBD
                  elseif m.Opts.solver.LBDsolvertype == "Interval"
                      temp_LBP = (X,k::Int64,pos::Int64,opt,UBD) -> Interval_LBD(X,k,pos,opt,UBD)
                  elseif m.Opts.solver.LBDsolvertype == "AlphaBB"
