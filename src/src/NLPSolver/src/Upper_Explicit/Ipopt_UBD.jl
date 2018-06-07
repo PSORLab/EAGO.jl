@@ -58,18 +58,11 @@ function IPOPT_UBD_eval_jac_g!(x::Vector{Float64},
                                opt::EAGO_Inner_NLP,
                                cb::callback_storage)
 
-    println("size(values): $(size(values))")
-    println("numConstr: $(opt.numConstr)")
-
     if mode == :Structure
-        println("ran structure")
         rows[:] = cb.row_temp_Ipopt_LBD
         cols[:] = cb.col_temp_Ipopt_LBD
     else
         if opt.numConstr>0
-            println("ran regular")
-            temp = transpose(ForwardDiff.jacobian(opt.g,x))
-            println("Jac: $(temp)")
             values[:] = transpose(ForwardDiff.jacobian(opt.g,x))
         else
             values[:] = zeros(x)
@@ -162,16 +155,7 @@ function Ipopt_UBD(X,
             # sets up problem
             x_L::Vector{Float64} = [X[i].lo for i=1:opts[1].numVar]
             x_U::Vector{Float64} = [X[i].hi for i=1:opts[1].numVar]
-            #=
-            prob = createProblem(opts[1].numVar, x_L, x_U, opts[1].numConstr, opts[1].gL, opts[1].gU,
-                                 opts[1].numVar*opts[1].numConstr, Int64(opts[1].numVar*(opts[1].numVar+1)/2),
-                                 x::Vector{Float64} -> opts[1].f(x),
-                                 (x::Vector{Float64}, g::Vector{Float64}) -> opts[2].IPOPT_UBD_eval_g!(x,g),
-                                 (x::Vector{Float64}, f::Vector{Float64}) -> opts[2].IPOPT_UBD_eval_grad_f!(x,f),
-                                 (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Vector{Float64}) -> opts[2].IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values),
-                                 (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Vector{Float64}) -> opts[2].IPOPT_UBD_eval_h(x, mode, rows, cols, obj_factor, lambda, values))
 
-            =#
             prob = createProblem(opts[1].numVar, x_L, x_U, opts[1].numConstr, opts[1].gL, opts[1].gU,
                                  opts[1].numVar*opts[1].numConstr, Int64(opts[1].numVar*(opts[1].numVar+1)/2),
                                  x::Vector{Float64} -> opts[1].f(x),
@@ -180,9 +164,7 @@ function Ipopt_UBD(X,
                                  (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Vector{Float64}) -> opts[2].IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values))
 
             prob.x = mid.(X)
-            #if (opts[1].numConstr == 0)
-            #    addOption(prob, "hessian_approximation", "limited-memory")
-            #end
+
             addOption(prob, "print_level", 0)
             addOption(prob, "hessian_approximation", "limited-memory")
 
