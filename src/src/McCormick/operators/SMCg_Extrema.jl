@@ -173,6 +173,7 @@ function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
     elseif (x.Intv.lo >= y.Intv.hi)
       cc = x.cc
       cc_grad = x.cnst ? zeros(x.cc_grad) : x.cc_grad
+      #=
     elseif (MC_param.multivar_refine)
       maxLL::T = max(x.Intv.lo,y.Intv.lo)
       maxLU::T = max(x.Intv.lo,y.Intv.hi)
@@ -194,6 +195,7 @@ function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
         cc_grad = -(x.cnst ? zeros(y.cc_grad) : r21*x.cc_grad) - (y.cnst ? zeros(x.cc_grad) : r22*y.cc_grad)
       end
       cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
+      =#
     else
       ccMC::SMCg{N,V,T} = (x+y+abs(x-y))/2
       cc = ccMC.cc

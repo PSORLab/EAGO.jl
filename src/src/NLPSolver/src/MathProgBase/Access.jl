@@ -64,7 +64,7 @@ end
 Sets the functions and dimensionality of the implicit model corresponding to
 the JuMP model containing the EAGO_NLP_model.
 """
-function Optimize_Script(f::Function,xL::Vector{Float64},xU::Vector{Float64};
+function Build_Script(f::Function,xL::Vector{Float64},xU::Vector{Float64};
                          g = [], h = [], p = [], mode::Symbol = :Min, solver = EAGO_NLPSolver())
 
     @assert length(xL) == length(xU)
@@ -105,13 +105,8 @@ function Optimize_Script(f::Function,xL::Vector{Float64},xU::Vector{Float64};
     solver.UBDsolvertype = "Ipopt"
     m = MathProgBase.NonlinearModel(solver)
     MathProgBase.loadproblem!(m, nx, glen, xL, xU, gL, gU, mode, fp, gh)
-    MathProgBase.optimize!(m)
 
-    # extracts objective value, solution, feasibility
-    stat = MathProgBase.status(m)
-    soln = MathProgBase.getsolution(m)
-    objv = MathProgBase.getobjval(m)
-    return objv,soln,stat
+    return m
 end
 
 #=

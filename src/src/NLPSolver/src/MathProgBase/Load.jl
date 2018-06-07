@@ -313,6 +313,7 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
          end
          m.Opts.g = x -> g(x)
 
+         #println("Start Optimization Data Structure Setup")
          call_sto = callback_storage()
 
              cols_temp::VecOrMat{Int32} = zeros(Int32,m.Opts.numVar*m.Opts.numConstr)
@@ -324,18 +325,20 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
              call_sto.col_temp_Ipopt_LBD = cols_temp
              call_sto.row_temp_Ipopt_LBD = rows_temp
 
-             call_sto.IPOPT_LBD_eval_f = (x::Vector{Float64}, X) -> IPOPT_LBD_eval_f(x, X, s.Opts)
+             call_sto.IPOPT_LBD_eval_f = (x::Vector{Float64}, X) -> IPOPT_LBD_eval_f(x, X, m.Opts)
              call_sto.IPOPT_LBD_eval_grad_f! = (x::Vector{Float64}, X, f_grad::Vector{Float64}) -> IPOPT_LBD_eval_grad_f!(x, X, f_grad, m.Opts)
              call_sto.IPOPT_LBD_eval_g! = (x::Vector{Float64}, X, g::Vector{Float64}) -> IPOPT_LBD_eval_g!(x, X, g, m.Opts)
-             call_sto.IPOPT_LBD_eval_jac_g! = (x::Vector{Float64}, X, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_LBD_eval_jac_g!(x, X, mode, rows, cols, values, m.Opts, call_sto)
+
+             call_sto.IPOPT_LBD_eval_jac_g! = (X, x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_LBD_eval_jac_g!(X, x, mode, rows, cols, values, m.Opts, call_sto)
+             call_sto.IPOPT_UBD_eval_jac_g! = (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values, m.Opts, call_sto)
+
              call_sto.IPOPT_LBD_eval_h = (x::Vector{Float64}, X, mode::Symbol,rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_LBD_eval_h(x, X, mode, rows, cols, obj_factor, lambda, values, m.Opts, call_sto)
              call_sto.IPOPT_LBD_eval_g = (x::Vector{Float64}, X::Vector{Interval{Float64}}) -> IPOPT_LBD_eval_g(x, X, m.Opts)
-             call_sto.fg_SNOPT_LBD  = (y::Vector{Float64},X) -> snopt_callback_LBD(y,X,s.Opts)
+             call_sto.fg_SNOPT_LBD  = (y::Vector{Float64},X) -> snopt_callback_LBD(y,X,m.Opts)
              call_sto.fg_SNOPT_LBD_Imp  = (y::Vector{Float64},X,param,pmid) -> snopt_callback_LBD_Imp(y,X,m.Opts,param,pmid)
-             call_sto.fg_SNOPT_UBD  = (y::Vector{Float64}) -> snopt_callback_UBD(y,s.Opts)
+             call_sto.fg_SNOPT_UBD  = (y::Vector{Float64}) -> snopt_callback_UBD(y,m.Opts)
              call_sto.IPOPT_UBD_eval_grad_f! = (x::Vector{Float64}, f_grad::Vector{Float64}) -> IPOPT_UBD_eval_grad_f!(x, f_grad, m.Opts)
              call_sto.IPOPT_UBD_eval_g! = (x::Vector{Float64}, g::Vector{Float64}) -> IPOPT_UBD_eval_g!(x, g, m.Opts)
-             call_sto.IPOPT_UBD_eval_jac_g! = (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values, m.Opts, call_sto)
              call_sto.IPOPT_UBD_eval_h = (x::Vector{Float64}, mode::Symbol,rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_UBD_eval_h(x, mode, rows, cols, obj_factor, lambda, values, m.Opts)
 
              UBD_error_flag = false
@@ -383,9 +386,9 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
                  elseif m.Opts.solver.LBDsolvertype == "AlphaBB"
                      call_sto.alphaBB_Tape = ReverseDiff.HessianTape(m.Opts.f,m.BnBModel.Init_Box)
                      call_sto.alphaBB_Result = [Interval(0.0) for i=1:m.Opts.numVar,j=1:m.Opts.numVar]
-                     call_sto.aBB_IPOPT_LBD_eval_h = (x::Vector{Float64},X::Vector{Interval{Float64}},mode::Symbol,rows::Vector{Int32},cols::Vector{Int32},obj_factor::Float64,
-                                                      lambda::Vector{Float64},values::Array{Float64,1},opts::EAGO_Inner_NLP,cb::callback_storage,finput::Function) ->
-                                                      aBB_IPOPT_LBD_eval_h(x,X,mode,rows,cols,obj_factor,lambda,values,opts,cb,finput)
+                   #  call_sto.aBB_IPOPT_LBD_eval_h = (x::Vector{Float64},X::Vector{Interval{Float64}},mode::Symbol,rows::Vector{Int32},cols::Vector{Int32},obj_factor::Float64,
+                  #                                    lambda::Vector{Float64},values::Array{Float64,1},opts::EAGO_Inner_NLP,cb::callback_storage,finput::Function) ->
+                  #                                    aBB_IPOPT_LBD_eval_h(x,X,mode,rows,cols,obj_factor,lambda,values,opts,cb,finput)
                      temp_LBP = (X,k::Int64,pos::Int64,opt,UBD::Float64) -> AlphaBB_LBD(X,k,pos,opt,UBD)
                  elseif m.Opts.solver.LBDsolvertype == "Quadratic"
                      call_sto.Quadratic_ObjCV_Callback = (x::Vector{Float64},X::Vector{Interval{Float64}},a::Vector{Float64})->Quadratic_ObjCV_Callback(x,X,s.Opts,a)

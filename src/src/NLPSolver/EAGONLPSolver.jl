@@ -1,5 +1,5 @@
 export EAGO_Inner_NLP, EAGO_NLP_Model, EAGO_NLPSolver, ImplicitSolver, ImplicitOptions,
-       Solve_Implicit, registerEAGO, Optimize_Script
+       Solve_Implicit, registerEAGO, Build_Script
 
 include("src/Utilities/Composite_DR.jl")
 include("src/Utilities/General.jl")
