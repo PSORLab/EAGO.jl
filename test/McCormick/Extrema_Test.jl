@@ -29,6 +29,22 @@ using StaticArrays
     @test isapprox(out.Intv.hi,149.901,atol=1E-2)
 
     EAGO.set_diff_relax(1)
+
+    X = SMCg{2,Interval{Float64},Float64}(129.625,129.625,seed1,seed1,Interval(109.349, 149.901),false)
+    Y = SMCg{2,Interval{Float64},Float64}(124.25,124.25,seed2,seed2,Interval(120.5, 139.0),false)
+    out = max(X,Y)
+
+    @test isapprox(out.cc,144.4505,atol=1E-3)
+    @test isapprox(out.cv,124.42964337332246,atol=1E-3)
+    @test isapprox(out.cc_grad[1],0.3897811551934656,atol=1E-3)
+    @test isapprox(out.cv_grad[1],0.10026606883114281,atol=1E-3)
+    @test isapprox(out.cc_grad[2],0.2651570489408331,atol=1E-3)
+    @test isapprox(out.cv_grad[2],0.8997339311688572,atol=1E-3)
+    @test isapprox(out.Intv.lo,120.5,atol=1E-3)
+    @test isapprox(out.Intv.hi,149.902,atol=1E-3)
+
+    EAGO.set_diff_relax(0)
+
 end
 #=
 a = seed_g(Float64,Int64(1),Int64(2))

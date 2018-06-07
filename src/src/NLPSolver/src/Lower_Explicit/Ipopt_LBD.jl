@@ -30,12 +30,14 @@ No value returned. The function mutates `f_grad` in place.
 """
 function IPOPT_LBD_eval_grad_f!(x::Vector{Float64},X::Vector{Interval{Float64}},
                                 f_grad::Vector{Float64},opts::EAGO_Inner_NLP)
+    println("start grad eval")
     f_SMC::HybridMC{opts.numVar,Interval{Float64},Float64} =  opts.f([HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],x[i],
                                                                           seed_g(Float64,i,opts.numVar),
                                                                           seed_g(Float64,i,opts.numVar),
                                                                           X[i],
                                                                           false)) for i=1:opts.numVar])
     f_grad[:] = f_SMC.SMC.cv_grad
+    println("end grad eval")
 end
 
 """
@@ -53,6 +55,7 @@ function IPOPT_LBD_eval_g!(x::Vector{Float64},
                            g::Vector{Float64},
                            opts::EAGO_Inner_NLP)
     if opts.numConstr>0
+        println("ran constr")
         x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
                                                                               x[i],
                                                                               seed_g(Float64,i,opts.numVar),
@@ -61,8 +64,13 @@ function IPOPT_LBD_eval_g!(x::Vector{Float64},
                                                                               false)) for i=1:opts.numVar]
         g[:] = [opts.g(x_SMC)[i].SMC.cv for i=1:opts.numConstr]
     else
-        g[:] = -ones(x[1])
+        println("ran no constr")
+        temp = [-one(x[1])]
+        println("typeof(g): $(typeof(g))")
+        println("typeof(temp): $(typeof(temp))")
+        g[:] = [-one(x[1])]
     end
+    println("ran g eval")
 end
 
 """
@@ -77,6 +85,7 @@ Returns the convex relaxation of the constraint function g (::Vector{Float64}).
 function IPOPT_LBD_eval_g(x::Vector{Float64},
                           X::Vector{Interval{Float64}},
                           opts::EAGO_Inner_NLP)
+    println("start g eval")
     if opts.numConstr>0
         x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
                                                                               x[i],
@@ -84,8 +93,10 @@ function IPOPT_LBD_eval_g(x::Vector{Float64},
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               X[i],
                                                                               false)) for i=1:opts.numVar]
+        println("end g eval1 ")
         return [opts.g(x_SMC)[i].SMC.cv for i=1:opts.numConstr]
     else
+        println("end g eval2 ")
         return [-ones(x[1])]
     end
 end
@@ -115,20 +126,29 @@ function IPOPT_LBD_eval_jac_g!(x::Vector{Float64},
                                opts::EAGO_Inner_NLP,
                                cb::callback_storage)
 
+    println("start jac eval")
     if mode == :Structure
         rows[:] = cb.col_temp_Ipopt_LBD
         cols[:] = cb.row_temp_Ipopt_LBD
     else
-        x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
+        if opts.numConstr>0
+            x_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = [HybridMC{opts.numVar,Interval{Float64},Float64}(SMCg{opts.numVar,Interval{Float64},Float64}(x[i],
                                                                               x[i],
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               seed_g(Float64,i,opts.numVar),
                                                                               X[i],
                                                                               false)) for i=1:opts.numVar]
-        g_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = opts.g(x_SMC)
-        g_jac::Array{Float64,2} = [g_SMC[i].SMC.cv_grad[j] for i=1:opts.numConstr, j=1:opts.numVar]
-        values[:] = transpose(g_jac)
+            g_SMC::Vector{HybridMC{opts.numVar,Interval{Float64},Float64}} = opts.g(x_SMC)
+            println("g_SMC: $g_SMC")
+            g_jac::Array{Float64,2} = [g_SMC[i].SMC.cv_grad[j] for i=1:opts.numConstr, j=1:opts.numVar]
+            println("g_jac: $g_jac")
+            println("typeof g_jac: $(typeof(g_jac))")
+            values[:] = copy(transpose(g_jac))
+        else
+            values[:] = zeros(x)
+        end
     end
+    println("end jac eval")
 end
 
 """
@@ -156,7 +176,7 @@ function IPOPT_LBD_eval_h(x::Vector{Float64},
                           cols::Array{Int32,1},
                           obj_factor::Float64,
                           lambda::Vector{Float64},
-                          values::Array{Float64,1},
+                          values::Vector{Float64},
                           opts::EAGO_Inner_NLP,
                           cb::callback_storage)
     if mode == :Structure
@@ -164,8 +184,8 @@ function IPOPT_LBD_eval_h(x::Vector{Float64},
       idx::Int64 = 1
       for row = 1:opts.numVar
         for col = 1:row
-          rows[idx] = cb.row_temp_Ipopt_LBD[idx]
-          cols[idx] = cb.col_temp_Ipopt_LBD[idx]
+          rows[idx] = row #cb.row_temp_Ipopt_LBD[idx]
+          cols[idx] = col #cb.col_temp_Ipopt_LBD[idx]
           idx += 1
         end
       end
@@ -218,17 +238,38 @@ function Ipopt_LBD(X::Vector{Interval{Float64}},k::Int64,pos::Int64,opts::Any,UB
     # sets up problem
     x_L::Vector{Float64} = [X[i].lo for i=1:opts[1].numVar]
     x_U::Vector{Float64} = [X[i].hi for i=1:opts[1].numVar]
+    #=
     prob = createProblem(opts[1].numVar, x_L, x_U, opts[1].numConstr, opts[1].gL, opts[1].gU, opts[1].numVar*opts[1].numConstr, Int64(opts[1].numVar*(opts[1].numVar+1)/2),
                      x::Vector{Float64} -> opts[2].IPOPT_LBD_eval_f(x,X),
                      (x::Vector{Float64}, g::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_g!(x,X,g),
                      (x::Vector{Float64}, f::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_grad_f!(x,X,f),
                      (x::Vector{Float64}, mode::Symbol, rows::Array{Int32,1}, cols::Array{Int32,1}, values::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_jac_g!(x, X, mode, rows, cols, values),
                      (x::Vector{Float64}, mode::Symbol, rows::Array{Int32,1}, cols::Array{Int32,1}, obj_factor::Float64, lambda::Vector{Float64}, values::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_h(x, X, mode, rows, cols, obj_factor, lambda, values))
+    =#
+
+    feqn = x::Vector{Float64} -> opts[2].IPOPT_LBD_eval_f(x,X)
+    geqn = (x::Vector{Float64}, g::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_g!(x,X,g)
+    fgreqn = (x::Vector{Float64}, f::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_grad_f!(x,X,f)
+    gjaceqn = (x::Vector{Float64}, mode::Symbol, rows::Array{Int32,1}, cols::Array{Int32,1}, values::Vector{Float64}) -> opts[2].IPOPT_LBD_eval_jac_g!(x, X, mode, rows, cols, values)
+    println("f eval: $(feqn(mid.(X)))")
+    gtemp = zeros(Float64,1)
+    println("gtemp: $gtemp")
+    geqn(mid.(X),gtemp)
+    println("g eval: $(gtemp)")
+    fgtemp = zeros(Float64,opts[1].numVar)
+    fgreqn(mid.(X),fgtemp)
+    println("f grad eval: $(fgtemp)")
+    gjtemp = zeros(Float64,1,2)
+    #opts[2].IPOPT_LBD_eval_jac_g!(mid.(X),:,rows,cols,values)
+    #println("g jac eval: $(gjtemp)")
+
+    prob = createProblem(opts[1].numVar, x_L, x_U, opts[1].numConstr, opts[1].gL, opts[1].gU, opts[1].numVar*opts[1].numConstr, Int64(opts[1].numVar*(opts[1].numVar+1)/2),
+                     feqn, geqn, fgreqn, gjaceqn)
     prob.x = mid.(X)
 
     addOption(prob, "hessian_approximation", "limited-memory")
-    addOption(prob, "tol", 1E-6)
-    addOption(prob, "print_level", 0)
+    #addOption(prob, "tol", 1E-6)
+    addOption(prob, "print_level", 8)
 
     # solve problem and unpacks variables
     TT = STDOUT

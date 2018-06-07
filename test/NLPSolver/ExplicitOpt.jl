@@ -196,7 +196,7 @@ using MathProgBase
                                            validated = true))
   @variable(jumpmodel10, -200 <= x10 <= -100)
   @variable(jumpmodel10, 200 <= y10 <= 400)
-  @constraint(jumpmodel10, -500 <= x10+2y10 <= 400)
+  @constraint(jumpmodel10, -500 <= x10+2.0*y10 <= 400)
   @NLobjective(jumpmodel10, Min, x10*y10)
   status4 = solve(jumpmodel10)
 
@@ -206,6 +206,7 @@ using MathProgBase
   @test isapprox(getobjectivevalue(jumpmodel10),-60000.00119999499,atol=2.0)
 =#
 end
+
 
 #=
  @testset "JuMP Interface Explicit (SNOPT)" begin

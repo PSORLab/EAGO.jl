@@ -27,36 +27,15 @@ using MathProgBase
   @test repeat_DR(X1a,X0a,opt,3,rep) == false
   @test repeat_DR(X1a,X0a,opt,1,rep) == true
   @test repeat_DR(X2a,X0a,opt,1,rep) == false
-
 end
 
 @testset "Extended Division Store" begin
 
-struct testeddiv
+  struct testeddiv
   ed_flag::Bool
   box2
-end
+  end
 
-function ExtendDivStorage!(S::BnBSolver,B::BnBModel{T},tL::Float64,tU::Float64,
-                           X1::Vector{V},
-                           X2::Vector{V},pos::Int64,
-                           LBDorig::Float64,UBDorig::Float64) where {T<:AbstractFloat,V<:AbstractInterval}
-    if (S.opt[3].ed_flag)
-        push!(B.box,X1,S.opt[3].box2)
-        push!(B.LBD,tL,LBDorig)
-        push!(B.UBD,tU,UBDorig)
-        push!(B.id,B.max_id+1,B.max_id+2)
-        push!(B.pos,pos+1,pos+1)
-        B.max_id += 2
-    else
-        push!(B.box,X1,X2)
-        push!(B.LBD,tL,tL)
-        push!(B.UBD,tU,tU)
-        push!(B.id,B.max_id+1,B.max_id+2)
-        push!(B.pos,pos+1,pos+1)
-        B.max_id += 2
-    end
-end
 
   S1 = BnBSolver()
   S2 = BnBSolver()
@@ -72,8 +51,8 @@ end
   LBDorig = -2.0
   UBDorig = 4.0
 
-  ExtendDivStorage!(S1,B1,tL,tU,X1,X2,pos,LBDorig,UBDorig)
-  ExtendDivStorage!(S2,B2,tL,tU,X1,X2,pos,LBDorig,UBDorig)
+  EAGO.ExtendDivStorage!(S1,B1,tL,tU,X1,X2,pos,LBDorig,UBDorig)
+  EAGO.ExtendDivStorage!(S2,B2,tL,tU,X1,X2,pos,LBDorig,UBDorig)
 
   @test B1.box[end-1] == X1
   @test B1.box[end] == [Interval(-3.0,-1.0),Interval(-8.0,-2.0)]
@@ -98,7 +77,59 @@ end
   @test B2.pos[end] == 3
   @test B2.pos[end-1] == 2
   @test B2.max_id == 3
+end
 
+@testset "Ipopt Callback Functions" begin
+
+  cb = EAGO.callback_storage()
+
+  opts = EAGO.EAGO_Inner_NLP(EAGO_NLPSolver())
+  opts.f = x -> x[1]*x[4]*(x[1] + x[2] + x[3]) + x[3]
+  opts.g = x ->  [x[1]*x[2]*x[3]*x[4]; x[1]^2 + x[2]^2 + x[3]^2 + x[4]^2]
+  opts.numVar = 4
+  opts.numConstr = 2
+
+  obj_factor = 0.0
+  lambda = zeros(Float64,4)
+
+  x = [1.0,2.0,3.0,4.0]
+  X = [Interval(0.0,2.0),Interval(1.0,3.0),Interval(2.0,4.0),Interval(3.0,5.0)]
+  f_grad = zeros(Float64,4)
+  g = zeros(Float64,2)
+
+  rows = zeros(Int32,8)
+  cols = zeros(Int32,8)
+  values = zeros(Float64,8)
+  for i = 1:2
+    cols[(4*(i-1)+1):(4*i)] = 1:4
+    rows[(4*(i-1)+1):(4*i)] = ones(4)*i
+  end
+  cb.row_temp_Ipopt_LBD = rows
+  cb.col_temp_Ipopt_LBD = cols
+
+  cb.IPOPT_LBD_eval_f = (x::Vector{Float64}, X) -> EAGO.IPOPT_LBD_eval_f(x, X, opts)
+  cb.IPOPT_LBD_eval_g = (x::Vector{Float64}, X::Vector{Interval{Float64}}) -> EAGO.IPOPT_LBD_eval_g(x, X, opts)
+
+  fval = EAGO.IPOPT_LBD_eval_f(x,X,opts)
+  @test fval == 12.0
+
+  EAGO.IPOPT_LBD_eval_grad_f!(x,X,f_grad,opts)
+  EAGO.IPOPT_LBD_eval_g!(x,X,g,opts)
+  f_grad1 = copy(f_grad)
+  g1 = copy(g)
+  @test f_grad1 == Float64[9.00 0.00 1.00 0.00]
+  @test g1 == Float64[6.00 36.00]
+
+  gval = EAGO.IPOPT_LBD_eval_g(x,X,opts)
+  @test gval == loat64[6.00 36.00]
+
+  mode = :Values
+  EAGO.IPOPT_LBD_eval_jac_g!(x,X,mode,rows,cols,values,opts,cb)
+  @test values == [6.00, 0.00, 0.00, 0.00, 2.00, 4.00, 6.00, 8.00]
+
+  mode = :Structure
+  EAGO.IPOPT_LBD_eval_jac_g!(x,X,mode,rows,cols,values,opts,cb)
+  @test values == [6.00, 0.00, 0.00, 0.00, 2.00, 4.00, 6.00, 8.00]
 end
 
 end
