@@ -57,11 +57,19 @@ function IPOPT_UBD_eval_jac_g!(x::Vector{Float64},
                                values::Vector{Float64},
                                opt::EAGO_Inner_NLP,
                                cb::callback_storage)
+
+    println("size(values): $(size(values))")
+    println("numConstr: $(opt.numConstr)")
+
     if mode == :Structure
+        println("ran structure")
         rows[:] = cb.row_temp_Ipopt_LBD
         cols[:] = cb.col_temp_Ipopt_LBD
     else
         if opt.numConstr>0
+            println("ran regular")
+            temp = transpose(ForwardDiff.jacobian(opt.g,x))
+            println("Jac: $(temp)")
             values[:] = transpose(ForwardDiff.jacobian(opt.g,x))
         else
             values[:] = zeros(x)

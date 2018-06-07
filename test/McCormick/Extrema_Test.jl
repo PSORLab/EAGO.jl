@@ -16,7 +16,7 @@ using StaticArrays
 
 
     X = SMCg{2,Interval{Float64},Float64}(129.625,129.625,seed1,seed1,Interval(109.349, 149.901),false)
-    Y = SMCg{2,Interval{Float64},Float64}(124.25,124.25,seed2,seed2,Interval(120.5, 139.0),false)
+    Y = SMCg{2,Interval{Float64},Float64}(124.25,124.25,seed2,seed2,Interval(120.5,139.0),false)
     out = max(X,Y)
 
     @test isapprox(out.cc,141.689,atol=1E-1)

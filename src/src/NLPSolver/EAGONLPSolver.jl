@@ -13,6 +13,8 @@ include("src/MathProgBase/Load.jl")
 include("src/MathProgBase/Optimize.jl")
 include("src/MathProgBase/Access.jl")
 
+include("src/Upper_Explicit/Ipopt_UBD.jl")
+
 include("src/Lower_Explicit/AlphaBB_LBD.jl")
 include("src/Lower_Explicit/Interval_LBD.jl")
 include("src/Lower_Explicit/LP_Relax_LBD.jl")
@@ -27,6 +29,5 @@ include("src/Lower_Implicit/SNOPT_LBD_Imp.jl")
 
 include("src/Upper_Explicit/Imp_Interval_UBD.jl")
 include("src/Upper_Explicit/Interval_UBD.jl")
-include("src/Upper_Explicit/Ipopt_UBD.jl")
 include("src/Upper_Explicit/SNOPT_UBD.jl")
 include("src/Upper_Explicit/NLPSolve_UBD.jl")

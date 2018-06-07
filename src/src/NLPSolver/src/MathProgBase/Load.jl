@@ -152,7 +152,10 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
              call_sto.IPOPT_LBD_eval_f = (x::Vector{Float64}, X) -> IPOPT_LBD_eval_f(x, X, m.Opts)
              call_sto.IPOPT_LBD_eval_grad_f! = (x::Vector{Float64}, X, f_grad::Vector{Float64}) -> IPOPT_LBD_eval_grad_f!(x, X, f_grad, m.Opts)
              call_sto.IPOPT_LBD_eval_g! = (x::Vector{Float64}, X, g::Vector{Float64}) -> IPOPT_LBD_eval_g!(x, X, g, m.Opts)
-             call_sto.IPOPT_LBD_eval_jac_g! = (x::Vector{Float64}, X, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_LBD_eval_jac_g!(x, X, mode, rows, cols, values, m.Opts, call_sto)
+
+             call_sto.IPOPT_LBD_eval_jac_g! = (X, x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_LBD_eval_jac_g!(X, x, mode, rows, cols, values, m.Opts, call_sto)
+             call_sto.IPOPT_UBD_eval_jac_g! = (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values, m.Opts, call_sto)
+
              call_sto.IPOPT_LBD_eval_h = (x::Vector{Float64}, X, mode::Symbol,rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_LBD_eval_h(x, X, mode, rows, cols, obj_factor, lambda, values, m.Opts, call_sto)
              call_sto.IPOPT_LBD_eval_g = (x::Vector{Float64}, X::Vector{Interval{Float64}}) -> IPOPT_LBD_eval_g(x, X, m.Opts)
              call_sto.fg_SNOPT_LBD  = (y::Vector{Float64},X) -> snopt_callback_LBD(y,X,m.Opts)
@@ -160,7 +163,6 @@ function MathProgBase.loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,
              call_sto.fg_SNOPT_UBD  = (y::Vector{Float64}) -> snopt_callback_UBD(y,m.Opts)
              call_sto.IPOPT_UBD_eval_grad_f! = (x::Vector{Float64}, f_grad::Vector{Float64}) -> IPOPT_UBD_eval_grad_f!(x, f_grad, m.Opts)
              call_sto.IPOPT_UBD_eval_g! = (x::Vector{Float64}, g::Vector{Float64}) -> IPOPT_UBD_eval_g!(x, g, m.Opts)
-             call_sto.IPOPT_UBD_eval_jac_g! = (x::Vector{Float64}, mode::Symbol, rows::Vector{Int32}, cols::Vector{Int32}, values::Array{Float64,1}) -> IPOPT_UBD_eval_jac_g!(x, mode, rows, cols, values, m.Opts, call_sto)
              call_sto.IPOPT_UBD_eval_h = (x::Vector{Float64}, mode::Symbol,rows::Vector{Int32}, cols::Vector{Int32}, obj_factor::Float64, lambda::Vector{Float64}, values::Array{Float64,1}) -> IPOPT_UBD_eval_h(x, mode, rows, cols, obj_factor, lambda, values, m.Opts)
 
              UBD_error_flag = false
