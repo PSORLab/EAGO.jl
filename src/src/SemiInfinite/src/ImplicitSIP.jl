@@ -38,12 +38,14 @@ function Implicit_SIP_Solve(f::Function,h::Function,hj::Function,gSIP::Function,
     np::Int = length(P)
     nx::Int = length(X)
     ny::Int = length(Y)
+
     P_low::Vector{Float64} = Float64[P[i].lo for i=1:np]
     P_high::Vector{Float64} = Float64[P[i].hi for i=1:np]
-    Y_low::Vector{Float64} = Float64[Y[i].lo for i=1:nx]
-    Y_high::Vector{Float64} = Float64[Y[i].hi for i=1:nx]
+    Y_low::Vector{Float64} = Float64[Y[i].lo for i=1:ny]
+    Y_high::Vector{Float64} = Float64[Y[i].hi for i=1:ny]
     X_low::Vector{Float64} = Float64[X[i].lo for i=1:nx]
     X_high::Vector{Float64} = Float64[X[i].hi for i=1:nx]
+
     gBnds::Vector{Float64} = Float64[0.0 for i=1:ny]
     pbar::Vector{Float64} = mid.(P)
     xbar::Vector{Float64} = mid.(X)
@@ -98,14 +100,14 @@ function Implicit_SIP_Solve(f::Function,h::Function,hj::Function,gSIP::Function,
       ##### lower bounding problem #####
       if (~isempty(P_LBD))
           LBD_X_low,LBD_X_high,refnx,snx = Reform_Imp_Y(X,Y,P_LBD)
-          gL_LBP = [ (i <= ny*length(P_LBD)) ? -Inf : 0.0  for i=1:((1+ny)*length(P_LBD))]
-          gU_LBP = [0.0 for i=1:((1+ny)*length(P_LBD))]
+          gL_LBP::Vector{Float64} = [ (i <= ny*length(P_LBD)) ? -Inf : 0.0  for i=1:((1+ny)*length(P_LBD))]
+          gU_LBP::Vector{Float64} = [0.0 for i=1:((1+ny)*length(P_LBD))]
           SIPopt.LBP_Opt.PSmcOpt.nx = ny*length(P_LBD)
           SIPopt.LBP_Opt.PIntOpt.nx = ny*length(P_LBD)
           mLBP = deepcopy(MathProgBase.NonlinearModel(SIPopt.LBP_Opt))
           mLBP.Opts.Imp_nx = refnx
           gLBP = x -> Reform_Imp_HG(gSIP,h,x[(refnx+1):end],x[1:refnx],P_LBD,ny,1,0.0)
-          newobj = q->f(q[(refnx+1):end])
+          newobj::Function = q->f(q[(refnx+1):end])
           MathProgBase.loadproblem!(mLBP, ny*length(P_LBD)+nx, (1+ny)*length(P_LBD), LBD_X_low, LBD_X_high,
                                     gL_LBP, gU_LBP, :Min, newobj, gLBP)
 
