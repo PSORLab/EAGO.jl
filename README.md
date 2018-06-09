@@ -4,7 +4,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Documentation**                                                               | **PackageEvaluator**                                            | **Linux/OS**                                                                     | **Windows 32/64** |
 |:-------------------------------------------------------------------------------:|:---------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://matthewstuber.github.io/EAGO.jl/) | Coming Soon | [![Build Status](https://travis-ci.org/MatthewStuber/EAGO.jl.svg?branch=master)](https://travis-ci.org/MatthewStuber/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://psorlab.github.io/EAGO.jl/) | Coming Soon | [![Build Status](https://travis-ci.org/PSORLab/EAGO.jl.svg?branch=master)](https://travis-ci.org/PSORLab/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
@@ -16,11 +16,12 @@ As a global optimization platform, EAGO's solvers can be used to find solutions 
 
 ## Package Capabilities
 
-The EAGO package has numerous features: a solver accessible from JuMP/MathProgBase, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the documentation website: https://matthewstuber.github.io/EAGO.jl/.
+The EAGO package has numerous features: a solver accessible from JuMP/MathProgBase, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the documentation website: https://psorlab.github.io/EAGO.jl/.
 
 ## News
 
-- 4/12/2018: [EAGO v0.1.0 has been tagged](https://github.com/JuliaLang/METADATA.jl/pull/14218). We're currently moving all the EAGO subpackages (e.g. `EAGODomainReduction.jl`) into the main `EAGO.jl` package. Once this is finalized and the documentations is complete we'll tag EAGO v0.2.0.
+- 4/12/2018: [EAGO v0.1.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.1.0). Initial release of combined EAGO packages.
+- 6/08/2018: [EAGO v0.1.1 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.1.1). Significant speed and functionality updates.
 
 ## Related Packages
 
