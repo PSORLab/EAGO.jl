@@ -6,8 +6,3 @@ of the easy ways for newcomers to contribute is by adding additional relaxations
 If you're interested in contributing in larger ways, please contact:
 
 [Matthew Wilhelm](https://psor.uconn.edu/person/matthew-wilhelm/)
-
-## Adding Additional Relaxations
-
-- Univariant McCormick relaxations propagate via
-- Relaxation

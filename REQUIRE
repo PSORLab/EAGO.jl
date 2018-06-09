@@ -10,3 +10,4 @@ ForwardDiff 0.7.3
 ReverseDiff 0.2.0
 Ipopt 0.3.0
 BandedMatrices 0.4.0
+Reexport 0.1.0
