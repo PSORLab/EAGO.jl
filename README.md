@@ -8,7 +8,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
-| [![Coverage Status](https://coveralls.io/repos/github/MatthewStuber/EAGO.jl/badge.svg?branch=)](https://coveralls.io/github/MatthewStuber/EAGO.jl?branch=) [![codecov](https://codecov.io/gh/MatthewStuber/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/MatthewStuber/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
+|[![Coverage Status](https://coveralls.io/repos/github/PSORLab/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/PSORLab/EAGO.jl?branch=master) [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 
 ## Global Optimization
 
