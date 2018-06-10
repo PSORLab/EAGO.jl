@@ -25,17 +25,6 @@ EAGO_Inner_NLP
 
 ## Setup API for MathProgBase Interface
 
-```@docs
-loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,xL::Vector{Float64},
-                xU::Vector{Float64}, gL::Vector{Float64}, gU::Vector{Float64},
-                sense::Symbol, d::MathProgBase.AbstractNLPEvaluator)
-```
-
-```@docs
-loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,xL::Vector{Float64},
-             xU::Vector{Float64}, gL::Vector{Float64}, gU::Vector{Float64},
-             f,g)
-```
 
 ```@docs
     MathProgBase.optimize!(s::EAGO_NLP_Model)
@@ -43,4 +32,4 @@ loadproblem!(m::EAGO_NLP_Model, nvar::Int64, ncon::Int64,xL::Vector{Float64},
 
 ## Access and Manipulation functions for MathProgBase Interface
 
-Standard MathProgBase access functions (e.g. MathProgBase.getsolution) are extended by EAGO. 
+Standard MathProgBase access functions (e.g. MathProgBase.getsolution) are extended by EAGO.

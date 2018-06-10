@@ -27,7 +27,8 @@ makedocs(modules = [EAGO],
 
 deploydocs(
     repo   = "github.com/PSORLab/EAGO.jl.git",
+    osname = "linux",
+    julia = "0.6",
     target = "build",
-    julia  = "0.6",
-    osname = "linux"
-)
+    deps = nothing,
+    make = nothing)

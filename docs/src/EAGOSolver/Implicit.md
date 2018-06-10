@@ -6,8 +6,5 @@ relaxing multiplication can be expensive. If no such functions are present, usin
 the JuMP interface is recommended.
 
 The implicit solver option embeds the implicit problem in a solver and in turn a model.
-```@docs
-ImplicitSolver
-```
 
 ## Usage implicit solver
