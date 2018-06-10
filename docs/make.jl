@@ -26,8 +26,8 @@ makedocs(modules = [EAGO],
 )
 
 deploydocs(
-    deps   = Deps.pip("mkdocs", "python-markdown-math"),
     repo   = "github.com/PSORLab/EAGO.jl.git",
+    target = "build",
     julia  = "0.6",
     osname = "linux"
 )
