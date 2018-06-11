@@ -1,7 +1,7 @@
 var documenterSearchIndex = {"docs": [
 
 {
-    "location": "intro.html#",
+    "location": "index.html#",
     "page": "Introduction",
     "title": "Introduction",
     "category": "page",
@@ -9,7 +9,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#EAGO-Easy-Advanced-Global-Optimization-in-Julia-1",
+    "location": "index.html#EAGO-Easy-Advanced-Global-Optimization-in-Julia-1",
     "page": "Introduction",
     "title": "EAGO - Easy Advanced Global Optimization in Julia",
     "category": "section",
@@ -17,7 +17,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#Authors-1",
+    "location": "index.html#Authors-1",
     "page": "Introduction",
     "title": "Authors",
     "category": "section",
@@ -25,7 +25,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#Overview-1",
+    "location": "index.html#Overview-1",
     "page": "Introduction",
     "title": "Overview",
     "category": "section",
@@ -33,7 +33,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "intro.html#Installing-EAGO-1",
+    "location": "index.html#Installing-EAGO-1",
     "page": "Introduction",
     "title": "Installing EAGO",
     "category": "section",
