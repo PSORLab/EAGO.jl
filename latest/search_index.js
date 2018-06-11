@@ -421,7 +421,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Overview",
     "title": "Overview",
     "category": "page",
-    "text": "This subpart is meant to provide a flexible framework for implementing branch-and-bound based optimization routines in Julia. All components of the branch-and-bound routine can be customized by the individual user: lower bounding problem, upper bounding problem. The branch and bound routine consists of a main solve algorithm that executes as depicted in the flowchart below. Routines for setting the objects to implement standard B&B routines are also provided using a set_default!() function.(Image: BnB_Chart1)The preprocessing routine has inputs (feas,X,UBD,k,d,opt) and outputs feas::Bool,X::Vector{Interval{Float64}}. The initial feasibility flag is feas, the bounds on the variables are X, the current upper bound is UBD, the iteration number is k, the node depth is d, and a solver option storage object is opt.\nThe lower bounding routine has inputs (X,k,d,opt,UBDg) and provides outputs (val,soln,feas,Lsto). The value of the subproblem is val, the solution of the subproblem is soln, it\'s feasibility is feas, and Lsto is a problem information storage object.\nThe upper bounding routine has inputs (X,k,d,opt,UBDg) and provides outputs (val,soln,feas,Usto). he value of the subproblem is val, the solution of the subproblem is soln, it\'s feasibility is feas, and Uto is a problem information storage object.\nThe postprocessing routine has inputs (feas,X,k,d,opt,Lsto,Usto,LBDg,UBDg) and outputs feas::Bool,X::Vector{Interval{Float64}}.\nThe repeat check has inputs (s,m,X0,X) where s::BnBSolver is a solver object, m::BnBModel is a model object, X0::Vector{Interval{Float64}} are node bounds after preprocessing, and X::Vector{Interval{Float64}} are the node bounds generated after postprocessing. Returns a boolean.\nThe bisection function has inputs (s,m,X) where s::BnBSolver is a solver object, m::BnBModel is a model object, and X::Vector{Interval{Float64}} is the box to bisect. It returns two boxes.\nThe termination check has inputs (s,m,k) where s::BnBSolver is a solver object, m::BnBModel is a model object, and k::Int64 is the iteration number. Returns a boolean.\nThe convergence check has inputs (s,UBDg,LBD) where s::BnBSolver is a solver object, UBDg is the global upper bound, and LBD is the lower bound."
+    "text": "This subpart is meant to provide a flexible framework for implementing spatial branch-and-bound based optimization routines in Julia. All components of the branch-and-bound routine can be customized by the individual user: lower bounding problem, upper bounding problem. The branch and bound routine consists of a main solve algorithm that executes as depicted in the flowchart below. Routines for setting the objects to implement standard B&B routines are also provided using a set_default!() function.(Image: BnBChart1)The preprocessing routine has inputs (feas,X,UBD,k,d,opt) and outputs feas::Bool,X::Vector{Interval{Float64}}. The initial feasibility flag is feas, the bounds on the variables are X, the current upper bound is UBD, the iteration number is k, the node depth is d, and a solver option storage object is opt.\nThe lower bounding routine has inputs (X,k,d,opt,UBDg) and provides outputs (val,soln,feas,Lsto). The value of the subproblem is val, the solution of the subproblem is soln, it\'s feasibility is feas, and Lsto is a problem information storage object.\nThe upper bounding routine has inputs (X,k,d,opt,UBDg) and provides outputs (val,soln,feas,Usto). he value of the subproblem is val, the solution of the subproblem is soln, it\'s feasibility is feas, and Uto is a problem information storage object.\nThe postprocessing routine has inputs (feas,X,k,d,opt,Lsto,Usto,LBDg,UBDg) and outputs feas::Bool,X::Vector{Interval{Float64}}.\nThe repeat check has inputs (s,m,X0,X) where s::BnBSolver is a solver object, m::BnBModel is a model object, X0::Vector{Interval{Float64}} are node bounds after preprocessing, and X::Vector{Interval{Float64}} are the node bounds generated after postprocessing. Returns a boolean.\nThe bisection function has inputs (s,m,X) where s::BnBSolver is a solver object, m::BnBModel is a model object, and X::Vector{Interval{Float64}} is the box to bisect. It returns two boxes.\nThe termination check has inputs (s,m,k) where s::BnBSolver is a solver object, m::BnBModel is a model object, and k::Int64 is the iteration number. Returns a boolean.\nThe convergence check has inputs (s,UBDg,LBD) where s::BnBSolver is a solver object, UBDg is the global upper bound, and LBD is the lower bound."
 },
 
 {
@@ -437,7 +437,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Usage",
     "title": "Example 1 - Setup and Solve a Basic Problem",
     "category": "section",
-    "text": "In the below example, we solve for minima of $ {f(x) = x_1+x_2^2} $. on the domain [-1,1] by [2,9]. Natural interval extensions are used to compute the upper and lower bounds. The natural interval extensions are provided by the Validated Numerics package.First, we create a BnBModel object which contains all the relevant problem info and a BnBSolver object that contains all nodes and their associated values. We specify default conditions for the Branch and Bound problem. Default conditions are a best-first search, relative width bisection, normal verbosity, a maximum of 1E6 nodes, an absolute tolerance of 1E-6, and a relative tolerance of 1E-3.using EAGO\nb = [Interval(-1,1),Interval(1,9)]\na = BnBModel(b)\nc = BnBSolver()\nEAGO.set_to_default!(c)\nc.BnB_atol = 1E-4Next, the lower and upper bounding problems are defined. These problems must return a tuple containing the upper/lower value, a point corresponding the upper/lower value, and the feasibility of the problem. We then set the lower/upper problem of the BnBModel object and solve the BnBModel & BnBSolver pair.function ex_LBP(X,k,pos,opt,temp)\n  ex_LBP_int = X[1]+X[2]^2\n  return ex_LBP_int.lo, mid.(X), true, []\nend\nfunction ex_UBP(X,k,pos,opt,temp)\n  ex_UBP_int = X[1]+X[2]^2\n  return ex_UBP_int.hi, mid.(X), true, []\nend\nc.Lower_Prob = ex_LBP\nc.Upper_Prob = ex_UBP\nouty = solveBnB!(c,a)\nThe solution is then returned in b.soln and b.UBDg is it\'s value. The corresponding output displayed to the console is given below.(Image: BnB_Chart2)"
+    "text": "In the below example, we solve for minima of f(x)=x<sub>1</sub>+x<sub>2</sub><sup>2</sup> on the domain [-1,1] by [2,9]. Natural interval extensions are used to compute the upper and lower bounds. The natural interval extensions are provided by the Validated Numerics package.First, we create a BnBModel object which contains all the relevant problem info and a BnBSolver object that contains all nodes and their associated values. We specify default conditions for the Branch and Bound problem. Default conditions are a best-first search, relative width bisection, normal verbosity, a maximum of 1E6 nodes, an absolute tolerance of 1E-6, and a relative tolerance of 1E-3.\nusing EAGO\nusing ValidatedNumerics\nb = [Interval(-1,1),Interval(1,9)]\na = BnBModel(b)\nc = BnBSolver()\nEAGO.set_to_default!(c)\nc.BnB_atol = 1E-4\nNext, the lower and upper bounding problems are defined. These problems must return a tuple containing the upper/lower value, a point corresponding the upper/lower value, and the feasibility of the problem. We then set the lower/upper problem of the BnBModel object and solve the BnBModel & BnBSolver pair.\nfunction ex_LBP(X,k,pos,opt,temp)\n  ex_LBP_int = @interval X[1]+X[2]^2\n  return ex_LBP_int.lo, mid.(X), true, []\nend\nfunction ex_UBP(X,k,pos,opt,temp)\n  ex_UBP_int = @interval X[1]+X[2]^2\n  return ex_UBP_int.hi, mid.(X), true, []\nend\n\nc.Lower_Prob = ex_LBP\nc.Upper_Prob = ex_UBP\n\nouty = solveBnB!(c,a)\nThe solution is then returned in b.soln and b.UBDg is it\'s value. The corresponding output displayed to the console is given below.(Image: BnBChart2)"
 },
 
 {
@@ -462,30 +462,6 @@ var documenterSearchIndex = {"docs": [
     "title": "Example 4 - Adjust Information Printed",
     "category": "section",
     "text": "In order to print, node information in addition to iteration information the verbosity of the BnB routine can be set to full as shown below\njulia> EAGO.set_Verbosity!(a,\"Full\")\nSimilarly, if one wishes to suppress all command line outputs, the verbosity can be set to none.\njulia> EAGO.set_Verbosity!(a,\"None\")\n"
-},
-
-{
-    "location": "BranchBound/types.html#EAGO.BnBModel",
-    "page": "Types",
-    "title": "EAGO.BnBModel",
-    "category": "type",
-    "text": "BnBModel\n\nStores attributes of stack used to solve BnB problem. Has the following fields:\n\nInit_Box::Vector{Interval{Float64}}:        stores initial interval box used\nbox::Vector{Vector{Interval{Float64}}}      interval box storage stack\nInit_Integer::Vector{Vector{Int64}}         initial integer range\nintegers::Vector{Vector{Vector{Int64}}}     integer range storage stack\nLBD::Vector{Float64}:                       lower bounds associated with each stack item\nUBD::Vector{Float64}:                       Upper bounds associated with each stack item\nid::Vector{Int64}:                          Node ID for each stack item\npos::Vector{Int64}:                         Position in BnB Tree for each stack item\nLBDg::Float64:                              Global Lower Bound\nUBDg::Float64:                              Global Upper Bound\nLBDg_hist::Vector{Float64}:                 Value history LBD problem\nUBDg_hist::Vector{Float64}:                 Value history UBD problem\nLBDgtime::Vector{Float64}:                  Run time history LBD problem\nUBDgtime::Vector{Float64}:                  Run time history UBD problem\nPretime::Vector{Float64}:                   Run time history preprocessing\nPosttime::Vector{Float64}:                  Run time history postprocessing\nmax_id::Int64:                              Max node used\npstar::Vector{Interval{Float64}}:           IntervalBox with solution\nsoln::Vector{Float64}:                      Storage for solution\nsoln_val::Float64:                          Solution value found\nfirst_fnd::Bool:                            Has a solution been found\nfeas_fnd::Bool:                             Has a feasible point been found\nfirst_num::Int64:                           Iteration at which first solution found\nlbcnt::Int64:                               number of lower bounding problems solved\nubcnt::Int64:                               number of upper bounding problems solved\n\n\n\n"
-},
-
-{
-    "location": "BranchBound/types.html#EAGO.BnBSolver",
-    "page": "Types",
-    "title": "EAGO.BnBSolver",
-    "category": "type",
-    "text": "BnBSolver\n\nStores solver specific functions used to solve BnB problem. Has the following fields:\n\nLower_Prob::Any:        Stores lower problem function (default = [])\nUpper_Prob::Any:        Stores upper problem function (default = [])\nPreprocess::Any:        Stores preprocessing function (default = [])\nPostprocess::Any:       Stores postprocessing function (default = [])\nTerm_Check::Any:        Stores termination check function (default = \'Term_Check\')\nBranch_Sto::Any:        Stores branching function (default = \'BM_depth_best!\')\nNode_Select::Any:       Stores node selection function (default = \'NS_best\')\nBisect_Func::Any:       Stores branching function (default = \'Bisect_Rel\')\nVerbosity::String:      Stores output selection (default = \"Normal\")\nmax_iter::Number:       max number of iterations (default = \"Inf\")\niter_lim::Bool:         determines if iteration limit is checked (default = false)\nmax_nodes::Int64:       max number of nodes to store in memory (default = 1E6)\nBnB_atol::Float64:      absolute tolerance for BnB (default = 1E-4)\nBnB_rtol::Float64:      relative tolerance for BnB (default = 1E-4)\nitr_intv::Int64:        number of iterations to skip between printing iteration summary (default = 20)\nhdr_intv::Int64:        number of iterations to skip between printing header (default = 1)\nconverged::Any:         convergence criterion (default = Conv_Check)\nBnB_digits::Int64:      digits displayed before decimal (default = 3)\nhist_return::Bool:      returns LBD, UBD array and time vector (default = false)\nopt::Any:               optional storage array (default = [])\nexhaust::Bool:          exhaustive search? (default = false)\ntarget_upper::Float64:  required upper bound (default = -Inf)\n\n\n\n"
-},
-
-{
-    "location": "BranchBound/types.html#",
-    "page": "Types",
-    "title": "Types",
-    "category": "page",
-    "text": "The BnBModel structure contains all information used over the course of the Branch and Bound.BnBModelAs a default, the model constructor initializes with Vector{Interval{Float64}} storage type.The BnBSolver options regarding how to solve the problem and routines used in it\'s solution.BnBSolver"
 },
 
 {
@@ -533,7 +509,7 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "Setting the level of output",
     "category": "section",
-    "text": "Currently, the branch and bound solver supports three levels of output: \"None\", \"Normal\", and \"Full\". The \"Normal\" level of output shows all iteration statistics and the final solution on termination. The \"Full\" level of output shows addition information about the \"Node\" being processed and the lower/upper bounding problems being solved.set_Verbosity!(x::BnBSolver,VB::String)"
+    "text": "Currently, the branch and bound solver supports three levels of output: \"None\", \"Normal\", and \"Full\". The \"Normal\" level of output shows all iteration statistics and the final solution on termination. The \"Full\" level of output shows addition information about the \"Node\" being processed and the lower/upper bounding problems being solved.    set_Verbosity!(x::BnBSolver,VB::String)"
 },
 
 {
@@ -549,7 +525,223 @@ var documenterSearchIndex = {"docs": [
     "page": "API",
     "title": "Returning the solver to default settings.",
     "category": "section",
-    "text": "set_to_default!(x::BnBSolver)"
+    "text": "    set_to_default!(x::BnBSolver)"
+},
+
+{
+    "location": "BranchBound/API.html#EAGO.solveBnB!-Tuple{EAGO.BnBSolver,EAGO.BnBModel}",
+    "page": "API",
+    "title": "EAGO.solveBnB!",
+    "category": "method",
+    "text": "solveBnB!(x::BnBSolver,y::BnBModel)\n\nSolves the branch and bound problem with the input model and solver object.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#Solving-applying-the-Branch-and-Bound-algorithm.-1",
+    "page": "API",
+    "title": "Solving applying the Branch and Bound algorithm.",
+    "category": "section",
+    "text": "    solveBnB!(x::BnBSolver,y::BnBModel)"
+},
+
+{
+    "location": "BranchBound/API.html#MathProgBase.SolverInterface.getsolution-Tuple{EAGO.BnBModel}",
+    "page": "API",
+    "title": "MathProgBase.SolverInterface.getsolution",
+    "category": "method",
+    "text": "getsolution(x::BnBModel)\n\nReturns the solution stored in the BnBModel.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#MathProgBase.SolverInterface.getobjval-Tuple{EAGO.BnBModel}",
+    "page": "API",
+    "title": "MathProgBase.SolverInterface.getobjval",
+    "category": "method",
+    "text": "getobjval(x::BnBModel)\n\nReturns the objective value stored in BnBModel (global upper bound).\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#MathProgBase.SolverInterface.getobjbound-Tuple{EAGO.BnBModel}",
+    "page": "API",
+    "title": "MathProgBase.SolverInterface.getobjbound",
+    "category": "method",
+    "text": "getobjbound(x::BnBModel)\n\nReturns the objective value stored in BnBModel (global upper bound).\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#EAGO.getfeasibility-Tuple{EAGO.BnBModel}",
+    "page": "API",
+    "title": "EAGO.getfeasibility",
+    "category": "method",
+    "text": "getfeasibility(x::BnBModel)\n\nReturns feasibility of problem (feasible point found?).\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#EAGO.LBDtime-Tuple{EAGO.BnBModel}",
+    "page": "API",
+    "title": "EAGO.LBDtime",
+    "category": "method",
+    "text": "LBDtime(x::BnBModel)\n\nReturns time spent solving lower bounding problem.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#EAGO.UBDtime-Tuple{EAGO.BnBModel}",
+    "page": "API",
+    "title": "EAGO.UBDtime",
+    "category": "method",
+    "text": "UBDtime(x::BnBModel)\n\nReturns time spent solving upper bounding problem.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/API.html#Accessing-info-from-solved-model-1",
+    "page": "API",
+    "title": "Accessing info from solved model",
+    "category": "section",
+    "text": "    getsolution(x::BnBModel)\n    getobjval(x::BnBModel)\n    getobjbound(x::BnBModel)\n    getfeasibility(x::BnBModel)\n    LBDtime(x::BnBModel)\n    UBDtime(x::BnBModel)"
+},
+
+{
+    "location": "BranchBound/types.html#",
+    "page": "Types",
+    "title": "Types",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "BranchBound/types.html#EAGO.BnBModel",
+    "page": "Types",
+    "title": "EAGO.BnBModel",
+    "category": "type",
+    "text": "BnBModel\n\nStores attributes of stack used to solve BnB problem. Has the following fields:\n\nInit_Box::Vector{Interval{Float64}}:        stores initial interval box used\nbox::Vector{Vector{Interval{Float64}}}      interval box storage stack\nInit_Integer::Vector{Vector{Int64}}         initial integer range\nintegers::Vector{Vector{Vector{Int64}}}     integer range storage stack\nLBD::Vector{Float64}:                       lower bounds associated with each stack item\nUBD::Vector{Float64}:                       Upper bounds associated with each stack item\nid::Vector{Int64}:                          Node ID for each stack item\npos::Vector{Int64}:                         Position in BnB Tree for each stack item\nLBDg::Float64:                              Global Lower Bound\nUBDg::Float64:                              Global Upper Bound\nLBDg_hist::Vector{Float64}:                 Value history LBD problem\nUBDg_hist::Vector{Float64}:                 Value history UBD problem\nLBDgtime::Vector{Float64}:                  Run time history LBD problem\nUBDgtime::Vector{Float64}:                  Run time history UBD problem\nPretime::Vector{Float64}:                   Run time history preprocessing\nPosttime::Vector{Float64}:                  Run time history postprocessing\nmax_id::Int64:                              Max node used\npstar::Vector{Interval{Float64}}:           IntervalBox with solution\nsoln::Vector{Float64}:                      Storage for solution\nsoln_val::Float64:                          Solution value found\nfirst_fnd::Bool:                            Has a solution been found\nfeas_fnd::Bool:                             Has a feasible point been found\nfirst_num::Int64:                           Iteration at which first solution found\nlbcnt::Int64:                               number of lower bounding problems solved\nubcnt::Int64:                               number of upper bounding problems solved\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/types.html#EAGO.BnBModel-Tuple{Array{IntervalArithmetic.Interval{Float64},1}}",
+    "page": "Types",
+    "title": "EAGO.BnBModel",
+    "category": "method",
+    "text": "BnBModel(X::Vector{Interval{Float64}})\n\nInitializes a BnBModel with .Init_Box = X and .box = [X].\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/types.html#BnBModel-1",
+    "page": "Types",
+    "title": "BnBModel",
+    "category": "section",
+    "text": "The BnBModel structure contains all information used over the course of the Branch and Bound.BnBModelAs a default, the model constructor initializes with Vector{Interval{Float64}} storage type.BnBModel(X::Vector{Interval{Float64}})"
+},
+
+{
+    "location": "BranchBound/types.html#EAGO.BnBSolver",
+    "page": "Types",
+    "title": "EAGO.BnBSolver",
+    "category": "type",
+    "text": "BnBSolver\n\nStores solver specific functions used to solve BnB problem. Has the following fields:\n\nLower_Prob::Any:        Stores lower problem function (default = [])\nUpper_Prob::Any:        Stores upper problem function (default = [])\nPreprocess::Any:        Stores preprocessing function (default = [])\nPostprocess::Any:       Stores postprocessing function (default = [])\nTerm_Check::Any:        Stores termination check function (default = \'Term_Check\')\nBranch_Sto::Any:        Stores branching function (default = \'BM_depth_best!\')\nNode_Select::Any:       Stores node selection function (default = \'NS_best\')\nBisect_Func::Any:       Stores branching function (default = \'Bisect_Rel\')\nVerbosity::String:      Stores output selection (default = \"Normal\")\nmax_iter::Number:       max number of iterations (default = \"Inf\")\niter_lim::Bool:         determines if iteration limit is checked (default = false)\nmax_nodes::Int64:       max number of nodes to store in memory (default = 1E6)\nBnB_atol::Float64:      absolute tolerance for BnB (default = 1E-4)\nBnB_rtol::Float64:      relative tolerance for BnB (default = 1E-4)\nitr_intv::Int64:        number of iterations to skip between printing iteration summary (default = 20)\nhdr_intv::Int64:        number of iterations to skip between printing header (default = 1)\nconverged::Any:         convergence criterion (default = Conv_Check)\nBnB_digits::Int64:      digits displayed before decimal (default = 3)\nhist_return::Bool:      returns LBD, UBD array and time vector (default = false)\nopt::Any:               optional storage array (default = [])\nexhaust::Bool:          exhaustive search? (default = false)\ntarget_upper::Float64:  required upper bound (default = -Inf)\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/types.html#EAGO.BnBSolver-Tuple{}",
+    "page": "Types",
+    "title": "EAGO.BnBSolver",
+    "category": "method",
+    "text": "BnBSolver()\n\nInitializes solver with default parameters: best-first search, relative-width bisection, no iteration limit, 1E6 node limit, 1E-4 absolute and relative tolerances, no target upper bound for termination. No pre, or post processing nodes and no repetition.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/types.html#BnBSolver-1",
+    "page": "Types",
+    "title": "BnBSolver",
+    "category": "section",
+    "text": "The BnBSolver options regarding how to solve the problem and routines used in it\'s solution.BnBSolverThe default initialization for BnBSolver is given below:BnBSolver()"
+},
+
+{
+    "location": "BranchBound/bisect.html#",
+    "page": "Bisection Methods",
+    "title": "Bisection Methods",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "BranchBound/bisect.html#Bisection-Methods-1",
+    "page": "Bisection Methods",
+    "title": "Bisection Methods",
+    "category": "section",
+    "text": "Method for absolute width bisection on all dimension in stack:    Bisect_AbsMethod for relative width bisection on all dimension in stack:    Bisect_RelMethod for absolute width bisection ignore first nx dimensions:    Bisect_Abs_ImpMethod for relative width bisection ignore first nx dimensions::    Bisect_Rel_Imp"
+},
+
+{
+    "location": "BranchBound/branch.html#",
+    "page": "Branching Methods",
+    "title": "Branching Methods",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "BranchBound/branch.html#Storage-Methods-for-Common-Branching-Schemes-1",
+    "page": "Branching Methods",
+    "title": "Storage Methods for Common Branching Schemes",
+    "category": "section",
+    "text": "Node storage method for breadth-first search:BM_breadth!Node storage method for depth-first or best-first search:BM_depth_best!Node storage method for adding a single node to the top of the stack:BM_Single!"
+},
+
+{
+    "location": "BranchBound/branch.html#Selection-Methods-for-Common-Branching-Schemes-1",
+    "page": "Branching Methods",
+    "title": "Selection Methods for Common Branching Schemes",
+    "category": "section",
+    "text": "Select node for best-first search:NS_bestSelect node for depth-first or breadth-first search:NS_depth_breadth"
+},
+
+{
+    "location": "BranchBound/default.html#",
+    "page": "Default Functions",
+    "title": "Default Functions",
+    "category": "page",
+    "text": "Below are the default function for the Branch-and-Bound library. The EAGO solver populates these fields based on user inputs to the solver in order to deliver a valid nonconvex NLP solver."
+},
+
+{
+    "location": "BranchBound/default.html#Default-checks-1",
+    "page": "Default Functions",
+    "title": "Default checks",
+    "category": "section",
+    "text": "The default termination check and convergence check functions are described below:@doc\n    Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)\n    Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)Currently, the default is to never repeat a node.@doc\nRepeat_Node_Default(x::BnBSolver,y::BnBModel{Interval{T}}, Xin::Vector{Interval{T}},Xout::Vector{Interval{T}})"
+},
+
+{
+    "location": "BranchBound/default.html#Fathoming-1",
+    "page": "Default Functions",
+    "title": "Fathoming",
+    "category": "section",
+    "text": "By default, nodes are fathomed on value dominance.@doc\n    fathom!(y::BnBModel)"
+},
+
+{
+    "location": "BranchBound/default.html#Pre-processing-and-post-processing-1",
+    "page": "Default Functions",
+    "title": "Pre-processing and post-processing",
+    "category": "section",
+    "text": "By default, the pre-processing and post-processing functions simply return the input Interval/MCInterval type vector and the prior feasibility value."
+},
+
+{
+    "location": "BranchBound/display.html#",
+    "page": "Display Progress",
+    "title": "Display Progress",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "BranchBound/display.html#Functions-for-generating-console-displayed-1",
+    "page": "Display Progress",
+    "title": "Functions for generating console displayed",
+    "category": "section",
+    "text": "print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)\nprint_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)\nprint_node!(x::BnBSolver,id::Int64,lbd::Float64,box)\nprint_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)"
 },
 
 {
