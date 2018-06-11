@@ -16,7 +16,7 @@ As a global optimization platform, EAGO's solvers can be used to find solutions 
 
 ## Package Capabilities
 
-The EAGO package has numerous features: a solver accessible from JuMP/MathProgBase, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the documentation website: https://psorlab.github.io/EAGO.jl/.
+The EAGO package has numerous features: a solver accessible from JuMP/MathProgBase, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the documentation website.
 
 ## News
 
