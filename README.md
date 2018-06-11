@@ -4,11 +4,11 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Documentation**                                                               | **PackageEvaluator**                                            | **Linux/OS**                                                                     | **Windows 32/64** |
 |:-------------------------------------------------------------------------------:|:---------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://psorlab.github.io/EAGO.jl/) | Coming Soon | [![Build Status](https://travis-ci.org/PSORLab/EAGO.jl.svg?branch=master)](https://travis-ci.org/PSORLab/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PSORLab.github.io/EAGO.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/latest) | Coming Soon | [![Build Status](https://travis-ci.org/PSORLab/EAGO.jl.svg?branch=master)](https://travis-ci.org/PSORLab/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/edwwjgvbkdsqcr1t?svg=true)](https://ci.appveyor.com/project/MatthewStuber/eago-jl)
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
-| [![Coverage Status](https://coveralls.io/repos/github/MatthewStuber/EAGO.jl/badge.svg?branch=)](https://coveralls.io/github/MatthewStuber/EAGO.jl?branch=) [![codecov](https://codecov.io/gh/MatthewStuber/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/MatthewStuber/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
+|[![Coverage Status](https://coveralls.io/repos/github/PSORLab/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/PSORLab/EAGO.jl?branch=master) [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 
 ## Global Optimization
 
