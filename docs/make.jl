@@ -1,11 +1,9 @@
-workspace()
-
 using Documenter, EAGO
 
 makedocs(modules = [EAGO],
          format = :html,
-         sitename = "EAGO.jl",
-         pages = ["Introduction" => "intro.md",
+         sitename = "EAGO",
+         pages = ["Introduction" => "index.md",
                   "EAGO Solver" => ["Getting Started" => "EAGOSolver/starting.md",
                                     "Setting Solver Options" => "EAGOSolver/SolverOpts.md",
                                     "MathProgBase Inferace" => "EAGOSolver/MPB.md",
@@ -27,8 +25,8 @@ makedocs(modules = [EAGO],
 
 deploydocs(
     repo   = "github.com/PSORLab/EAGO.jl.git",
+    target = "build",
     osname = "linux",
     julia = "0.6",
-    target = "build",
     deps = nothing,
     make = nothing)
