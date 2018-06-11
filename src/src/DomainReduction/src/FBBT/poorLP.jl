@@ -28,6 +28,101 @@ function poorLP_contractor(A::SparseMatrixCSC,b::Vector{Float64},
     return temp_arr,feas
 end
 
+struct poorSettings
+	nrow
+
+end
+
+#=
+Best script for Poor Man's LP
+
+'''
+	poorLP_contractor
+
+Takes a number of reptitions, a interval vector `X`, a sparse matrix `A`, and
+
+'''
+
+for T in (:Interval,:MCInterval)
+	@eval function poorLP_contractor(X::Vector{$T{Float64}},A::SparseMatrixCSC{Float64,Int},b::Vector{Float64},rept::Int)
+		xL::Vector{Float64} = lo.(X)
+		xU::Vector{Float64} = hi.(X)
+		sub_term::Float64 = 0.0
+		temp_sum::Float64 = 0.0
+		for r = 1:rept
+			for i = 1:s.n
+				# Sum the rows times the vector
+				temp_sum = b[i]
+				for j=A.colptr[i]:(A.colptr[i+1])
+					if (A.nzval[j] > 0.0 )
+						temp_sum += A.nzval[j]*min(xL[A.rowval[j]], xU[A.rowval[j]])
+					else
+						temp_sum += A.nzval[j]*max(xL[A.rowval[j]], xU[A.rowval[j]])
+					end
+				end
+				# For each element in the row apply the Poor Man’s LP
+				for j=A.colptr[i]:(A.colptr[i+1])
+					if (A.nzval[j] > 0.0 )
+						sub_term = A.val[j]*min(xL[A.rowval[j]], xU[A.rowval[j]])
+						temp_sum -= sub_term                                                     # Subtracts term formed from current nonzero values
+						xU[A.rowval[j]] = min(xU[A.rowval[j]],temp_sum/A.nzval[j])               # Applies contractor
+						temp_sum += sub_term                                                     # Recovers term
+					else
+						sub_term = A.nzval[j]*min(xL[A.rowval[j]], xU[A.rowval[j]])
+						temp_sum -= sub_term
+						xL[A.rowval[j]] = min(xL[A.rowval[j]],temp_sum/A.nzval[j])
+						temp_sum += sub_term
+					end
+					(xU[A.rowval[j]] < xL[A.rowval[j]]) && (return X, false)                      # Returns contractor fathoms box
+				end
+			end
+		end
+		$T{Float64}.(xL,xU), true
+	end
+end
+
+X = [Interval(-2.0,4.0),Interval(0.0,4.0),Interval(-1.0,1.0)]
+S = sparse([-1.0 -1.0 0.0; 0.0 1.0 1.0])'
+b = [-4.0; 1.0]
+
+out = poorLP_contractor(X,S,b,2)
+=#
+
+function poorLP_contractor(s::poorSettings,X::Vector{Interval{Float64}})
+	xL::Vector{Float64} = lo.(X)
+	xU::Vector{Float64} = hi.(X)
+	sub_term::Float64 = 0.0
+	temp_sum::Float64 = 0.0
+	for r = 1:s.rept
+		for i = 1:s.nrow
+			# Sum the rows times the vector
+			temp_sum = b[i]
+			for j=A.row_ptr[i]:(A.row_ptr[i+1])
+				if (A.val[j] > 0.0 )
+					temp_sum += A.val[j]*min(xL[A.col_ind], A.val[j]*xU[A.col_ind])
+				else
+					temp_sum += A.val[j]*max(xL[A.col_ind], A.val[j]*xU[A.col_ind])
+				end
+			end
+			# For each element in the row apply the Poor Man’s LP
+			for j=A.row_ptr[i]:(A.row_ptr[i+1])
+				if (A.val[j] > 0.0 )
+					sub_term = A.val[j]*min(xL[A.col_ind[j]], A.val[j]*xU[A.col_ind[j]])
+					temp_sum -= sub_term                                                   # Subtracts term formed from current nonzero values
+					xU[col_ind[j]] = min(xU[col_ind[j]],temp_sum/A.val[j])                 # Applies contractor
+					temp_sum += sub_term                                                   # Recovers term
+				else
+					sub_term = A.val[j]*min(xL[A.col_ind[j]], A.val[j]*xU[A.col_ind[j]])
+					temp_sum -= sub_term
+					xL[col_ind[j]] = min(xL[col_ind[j]],temp_sum/A.val[j])
+					temp_sum += sub_term
+				end
+			end
+		end
+	end
+	Interval{Float64}.(xL,xU)
+end
+
 # Banded Matrix GaussSiedel
 function BandedImplicitGS(p::Vector{SMCg{N,V,T}, pref::Vector{SMCg{N,V,T},
                           X::Vector{V}, A::Function, b::Function, opt::mc_opts{T}) where {N,T<:AbstractFloat,V<:AbstractInterval}
