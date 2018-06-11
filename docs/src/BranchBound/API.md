@@ -26,11 +26,25 @@ information about the "Node" being processed and the lower/upper bounding proble
 being solved.
 
 ```@docs
-set_Verbosity!(x::BnBSolver,VB::String)
+    set_Verbosity!(x::BnBSolver,VB::String)
 ```
 
 ## Returning the solver to default settings.
 
 ```@docs
-set_to_default!(x::BnBSolver)
+    set_to_default!(x::BnBSolver)
+```
+
+## Solving applying the Branch and Bound algorithm.
+```@docs
+    solveBnB!(x::BnBSolver,y::BnBModel)
+```
+## Accessing info from solved model
+```@docs
+    getsolution(x::BnBModel)
+    getobjval(x::BnBModel)
+    getobjbound(x::BnBModel)
+    getfeasibility(x::BnBModel)
+    LBDtime(x::BnBModel)
+    UBDtime(x::BnBModel)
 ```

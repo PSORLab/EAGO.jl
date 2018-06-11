@@ -1,10 +1,10 @@
 
-This subpart is meant to provide a flexible framework for implementing branch-and-bound based optimization routines in Julia.
+This subpart is meant to provide a flexible framework for implementing spatial branch-and-bound based optimization routines in Julia.
 All components of the branch-and-bound routine can be customized by the individual user: lower bounding problem, upper bounding problem.
 The branch and bound routine consists of a main solve algorithm that executes as depicted in the flowchart below.
 Routines for setting the objects to implement standard B&B routines are also provided using a `set_default!()` function.
 
-![BnB_Chart1](https://github.com/PSORLab/EAGO.jl/tree/master/docs/src/BranchBound/BnBChart1.jpg)
+![BnBChart1](BnBChart1.jpg)
 
 - The preprocessing routine has inputs `(feas,X,UBD,k,d,opt)` and outputs `feas::Bool,X::Vector{Interval{Float64}}`. The initial feasibility flag is `feas`, the bounds on the variables are `X`, the current upper bound is `UBD`, the iteration number is `k`, the node depth is `d`, and a solver option storage object is `opt`.
 - The lower bounding routine has inputs `(X,k,d,opt,UBDg)` and provides outputs `(val,soln,feas,Lsto)`. The value of the subproblem is `val`, the solution of the subproblem is `soln`, it's feasibility is `feas`, and `Lsto` is a problem information storage object.
