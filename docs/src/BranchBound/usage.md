@@ -1,5 +1,5 @@
 ## Example 1 - Setup and Solve a Basic Problem
-In the below example, we solve for minima of **f(x)=x<sub>1</sub>+x<sub>2</sub><sup>2</sup>** on the domain [-1,1] by [2,9]. Natural interval extensions are used to compute the upper and lower bounds. The natural interval extensions are provided by the Validated Numerics package.
+In the below example, we solve for minima of $f(x)=x_1+x_2^2$ on the domain $x_1 \in [-1,1]$, $x_2 \in [2,9]$. Natural interval extensions are used to compute the upper and lower bounds. The natural interval extensions are provided by the Validated Numerics package.
 
 First, we create a BnBModel object which contains all the relevant problem info and a BnBSolver object that contains all nodes and their associated values. We specify default conditions for the Branch and Bound problem. Default conditions are a best-first search, relative width bisection, normal verbosity, a maximum of 1E6 nodes, an absolute tolerance of 1E-6, and a relative tolerance of 1E-3.
 
