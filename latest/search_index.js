@@ -657,91 +657,139 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "BranchBound/bisect.html#",
-    "page": "Bisection Methods",
-    "title": "Bisection Methods",
+    "location": "BranchBound/back.html#",
+    "page": "Back-end",
+    "title": "Back-end",
     "category": "page",
     "text": ""
 },
 
 {
-    "location": "BranchBound/bisect.html#Bisection-Methods-1",
-    "page": "Bisection Methods",
-    "title": "Bisection Methods",
-    "category": "section",
-    "text": "Method for absolute width bisection on all dimension in stack:    Bisect_AbsMethod for relative width bisection on all dimension in stack:    Bisect_RelMethod for absolute width bisection ignore first nx dimensions:    Bisect_Abs_ImpMethod for relative width bisection ignore first nx dimensions::    Bisect_Rel_Imp"
-},
-
-{
-    "location": "BranchBound/branch.html#",
-    "page": "Branching Methods",
-    "title": "Branching Methods",
-    "category": "page",
-    "text": ""
-},
-
-{
-    "location": "BranchBound/branch.html#Storage-Methods-for-Common-Branching-Schemes-1",
-    "page": "Branching Methods",
-    "title": "Storage Methods for Common Branching Schemes",
-    "category": "section",
-    "text": "Node storage method for breadth-first search:BM_breadth!Node storage method for depth-first or best-first search:BM_depth_best!Node storage method for adding a single node to the top of the stack:BM_Single!"
-},
-
-{
-    "location": "BranchBound/branch.html#Selection-Methods-for-Common-Branching-Schemes-1",
-    "page": "Branching Methods",
-    "title": "Selection Methods for Common Branching Schemes",
-    "category": "section",
-    "text": "Select node for best-first search:NS_bestSelect node for depth-first or breadth-first search:NS_depth_breadth"
-},
-
-{
-    "location": "BranchBound/default.html#",
-    "page": "Default Functions",
-    "title": "Default Functions",
-    "category": "page",
-    "text": "Below are the default function for the Branch-and-Bound library. The EAGO solver populates these fields based on user inputs to the solver in order to deliver a valid nonconvex NLP solver."
-},
-
-{
-    "location": "BranchBound/default.html#Default-checks-1",
-    "page": "Default Functions",
+    "location": "BranchBound/back.html#Default-checks-1",
+    "page": "Back-end",
     "title": "Default checks",
     "category": "section",
-    "text": "The default termination check and convergence check functions are described below:@doc\n    Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)\n    Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)Currently, the default is to never repeat a node.@doc\nRepeat_Node_Default(x::BnBSolver,y::BnBModel{Interval{T}}, Xin::Vector{Interval{T}},Xout::Vector{Interval{T}})"
+    "text": "Below are the default function for the Branch-and-Bound library. The EAGO solver populates these fields based on user inputs to the solver in order to deliver a valid nonconvex NLP solver.The default termination check and convergence check functions are described below:@doc\n    EAGO.Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)\n    EAGO.Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)Currently, the default is to never repeat a node.@doc\n    EAGO.Repeat_Node_Default(x::BnBSolver,y::BnBModel{Interval{T}}, Xin::Vector{Interval{T}},Xout::Vector{Interval{T}})"
 },
 
 {
-    "location": "BranchBound/default.html#Fathoming-1",
-    "page": "Default Functions",
+    "location": "BranchBound/back.html#Fathoming-1",
+    "page": "Back-end",
     "title": "Fathoming",
     "category": "section",
-    "text": "By default, nodes are fathomed on value dominance.@doc\n    fathom!(y::BnBModel)"
+    "text": "By default, nodes are fathomed on value dominance.@doc\n    EAGO.fathom!(y::BnBModel)"
 },
 
 {
-    "location": "BranchBound/default.html#Pre-processing-and-post-processing-1",
-    "page": "Default Functions",
+    "location": "BranchBound/back.html#Pre-processing-and-post-processing-1",
+    "page": "Back-end",
     "title": "Pre-processing and post-processing",
     "category": "section",
     "text": "By default, the pre-processing and post-processing functions simply return the input Interval/MCInterval type vector and the prior feasibility value."
 },
 
 {
-    "location": "BranchBound/display.html#",
-    "page": "Display Progress",
-    "title": "Display Progress",
-    "category": "page",
-    "text": ""
+    "location": "BranchBound/back.html#EAGO.Bisect_Abs",
+    "page": "Back-end",
+    "title": "EAGO.Bisect_Abs",
+    "category": "function",
+    "text": "EAGO.Bisect_Abs(S::BnBSolver,B::BnBModel{T},N::Vector{T})\n\nReturns two interval boxes \'X1,X2\' created by bisecting \'N\' in the highest width dimension.\n\n\n\n"
 },
 
 {
-    "location": "BranchBound/display.html#Functions-for-generating-console-displayed-1",
-    "page": "Display Progress",
+    "location": "BranchBound/back.html#EAGO.Bisect_Rel",
+    "page": "Back-end",
+    "title": "EAGO.Bisect_Rel",
+    "category": "function",
+    "text": "EAGO.Bisect_Rel(S::BnBSolver,B::BnBModel,N::Vector{Interval{Float64}})\n\nReturns two interval boxes \'X1,X2\' created by bisecting \'N\' in the highest width dimension after scaling by initial box size.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.Bisect_Abs_Imp",
+    "page": "Back-end",
+    "title": "EAGO.Bisect_Abs_Imp",
+    "category": "function",
+    "text": "EAGO.Bisect_Abs_Imp(S::BnBSolver,B::BnBModel,N::Vector{Interval{Float64}})\n\nReturns two interval boxes \'X1,X2\' created by bisecting \'N\' in the highest width dimension greater than \'nx\'.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.Bisect_Rel_Imp",
+    "page": "Back-end",
+    "title": "EAGO.Bisect_Rel_Imp",
+    "category": "function",
+    "text": "EAGO.Bisect_Rel_Imp(S::BnBSolver,B::BnBModel,N::Vector{Interval{Float64}})\n\nReturns two interval boxes \'X1,X2\' created by bisecting \'N\' in the highest width dimension greater than \'nx\' after scaling by initial box size.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#Bisection-Methods-1",
+    "page": "Back-end",
+    "title": "Bisection Methods",
+    "category": "section",
+    "text": "Method for absolute width bisection on all dimension in stack:    EAGO.Bisect_AbsMethod for relative width bisection on all dimension in stack:    EAGO.Bisect_RelMethod for absolute width bisection ignore first nx dimensions:    EAGO.Bisect_Abs_ImpMethod for relative width bisection ignore first nx dimensions::    EAGO.Bisect_Rel_Imp"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.BM_breadth!",
+    "page": "Back-end",
+    "title": "EAGO.BM_breadth!",
+    "category": "function",
+    "text": "EAGO.BM_breadth!\n\nTakes the following inputs: (S::BnBSolver,B::BnBModel{T},tL::Float64,tU::Float64,X1::Vector{T},X2::Vector{T},pos::Int64)\n\nStores two interval boxes X1,X2 to the bottom of the stack along with their respective lower, tL and upper bounds, tU and their position number in the BnB tree. Also, assigns node numbers.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.BM_depth_best!",
+    "page": "Back-end",
+    "title": "EAGO.BM_depth_best!",
+    "category": "function",
+    "text": "EAGO.BM_depth_best!\n\nTakes the following inputs: (S::BnBSolver,B::BnBModel,tL::Float64,tU::Float64,                              X1::Vector{Interval{Float64}},X2::Vector{Interval{Float64}},                              pos::Int64)\n\nStores two interval boxes X1,X2 to the top of the stack along with their respective lower, tL and upper bounds, tU and their position number in the BnB tree. Also, assigns node numbers.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.BM_Single!",
+    "page": "Back-end",
+    "title": "EAGO.BM_Single!",
+    "category": "function",
+    "text": "EAGO.BM_Single!\n\nTakes the following inputs: (S::BnBSolver,B::BnBModel,tL::Float64,tU::Float64, X::Vector{Interval{Float64}},pos::Int64)\n\nStores interval box X to the top of the stack along with their respective lower, tL and upper bounds, tU and their position number in the BnB tree.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#Storage-Methods-for-Common-Branching-Schemes-1",
+    "page": "Back-end",
+    "title": "Storage Methods for Common Branching Schemes",
+    "category": "section",
+    "text": "Node storage method for breadth-first search:    EAGO.BM_breadth!Node storage method for depth-first or best-first search:    EAGO.BM_depth_best!Node storage method for adding a single node to the top of the stack:    EAGO.BM_Single!"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.NS_best-Tuple{EAGO.BnBModel}",
+    "page": "Back-end",
+    "title": "EAGO.NS_best",
+    "category": "method",
+    "text": "EAGO.NS_best(B::BnBModel)\n\nTakes a single input B::BnBModel. Selects node with the lowest upper lower bound. Returns (IntvBox,LBD,UBD,id,pos) where Intv is the interval box, LBD is the lower bound of the node, UBD is the upper bound of the node, id is the id number of the node, and pos is the position of the node in the BnB tree.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.NS_depth_breadth-Tuple{EAGO.BnBModel}",
+    "page": "Back-end",
+    "title": "EAGO.NS_depth_breadth",
+    "category": "method",
+    "text": "EAGO.NS_depth_breadth(B::BnBModel)\n\nTakes a single input B::BnBModel. Selects node on the top of the stack. Returns (IntvBox,LBD,UBD,id,pos) where Intv is the intervalbox, LBD is the lower bound of the node, UBD is the upper bound of the node, id is the id number of the node, and pos is the position of the node in the BnB tree.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#Selection-Methods-for-Common-Branching-Schemes-1",
+    "page": "Back-end",
+    "title": "Selection Methods for Common Branching Schemes",
+    "category": "section",
+    "text": "Select node for best-first search:    EAGO.NS_best(B::BnBModel)Select node for depth-first or breadth-first search:EAGO.NS_depth_breadth(B::BnBModel)"
+},
+
+{
+    "location": "BranchBound/back.html#Functions-for-generating-console-displayed-1",
+    "page": "Back-end",
     "title": "Functions for generating console displayed",
     "category": "section",
-    "text": "print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)\nprint_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)\nprint_node!(x::BnBSolver,id::Int64,lbd::Float64,box)\nprint_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)"
+    "text": "    EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)\n    EAGO.print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)\n    EAGO.print_node!(x::BnBSolver,id::Int64,lbd::Float64,box)\n    EAGO.print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)"
 },
 
 {
