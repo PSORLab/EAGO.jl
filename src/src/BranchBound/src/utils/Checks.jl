@@ -1,5 +1,5 @@
 """
-    Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)
+    EAGO.Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)
 
 Checks if algorithm continues for the branch and bound problem. Checks that:
 * Nodes are remaining on the stack.
@@ -41,7 +41,7 @@ function Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)
 end
 
 """
-    Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)
+    EAGO.Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)
 
 Checks if convergence tolerance is reach for the branch and bound problem.
 Checks that:
@@ -54,7 +54,7 @@ function Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)
 end
 
 """
-    Repeat_Node_Default(x::BnBSolver,y::BnBModel,Xin::Vector{Interval{Float64}},
+    EAGO.Repeat_Node_Default(x::BnBSolver,y::BnBModel,Xin::Vector{Interval{Float64}},
                                  Xout::Vector{Interval{Float64}})
 
 Default check for repeating a node. Always returns false.

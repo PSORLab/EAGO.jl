@@ -1,5 +1,5 @@
 """
-    BM_breadth!
+    EAGO.BM_breadth!
 
 Takes the following inputs: `(S::BnBSolver,B::BnBModel{T},tL::Float64,tU::Float64,X1::Vector{T},X2::Vector{T},pos::Int64)`
 
@@ -19,7 +19,7 @@ function BM_breadth!(S::BnBSolver,B::BnBModel{T},tL::Float64,tU::Float64,
 end
 
 """
-    BM_depth_best!
+    EAGO.BM_depth_best!
 
 Takes the following inputs: `(S::BnBSolver,B::BnBModel,tL::Float64,tU::Float64,
                              X1::Vector{Interval{Float64}},X2::Vector{Interval{Float64}},
@@ -41,7 +41,7 @@ function BM_depth_best!(S::BnBSolver,B::BnBModel{T},tL::Float64,tU::Float64,
 end
 
 """
-    BM_Single!
+    EAGO.BM_Single!
 
 Takes the following inputs: `(S::BnBSolver,B::BnBModel,tL::Float64,tU::Float64, X::Vector{Interval{Float64}},pos::Int64)`
 

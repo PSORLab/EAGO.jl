@@ -1,5 +1,5 @@
 """
-    print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)
+    EAGO.print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)
 
 Prints solution information for the B&B problem. Displays first node found, solution value,
 solution, and time spent solving subproblems.
@@ -26,7 +26,7 @@ function print_sol!(x::BnBSolver,y::BnBModel,
 end
 
 """
-    print_node!(x::BnBSolver,id::Int64,lbd::Float64,box::Vector{Interval{Float64}})
+    EAGO.print_node!(x::BnBSolver,id::Int64,lbd::Float64,box)
 
 Prints node information for the B&B problem. Node id, bound, and interval box.
 """
@@ -45,7 +45,7 @@ function print_node!(x::BnBSolver,id::Int64,lbd::Float64,
 end
 
 """
-    print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)
+    EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)
 
 Prints the iteration information if the Verbosity is set to "Normal" or "Full".
 The header is displayed every hdr_intv, the iteration info is displayed every
@@ -74,7 +74,7 @@ function print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,
 end
 
 """
-    print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)
+    EAGO.print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)
 
 Prints the results of a single bounding problem.
 """

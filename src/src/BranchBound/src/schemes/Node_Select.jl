@@ -1,5 +1,5 @@
 """
-    NS_best(B::BnBModel)
+    EAGO.NS_best(B::BnBModel)
 
 Takes a single input `B::BnBModel`. Selects node with the lowest upper lower bound. Returns `(IntvBox,LBD,UBD,id,pos)`
 where `Intv` is the interval box, `LBD` is the lower bound of the node, `UBD` is the
@@ -12,7 +12,7 @@ function NS_best(B::BnBModel)
 end
 
 """
-    NS_depth_breadth
+    EAGO.NS_depth_breadth(B::BnBModel)
 
 Takes a single input `B::BnBModel`. Selects node on the top of the stack. Returns `(IntvBox,LBD,UBD,id,pos)`
 where `Intv` is the intervalbox, `LBD` is the lower bound of the node, `UBD` is the

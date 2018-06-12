@@ -1,5 +1,5 @@
 """
-    fathom!(y::BnBModel)
+    EAGO.fathom!(y::BnBModel)
 
 Fathoms the stack by value dominance.
 """
