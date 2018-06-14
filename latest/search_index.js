@@ -257,27 +257,11 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "McCormick/Usage.html#EAGO.SMCg",
-    "page": "Bounding Functions via McCormick Operators",
-    "title": "EAGO.SMCg",
-    "category": "type",
-    "text": "SMCg{N,V,T<:AbstractFloat}\n\nSMCg is the smooth McCormick (w/ gradient) structure which is used to overload standard calculations. The fields are:\n\ncc::T: Concave relaxation\ncv::T: Convex relaxation\ncc_grad::SVector{N,T}: (Sub)gradient of concave relaxation\ncv_grad::SVector{N,T}: (Sub)gradient of convex relaxation\nIntv::V: Interval bounds\ncnst::Bool: Flag for whether the bounds are constant\nIntvBox::Vector{V}: Decision space constraints for the affine interval bound tightening\nxref::Vector{T}: Reference point for affine interval bound tightening\n\n\n\n"
-},
-
-{
-    "location": "McCormick/Usage.html#**The-McCormick-relaxation-structure**-1",
-    "page": "Bounding Functions via McCormick Operators",
-    "title": "The McCormick relaxation structure",
-    "category": "section",
-    "text": "The McCormick relaxation library implements the smooth McCormick with imbedded (sub)gradient structure: SMCg{N,V,T}.SMCg{N,V,T<:AbstractFloat}"
-},
-
-{
     "location": "McCormick/Usage.html#**Bounding-a-function-via-smooth-McCormick-objects**-1",
     "page": "Bounding Functions via McCormick Operators",
     "title": "Bounding a function via smooth McCormick objects",
     "category": "section",
-    "text": "In order to bound a function using a McCormick relaxation. You first construct structure that bounds the input variables then you construct pass these variables two a function.In the example below, convex/concave relaxations of the function f(x)=sin(2x)+exp(x)-x are calculated at x = 1 on the interval [-2,3].using EAGO\n\n# create SmoothMcCormick seed object for x = 2.0 on [1.0,3.0] for relaxing\n# a function f(x) on the interval box xIbox using mBox as a reference point\n\nf(x) = abs(x)*x^2 + sin(x)/exp(-x)\n\nx = 2.0                           # value of independent variable x\nsubx = seed_g(Float64,1,1)        # set initial subgradient of x to [1.0]\nIntv = Interval(-2.0,3.0)         # define interval to relax over\n\n# create McCormick object\nSMC = SMCg{1,Interval{Float64},Float64}(x,x,subx,subx,Intv,false)\n\nfSMC = f(SMC)            # relax the function\n\ncv = fSMC.cv              # convex relaxation\ncc = fSMC.cc              # concave relaxation\ncvgrad = fSMC.cv_grad     # subgradient/gradient of convex relaxation\nccgrad = fSMC.cc_grad     # subgradient/gradient of concave relaxation\nIv = fSMC.Intv            # retrieve interval bounds of f(x) on IntvThe plotting the results we can easily generate visual the convex and concave relaxations, interval bounds, and affine bounds constructed using the subgradient at the middle of X.ADD PLOT1 HERE on GithubThis can readily be extended to multivariate functions as shown belowf(x) = abs(x[1])*x[2]+x[1]/x[2]\n\nx = [2.0 1.0]                                 # values of independent variable x\nsubx = [seed_g(Float64,1,2) for i=1:2]        # set initial subgradients of x to\n                                              # [1.0, 0.0] for x[1], [0.0,1.0] for x[2]\nIntv = [Interval(-2.0,3.0),Interval(1.0,3.0)]  # define intervals to relax over\n\n# create McCormick object\nSMC = SMCg{2,Interval{Float64},Float64}(x,x,subx,subx,Intv,false)\n\nfSMC = f(SMC)            # relax the function\n\ncv = fSMC.cv              # convex relaxation\ncc = fSMC.cc              # concave relaxation\ncvgrad = fSMC.cv_grad     # subgradient/gradient of convex relaxation\nccgrad = fSMC.cc_grad     # subgradient/gradient of concave relaxation\nIv = fSMC.Intv            # retrieve interval bounds of f(x) on IntvADD PLOT2 HERE on Github"
+    "text": "In order to bound a function using a McCormick relaxation. You first construct structure that bounds the input variables then you construct pass these variables two a function.In the example below, convex/concave relaxations of the function f(x)=sin(2x)+exp(x)-x are calculated at x = 1 on the interval [-2,3].using EAGO\n\n# create SmoothMcCormick seed object for x = 2.0 on [1.0,3.0] for relaxing\n# a function f(x) on the interval box xIbox using mBox as a reference point\n\nf(x) = x*(x-5.0)*sin(x)\n\nx = 2.0                           # value of independent variable x\nsubx = seed_g(Float64,1,1)        # set initial subgradient of x to [1.0]\nIntv = Interval(1.0,4.0)         # define interval to relax over\n\n# create McCormick object\nSMC = SMCg{1,Interval{Float64},Float64}(x,x,subx,subx,Intv,false)\n\nfSMC = f(SMC)            # relax the function\n\ncv = fSMC.cv              # convex relaxation\ncc = fSMC.cc              # concave relaxation\ncvgrad = fSMC.cv_grad     # subgradient/gradient of convex relaxation\nccgrad = fSMC.cc_grad     # subgradient/gradient of concave relaxation\nIv = fSMC.Intv            # retrieve interval bounds of f(x) on IntvThe plotting the results we can easily generate visual the convex and concave relaxations, interval bounds, and affine bounds constructed using the subgradient at the middle of X.(Image: Figure_1)By setting the differentiability to 1, using the below command and re-plotting we arrive at the below graphset_diff_relax(1)(Image: Figure_2)This can readily be extended to multivariate functions as shown below\nset_diff_relax(0)\n\nf(x) = max(x[1],x[2])\n\nx = [2.0 1.0]                                 # values of independent variable x\nsubx = [seed_g(Float64,1,2) for i=1:2]        # set initial subgradients of x to\n                                              # [1.0, 0.0] for x[1], [0.0,1.0] for x[2]\nIntv = [Interval(-4.0,5.0),Interval(-5.0,3.0)]  # define intervals to relax over\n\n# create McCormick object\nSMC = SMCg{2,Interval{Float64},Float64}(x,x,subx,subx,Intv,false)\n\nfSMC = f(SMC)            # relax the function\n\ncv = fSMC.cv              # convex relaxation\ncc = fSMC.cc              # concave relaxation\ncvgrad = fSMC.cv_grad     # subgradient/gradient of convex relaxation\nccgrad = fSMC.cc_grad     # subgradient/gradient of concave relaxation\nIv = fSMC.Intv            # retrieve interval bounds of f(x) on Intv(Image: Figure_3)"
 },
 
 {
@@ -414,6 +398,54 @@ var documenterSearchIndex = {"docs": [
     "title": "Setting the number of iterations used for the envelope calculation",
     "category": "section",
     "text": "set_iterations(val::Integer)"
+},
+
+{
+    "location": "McCormick/back.html#",
+    "page": "Back-end",
+    "title": "Back-end",
+    "category": "page",
+    "text": ""
+},
+
+{
+    "location": "McCormick/back.html#EAGO.SMCg",
+    "page": "Back-end",
+    "title": "EAGO.SMCg",
+    "category": "type",
+    "text": "SMCg{N,V,T<:AbstractFloat}\n\nSMCg is the smooth McCormick (w/ gradient) structure which is used to overload standard calculations. The fields are:\n\ncc::T: Concave relaxation\ncv::T: Convex relaxation\ncc_grad::SVector{N,T}: (Sub)gradient of concave relaxation\ncv_grad::SVector{N,T}: (Sub)gradient of convex relaxation\nIntv::V: Interval bounds\ncnst::Bool: Flag for whether the bounds are constant\n\n\n\n"
+},
+
+{
+    "location": "McCormick/back.html#**The-McCormick-relaxation-type**-1",
+    "page": "Back-end",
+    "title": "The McCormick relaxation type",
+    "category": "section",
+    "text": "The McCormick relaxation library implements the smooth McCormick with imbedded (sub)gradient structure: SMCg{N,V,T}.    SMCg{N,V,T<:AbstractFloat}"
+},
+
+{
+    "location": "McCormick/back.html#EAGO.HybridMC",
+    "page": "Back-end",
+    "title": "EAGO.HybridMC",
+    "category": "type",
+    "text": "HybridMC\n\nDefines the hybridMC type used for constructing nonstandard McCormick relaxations holds the SMC type.\n\n\n\n"
+},
+
+{
+    "location": "McCormick/back.html#EAGO.Tighten_Subgrad",
+    "page": "Back-end",
+    "title": "EAGO.Tighten_Subgrad",
+    "category": "function",
+    "text": "Tighten_Subgrad\n\nCuts the interval bounds on the HybridMC object based on affine relaxation bounds if they are tighter.\n\n\n\n"
+},
+
+{
+    "location": "McCormick/back.html#**The-Hybrid-McCormick-relaxation-type**-1",
+    "page": "Back-end",
+    "title": "The Hybrid McCormick relaxation type",
+    "category": "section",
+    "text": "The Hybrid McCormick object is used to    HybridMC    Tighten_Subgrad"
 },
 
 {
@@ -669,7 +701,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Back-end",
     "title": "Default checks",
     "category": "section",
-    "text": "Below are the default function for the Branch-and-Bound library. The EAGO solver populates these fields based on user inputs to the solver in order to deliver a valid nonconvex NLP solver.The default termination check and convergence check functions are described below:@doc\n    EAGO.Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)\n    EAGO.Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)Currently, the default is to never repeat a node.@doc\n    EAGO.Repeat_Node_Default(x::BnBSolver,y::BnBModel{Interval{T}}, Xin::Vector{Interval{T}},Xout::Vector{Interval{T}})"
+    "text": "Below are the default function for the Branch-and-Bound library. The EAGO solver populates these fields based on user inputs to the solver in order to deliver a valid nonconvex NLP solver.The default termination check and convergence check functions are described below:@docs\n    EAGO.Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)\n    EAGO.Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)Currently, the default is to never repeat a node.@docs\n    EAGO.Repeat_Node_Default(x::BnBSolver,y::BnBModel{Interval{T}}, Xin::Vector{Interval{T}},Xout::Vector{Interval{T}})"
 },
 
 {
@@ -677,7 +709,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Back-end",
     "title": "Fathoming",
     "category": "section",
-    "text": "By default, nodes are fathomed on value dominance.@doc\n    EAGO.fathom!(y::BnBModel)"
+    "text": "By default, nodes are fathomed on value dominance.@docs\n    EAGO.fathom!(y::BnBModel)"
 },
 
 {
@@ -781,7 +813,31 @@ var documenterSearchIndex = {"docs": [
     "page": "Back-end",
     "title": "Selection Methods for Common Branching Schemes",
     "category": "section",
-    "text": "Select node for best-first search:    EAGO.NS_best(B::BnBModel)Select node for depth-first or breadth-first search:EAGO.NS_depth_breadth(B::BnBModel)"
+    "text": "Select node for best-first search:    EAGO.NS_best(B::BnBModel)Select node for depth-first or breadth-first search:    EAGO.NS_depth_breadth(B::BnBModel)"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.print_int!-Tuple{EAGO.BnBSolver,Int64,Int64,Int64,Float64,Float64,Float64,Bool,Bool}",
+    "page": "Back-end",
+    "title": "EAGO.print_int!",
+    "category": "method",
+    "text": "EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)\n\nPrints the iteration information if the Verbosity is set to \"Normal\" or \"Full\". The header is displayed every hdr_intv, the iteration info is displayed every itr_intv\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.print_results!-Tuple{EAGO.BnBSolver,Float64,Any,Bool,Bool}",
+    "page": "Back-end",
+    "title": "EAGO.print_results!",
+    "category": "method",
+    "text": "EAGO.print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)\n\nPrints the results of a single bounding problem.\n\n\n\n"
+},
+
+{
+    "location": "BranchBound/back.html#EAGO.print_sol!-Tuple{EAGO.BnBSolver,EAGO.BnBModel,Int64,Int64,Float64,Float64}",
+    "page": "Back-end",
+    "title": "EAGO.print_sol!",
+    "category": "method",
+    "text": "EAGO.print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)\n\nPrints solution information for the B&B problem. Displays first node found, solution value, solution, and time spent solving subproblems.\n\n\n\n"
 },
 
 {
@@ -789,7 +845,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Back-end",
     "title": "Functions for generating console displayed",
     "category": "section",
-    "text": "    EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)\n    EAGO.print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)\n    EAGO.print_node!(x::BnBSolver,id::Int64,lbd::Float64,box)\n    EAGO.print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)"
+    "text": "    EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64, ubd::Float64,feasL::Bool,feasU::Bool)    EAGO.print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)    EAGO.print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)"
 },
 
 {
