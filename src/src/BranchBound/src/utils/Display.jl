@@ -26,12 +26,11 @@ function print_sol!(x::BnBSolver,y::BnBModel,
 end
 
 """
-    EAGO.print_node!(x::BnBSolver,id::Int64,lbd::Float64,box)
+    EAGO.print_node!(x::BnBSolver,id::Int64,lbd::Float64,box::Vector{Interval{V}}) where {V<:AbstractFloat}
 
 Prints node information for the B&B problem. Node id, bound, and interval box.
 """
-function print_node!(x::BnBSolver,id::Int64,lbd::Float64,
-                            box::Vector{Interval{V}}) where {V<:AbstractFloat}
+function print_node!(x::BnBSolver,id::Int64,lbd::Float64,box::Vector{Interval{V}}) where {V<:AbstractFloat}
   if (x.Verbosity == "Full")
     println("Node ID: $(id), Lower Bound: $(lbd), IntervalBox: $(box)")
   end

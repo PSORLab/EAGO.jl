@@ -1,7 +1,9 @@
 # Defines type
 """
+    HybridMC
 
 Defines the hybridMC type used for constructing nonstandard McCormick relaxations
+holds the SMC type.
 """
 struct HybridMC{N,V,T} <: Real
     SMC::SMCg{N,V,T}

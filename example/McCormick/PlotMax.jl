@@ -18,7 +18,7 @@ xu = 5.0
 yl = -5.00
 yu = 3.0
 
-intv = 0.05
+intv = 0.2
 nx = Integer((xu-xl)/intv+1)
 ny = Integer((yu-yl)/intv+1)
 
@@ -52,5 +52,6 @@ end
 
 surface(x_grid,y_grid,cvval,xlab = "x", ylab = "y", zlab = "cv")
 surface!(x_grid,y_grid,ccval, xlab = "x", ylab = "y", zlab = "cc")
-surface!(x_grid,y_grid,val, xlab = "x", ylab = "y", zlab = "val")
+surface!(x_grid,y_grid,val, xlab = "x", ylab = "y", zlab = "val",
+         title = "Differentiable McCormick Relaxation")
 gui()

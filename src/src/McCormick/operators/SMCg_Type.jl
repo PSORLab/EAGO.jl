@@ -38,8 +38,6 @@ standard calculations. The fields are:
 * `cv_grad::SVector{N,T}`: (Sub)gradient of convex relaxation
 * `Intv::V`: Interval bounds
 * `cnst::Bool`: Flag for whether the bounds are constant
-* `IntvBox::Vector{V}`: Decision space constraints for the affine interval bound tightening
-* `xref::Vector{T}`: Reference point for affine interval bound tightening
 """
 struct SMCg{N,V<:AbstractInterval,T<:AbstractFloat} <: Real
   cc::T

@@ -6,14 +6,14 @@ valid nonconvex NLP solver.
 
 The default termination check and convergence check functions are described below:
 ```
-@doc
+@docs
     EAGO.Term_Check(x::BnBSolver,y::BnBModel,k_int::Int64)
     EAGO.Conv_Check(x::BnBSolver,ubd::Float64,lbd::Float64)
 ```
 
 Currently, the default is to never repeat a node.
 ```
-@doc
+@docs
     EAGO.Repeat_Node_Default(x::BnBSolver,y::BnBModel{Interval{T}}, Xin::Vector{Interval{T}},Xout::Vector{Interval{T}})
 ```
 
@@ -21,7 +21,7 @@ Currently, the default is to never repeat a node.
 
 By default, nodes are fathomed on value dominance.
 ```
-@doc
+@docs
     EAGO.fathom!(y::BnBModel)
 ```
 
@@ -83,13 +83,16 @@ Select node for best-first search:
 Select node for depth-first or breadth-first search:
 
 ```@docs
-EAGO.NS_depth_breadth(B::BnBModel)
+    EAGO.NS_depth_breadth(B::BnBModel)
 ```
 
 ## Functions for generating console displayed
 ```@docs
-    EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64,ubd::Float64,feasL::Bool,feasU::Bool)
+    EAGO.print_int!(B::BnBSolver,k_int::Int64,k_nod::Int64,nid::Int64,lbdp::Float64,lbd::Float64, ubd::Float64,feasL::Bool,feasU::Bool)
+```
+```@docs
     EAGO.print_results!(B::BnBSolver,sol::Float64,pnt,feas::Bool,lbd_bool::Bool)
-    EAGO.print_node!(x::BnBSolver,id::Int64,lbd::Float64,box)
+```
+```@docs
     EAGO.print_sol!(x::BnBSolver,y::BnBModel,ubdcnt::Int64,lbdcnt::Int64,ubdtime::Float64,lbdtime::Float64)
 ```

@@ -46,6 +46,9 @@ boxhi(x::Hybrid_Options) = [x.box[i].hi for i=1:length(x.box)]
 ###################### Subgradient tightening function #########################
 """
     Tighten_Subgrad
+
+Cuts the interval bounds on the HybridMC object based on affine relaxation bounds
+if they are tighter.
 """
 function Tighten_Subgrad(x::HybridMC{N,V,T}) where {N,V<:AbstractInterval,T}
     upper_refine::V = convert(V,cc(x))
