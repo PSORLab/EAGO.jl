@@ -8,8 +8,8 @@ using Ipopt
 #using NLopt
 
 # set Lowerbound type
-LBD_fr = "NS-STD-OFF" #"Diff1-MV-OFF"
-LBD_ps = "LP" #"NLP1"
+LBD_fr = "NS-STD"
+LBD_ps = "LP"
 # set Interval Contractor type
 intv_style = "KrawczykCW"
 #intv_flag =
