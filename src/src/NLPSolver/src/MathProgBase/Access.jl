@@ -15,12 +15,12 @@ Sets the functions and dimensionality of the implicit model corresponding to
 the EAGO_NLP_model.
 """
 function set_Implicit_Model!(m::EAGO.EAGO_NLP_Model,f::Function,h::Function,
-                             hj::Function,g::Union,nx::Int64)
-    m.Imp_f = f
-    m.Imp_g = g
-    m.Imp_h = h
-    m.Imp_hj = hj
-    m.Imp_nx = nx
+                             hj::Function,g::Function,nx::Int64)
+    m.Opts.Imp_f = f
+    m.Opts.Imp_g = g
+    m.Opts.Imp_h = h
+    m.Opts.Imp_hj = hj
+    m.Opts.Imp_nx = nx
 end
 
 """
