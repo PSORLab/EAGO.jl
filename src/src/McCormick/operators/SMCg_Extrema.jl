@@ -82,7 +82,7 @@ function max(x::SMCg{N,V,T},c::T) where {N,V,T<:AbstractFloat}
 end
 
 # defines functions on which bivariant maximum mapping from Khan 2016
-@inline function psil_max(x::T,y::T,lambda::V,nu::V,
+function psil_max(x::T,y::T,lambda::V,nu::V,
                           f1::SMCg{N,V,T},f2::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
    if (nu.hi<=lambda.lo)
      val::T = x
@@ -105,7 +105,7 @@ end
    end
    return val,grad_val
 end
-@inline function thetar(x::T,y::T,lambda::V,nu::V) where {V,T<:AbstractFloat}
+function thetar(x::T,y::T,lambda::V,nu::V) where {V,T<:AbstractFloat}
     return (max(lambda.lo,nu.lo) + max(lambda.hi,nu.hi)-max(lambda.lo,nu.hi) +
     max(lambda.hi,nu.lo))*max(zero(T),((lambda.hi-x)/(lambda.hi-lambda.lo)-(y-nu.lo)/(nu.hi-nu.lo)))^(MC_param.mu+1)
 end
@@ -124,7 +124,7 @@ function psil_max_dy(x::T,y::T,lambda::V,nu::V) where {V,T<:AbstractFloat}
   end
 end
 
-@inline function psir_max(x::T,y::T,xgrad::SVector{N,T},ygrad::SVector{N,T},
+function psir_max(x::T,y::T,xgrad::SVector{N,T},ygrad::SVector{N,T},
                           lambda::V,nu::V) where {N,V,T<:AbstractFloat}
     if (nu.hi<=lambda.lo)
       return x,xgrad
@@ -166,7 +166,7 @@ function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
         cv,cv_grad = psil_max(x.cv,temp_mid,x.Intv,y.Intv,x,y)
       end
       cc,cc_grad::SVector{N,T} = psir_max(x.cc,y.cc,x.cc_grad,y.cv_grad,x.Intv,y.Intv)
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),(x.cnst && y.cnst))
+      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, maxIntv,(x.cnst && y.cnst))
     elseif (x.Intv.hi <= y.Intv.lo)
       cc = y.cc
       cc_grad = y.cnst ? zeros(y.cc_grad) : y.cc_grad
@@ -200,17 +200,17 @@ function max(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
       ccMC::SMCg{N,V,T} = (x+y+abs(x-y))/2
       cc = ccMC.cc
       cc_grad = ccMC.cc_grad
+    end
       cv = max(x.cv,y.cv)
       cv_grad = (x.cv > y.cv) ? (x.cnst ? zeros(x.cv_grad): x.cv_grad) :
                                 (y.cnst ? zeros(y.cv_grad): y.cv_grad)
       cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
       cnst = y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) )
-
-      return SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, max(x.Intv,y.Intv),cnst)
-    end
+      temp = SMCg{N,V,T}(cc, cv, cc_grad, cv_grad, maxIntv,cnst)
+      return temp
 end
 
-@inline function maxcv(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
+function maxcv(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
         cv::T = zero(T)
         temp_mid::T = zero(T)
         if ((y.Intv.hi<=x.Intv.lo)||(x.Intv.hi<=y.Intv.lo))
@@ -224,11 +224,11 @@ end
         end
         return cv
 end
-@inline function maxcc(x,y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
+function maxcc(x,y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat}
         cc::T = psir_max(x.cc,y.cc,x.Intv,y.Intv)
 end
-@inline mincv(x,y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = - maxcc(-x,-y)
-@inline min(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = -max(-x,-y)
+mincv(x,y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = - maxcc(-x,-y)
+min(x::SMCg{N,V,T},y::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = -max(-x,-y)
 #=
 @inline max(x::SMCg{N,V,T},y::V) where {N,V,T<:AbstractFloat} = max(x,SMCg{N,V,T}(y))
 @inline max(y::V,x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = max(x,SMCg{N,V,T}(y))
