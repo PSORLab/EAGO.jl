@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>SIP Solver Interface · EAGO</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link href="../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>EAGO</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../search.html"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../index.html">Introduction</a></li><li><span class="toctext">EAGO Solver</span><ul><li><a class="toctext" href="starting.html">Getting Started</a></li><li><a class="toctext" href="SolverOpts.html">Setting Solver Options</a></li><li><a class="toctext" href="MPB.html">MathProgBase Inferace</a></li><li class="current"><a class="toctext" href="SIP.html">SIP Solver Interface</a><ul class="internal"><li><a class="toctext" href="#Solving-Semi-Infinite-Programs-1">Solving Semi-Infinite Programs</a></li><li><a class="toctext" href="#Example-of-solving-a-SIP-without-equality-constraints-1">Example of solving a SIP without equality constraints</a></li><li><a class="toctext" href="#Solving-Semi-Infinite-Programs-with-Equality-Constraints-1">Solving Semi-Infinite Programs with Equality Constraints</a></li></ul></li><li><a class="toctext" href="hp.html">High Performance Builds</a></li></ul></li><li><span class="toctext">McCormick Relaxation Library</span><ul><li><a class="toctext" href="../McCormick/overview.html">Overview</a></li><li><a class="toctext" href="../McCormick/Usage.html">Bounding Functions via McCormick Operators</a></li><li><a class="toctext" href="../McCormick/Operators.html">Supported Operators</a></li><li><a class="toctext" href="../McCormick/Options.html">Options available for McCormick Operators</a></li><li><a class="toctext" href="../McCormick/back.html">Back-end</a></li></ul></li><li><span class="toctext">Branch and Bound Library</span><ul><li><a class="toctext" href="../BranchBound/Overview.html">Overview</a></li><li><a class="toctext" href="../BranchBound/usage.html">Usage</a></li><li><a class="toctext" href="../BranchBound/API.html">API</a></li><li><a class="toctext" href="../BranchBound/types.html">Types</a></li><li><a class="toctext" href="../BranchBound/back.html">Back-end</a></li></ul></li><li><span class="toctext">Developer Documentation</span><ul><li><a class="toctext" href="../Dev/future.html">Future Plans</a></li><li><a class="toctext" href="../Dev/contributing.html">How to Contribute</a></li></ul></li><li><a class="toctext" href="../ref.html">References</a></li><li><a class="toctext" href="../cite.html">Citing EAGO</a></li></ul></nav><article id="docs"><header><nav><ul><li>EAGO Solver</li><li><a href="SIP.html">SIP Solver Interface</a></li></ul><a class="edit-page" href="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/EAGOSolver/SIP.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>SIP Solver Interface</span><a class="fa fa-bars" href="#"></a></div></header><h2><a class="nav-anchor" id="Solving-Semi-Infinite-Programs-1" href="#Solving-Semi-Infinite-Programs-1">Solving Semi-Infinite Programs</a></h2><section class="docstring"><div class="docstring-header"><a class="docstring-binding" id="EAGO.Explicit_SIP_Solve" href="#EAGO.Explicit_SIP_Solve"><code>EAGO.Explicit_SIP_Solve</code></a> — <span class="docstring-category">Function</span>.</div><div><pre><code class="language-none">Explicit_SIP_Solve</code></pre><p>Solves a semi-infinite program via the algorithm presented in Mitsos2011 using the EAGOGlobalSolver to solve the lower bounding problem, lower level problem, and the upper bounding problem. The options for the algorithm and the global solvers utilized are set by manipulating a SIPopt containing the options info. Inputs:</p><ul><li><p><code>f::Function</code>: Objective in the decision variable. Takes a single argument                vector that must be untyped.</p></li><li><p><code>gSIP::Function</code>: The semi-infinite constraint. Takes two arguments: the first                   being a vector containing the decision variable and the                   second being a vector containing the uncertainity                   variables. The function must be untyped.</p></li><li><p><code>X::Vector{Interval}</code>: Box constraints for decision variables</p></li><li><p><code>P::Vector{Interval}</code>: Box constraints for uncertainty variables</p></li><li><p><code>SIPopt::SIP_opts</code>: Option type containing problem information</p></li></ul><p>Returns: A SIP_result composite type containing solution information.</p></div><a class="source-link" target="_blank" href="https://github.com/PSORLab/EAGO.jl/blob/baf182da18f663cb2adeba281631056351406b0d/src/src/SemiInfinite/src/ExplicitSIP.jl#L1-L19">source</a></section><h2><a class="nav-anchor" id="Example-of-solving-a-SIP-without-equality-constraints-1" href="#Example-of-solving-a-SIP-without-equality-constraints-1">Example of solving a SIP without equality constraints</a></h2><pre><code class="language-julia">using EAGO
+
+SIPopt1 = SIP_opts()
+sep1lu = EAGO_NLPSolver(probe_depth = -1,
+                        variable_depth = 1000,
+                        DAG_depth = -1,
+                        STD_RR_depth = -1,
+                        UBDsolvertype= &quot;Ipopt&quot;)
+sep1lu.BnBSolver.Verbosity = &quot;Full&quot;
+sep1in = EAGO_NLPSolver(probe_depth = -1,
+                        variable_depth = 1000,
+                        DAG_depth = -1,
+                        STD_RR_depth = -1,
+                        UBDsolvertype= &quot;Ipopt&quot;)
+sep1in.BnBSolver.Verbosity = &quot;Full&quot;
+SIPopt1.LLP_Opt = sep1in
+SIPopt1.LBP_Opt = sep1lu
+SIPopt1.UBP_Opt = sep1lu
+f1(x) = (1/3)*x[1]^2 + x[2]^2 + x[1]/2
+gSIP1(x,p) = (1.0-(x[1]^2)*(p[1]^2))^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
+X1 = [MCInterval(-1000.0,1000.0),MCInterval(-1000.0,1000.0)]
+P1 = [MCInterval(0.0,1.0)]
+SIPoutput1 = Explicit_SIP_Solve(f1,gSIP1,X1,P1,SIPopt1)</code></pre><h2><a class="nav-anchor" id="Solving-Semi-Infinite-Programs-with-Equality-Constraints-1" href="#Solving-Semi-Infinite-Programs-with-Equality-Constraints-1">Solving Semi-Infinite Programs with Equality Constraints</a></h2><pre><code class="language-julia">using EAGO
+
+# create the SIP option object for the solver
+SIPopt1 = SIP_opts()
+
+# create solver with specified options options for lower level problem
+sep1in = EAGO_NLPSolver(LBD_func_relax = &quot;NS-STD&quot;,  # use standard McCormick relaxations
+                        LBDsolvertype = &quot;LP&quot;,           # use an LP problem structure for relaxed problems
+                        UBDsolvertype = &quot;Ipopt&quot;,        # use NLP solver upper bounds (currently preferred solver)
+                        probe_depth = -1,               # disable probing
+                        variable_depth = 1000,          # use duality based range reduction to a depth of 1000 (use to high depth recommended)
+                        DAG_depth = -1,                 # don&#39;t use a DAG contractor (I need to update this for implicit SIP)
+                        STD_RR_depth = -1,              # don&#39;t use standard range reduction (problems get quite large)
+                        verbosity = &quot;None&quot;,             # specify printing level for global optimization problem
+                        validated = true,               # use numerically validated intervals
+                        atol = 1E-7,                    # absolute tolerance (May need to play with this)
+                        rtol = 1E-5)                    # relative tolerance (May need to play with this)
+
+# create a solver for the lower/upper problems
+sep1lu = EAGO_NLPSolver(LBD_func_relax = &quot;NS-STD&quot;,
+                        LBDsolvertype = &quot;LP&quot;,
+                        UBDsolvertype = &quot;Ipopt&quot;,
+                        probe_depth = -1,
+                        variable_depth = 1000,
+                        DAG_depth = -1,
+                        STD_RR_depth = -1,
+                        verbosity = &quot;None&quot;,
+                        validated = true,
+                        atol = 1E-7,
+                        rtol = 1E-5)
+
+SIPopt1.LLP_Opt = sep1in        # Set solver for use in lower level problem
+SIPopt1.LBP_Opt = sep1lu        # Set solver for use in lower bounding problem
+SIPopt1.UBP_Opt = sep1lu        # Set solver for use in upper bounding problem
+
+SIPopt1.eps_g0 = 0.9
+SIPopt1.tol = 1E-2              # SIP tolerance
+SIPopt1.r0 = 2.0                # reduction factor for SIP routine
+SIPopt1.kmax = 5                # maximum number of iteration for SIP routine
+SIPopt1.inn_tol = 0.0           # tolerance factor usually set to tolerance of inner program
+
+# 1D Example (7.4.1 from thesis)
+# solution f = -15.8077 @ y = 2.95275
+f(x) = (x[1]-3.5)^4 - 5*(x[1]-3.5)^3 - 2*(x[1]-3.5)^2 + 15*(x[1]-3.5)
+function h(x,y,p)
+    [y[1]-(x[1]-(x[1]^3)/6+(x[1]^5)/120)/sqrt(y[1])-p[1]]
+end
+function hj(x,y,p)
+    [1.0+(x[1]-(x[1]^3)/6+(x[1]^5)/120)/(2.0*sqrt(y[1]^3))]
+end
+gSIP(x,y,p) = y[1] + cos(x[1]-p[1]/90) - p[1]
+xBnds = [Interval(0.5,8.0)]
+yBnds = [Interval(68.8,149.9)]
+pBnds = [Interval(80,120)]
+impout1 = Implicit_SIP_Solve(f,h,hj,gSIP,xBnds,yBnds,pBnds,SIPopt1)
+
+# get solution values
+k = impout1.k                   # number of iterations
+UBD = impout1.UBD               # upper bound
+LBD = impout1.LBD               # lower bound
+feas = impout1.feas             # is problem feasible?
+LBP_time = impout1.LBP_time     # time spent solving lower bounding problem
+LLP_time = impout1.LLP_time     # time spent solving lower level problem
+UBP_time = impout1.UBP_time     # time spent solving upper bounding problem
+xbar = impout1.xbar             # solution value</code></pre><footer><hr/><a class="previous" href="MPB.html"><span class="direction">Previous</span><span class="title">MathProgBase Inferace</span></a><a class="next" href="hp.html"><span class="direction">Next</span><span class="title">High Performance Builds</span></a></footer></article></body></html>
