@@ -1,7 +1,11 @@
+#############
+# EXAMPLE IS Work-In-Progress, May be Nonfunctional
+#############
+
 #workspace()
 
 using IntervalArithmetic
-using EAGODomainReduction
+using EAGO
 
 single_expr = :(x[1]+x[2]^2-exp(x[1]))
 tape_out = Generate_Tape(single_expr,2,-2,4)

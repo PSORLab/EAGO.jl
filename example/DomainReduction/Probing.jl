@@ -1,8 +1,13 @@
+#############
+# EXAMPLE IS Work-In-Progress, May be Nonfunctional
+#############
+
+
 #workspace()
 
 using IntervalArithmetic
 using Clp
-using EAGODomainReduction
+using EAGO
 
 type t_solver
     LP_solver

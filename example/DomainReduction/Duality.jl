@@ -1,7 +1,12 @@
+#############
+# EXAMPLE IS Work-In-Progress, May be Nonfunctional
+#############
+
+
 workspace()
 
 using IntervalArithmetic
-using EAGODomainReduction
+using EAGO
 
 Y = Interval{Float64}[Interval(1.0,4.0),Interval(1.0,4.0),Interval(1.0,4.0),Interval(1.0,4.0)]
 ymult_lo = [50, 1.0, 2.0, 3.0]
