@@ -1,0 +1,36 @@
+## Documentation: http://docs.travis-ci.com/user/languages/julia/
+language: julia
+
+sudo: required
+
+services:
+  - docker
+
+os:
+  - linux
+  - osx    #build never started in travis CI, will trouble shoot later
+
+julia:
+  #- 0.7 disabled to speed up CI tests
+  - 1.1
+  #- nightly disabled to speed up CI tests
+
+notifications:
+  email: false
+
+git:
+  depth: 99999999
+
+matrix:
+  allow_failures:
+  - osx: v0.6
+#  - osx: nightly
+  - julia: 1.1
+addons:
+  apt_packages:
+    - gfortran
+
+after_success:
+- julia -e 'using Pkg; ps=Pkg.PackageSpec(name="Documenter", version="0.19"); Pkg.add(ps); Pkg.pin(ps)'
+- julia -e 'cd(Pkg.dir("EAGO")); include(joinpath("docs", "make.jl"))'
+- julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder());

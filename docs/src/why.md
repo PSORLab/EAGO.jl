@@ -1,0 +1,3 @@
+# **Why EAGO?**
+
+Rationale...

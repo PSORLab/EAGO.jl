@@ -1,0 +1,5 @@
+# EAGO Optimizer
+
+```@docs
+Optimizer
+```
