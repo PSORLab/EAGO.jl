@@ -22,6 +22,26 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 ReverseDiff = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+
+[compat]
+BandedMatrices = "≥ 0.8.0"
+Calculus = "≥ 0.4.1"
+Cassette = "~0.2.1"
+CommonSubexpressions = "~0.2.0"
+DiffRules = "≥ 0.0.5"
+ForwardDiff = "~0.10.1"
+GLPK = "≥ 0.9.1"
+IntervalArithmetic = "≥ 0.15"
+IntervalContractors = "≥ 0.3"
+Ipopt = "≥ 0.5.1"
+JuMP = "~0.19.0"
+MathOptInterface = "~0.8.1"
+Reexport = "0.2.0"
+ReverseDiff = "0.3.1"
+StaticArrays = "~0.8.3"
+MathOptInterface = "~0.8.1"
+julia = "1"
+
 [extras]
 
 [targets]
