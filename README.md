@@ -24,7 +24,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 - 4/12/2018: Initial release of combined EAGO packages.
 - 6/20/2018: [EAGO v0.1.2 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.1.2). Significant speed and functionality updates.
-- 6/14/2018: [EAGO v0.2.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.0). This update creates a number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
+- 6/14/2019: [EAGO v0.2.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.0). This update creates a number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
   - Updated to support Julia 1.0+, MathOptInterface (MOI), and MOI construction of subproblems.
   - Additional domain reduction routines available.
   - Support for specialized handling of linear and quadratic terms.
