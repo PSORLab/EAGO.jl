@@ -1,6 +1,6 @@
 name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
-version = "0.2.0"
+version = "0.2.1"
 
 [deps]
 BandedMatrices = "aae01518-5342-5314-be14-df237901396f"
