@@ -41,7 +41,7 @@ function default_upper_bounding!(x::Optimizer,y::NodeBB)
 
         if is_feasible_solution(termination_status, result_status)
             x.current_upper_info.feasibility = true
-            mult = (x.optimization_sense == MOI.MIN_SENSE) ? 1.0 : -1.0
+            mult = (x.optimization_sense == MOI.MAX_SENSE && x.objective == nothing) ? -1.0 : 1.0
             x.current_upper_info.value = mult*MOI.get(x.working_upper_optimizer, MOI.ObjectiveValue())
             x.current_upper_info.solution[1:end] = MOI.get(x.working_upper_optimizer, MOI.VariablePrimal(), x.upper_variables)
         else

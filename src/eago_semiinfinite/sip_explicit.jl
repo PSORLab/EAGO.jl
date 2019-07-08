@@ -11,14 +11,16 @@ function explicit_llp(xbar::Vector{Float64}, sip_storage::SIP_Result, problem_st
   pU = problem_storage.p_u
 
   model_llp = deepcopy(problem_storage.opts.model)
-  g(p) = problem_storage.gSIP(xbar, p)
-  register(model_llp, :g, np, g, autodiff=true)
-  @variable(model_llp, pL[i] <= p[i=1:np] <= pU[i])
-
   if np == 1
+    g(p) = problem_storage.gSIP(xbar, p)
+    register(model_llp, :g, np, g, autodiff=true)
+    @variable(model_llp, pL[i] <= p[i=1:np] <= pU[i])
     @NLobjective(model_llp, Min, -g(p[1]))
   else
-    @NLobjective(model_llp, Min, -g(p...))
+    gmulti(p...) = problem_storage.gSIP(xbar, p)
+    register(model_llp, :gmulti, np, gmulti, autodiff=true)
+    @variable(model_llp, pL[i] <= p[i=1:np] <= pU[i])
+    @NLobjective(model_llp, Min, -gmulti(p...))
   end
 
 
@@ -137,6 +139,8 @@ function explicit_sip_solve(f::Function, gSIP::Function, x_l::Vector{Float64},
   @assert length(x_l) == length(x_u)
   n_p = length(p_l)
   n_x = length(x_l)
+
+  println("ran update 1")
 
   if opts == nothing
       opts = SIP_Options()

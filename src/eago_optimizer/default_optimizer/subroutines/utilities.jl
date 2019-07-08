@@ -208,7 +208,7 @@ function set_local_nlp!(m::Optimizer)
 
     # Add objective sense
     #MOI.set(m.InitialUpperOptimizer, MOI.ObjectiveSense(), m.OptimizationSense)
-    MOI.set(m.initial_upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    #MOI.set(m.initial_upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     # Specifies variables in upper problem
     m.upper_variables = MOI.VariableIndex.(1:m.variable_number)
@@ -217,6 +217,7 @@ function set_local_nlp!(m::Optimizer)
 
     # Add objective function (if any)
     if (m.objective != nothing)
+        MOI.set(m.initial_upper_optimizer, MOI.ObjectiveSense(), m.optimization_sense)
         if isa(m.objective, MOI.SingleVariable)
             if (m.optimization_sense == MOI.MIN_SENSE)
                 MOI.set(m.initial_upper_optimizer, MOI.ObjectiveFunction{MOI.SingleVariable}(), m.objective)
@@ -240,11 +241,12 @@ function set_local_nlp!(m::Optimizer)
                 error("Objective sense must be MOI.MinSense or MOI.MaxSense")
             end
         elseif isa(m.objective, MOI.ScalarQuadraticFunction{Float64})
-            if (m.optimization_sense == MOI.MIN_SENSE)
+            if (m.optimization_sense == MOI.MIN_SENSE) || (m.optimization_sense == MOI.MAX_SENSE)
                 MOI.set(m.initial_upper_optimizer, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(), m.objective)
+            #=
             elseif (m.optimization_sense == MOI.MAX_SENSE)
                 neg_obj_qda_terms = []
-                for term in m.Objective.affine_terms
+                for term in m.objective.affine_terms
                     push!(neg_obj_aff_terms,MOI.ScalarAffineTerm{Float64}(-term.coefficient,term.variable_index))
                 end
                 neg_obj_qdq_terms = []
@@ -253,14 +255,17 @@ function set_local_nlp!(m::Optimizer)
                 end
                 neg_obj_qd = ScalarQuadraticFunction{Float64}(neg_obj_qda_terms,neg_obj_qdq_terms,-m.objective.constant)
                 MOI.set(m.initial_upper_optimizer, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(), neg_obj_qd)
+                =#
             else
                 error("Objective sense must be MOI.MIN_SENSE or MOI.MAX_SENSE")
             end
         end
     else
         @assert m.nlp_data != empty_nlp_data()
+        MOI.set(m.initial_upper_optimizer, MOI.ObjectiveSense(), m.optimization_sense)
         if (m.optimization_sense == MOI.MAX_SENSE)
-            minus_objective!(m.nlp_data.evaluator, false)  # try just disallowing hessian storage request?
+            #println("ran minus objective")
+            #minus_objective!(m.nlp_data.evaluator, false)
         elseif (m.optimization_sense != MOI.MIN_SENSE)
             error("Objective sense must be MOI.MIN_SENSE or MOI.MAX_SENSE")
         end

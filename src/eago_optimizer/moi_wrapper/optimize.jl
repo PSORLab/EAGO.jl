@@ -141,8 +141,6 @@ function MOI.optimize!(m::Optimizer; custom_mod! = triv_function, custom_mod_arg
 
     (~m.use_upper_factory) && bld_user_upper_fact!(m) # if optimizer type is supplied for upper, build factory
 
-    #println("start nlp solve")
-    #println("start nlp solve m.fixed_variable = $(m.fixed_variable)")
     # Runs the branch and bound routine
     solve_nlp!(m)
 end

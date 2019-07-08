@@ -50,14 +50,9 @@ function quadratic_convexity!(src::Optimizer)
 end
 
 """
-    relax_convex_quadratic_inner!
-
-Default routine for relaxing convex quadratic constraint `lower` < `func` < `upper`
-on node `n`. Takes affine bounds of convex part at point `x0`.
+    relax_convex_kernel
 """
-function relax_convex_quadratic_inner!(trg, src::Optimizer, func::MOI.ScalarQuadraticFunction{Float64},
-                                 lower::Float64, upper::Float64, n::NodeBB, x0::Vector{Float64})
-
+function relax_convex_kernel(func::MOI.ScalarQuadraticFunction{Float64}, n::NodeBB, src::Optimizer, x0::Vector{Float64})
     VarNum = length(n)
     temp_sto = zeros(Float64,VarNum)
     terms_coeff = Float64[]
@@ -88,6 +83,20 @@ function relax_convex_quadratic_inner!(trg, src::Optimizer, func::MOI.ScalarQuad
     end
 
     varIndx = [MOI.VariableIndex(src.variable_index_to_storage[i]) for i in terms_index]
+
+    return varIndx, terms_coeff, term_constant
+end
+"""
+    relax_convex_quadratic_inner!
+
+Default routine for relaxing convex quadratic constraint `lower` < `func` < `upper`
+on node `n`. Takes affine bounds of convex part at point `x0`.
+"""
+function relax_convex_quadratic_inner!(trg, src::Optimizer, func::MOI.ScalarQuadraticFunction{Float64},
+                                 lower::Float64, upper::Float64, n::NodeBB, x0::Vector{Float64})
+
+
+    varIndx, terms_coeff, term_constant = relax_convex_kernel(func, n, src, x0)
 
     if (lower == upper)
         saf_term = MOI.ScalarAffineTerm{Float64}.(terms_coeff,varIndx)
@@ -269,10 +278,28 @@ function relax_quadratic!(trg, src::Optimizer, n::NodeBB, r::RelaxationScheme)
 
     # Relax quadratic objective
     if isa(src.objective, MOI.ScalarQuadraticFunction{Float64}) # quadratic objective
-        if (src.objective_convexity)
-            relax_convex_quadratic_inner!(trg, src, src.objective, set.value, set.value, n, x0)
+        if (src.optimization_sense == MOI.MAX_SENSE)
+            objf = src.objective
+            m_objf= MOI.ScalarQuadraticFunction{Float64}(objf.affine_terms, objf.quadratic_terms, -objf.constant)
+            for i in 1:length(m_objf.affine_terms)
+                m_objf.affine_terms[i] = MOI.ScalarAffineTerm{Float64}(-m_objf.affine_terms[i].coefficient, m_objf.affine_terms[i].variable_index)
+            end
+            for i in 1:length(m_objf.quadratic_terms)
+                m_objf.quadratic_terms[i] =  MOI.ScalarQuadraticTerm{Float64}(-m_objf.quadratic_terms[i].coefficient, m_objf.quadratic_terms[i].variable_index_1, m_objf.quadratic_terms[i].variable_index_2)
+            end
+            varIndx, terms_coeff, quadratic_constant = relax_nonconvex_kernel(m_objf, n, src, x0)
+            saf_term = MOI.ScalarAffineTerm{Float64}.(terms_coeff, varIndx)
+            obj_func = MOI.ScalarAffineFunction{Float64}(saf_term, quadratic_constant)
+            MOI.set(trg, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
         else
-            relax_nonconvex_quadratic!(trg, src, src.objective, set.value, set.value, n, x0)
+            if (src.objective_convexity)
+                varIndx, terms_coeff, quadratic_constant = relax_convex_kernel(func, n, src, x0)
+            else
+                varIndx, terms_coeff, quadratic_constant = relax_nonconvex_kernel(src.objective, n, src, x0)
+            end
+            saf_term = MOI.ScalarAffineTerm{Float64}.(terms_coeff, varIndx)
+            obj_func = MOI.ScalarAffineFunction{Float64}(saf_term, quadratic_constant)
+            MOI.set(trg, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), obj_func)
         end
     end
     #MOI.set(trg, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),  QuadMidPoint)

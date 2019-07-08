@@ -16,6 +16,7 @@ function midpoint_affine!(src::Optimizer, trg, n::NodeBB, r, xpnt::Vector{Float6
 
     # Add objective
     if src.working_evaluator_block.has_objective
+
         # Calculates relaxation and subgradient
         df = zeros(Float64, np)
         f = MOI.eval_objective(src.working_evaluator_block.evaluator, xpnt)
@@ -29,8 +30,8 @@ function midpoint_affine!(src::Optimizer, trg, n::NodeBB, r, xpnt::Vector{Float6
             saf_const -= xpnt_c*grad_c
         end
         saf = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(df, var[(1+nx):ngrad]), saf_const)
-        #println("objective cut: saf $saf")
         MOI.set(trg, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), saf)
+
         # Add objective cut if nonlinear (if bound is finite)
         if src.global_upper_bound < Inf
             cut_saf = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(df, var[(1+nx):ngrad]), 0.0)
