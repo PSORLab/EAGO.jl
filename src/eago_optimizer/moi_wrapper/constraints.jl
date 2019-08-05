@@ -18,7 +18,7 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 
 function MOI.add_variable(m::Optimizer)
     m.variable_number += 1
-    m.nonlinear_variable[m.variable_number] = false
+    m.bisection_variable[m.variable_number] = false
     m.fixed_variable[m.variable_number] = false
     push!(m.variable_info, VariableInfo())
     return MOI.VariableIndex(length(m.variable_info))
@@ -138,10 +138,10 @@ macro define_addconstraint_quadratic(function_type, set_type, array_name)
     quote
         function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
             check_inbounds(m, func)
-            for i in func.affine_terms m.nonlinear_variable[i.variable_index.value] = true end
+            for i in func.affine_terms m.bisection_variable[i.variable_index.value] = true end
             for i in func.quadratic_terms
-                m.nonlinear_variable[i.variable_index_1.value] = true
-                m.nonlinear_variable[i.variable_index_2.value] = true
+                m.bisection_variable[i.variable_index_1.value] = true
+                m.bisection_variable[i.variable_index_2.value] = true
             end
             push!(m.$(array_name), (func, set, length(m.$(array_name))+1))
             indx = MOI.ConstraintIndex{$function_type, $set_type}(length(m.$(array_name)))

@@ -19,7 +19,7 @@ function implicit_relax_model!(src::Optimizer, trg, n::NodeBB, r::RelaxationSche
         end
     else
         relax_quadratic!(trg,src,n,r)
-        if ~isempty(src.nonlinear_variable)
+        if ~isempty(src.bisection_variable)
             if MOI.supports(trg, MOI.NLPBlock())
                 evaluator = src.working_evaluator_block.evaluator
                 set_current_node!(evaluator, n)

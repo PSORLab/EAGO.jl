@@ -429,7 +429,7 @@ function forward_eval_obj(d::Evaluator,x)
 end
 
 function forward_eval_all(d::Evaluator,x)
-    
+
     subexpr_values_flt = d.subexpression_values_flt
     subexpr_values_set = d.subexpression_values_set
     user_operators = d.m.nlp_data.user_operators::JuMP._Derivatives.UserOperatorRegistry
@@ -702,7 +702,7 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                 end
             elseif (op == 4) # :^
                 #println("op is ^")
-                #PRINT_EVAL && print_call!(:pow_rev, k, children_idx, children_arr)
+                #PRINT_EVAL && print_call!(:power_rev, k, children_idx, children_arr)
                 child1 = first(children_idx)
                 child2 = last(children_idx)
                 @assert n_children == 2
@@ -711,11 +711,11 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                 @inbounds chdset1 = numvalued[ix1]
                 @inbounds chdset2 = numvalued[ix2]
                 if chdset1
-                    pnew, xnew, ynew = pow_rev(parent_value, numberstorage[ix1], setstorage[ix2])
+                    pnew, xnew, ynew = power_rev(parent_value, numberstorage[ix1], setstorage[ix2])
                 elseif chdset2
-                    pnew, xnew, ynew = pow_rev(parent_value, setstorage[ix1], numberstorage[ix2])
+                    pnew, xnew, ynew = power_rev(parent_value, setstorage[ix1], numberstorage[ix2])
                 else
-                    pnew, xnew, ynew = pow_rev(parent_value, setstorage[ix1], setstorage[ix2])
+                    pnew, xnew, ynew = power_rev(parent_value, setstorage[ix1], setstorage[ix2])
                 end
                 if (isempty(pnew) || isempty(xnew) || isempty(ynew))
                     continue_flag = false
@@ -832,7 +832,7 @@ function reverse_eval_all(d::Evaluator,x)
             break
         end
     end
-    copyto!(d.last_x,x)
+    copyto!(d.last_x, x)
 
     return feas
 end

@@ -10,7 +10,7 @@ function implicit_bisection(B::Optimizer,S::NodeBB)
   np = num_decision_variables(B.working_evaluator_block.evaluator)
   for i in 1:np
     shift = nx + i
-    if (~B.fixed_variable[shift]) && (B.nonlinear_variable[shift])
+    if (~B.fixed_variable[shift]) && (B.bisection_variable[shift])
       TempMax = (S.upper_variable_bounds[shift] - S.lower_variable_bounds[shift])/(B.variable_info[shift].upper_bound - B.variable_info[shift].lower_bound)
       if TempMax > Max
         Pos = shift; Max = TempMax

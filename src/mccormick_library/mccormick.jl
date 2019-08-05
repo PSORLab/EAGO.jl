@@ -1,6 +1,8 @@
 @reexport module McCormick
 
-using StaticArrays, CommonSubexpressions, DiffRules, BenchmarkTools, LinearAlgebra
+using CommonSubexpressions: cse
+using DiffRules: diffrule
+using StaticArrays: @SVector, SVector, zeros, ones
 
 import Base: +, -, *, /, convert, in, isempty, one, zero, real, eps, max, min,
              abs, inv, exp, exp2, exp10, expm1, log, log2, log10, log1p, acosh, sech,
@@ -13,7 +15,7 @@ import Base: +, -, *, /, convert, in, isempty, one, zero, real, eps, max, min,
 import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            one, zero, real, eps, max, min, abs, exp,
                            expm1, log, log2, log10, log1p, sqrt, ^,
-                           sin, cos, tan, min, max, sec, csc, cot, step, tanh, sech,
+                           sin, cos, tan, min, max, sec, csc, cot, step,sech,
                            csch, coth, acsch, acoth, asech,
                            sign, dist, mid, pow, Interval, interval, sinh, cosh,
                            ∩, IntervalBox, pi_interval, bisect, isdisjoint, length,
@@ -25,7 +27,7 @@ import IntervalContractors: plus_rev, mul_rev, min_rev, max_rev, minus_rev, div_
        exp2_rev, exp10_rev, expm1_rev, log_rev, log2_rev, log10_rev,
        log1p_rev, sin_rev, cos_rev, tan_rev, asin_rev, acos_rev, atan_rev,
        sinh_rev, cosh_rev, tanh_rev, asinh_rev, acosh_rev, atanh_rev,
-       abs_rev, sqr_rev, sqrt_rev, pow_rev
+       abs_rev, sqr_rev, sqrt_rev, power_rev
 
 import Base.MathConstants.golden
 
@@ -54,7 +56,7 @@ export plus_rev, mul_rev, min_rev, max_rev, minus_rev, div_rev, exp_rev,
        exp2_rev, exp10_rev, expm1_rev, log_rev, log2_rev, log10_rev,
        log1p_rev, sin_rev, cos_rev, tan_rev, asin_rev, acos_rev, atan_rev,
        sinh_rev, cosh_rev, tanh_rev, asinh_rev, acosh_rev, atanh_rev,
-       abs_rev, sqr_rev, sqrt_rev, pow_rev
+       abs_rev, sqr_rev, sqrt_rev, power_rev
 
 # Export utility operators
 #=
@@ -75,7 +77,6 @@ include("convexity_rules.jl")
 
 include("./mccormick_utilities/constants.jl")
 include("mccormick_utilities/inner_utilities.jl")
-include("mccormick_utilities/fast_intervals.jl")
 
 include("operator_library/type.jl")
 

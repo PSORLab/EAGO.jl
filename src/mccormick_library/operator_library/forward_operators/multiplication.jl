@@ -1,7 +1,4 @@
-IntervalType########### Defines multiplicaiton of SMC and SMC
-function sigu(x::Float64,mu1T::Float64)
-	 (0.0<=x) ? x^(1.0/mu1T) : -abs(x)^(1.0/mu1T)
- end
+########### Defines multiplicaiton of SMC and SMC
 #=
 function gCxAcv(alpha, beta ,lambda ,nu ,x1::MC{N},x2::MC{N}) where N
 
@@ -330,7 +327,7 @@ function multiply_MV(x1::MC{N},x2::MC{N}) where N
 end
 =#
 
-function sigu(x::Float64,mu1T::Float64)
+function sigu(x::Float64, mu1T::Float64)
 	 (0.0 <= x) ? x^(1.0/mu1T) : -abs(x)^(1.0/mu1T)
  end
 

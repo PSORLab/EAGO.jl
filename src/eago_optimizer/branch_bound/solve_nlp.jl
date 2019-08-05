@@ -52,11 +52,11 @@ function solve_nlp!(x::Optimizer)
     x.current_postprocess_info.feasibility = true
 
     if (x.current_iteration_count == 1)
-      OldLowerInfo = deepcopy(x.current_lower_info)
-      OldUpperInfo = deepcopy(x.current_upper_info)
-      OldPreprocessInfo = deepcopy(x.current_preprocess_info)
-      OldPostprocessInfo = deepcopy(x.current_postprocess_info)
-      tempNode = copy(CurrentNode)
+      OldLowerInfo = LowerInfo(x.current_lower_info)
+      OldUpperInfo = UpperInfo(x.current_upper_info)
+      OldPreprocessInfo = PreprocessInfo(x.current_preprocess_info)
+      OldPostprocessInfo = PostprocessInfo(x.current_postprocess_info)
+      tempNode = NodeBB(CurrentNode)
       (x.verbosity >= 4) && println("started initial preprocessing")
       x.preprocess!(x,tempNode)
       (x.verbosity >= 4) && println("finished initial preprocessing")
@@ -112,6 +112,9 @@ function solve_nlp!(x::Optimizer)
               x.solution_value = x.current_upper_info.value
               x.continuous_solution[:] = x.current_upper_info.solution
               x.history.upper_bound[x.current_iteration_count] = x.solution_value
+              if (x.optimization_sense == MOI.FEASIBILITY_SENSE) && (~x.feasible_local_continue || x.local_solve_only)
+                break
+              end
             else
               x.history.upper_bound[x.current_iteration_count] = x.history.upper_bound[x.current_iteration_count-1]
             end
@@ -124,7 +127,7 @@ function solve_nlp!(x::Optimizer)
 
           # Checks to see if the node
           if (x.current_postprocess_info.feasibility)
-            if x.repeat_check(x, CurrentNode)
+            if x.single_check(x, CurrentNode)
               single_storage!(x, CurrentNode)
               x.node_repetitions += 1
             else

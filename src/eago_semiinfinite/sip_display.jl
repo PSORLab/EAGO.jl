@@ -27,9 +27,9 @@ and relative ratio if the verbosity is set to "Normal".
     # prints iteration summary every prnt_intv times
     if (mod(k_int,sip_options.print_interval)==0)
       ptr_arr_temp = [k_int lbd ubd eps r (ubd-lbd) (lbd/ubd)]
-      ptr_arr1 = join([Printf.@sprintf("%6u",x) for x in ptr_arr_temp[1]], ",   ")
-      ptr_arr2 = join([Printf.@sprintf("%3.7f",x) for x in ptr_arr_temp[2:5]], ",     ")
-      ptr_arr3 = join([Printf.@sprintf("%6u",x) for x in ptr_arr_temp[6:7]], ",")
+      ptr_arr1 = join([@sprintf("%6u",x) for x in ptr_arr_temp[1]], ",   ")
+      ptr_arr2 = join([@sprintf("%3.7f",x) for x in ptr_arr_temp[2:5]], ",     ")
+      ptr_arr3 = join([@sprintf("%6u",x) for x in ptr_arr_temp[6:7]], ",")
       println(string(ptr_arr1,",      ",ptr_arr2,",      ",ptr_arr3))
     end
   end

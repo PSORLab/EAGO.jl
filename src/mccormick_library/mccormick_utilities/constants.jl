@@ -53,3 +53,11 @@ Template_List = union(CVList,CCList,CCtoCVList,CVtoCCList)
 ########### non differentiable and non-unitary functions
 OtherList = [:sin,:cos,:min,:max,:abs,:step, :sign, :inv, :*, :+, :-, :/,
 :promote_rule, :convert, :one, :zero, :real, :dist, :eps, :fma, :^]
+
+const IntervalType = Interval{Float64}
+
+const one_intv = one(Interval{Float64})
+const half_intv = Interval{Float64}(0.5)
+const two_intv = Interval{Float64}(2.0)
+const log2_intv = log(Interval{Float64}(2.0))
+const log10_intv = log(Interval{Float64}(10.0))

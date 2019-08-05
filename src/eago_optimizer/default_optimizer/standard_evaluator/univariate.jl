@@ -2,7 +2,7 @@
 const univariate_operators = Symbol[:+,:-,:abs]
 const univariate_operator_to_id = Dict{Symbol,Int}(:+ => 1, :- => 2, :abs => 3)
 
-for (op, deriv) in Calculus.symbolic_derivatives_1arg()
+for (op, deriv) in symbolic_derivatives_1arg()
     push!(univariate_operators, op)
     univariate_operator_to_id[op] = length(univariate_operators)
 end
@@ -15,7 +15,6 @@ for i = 1:length(univariate_operators)
 end
 
 function binaryswitch(ids, exprs)
-    #println("exprs: $exprs")
     if length(exprs) <= 3
         out = Expr(:if, Expr(:call, :(==), :operator_id, ids[1]), exprs[1])
         if length(exprs) > 1

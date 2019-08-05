@@ -19,7 +19,7 @@ mutable struct NodeBB
     last_branch::Int
     branch_direction::Bool
 end
-NodeBB() = NodeBB(Float64[],Float64[],-Inf,Inf,0,-1,false)
+NodeBB() = NodeBB(Float64[], Float64[], -Inf, Inf, 0, -1, false)
 
 # Access functions for broadcasting data easily
 lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds

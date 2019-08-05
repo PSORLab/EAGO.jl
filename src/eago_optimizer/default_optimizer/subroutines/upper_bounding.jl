@@ -22,7 +22,7 @@ function default_upper_bounding!(x::Optimizer,y::NodeBB)
             x.working_upper_optimizer = x.initial_upper_optimizer
         else
             if x.initial_upper_optimizer != DummyOptimizer()
-                x.working_upper_optimizer = deepcopy(x.initial_upper_optimizer)
+                x.working_upper_optimizer = deepcopy(x.initial_upper_optimizer) # TODO: Nix deepcopy here
             end
         end
         update_upper_variable_bounds!(x,y,x.working_upper_optimizer)

@@ -80,11 +80,11 @@ end
 inv_rev(a,b) = inv_rev(promote(a,b)...)
 
 """
-    pow_rev
+    power_rev
 
 Creates reverse McCormick contractor for `a` = `b`^`c`
 """
-function pow_rev(a::MC, b::MC, c::MC)  # a = b^c
+function power_rev(a::MC, b::MC, c::MC)  # a = b^c
     #=
     if (~isempty(b) && ~isempty(c))
         ~in(0.0, c.Intv) && (b = b ∩ (a^(inv(c))))
@@ -102,7 +102,6 @@ function pow_rev(a::MC, b::MC, c::MC)  # a = b^c
     =#
     a,b,c
 end
-pow_rev(a, b, c) = pow_rev(promote(a, b, c)...)
 
 
 """
@@ -114,7 +113,7 @@ function sqrt_rev(a::MC, b::MC)  # a = sqrt(b)
     #b = b ∩ (a^2)
     a,b
 end
-#sqr_rev(f, x)  = pow_rev(f,x,2)
+#sqr_rev(f, x)  = power_rev(f,x,2)
 
 
 """

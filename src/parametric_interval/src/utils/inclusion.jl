@@ -15,17 +15,6 @@ function strict_x_in_y(X::Vector{IntervalType},Y::Vector{IntervalType})
 end
 
 """
-    strict_x_in_y(X::IntervalType, Y::IntervalType)
-
-Returns true if X is strictly in Y (X.lo>Y.lo && X.hi<Y.hi).
-"""
-function strict_x_in_y(X::IntervalType, Y::IntervalType)
-  (X.lo<=Y.lo) && return false
-  (X.hi>=Y.hi) && return false
-  return true
-end
-
-"""
     strictly_in_routine!
 
 Checks that N is strictly in the interior of X. Sets the upper, lower, and both

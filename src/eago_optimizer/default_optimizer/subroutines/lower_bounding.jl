@@ -40,7 +40,7 @@ function default_lower_bounding!(x::Optimizer, y::NodeBB)
         MOI.add_variables(x.working_relaxed_optimizer, x.variable_number)
     else
         if (x.initial_relaxed_optimizer != DummyOptimizer()) && (x.obbt_performed_flag)
-            x.working_relaxed_optimizer = deepcopy(x.initial_relaxed_optimizer)
+            x.working_relaxed_optimizer = deepcopy(x.initial_relaxed_optimizer)           # TODO: Nix deepcopy here.
         end
     end
 

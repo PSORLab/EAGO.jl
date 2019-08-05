@@ -85,6 +85,7 @@ mutable struct SIP_Problem_Storage
   y_u::Vector{Float64}
   ny::Int
   upper::Symbol
+  sense::Symbol
 
   xp_l::Vector{Float64}
   xp_u::Vector{Float64}

@@ -27,7 +27,7 @@ commonly used options are described below and can be set via keyword arguments i
 * `upper_problem!::Function` - Upper problem function
 * `preprocess!::Function` - Preprocessing function
 * `postprocess!::Function` - Postprocessing function
-* `repeat_check::Function` - Repetition check
+* `single_check::Function` - Check if single node should be stored
 * `convergence_check::Function` - Convergence criterion function
 * `termination_check::Function` - Termination check function
 * `node_storage!::Function` - Function defining manner in which node is stored to stack
@@ -125,7 +125,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     initial_continuous_values::IntervalBox          # Interval box constraints
     initial_integer_values::Vector{Int}               # Potential Integer Values
 
-    nonlinear_variable::Dict{Int,Bool}
+    bisection_variable::Dict{Int,Bool}
     fixed_variable::Dict{Int,Bool}
     #=
     pseudo_cost_lower::Vector{Float64}
@@ -199,7 +199,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     upper_problem!::Function                                                 # Stores upper problem function
     preprocess!::Function                                                   # Preprocessing function
     postprocess!::Function                                                  # Post processing function
-    repeat_check::Function                                                  # Repeation check
+    single_check::Function                                                  # Repeation check
     convergence_check::Function                                             # convergence criterion
     termination_check::Function                                             # Stores termination check function
     node_storage!::Function                                                  # Stores branching function
@@ -244,6 +244,8 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     absolute_tolerance::Float64                                            # Absolute tolerance for BnB
     relative_tolerance::Float64                                             # Relative tolerance for BnB
     exhaustive_search::Bool                                                 # Exhaustive search: find all solns or find first
+    local_solve_only::Bool
+    feasible_local_continue::Bool
 
     # Optimality-Based Bound Tightening (OBBT) Options
     obbt_variables::Vector{MOI.VariableIndex}
@@ -314,6 +316,10 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     first_relaxed::Bool
     upper_has_node::Bool
 
+    # UDF options
+    udf_scrubber_flag::Bool
+    udf_to_JuMP_flag::Bool
+
     # Problem reformulation options
     reform_epigraph_flag::Bool
     reform_cse_flag::Bool
@@ -329,7 +335,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict = Dict{Symbol,Any}()
 
         # set fallback for potentially user defined functions
-        for i in (:lower_problem!, :upper_problem!, :preprocess!, :postprocess!, :repeat_check,
+        for i in (:lower_problem!, :upper_problem!, :preprocess!, :postprocess!, :single_check,
                   :convergence_check, :termination_check, :node_storage!, :node_selection,
                   :bisection_function, :cut_condition, :add_cut!, :relax_function!)
                   default_opt_dict[i] = dummy_function
@@ -415,8 +421,13 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:exhaustive_search] = false
         default_opt_dict[:first_relaxed] = false
         default_opt_dict[:upper_has_node] = false
+        default_opt_dict[:local_solve_only] = false
+        default_opt_dict[:feasible_local_continue] = false
 
         default_opt_dict[:mid_cvx_factor] = 0.25
+
+        # UDF options
+        default_opt_dict[:udf_scrubber_flag] = true
 
         # Problem Reformulation Options
         default_opt_dict[:reform_epigraph_flag] = false
@@ -489,7 +500,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         m.constraint_convexity = Dict{MOI.ConstraintIndex,Bool}()
         m.variable_index_to_storage = Dict{Int,Int}()
         m.storage_index_to_variable = Dict{Int,Int}()
-        m.nonlinear_variable = Dict{Int,Bool}()
+        m.bisection_variable = Dict{Int,Bool}()
         m.fixed_variable =  Dict{Int,Bool}()
         m.quadratic_convexity = Bool[]
         m.constraint_label = Dict{Int,Symbol}()

@@ -13,7 +13,7 @@ function relax_model!(src::Optimizer, trg, n::NodeBB, r::RelaxationScheme, xpnt:
         if ~isa(src.nlp_data.evaluator, EAGO.EmptyNLPEvaluator)
             # copy working evaluator into block if nonlinear block is needed
             if (r.optimizer_type == :NLP)
-                if ~isempty(src.nonlinear_variable)
+                if ~isempty(src.bisection_variable)
                     trg.nlp_data = src.working_evaluator_block
                 end
             end
@@ -22,7 +22,7 @@ function relax_model!(src::Optimizer, trg, n::NodeBB, r::RelaxationScheme, xpnt:
         set_current_node!(src.working_evaluator_block.evaluator, n)
         ~isinf(src.global_upper_bound) && objective_cut_linear!(src,trg)
         relax_quadratic!(trg,src,n,r)
-        if ~isempty(src.nonlinear_variable)
+        if ~isempty(src.bisection_variable)
             if MOI.supports(trg, MOI.NLPBlock())
                 nlp_data = MOI.NLPBlockData(src.nlp_data.constraint_bounds,
                                             src.working_evaluator_block.evaluator,

@@ -7,7 +7,7 @@ resulting nodes.
 function continuous_relative_bisect(B::Optimizer,S::NodeBB)
   Pos = 0; Max = -Inf; TempMax = 0.0
   for i in 1:B.variable_number
-    if (~B.fixed_variable[i]) && (B.nonlinear_variable[i])
+    if (~B.fixed_variable[i]) && (B.bisection_variable[i])
       TempMax = (S.upper_variable_bounds[i] - S.lower_variable_bounds[i])/(B.variable_info[i].upper_bound - B.variable_info[i].lower_bound)
       if TempMax > Max
         Pos = i; Max = TempMax
@@ -22,7 +22,7 @@ function continuous_relative_bisect(B::Optimizer,S::NodeBB)
   S.upper_bound = min(S.upper_bound, B.current_upper_info.value)
   X1 = NodeBB(S.lower_variable_bounds, S.upper_variable_bounds,
               S.lower_bound, S.upper_bound, S.depth + 1, -1, false)
-  X2 = deepcopy(X1)
+  X2 = NodeBB(X1)
   X1.lower_variable_bounds[Pos] = N1.lo; X1.upper_variable_bounds[Pos] = N1.hi
   X2.lower_variable_bounds[Pos] = N2.lo; X2.upper_variable_bounds[Pos] = N2.hi
   return X1, X2
@@ -32,7 +32,7 @@ end
 TO DO: ADD CODE FOR PSEUDO-COST BRANCHING
 function pseudo_cost_branch(B::Optimizer,S::NodeBB)
     indx, psval = -1,-Inf
-    for var in B.nonlinear_variable
+    for var in B.bisection_variable
       LowerCount = B.ProbCountLower[var]
       CostLower =(LowerCount > 0.0) ? (B.PseudoCostLower[var]/LowerCount) : 0.0
       UpperCount = B.ProbCountLower[var]

@@ -12,7 +12,24 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     has_hessian = (:Hess in features)
     init_feat = [:Grad, :ExprGraph]
     num_nlp_constraints > 0 && push!(init_feat, :Jac)
-    MOI.initialize(evaluator,init_feat)
+    MOI.initialize(evaluator, init_feat)
+
+    # Scrub user-defined functions
+    m.udf_scrubber_flag && Script.scrub!(evaluator.m.nlp_data)
+    #if m.udf_to_JuMP_flag
+    #    Script.udf_loader!(m)
+    #end
+    #m.nlp_data.evaluator = evaluator #TODO: Rebuilt entire nlp_block...
+
+    # Transform UDFs to JuMP ASTs
+    #m.udf_to_JuMP_flag && Script.udf_loader!(m)
+    # Rebuild the nlp-evaluator with udfs -> JuMP expressions
+
+    #####
+    #Script to unpack UDF from here
+    #unpacked_evaluator = script_to_dag()
+    #m.nlp.evaluator = unpacked_evaluator
+    #####
 
     # Creates initial EAGO nlp evaluator for relaxations
     m.working_evaluator_block = m.nlp_data
@@ -39,12 +56,12 @@ end
 
 function label_obbt_variables!(m::Optimizer)
 
-    if ~in(true, values(m.nonlinear_variable))
+    if ~in(true, values(m.bisection_variable))
         linear_solve!(m)
     end
 
     for i=1:length(m.variable_info)
-        if m.nonlinear_variable[i]
+        if m.bisection_variable[i]
             push!(m.obbt_variables, MOI.VariableIndex(i))
         end
     end
@@ -112,6 +129,7 @@ function MOI.optimize!(m::Optimizer; custom_mod! = triv_function, custom_mod_arg
     set_to_default!(m)                             # Sets any unset functions to default values
     initialize_evaluators!(m, false)               # initializes the EAGO and JuMP NLP evaluators
 
+
     m.reform_epigraph_flag && reform_epigraph!(m)  # perform epigraph rearrangement
     #m.reform_cse_flag && dag_cse_simplify!(m)      #
     #m.reform_flatten_flag && dag_flattening!(m)
@@ -142,5 +160,9 @@ function MOI.optimize!(m::Optimizer; custom_mod! = triv_function, custom_mod_arg
     (~m.use_upper_factory) && bld_user_upper_fact!(m) # if optimizer type is supplied for upper, build factory
 
     # Runs the branch and bound routine
-    solve_nlp!(m)
+    if m.local_solve_only
+        local_nlp_solve!(m)
+    else
+        solve_nlp!(m)
+    end
 end

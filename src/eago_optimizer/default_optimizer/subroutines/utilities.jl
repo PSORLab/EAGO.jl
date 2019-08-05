@@ -115,7 +115,7 @@ function minus_objective!(d::JuMP.NLPEvaluator,want_hess_storage)
     if (d.has_nlobj)
         # shifts the adjacency matrix to introduce -f(x) as first element of nd array
         rowval = rowvals(d.objective.adj) .+ 1; pushfirst!(rowval, 2)
-        colptr = copy(d.objective.adj.colptr) .+ 1; pushfirst!(colptr, 1)
+        colptr = Vector{Int}(d.objective.adj.colptr) .+ 1; pushfirst!(colptr, 1)
         nzval = nonzeros(d.objective.adj); pushfirst!(nzval, true)
         m, n = size(d.objective.adj)
         d.objective.adj = SparseMatrixCSC{Bool,Int}(m+1,n+1,colptr,rowval,nzval)
@@ -263,12 +263,14 @@ function set_local_nlp!(m::Optimizer)
     else
         @assert m.nlp_data != empty_nlp_data()
         MOI.set(m.initial_upper_optimizer, MOI.ObjectiveSense(), m.optimization_sense)
+        #=
         if (m.optimization_sense == MOI.MAX_SENSE)
             #println("ran minus objective")
             #minus_objective!(m.nlp_data.evaluator, false)
         elseif (m.optimization_sense != MOI.MIN_SENSE)
-            error("Objective sense must be MOI.MIN_SENSE or MOI.MAX_SENSE")
+            #error("Objective sense must be MOI.MIN_SENSE or MOI.MAX_SENSE")
         end
+        =#
     end
 end
 
@@ -283,7 +285,7 @@ function set_to_default!(m::Optimizer)
     (m.upper_problem! == dummy_function)       &&   (m.upper_problem! = default_upper_bounding!)
     (m.preprocess! == dummy_function)         &&   (m.preprocess! = default_preprocess!)
     (m.postprocess! == dummy_function)        &&   (m.postprocess! = default_postprocess!)
-    (m.repeat_check == dummy_function)        &&   (m.repeat_check = default_repeat_check)
+    (m.single_check == dummy_function)        &&   (m.single_check = default_repeat_check)
     (m.convergence_check == dummy_function)   &&   (m.convergence_check = default_convergence_check)
     (m.termination_check == dummy_function)   &&   (m.termination_check = default_termination_check)
     (m.node_storage! == dummy_function)        &&   (m.node_storage! = default_storage!)

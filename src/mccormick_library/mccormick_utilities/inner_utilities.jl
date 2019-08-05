@@ -119,3 +119,13 @@ end
 function neq(x::Float64,y::Float64)
   abs(x-y)>EqualityTolerance
 end
+
+lo(x::Interval{Float64}) = x.lo
+hi(x::Interval{Float64}) = x.hi
+
+function step(x::Interval{Float64})
+      isempty(x) && return emptyinterval(x)
+      xmin::Float64 = ((x.lo) < 0.0) ? 0.0 : 1.0
+      xmax::Float64 = ((x.hi) >= 0.0) ? 1.0 : 0.0
+      return Interval{Float64}(xmin,xmax)
+end

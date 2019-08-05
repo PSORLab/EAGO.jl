@@ -18,11 +18,11 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::MOI.ScalarQuadrati
     check_inbounds(m, func)
     m.objective = func
     for term in func.quadratic_terms
-        m.nonlinear_variable[term.variable_index_1.value] = true
-        m.nonlinear_variable[term.variable_index_1.value] = true
+        m.bisection_variable[term.variable_index_1.value] = true
+        m.bisection_variable[term.variable_index_1.value] = true
     end
     #for term in func.affine_terms
-    #    m.nonlinear_variable[term.variable_index] = true
+    #    m.bisection_variable[term.variable_index] = true
     #end
     return
 end

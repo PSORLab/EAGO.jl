@@ -1,7 +1,7 @@
 for opMC in (:exp,:exp2,:exp10,:expm1)
 
    # get derivative of midcv for nonsmooth McCormick
-   dop = DiffRules.diffrule(:Base, opMC, :midcv) # Replace with cv ruleset
+   dop = diffrule(:Base, opMC, :midcv) # Replace with cv ruleset
 
    monotone = :increasing
    if monotone == :increasing
@@ -26,7 +26,7 @@ for opMC in (:exp,:exp2,:exp10,:expm1)
             end
 
     # creates expression for nonsmooth McCormick operator
-    dop = DiffRules.diffrule(:Base, opMC, :(cv(x)))
+    dop = diffrule(:Base, opMC, :(cv(x)))
     dMC_exp = quote
                xIntv = ($opMC)(Intv(x))
                xL = lo(x)

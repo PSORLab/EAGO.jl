@@ -65,11 +65,11 @@ function cc_cos(x,xL,xU)
   temp = cv_cos(x-pi,xL-pi,xU-pi)
   return -temp[1],-temp[2]
 end
-function cos_arg(xL,xU)
+function cos_arg(xL, xU)
   kL = Base.ceil(-0.5-xL/(2.0*pi))
-  xL1 = xL+2.0*pi*kL
-  xU1 = xU+2.0*pi*kL
-  if ~((xL1>=-pi)&&(xL1<=pi))
+  xL1 = xL + 2.0*pi*kL
+  xU1 = xU + 2.0*pi*kL
+  if ~( (xL1 >= -pi) && (xL1 <= pi) )
     error("Cosine Argument Calculation: xL out of bounds.")
   end
   if (xL1 <= 0.0)
@@ -103,7 +103,7 @@ function cos(x::MC{N}) where N
   xU = x.Intv.hi
   xLc = Intv.lo
   xUc = Intv.hi
-  eps_max,eps_min = cos_arg(x.Intv.lo,x.Intv.hi)
+  eps_max, eps_min = cos_arg(x.Intv.lo,x.Intv.hi)
   midcc,cc_id = mid3(x.cc,x.cv,eps_max)
   midcv,cv_id = mid3(x.cc,x.cv,eps_min)
   cc,dcc = cc_cos(midcc,x.Intv.lo,x.Intv.hi)

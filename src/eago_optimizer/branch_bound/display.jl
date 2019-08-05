@@ -56,12 +56,12 @@ function print_iteration!(x::Optimizer)
     nid = x.global_upper_bound
     lbdp = x.current_lower_info.feasibility ? x.current_lower_info.value : Inf
     if ((mod(x.current_iteration_count,x.output_iterations) == 0))
-      ptr_arr1 = join([Printf.@sprintf("%6u",x) for x in Int[x.current_iteration_count x.current_node_count]], ",   ")
-      ptr_arr2 = join([Printf.@sprintf("%3.7f",x) for x in Float64[lbdp x.global_lower_bound x.global_upper_bound]], ",     ")
-      ptr_arr3 = join([Printf.@sprintf("%6u",x) for x in Int[x.current_node_count]], ",")
-      ptr_arr4 = join([Printf.@sprintf("%3.7f",x) for x in Float64[abs(x.global_upper_bound-x.global_lower_bound),
+      ptr_arr1 = join([@sprintf("%6u",x) for x in Int[x.current_iteration_count x.current_node_count]], ",   ")
+      ptr_arr2 = join([@sprintf("%3.7f",x) for x in Float64[lbdp x.global_lower_bound x.global_upper_bound]], ",     ")
+      ptr_arr3 = join([@sprintf("%6u",x) for x in Int[x.current_node_count]], ",")
+      ptr_arr4 = join([@sprintf("%3.7f",x) for x in Float64[abs(x.global_upper_bound-x.global_lower_bound),
                             abs(x.global_upper_bound-x.global_lower_bound)/(min(abs(x.global_lower_bound),abs(x.global_upper_bound)))]], ",       ")
-      ptr_arr5 = join([Printf.@sprintf("%s",x) for x in String[sbool1 sbool2]], ",       ")
+      ptr_arr5 = join([@sprintf("%s",x) for x in String[sbool1 sbool2]], ",       ")
 #      ptr_arr1 = join([@sprintf("%6u",x) for x in Int[k_int nid]], ",   ")
 #      ptr_arr2 = join([@sprintf("%3.7f",x) for x in Float64[lbdp lbd ubd]], ",     ")
 #      ptr_arr3 = join([@sprintf("%6u",x) for x in Int[k_nod]], ",")

@@ -1,7 +1,7 @@
 for opMC in (:log, :log2, :log10, :log1p, :acosh, :sqrt)
 
    # get derivative of midcc for nonsmooth McCormick
-   dop = DiffRules.diffrule(:Base, opMC, :midcc) # Replace with cv ruleset
+   dop = diffrule(:Base, opMC, :midcc) # Replace with cv ruleset
 
    # creates expression for nonsmooth McCormick operator
    MC_exp = quote
@@ -21,7 +21,7 @@ for opMC in (:log, :log2, :log10, :log1p, :acosh, :sqrt)
             end
 
     # creates expression for smooth McCormick operator
-    dop = DiffRules.diffrule(:Base, opMC, :(cv(x)))
+    dop = diffrule(:Base, opMC, :(cv(x)))
     dMC_exp = quote
                xIntv = ($opMC)(Intv(x))
                xL = lo(x)

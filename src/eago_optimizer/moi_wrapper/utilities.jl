@@ -16,7 +16,7 @@ function MOI.is_empty(m::Optimizer)
     vb[7] = m.upper_problem! == dummy_function
     vb[8] = m.preprocess! == dummy_function
     vb[9] = m.postprocess! == dummy_function
-    vb[10] = m.repeat_check == dummy_function
+    vb[10] = m.single_check == dummy_function
     vb[11] = m.convergence_check == dummy_function
     vb[12] = m.termination_check == dummy_function
     vb[13] = m.node_storage! == dummy_function
@@ -105,7 +105,7 @@ function label_nonlinear_variables!(m::Optimizer, x)
                 for i in 1:length(x.objective.nd)
                     nd = x.objective.nd[i]
                     if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.nonlinear_variable[nd.index] = true
+                        m.bisection_variable[nd.index] = true
                     end
                 end
             end
@@ -117,7 +117,7 @@ function label_nonlinear_variables!(m::Optimizer, x)
                     nd = x.constraints[i].nd[j]
                     bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
                     if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.nonlinear_variable[nd.index] = true
+                        m.bisection_variable[nd.index] = true
                     end
                 end
             end
@@ -129,7 +129,7 @@ function label_nonlinear_variables!(m::Optimizer, x)
                     nd = x.subexpressions[i].nd[j]
                     bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
                     if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.nonlinear_variable[nd.index] = true
+                        m.bisection_variable[nd.index] = true
                     end
                 end
             end
@@ -137,7 +137,7 @@ function label_nonlinear_variables!(m::Optimizer, x)
     end
     # sets the following variable indexs to nonlinear
     for i in m.treat_as_nonlinear
-        m.nonlinear_variable[i] = true
+        m.bisection_variable[i] = true
     end
 end
 

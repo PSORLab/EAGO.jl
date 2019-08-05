@@ -116,7 +116,7 @@ end
 """
     dag_flattening!
 """
-function dag_flattening!(d::Evaluator) where T<:Real
+function dag_flattening!(d::Evaluator)
 
     # flatten objective
     flatten_function!(d.objective)

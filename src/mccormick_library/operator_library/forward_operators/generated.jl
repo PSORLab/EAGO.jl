@@ -22,7 +22,7 @@ Generates the rhs of functions to used to find the anchor point of the McCormick
                                                                                   f'(p) = f"(p)*(p - xL) = 0 (d eqn)
 ```
 function DefineRootExpr(md::Symbol,op::Symbol)
-    dop = DiffRules.diffrule(md, op, :x)
+    dop = diffrule(md, op, :x)
     root = :($dop*(y-x) - ($op)(y) + ($op)(x))
     droot = Calculus.differentiate(root,:x)
     String_Env = String(md)*"_"*String(op)*"_env"
@@ -38,8 +38,8 @@ function DefineRootExpr(md::Symbol,op::Symbol)
 end
 
 function GetOuterRelax(mod, cvx, op, midcc, midcv)
-         diffcv = DiffRules.diffrule(mod, op, midcv)
-         diffcc = DiffRules.diffrule(mod, op, midcc)
+         diffcv = diffrule(mod, op, midcv)
+         diffcc = diffrule(mod, op, midcc)
          if (cvx == :Convex || cvx == :Affine) # Pretty Much Done
             gen_dconcave = :((xU > xL) ? (fxU - fxL)/(xU - xL) : 0.0)
             gen_concave = :((xU > xL) ? ((fxU - fxL)/(xU - xL))*($midcc-xL) + fxL, 0.0  : xU, 0.0)
@@ -81,8 +81,8 @@ function McCormickExpr(md, op, ar)
 
    # get derivative of midcv for nonsmooth McCormick
    cvx, mono, sw, low, upp = McCormick.ConvexityRules.CV_TRAITS[$md,$op,$ar]
-   dcv = DiffRules.diffrule($md, $op, :midcv)
-   dcc = DiffRules.diffrule($md, $op, :midcc)
+   dcv = diffrule($md, $op, :midcv)
+   dcc = diffrule($md, $op, :midcc)
    println("ran to me 1")
    gen_eps_min = EpsMin[$op]
    gen_eps_max = EpsMax[$op]
@@ -131,7 +131,7 @@ end
 
 @GenerateMcCormick(:exp)
 #=
-q1 = quote dop = DiffRules.diffrule(:Base, $opMC, :midcv) end
+q1 = quote dop = diffrule(:Base, $opMC, :midcv) end
 q2 = quote mono = cvtrait() end
 q3 = quote convex = 1 end
 q4 = quote smth = 1 end
@@ -159,7 +159,7 @@ MC_exp = quote
          end
 
 # creates expression for nonsmooth McCormick operator
-dop = DiffRules.diffrule(:Base, opMC, :(cv(x)))
+dop = diffrule(:Base, opMC, :(cv(x)))
 dMC_exp = quote
             xIntv = ($opMC)(Intv(x))
             xL = lo(x)

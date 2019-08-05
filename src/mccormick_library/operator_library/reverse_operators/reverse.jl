@@ -1,7 +1,6 @@
 empty(x::MC{N}) where N = MC{N}(Inf, -Inf, EAGO.IntervalType(Inf,-Inf),
                                 SVector{N,Float64}(zeros(Float64,N)),
                                 SVector{N,Float64}(zeros(Float64,N)), false)
-isempty(x::MC) = isempty(x.Intv)
 
 include("arithmetic.jl")
 include("exponential.jl")

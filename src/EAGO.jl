@@ -2,16 +2,15 @@ module EAGO
 
     import MathOptInterface
 
-    using Printf
-    using SparseArrays
-    using LinearAlgebra
-
     using JuMP
-
-    # To drop CPLEX from support in favor Clp
     using Ipopt, GLPK
-    using DiffRules, ForwardDiff, ReverseDiff, Calculus
-    using Reexport, StaticArrays
+
+    using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros
+    using StaticArrays: SVector
+
+    import Calculus.symbolic_derivatives_1arg
+    import Printf.@sprintf
+    import Reexport.@reexport
 
     import IntervalArithmetic: +, -, *, /, convert, in, isempty, one, zero,
                                real, eps, max, min, abs, exp,
@@ -20,7 +19,7 @@ module EAGO
                                sign, dist, mid, pow, Interval, sinh, cosh, ∩,
                                IntervalBox, bisect, isdisjoint
                                # faster versions of: ^, inv, exp2, exp10, tanh,
-                               # asinh, acosh, atanh
+                               # asinh, acosh, atanh,
 
 
     const MOI = MathOptInterface
@@ -66,14 +65,10 @@ module EAGO
     include("eago_optimizer/implicit_optimizer/implicit_optimizer.jl")
 
     # Import the script solving utilities
-    include("eago_script/script_module.jl")
+    include("eago_script/script.jl")
 
-    export solve_script
-    include("eago_script/solve_script.jl")
 
     # Routines for solving SIPs
     export SIP_Options, SIP_Result, explicit_sip_solve, implicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
-
-    println("EAGO version 9")
 end
