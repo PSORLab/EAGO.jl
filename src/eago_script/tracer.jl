@@ -21,6 +21,7 @@ struct SetTraceSto
     storage::Vector{SetTrace}
 end
 getindex(A::SetTraceSto, i::Int64) = getindex(A.storage, i)
+iterate(v::SetTraceSto, i=1) = (length(v.storage) < i ? nothing : (v.storage[i], i + 1))
 
 export Tape
 
@@ -66,8 +67,8 @@ end
 # defines primitives for CALLUNIVAR operators
 for i in (abs, sin, cos, tan, sec, csc, cot, asin, acos, atan, asec, acsc,
           acot, sinh, cosh, tanh, asinh, acosh, atanh, sech, asech, csch,
-          acsch, coth, acoth, sqrt, log, log2, log10, log1p, exp, exp2,expm1
-          , +, -, inv)
+          acsch, coth, acoth, sqrt, log, log2, log10, log1p, exp, exp2, expm1,
+          +, -, inv)
     id = univariate_operator_to_id[Symbol(i)]
     @eval function overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace)
                 node = NodeInfo(CALLUNIVAR, $id, [val(x)])
@@ -150,7 +151,11 @@ end
 
 function trace_script(f::Function, n::Int)
     tape = Tape(n)
-    x = SetTraceSto(SetTrace[SetTrace(i) for i=1:n])
-    overdub(TraceCtx(metadata = tape), f, x)
+    if n > 1
+        x = SetTraceSto(SetTrace[SetTrace(i) for i=1:n])
+        overdub(TraceCtx(metadata = tape), f, x)
+    else
+        overdub(TraceCtx(metadata = tape), f, SetTrace(1))
+    end
     return tape
 end

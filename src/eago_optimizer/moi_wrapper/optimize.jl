@@ -16,9 +16,9 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
 
     # Scrub user-defined functions
     m.udf_scrubber_flag && Script.scrub!(evaluator.m.nlp_data)
-    #if m.udf_to_JuMP_flag
-    #    Script.udf_loader!(m)
-    #end
+    if m.udf_to_JuMP_flag
+        Script.udf_loader!(m)
+    end
     #m.nlp_data.evaluator = evaluator #TODO: Rebuilt entire nlp_block...
 
     # Transform UDFs to JuMP ASTs

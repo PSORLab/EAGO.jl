@@ -428,6 +428,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         # UDF options
         default_opt_dict[:udf_scrubber_flag] = true
+        default_opt_dict[:udf_to_JuMP_flag] = true
 
         # Problem Reformulation Options
         default_opt_dict[:reform_epigraph_flag] = false

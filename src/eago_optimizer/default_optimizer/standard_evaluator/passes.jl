@@ -75,7 +75,6 @@ function forward_eval(setstorage::Vector{T}, numberstorage::Vector{Float64}, num
                       user_input_buffer, subgrad_tighten::Bool, first_eval_flag::Bool;
                       user_operators::JuMP._Derivatives.UserOperatorRegistry = JuMP._Derivatives.UserOperatorRegistry()) where T
 
-
     @assert length(numberstorage) >= length(nd)
     @assert length(setstorage) >= length(nd)
     @assert length(numvalued) >= length(nd)
