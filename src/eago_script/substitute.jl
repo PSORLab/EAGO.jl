@@ -53,37 +53,56 @@ function matching_info(x::Template_Node, y::NodeData)
         #elseif y.nodetype == SUBEXPRESSION TODO: Add subexpression handling latter
         end
     elseif (x.type == :num)
+        if x.check(x.num_value)
+            match_flag = true
+        end
     elseif (x.type == :expr)
+        match_flag = true
     else
         error("invalid type symbol")
     end
 end
 
-function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData})
+function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_adj::SparseMatrixCSC{Bool,Int})
 
     match_flag = true
-    if ~matching_info(pattern.nd[1], nd[indx])
-        matching_flag = false
-        return matching_flag
-    end
 
     # make pattern adjacency matrix
     pattern_length = pattern.ndlen
     dag_length = pattern.daglen
     adj = spzeros(Bool, pattern_length, pattern_length)
     for i in 1:dag_length
-        p = pattern.dag[i]
-        x = p[1]
-        y = p[2]
+        @inbounds p = pattern.dag[i]
+        @inbounds x = p[1]
+        @inbounds y = p[2]
         adj[x, y] = true
     end
+    pat_children_arr = rowvals(adj)
+    dag_children_arr = rowvals(dag_adj)
 
     # do a breadth first search with paired template, nd data,
     # if any pair of children fail then
-    pindx_initial =
+    #symbol_lib = Dict{:Symbol, }
+    pindx_initial = 1
     queue = Pair{Int,Int}[(pindx_initial, indx)]
-    while ~isempty(queue)
-        if match
+    while ~isempty(queue) && (match_flag == true)
+        (num_pat, num_dag) = popfirst!(queue)
+        if matching_info(pattern.nd[num_pat], nd[indx])
+            @inbounds pat_children_idx = nzrange(adj, num_pat)
+            pat_length = length(pat_children_idx)
+            if pat_length > 0
+                @inbounds dag_children_idx = nzrange(dag_adj, num_dag)
+                if pat_length == length(dag_children_idx)
+                    # at this point children should match and
+                    # if symbol is registered... then expressions should be equal
+                else
+                    match_flag = false
+                    break
+                end
+            else
+                match_flag = false
+                break
+            end
         else
             match_flag = false
             break
@@ -93,13 +112,13 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData})
     return match_flag
 end
 
-function find_match(indx::Int, nd::Vector{NodeData})
+function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,Int})
     flag = false
     pattern_number = -1
     @inbounds sub_len = DAG_LENGTHS[1]
     for i in 1:sub_len
         @inbounds pattern = DAG_PATTERNS[i]
-        if is_match(pattern, indx, nd)
+        if is_match(pattern, indx, nd, adj)
             flag = true
             pattern_number = i
             break
@@ -135,7 +154,7 @@ function flatten_expression!(expr::_NonlinearExprData)
         active_node.nodetype !== MOIVARIABLE &&
         active_node.nodetype !== VARIABLE &&
         active_node.nodetype !== VALUE)
-        is_match, match_num = find_match(1, nd)
+        is_match, match_num = find_match(1, nd, adj)
         if is_match
             node_count += substitute!(match_num, node_num, nd, parent_dict, queue, new_nds)
         else
@@ -155,7 +174,7 @@ function flatten_expression!(expr::_NonlinearExprData)
             @inbounds children_idx = nzrange(adj, node_num)
             if (length(children_idx) > 0) # has any children
                 for child in children_idx
-                    is_match, match_num = findmatch(children_arr[child], nd)
+                    is_match, match_num = findmatch(children_arr[child], nd, adj)
                     if ~is_match
                         @inbounds idx = children_arr[child]
                         @inbounds cn = nd[idx]
