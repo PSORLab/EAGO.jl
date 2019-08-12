@@ -117,17 +117,17 @@ function udf_loader!(m::AbstractOptimizer)
         @inbounds expr = jnlp_data.nlexpr[i]
         replace_subexpressions!(expr, mv_len, n_expr0)
         remove_subexpr_children!(expr)
-        reform_flatten_flag && flatten_expression!(expr)
+        m.reform_flatten_flag && flatten_expression!(expr)
     end
     replace_subexpressions!(jnlp_data.nlobj, mv_len, n_expr0)
     remove_subexpr_children!(jnlp_data.nlobj)
-    reform_flatten_flag && flatten_expression!(jnlp_data.nlobj)
+    m.reform_flatten_flag && flatten_expression!(jnlp_data.nlobj)
     constr_len = length(jnlp_data.nlconstr)
     for i in 1:constr_len
         @inbounds constr = jnlp_data.nlconstr[i]
         replace_subexpressions!(constr.terms, mv_len, n_expr0)
         remove_subexpr_children!(constr.terms)
-        reform_flatten_flag && flatten_expression!(constr.terms)
+        m.reform_flatten_flag && flatten_expression!(constr.terms)
     end
 
     # void previously defined udfs

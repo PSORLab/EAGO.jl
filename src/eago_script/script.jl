@@ -1,7 +1,7 @@
 module Script
 
     using MathOptInterface: AbstractOptimizer, features_available, initialize, NLPBlockData
-    using SparseArrays: rowvals, nzrange
+    using SparseArrays: rowvals, nzrange, SparseMatrixCSC, spzeros
     import Base: afoldl, getindex, iterate
     import JuMP: _NLPData, _NonlinearExprData
     import JuMP._Derivatives: univariate_operator_to_id, operator_to_id,

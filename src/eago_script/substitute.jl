@@ -9,7 +9,7 @@ struct Template_Graph <: Any
     dag::Vector{Pair{Int,Int}}
     ndlen::Int
     daglen::Int
-    adj::SpareMatrixCSC{Bool,Int}
+    adj::SparseMatrixCSC{Bool,Int}
     num_children::Vector{Int}
 end
 function Template_Graph(nd::Dict{Int,Template_Node}, dag::Vector{Pair{Int,Int}})
@@ -59,12 +59,21 @@ function matching_info(x::Template_Node, y::NodeData)
     match_flag = false
     if (x.type == :op)
         if (y.nodetype == CALL)
-            if (operator_to_id[x.value] == y.index)
-                match_flag = true
+            if haskey(operator_to_id, x.value)
+                if (operator_to_id[x.value] == y.index)
+                    match_flag = true
+                end
+            else
+                match_flag = false
             end
         elseif (y.nodetype == CALLUNIVAR)
-            if univariate_operator_to_id[x.value] == y.index
-                match_flag = true
+            if haskey(univariate_operator_to_id, x.value)
+                if univariate_operator_to_id[x.value] == y.index
+                    match_flag = true
+                end
+            else
+                match_flag = false
+            end
         #elseif y.nodetype == SUBEXPRESSION TODO: Add subexpression handling latter
         end
     elseif (x.type == :num)
@@ -76,6 +85,7 @@ function matching_info(x::Template_Node, y::NodeData)
     else
         error("invalid type symbol")
     end
+    return match_flag
 end
 
 # SHOULD BE DONE with the exception of matches that have no shared numbers
@@ -87,27 +97,31 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
     # make pattern adjacency matrix
     pattern_length = pattern.ndlen
     dag_length = pattern.daglen
-    pat_children_arr = rowvals(pattern.adj)
+    pattern_adj = pattern.adj
+    pat_children_arr = rowvals(pattern_adj)
     dag_children_arr = rowvals(dag_adj)
 
     # do a breadth first search with paired template, nd data,
     # if any pair of children fail then
     pindx_initial = 1
-    queue = Pair{Int,Int}[(pindx_initial, indx)]
+    queue = Tuple{Int,Int}[(pindx_initial, indx)]
     while ~isempty(queue) && (match_flag == true)
         (num_pat, num_dag) = popfirst!(queue)
         @inbounds patt_nd = pattern.nd[num_pat]
         @inbounds dag_nd = nd[num_dag]
+        println("patt_nd: $(patt_nd)")
+        println("dag_nd: $(dag_nd)")
         if matching_info(patt_nd, dag_nd)
             if patt_nd.type == :expr
                 match_dict[num_pat] = num_dag
             end
-            @inbounds pat_children_idx = nzrange(adj, num_pat)
+            @inbounds pat_children_idx = nzrange(pattern_adj, num_pat)
             pat_length = length(pat_children_idx)
             if pat_length > 0
                 @inbounds dag_children_idx = nzrange(dag_adj, num_dag)
                 if pat_length == length(dag_children_idx)
                     for i in 1:pat_length
+                        @inbounds child = dag_children_idx[i]
                         @inbounds pidx = pat_children_arr[child]
                         @inbounds didx = dag_children_arr[child]
                         push!(queue, (pidx, didx))
@@ -125,7 +139,7 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
         end
     end
 
-    return match_flag
+    return match_flag, match_dict
 end
 
 function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,Int})
@@ -133,6 +147,7 @@ function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,I
     pattern_number = -1
     @inbounds sub_len = DAG_LENGTHS[1]
     for i in 1:sub_len
+        println("pattern number: $i")
         @inbounds pattern = DAG_PATTERNS[i]
         inner_flag, match_dict = is_match(pattern, indx, nd, adj)
         if inner_flag
