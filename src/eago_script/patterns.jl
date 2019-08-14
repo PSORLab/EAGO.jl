@@ -1,4 +1,5 @@
-# register log(a^x) = x*log(a) DONEish
+# 1 register log(a^x) = x*log(a) DONEish
+println("pattern #1")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :log),
                                    2 => Template_Node(:op, :^),
                                    3 => Template_Node(:num, :a; check = a -> a >= 0.0),
@@ -14,7 +15,8 @@ dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
 
-# register exp(x)*exp(y) DONEish
+# 2 register exp(x)*exp(y) DONEish
+println("pattern #2")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :*),
                                    2 => Template_Node(:op, :exp),
                                    3 => Template_Node(:op, :exp),
@@ -31,7 +33,8 @@ dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
 
-# (a^{x})^{b} = (a^{b})^{x} DONEish
+# 3 (a^{x})^{b} = (a^{b})^{x} DONEish
+println("pattern #3")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :^),
                                    2 => Template_Node(:op, :^),
                                    3 => Template_Node(:num, :b),
@@ -48,7 +51,8 @@ dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
 
-# (x^{a})^{b} = x^{(ab)} DONEish
+# 4 (x^{a})^{b} = x^{(ab)} DONEish
+println("pattern #4")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :^),
                                    2 => Template_Node(:num, :b),
                                    3 => Template_Node(:op, :^),
@@ -66,7 +70,8 @@ dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
 
-# a^{\log(x)} = x^{\log(a)} DONEish
+# 5 a^{\log(x)} = x^{\log(a)} DONEish
+println("pattern #5")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :^),
                                    2 => Template_Node(:op, :log),
                                    3 => Template_Node(:expr, :x),
@@ -82,7 +87,8 @@ dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
 #=
-# \log(xy) = \log(x) + \log(y) DONEish
+# 6 \log(xy) = \log(x) + \log(y) DONEish
+println("pattern #6")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :log),
                                    2 => Template_Node(:op, :*),
                                    3 => Template_Node(:expr, :x),
@@ -100,6 +106,7 @@ register_substitution!(src, dest)
 
 
 # \log(x/y) = \log(x) - \log(y)  DONEish
+println("pattern #7")
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :log),
                                    2 => Template_Node(:op, :/),
                                    3 => Template_Node(:expr, :x),
