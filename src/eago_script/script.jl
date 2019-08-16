@@ -7,7 +7,7 @@ module Script
     import JuMP._Derivatives: univariate_operator_to_id, operator_to_id,
                               comparison_operator_to_id, CALL, CALLUNIVAR,
                               COMPARISON, VARIABLE, MOIVARIABLE, VALUE,
-                              SUBEXPRESSION, NodeType, NodeData,
+                              SUBEXPRESSION, PARAMETER, NodeType, NodeData,
                               USER_OPERATOR_ID_START, USER_UNIVAR_OPERATOR_ID_START,
                               UserOperatorRegistry, adjmat
     import Cassette: @context, Cassette.overdub

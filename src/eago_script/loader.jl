@@ -94,6 +94,7 @@ function udf_loader!(m::AbstractOptimizer)
     end
 
     evaluator = m.nlp_data.evaluator
+    parameter_values = evaluator.parameter_values
     jnlp_data = evaluator.m.nlp_data
     user_registry = jnlp_data.user_operators
     user_reg_moe = user_registry.multivariate_operator_evaluator
@@ -117,17 +118,17 @@ function udf_loader!(m::AbstractOptimizer)
         @inbounds expr = jnlp_data.nlexpr[i]
         replace_subexpressions!(expr, mv_len, n_expr0)
         remove_subexpr_children!(expr)
-        m.reform_flatten_flag && flatten_expression!(expr)
+        m.reform_flatten_flag && flatten_expression!(expr, parameter_values)
     end
     replace_subexpressions!(jnlp_data.nlobj, mv_len, n_expr0)
     remove_subexpr_children!(jnlp_data.nlobj)
-    m.reform_flatten_flag && flatten_expression!(jnlp_data.nlobj)
+    m.reform_flatten_flag && flatten_expression!(jnlp_data.nlobj, parameter_values)
     constr_len = length(jnlp_data.nlconstr)
     for i in 1:constr_len
         @inbounds constr = jnlp_data.nlconstr[i]
         replace_subexpressions!(constr.terms, mv_len, n_expr0)
         remove_subexpr_children!(constr.terms)
-        m.reform_flatten_flag && flatten_expression!(constr.terms)
+        m.reform_flatten_flag && flatten_expression!(constr.terms, parameter_values)
     end
 
     # void previously defined udfs
