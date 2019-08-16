@@ -25,12 +25,12 @@ function Template_Graph(nd::Dict{Int,Template_Node}, dag::Vector{Pair{Int,Int}})
     end
     num_children = Int[length(nzrange(adj, i)) for i in 1:ndlen]
     # compute number of children per node
-    println("ndlist: $ndlist")
-    println("dag: $dag")
-    println("ndlen: $ndlen")
-    println("daglen: $daglen")
-    println("adj: $adj")
-    println("num_children: $num_children")
+    #println("ndlist: $ndlist")
+    #println("dag: $dag")
+    #println("ndlen: $ndlen")
+    #println("daglen: $daglen")
+    #println("adj: $adj")
+    #println("num_children: $num_children")
     Template_Graph(ndlist, dag, ndlen, daglen, adj, num_children)
 end
 
@@ -115,7 +115,7 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
     depth_max = 30
     while (~isempty(queue) && (match_flag == true) && (depth < depth_max))
         depth += 1
-        println("is_match iteration #: $depth")
+        #println("is_match iteration #: $depth")
         (num_pat, num_dag) = popfirst!(queue)
         @inbounds patt_nd = pattern.nd[num_pat]
         @inbounds dag_nd = nd[num_dag]
@@ -131,8 +131,8 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
                     for i in 1:pat_length
                         @inbounds dchild = dag_children_idx[i]
                         @inbounds pchild = pat_children_idx[i]
-                        println("dchild: $dchild")
-                        println("pchild: $pchild")
+                        #println("dchild: $dchild")
+                        #println("pchild: $pchild")
                         @inbounds didx = dag_children_arr[dchild]
                         @inbounds pidx = pat_children_arr[pchild]
                         push!(queue, (pidx, didx))
@@ -158,7 +158,7 @@ function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,I
     pattern_number = -1
     @inbounds sub_len = DAG_LENGTHS[1]
     for i in 1:sub_len
-        println("pattern number: $i")
+        #println("pattern number: $i")
         @inbounds pattern = DAG_PATTERNS[i]
         inner_flag, match_dict = is_match(pattern, indx, nd, adj)
         if inner_flag
@@ -170,7 +170,7 @@ function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,I
     if ~flag
         match_dict = Dict{Int,Int}()
     end
-    println("flag: $flag")
+    #println("flag: $flag")
     return flag, pattern_number, match_dict
 end
 
@@ -204,11 +204,11 @@ function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{N
     depth_max = 30
     while ~isempty(queue) && (depth < depth_max)
         depth += 1
-        println("substitute iteration #: $depth, length(queue): $(length(queue))")
+        #println("substitute iteration #: $depth, length(queue): $(length(queue))")
         (num_prt, num_sub, num_sub_prt) = popfirst!(queue)
         active_node = subs_template.nd[num_sub]
         active_type = active_node.type
-        println("active_type: $(active_type)")
+        #println("active_type: $(active_type)")
         if active_type === :op
             active_node_children = subs_template.num_children[num_sub]
             node = op_node_to_dag!(active_node, num_prt, active_node_children)
@@ -274,7 +274,7 @@ function flatten_expression!(expr::_NonlinearExprData)
     depth_max = 30
     while ~isempty(queue) && (depth < depth_max)
         depth += 1
-        println("flatten iteration #: $depth")
+        #println("flatten iteration #: $depth")
         (node_num, prior_prt) = popfirst!(queue)
         @inbounds active_node = nd[node_num]
         if (active_node.nodetype !== SUBEXPRESSION &&

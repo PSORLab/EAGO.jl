@@ -52,11 +52,15 @@ function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_sto
   xU = problem_storage.x_u
 
   # create JuMP model
-  if problem_storage.opts.initialize_bnd_prob == nothing
+  if problem_storage.opts.initialize_bnd_prob === nothing
     model_bnd = deepcopy(problem_storage.opts.model)
     @variable(model_bnd, xL[i] <= x[i=1:nx] <= xU[i])
   else
     model_bnd, x = problem_storage.opts.initialize_bnd_prob()
+  end
+
+  if problem_storage.opts.initialize_extras !== nothing
+    problem_storage.opts.initialize_extras(model_bnd, x)
   end
 
   for i in 1:ng
@@ -141,21 +145,22 @@ Returns: A SIP_result composite type containing solution information.
 function explicit_sip_solve(f::Function, gSIP::Function, x_l::Vector{Float64},
                             x_u::Vector{Float64}, p_l::Vector{Float64},
                             p_u::Vector{Float64}, m::JuMP.Model; opts = nothing,
-                            initialize_bnd_prob = nothing, sense = :min)
+                            initialize_bnd_prob = nothing, sense = :min, initialize_extras = nothing)
 
   @assert length(p_l) == length(p_u)
   @assert length(x_l) == length(x_u)
   n_p = length(p_l)
   n_x = length(x_l)
 
-  println("ran update 1")
-
   if opts == nothing
       opts = SIP_Options()
       opts.model = m
   end
-  if initialize_bnd_prob != nothing
+  if initialize_bnd_prob !== nothing
     opts.initialize_bnd_prob = initialize_bnd_prob
+  end
+  if initialize_extras !== nothing
+    opts.initialize_extras = initialize_extras
   end
 
   problem_storage = SIP_Problem_Storage(f, gSIP, x_l, x_u, p_l, p_u, n_p, n_x, opts,

@@ -28,9 +28,10 @@ mutable struct SIP_Options
   inner_tolerance::Float64
   model
   initialize_bnd_prob
+  initialize_extras
 end
 SIP_Options() = SIP_Options(Vector{Float64}[], Vector{Float64}[], 1E-3, 100000, 1.0,
-                            2.0, false, 20, 1, "Normal", 1.0E-8, Model(), nothing)
+                            2.0, false, 20, 1, "Normal", 1.0E-8, Model(), nothing, nothing)
 
 """
     SIP_Result

@@ -87,6 +87,7 @@ function core_sip_routine(lower_level_problem::Function, bounding_problem::Funct
     feas = bounding_problem(lower_disc_set, 0.0, sip_result, problem_storage, true)
     print_lbp!(problem_storage.opts, sip_result.lower_bound, sip_result.x_bar, feas)
     sip_result.feasibility = check_lbp_feasible(feas)
+    ~sip_result.feasibility && (break)
 
     # solve inner program  and update lower discretization set
     INNg1, feas = lower_level_problem(sip_result.x_bar,  sip_result, problem_storage)

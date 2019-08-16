@@ -15,9 +15,11 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     MOI.initialize(evaluator, init_feat)
 
     # Scrub user-defined functions
-    m.udf_scrubber_flag && Script.scrub!(evaluator.m.nlp_data)
-    if m.udf_to_JuMP_flag
-        Script.udf_loader!(m)
+    if ~isa(evaluator, EAGO.EmptyNLPEvaluator)
+        m.udf_scrubber_flag && Script.scrub!(evaluator.m.nlp_data)
+        if m.udf_to_JuMP_flag
+            Script.udf_loader!(m)
+        end
     end
     #m.nlp_data.evaluator = evaluator #TODO: Rebuilt entire nlp_block...
 
