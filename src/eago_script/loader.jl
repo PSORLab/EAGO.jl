@@ -85,9 +85,6 @@ function add_subexpr_from_tape!(tape::Tape, jnlp_data)
 end
 
 function udf_loader!(m::AbstractOptimizer)
-    println("typeof(m): $(typeof(m))")
-    println("fieldnames: $(typeof(fieldnames(typeof(m))))")
-    println("fieldnames 2: $(typeof([fieldnames(typeof(m))...]))")
     reform_flag = in(:reform_flatten_flag, [fieldnames(typeof(m))...])
     if reform_flag
         reform_flag &= getfield(m, :reform_flatten_flag)

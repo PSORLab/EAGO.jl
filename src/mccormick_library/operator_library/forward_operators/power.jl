@@ -735,8 +735,17 @@ function  (^)(x::MC{N},c::Float64) where N
 end
 
 (^)(x::MC{N}, c::MC{N}) where N = exp(c*log(x))
-(^)(x::MC{N},c::Float32) where N = x^Float64(c)
-(^)(x::MC{N},c::Float16) where N = x^Float64(c)
+(^)(x::MC{N}, c::Float32) where N = x^Float64(c)
+(^)(x::MC{N}, c::Float16) where N = x^Float64(c)
+
+# Define powers to MC of floating point number
+function pow(b::Float64, x::MC{N}) where N
+	(b <= 0.0) && error("Relaxations of a^x where a<=0 not currently defined in library.
+		                   Functions of this type may prevent convergences in global
+			                 optimization algorithm as they may be discontinuous.")
+	exp(x*log(b))
+end
+^(b::Float64, x::MC{N}) where N = pow(b::Float64, x::MC{N})
 
 ########### Defines inverse
 function inv(x::MC{N}) where N
