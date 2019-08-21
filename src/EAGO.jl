@@ -3,6 +3,7 @@ module EAGO
     import MathOptInterface
 
     using JuMP
+    import JuMP._Derivatives: operators
     using Ipopt, GLPK
 
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros
