@@ -1,44 +1,10 @@
-
-using Compat, JuMP
-using Compat.Test
-using EAGO, MathOptInterface
-const MOI = MathOptInterface
-
-m = Model(with_optimizer(EAGO.Optimizer))
-@variable(m, x)
-@variable(m, y)
-
-@NLobjective(m, Min, exp(1 - x) ^ 2 + 100 * (y - x ^ 2) ^ 2)
-#@NLobjective(m, Min, log(y - x ^ 2))
-#@NLobjective(m, Min, log(x))
-
-@constraint(m, x^2 + y <= 10)
-@constraint(m, x + y == 10)
-@constraint(m, y >= 0)
-
-@NLconstraint(m, log(y - x ^ 2) <= 0)
-
-source_evaluator = JuMP.NLPEvaluator(m)
-MOI.initialize(source_evaluator , Symbol[:Grad])
-
-opt = m.moi_backend.optimizer
-
-module Standard_Evaluator
-
-    using Compat, JuMP
-    using Compat.Test
-    using EAGO, MathOptInterface
-    const MOI = MathOptInterface
-
-    @testset "NLP Evaluator" begin
+@testset "NLP Evaluator" begin
 
         m = Model(with_optimizer(EAGO.Optimizer))
         @variable(m, x)
         @variable(m, y)
 
         @NLobjective(m, Min, exp(1 - x) ^ 2 + 100 * (y - x ^ 2) ^ 2)
-        #@NLobjective(m, Min, log(y - x ^ 2))
-        #@NLobjective(m, Min, log(x))
 
         @constraint(m, x^2 + y <= 10)
         @constraint(m, x + y == 10)
@@ -104,5 +70,4 @@ module Standard_Evaluator
         @test temp5[1][2] == 1
         @test temp5[2][1] == 1
         @test temp5[2][2] == 2
-    end
 end

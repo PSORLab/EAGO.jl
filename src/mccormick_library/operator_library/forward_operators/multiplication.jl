@@ -327,11 +327,11 @@ function multiply_MV(x1::MC{N},x2::MC{N}) where N
 end
 =#
 
-function sigu(x::Float64, mu1T::Float64)
+@inline function sigu(x::Float64, mu1T::Float64)
 	 (0.0 <= x) ? x^(1.0/mu1T) : -abs(x)^(1.0/mu1T)
  end
 
-function gCxAcv(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::IntervalType,x1::MC{N},x2::MC{N}) where N
+@inline function gCxAcv(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::IntervalType,x1::MC{N},x2::MC{N}) where N
 		# gCxA pre-terms
 		alplo::Float64 = alpha.lo
 		alphi::Float64 = alpha.hi
@@ -426,7 +426,7 @@ function gCxAcv(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::
     return a,grad
 end
 
-function gCxAcc(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::IntervalType,x1::MC{N},x2::MC{N}) where N
+@inline function gCxAcc(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::IntervalType,x1::MC{N},x2::MC{N}) where N
 		# gCxA pre-terms
 		alplo::Float64 = alpha.lo
 		alphi::Float64 = alpha.hi
@@ -520,7 +520,7 @@ function gCxAcc(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::
     return a,grad2
 end
 
-function gCxAIntv(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::IntervalType,x1::MC{N},x2::MC{N}) where N
+@inline function gCxAIntv(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu::IntervalType,x1::MC{N},x2::MC{N}) where N
 		# gCxA pre-terms
 		alplo::Float64 = alpha.lo
 		alphi::Float64 = alpha.hi
@@ -590,7 +590,7 @@ function gCxAIntv(alpha::IntervalType,beta::IntervalType,lambda::IntervalType,nu
 		return min(tempGxA1,tempGxA2,tempGxA3,tempGxA4)
 end
 
-function multiply_MV(x1::MC{N},x2::MC{N}) where {N}
+@inline function multiply_MV(x1::MC{N}, x2::MC{N}, z::Interval{Float64}) where {N}
 	x1cv::Float64 = x1.cv
 	x2cv::Float64 = x2.cv
 	x1cc::Float64 = x1.cc
@@ -641,21 +641,13 @@ function multiply_MV(x1::MC{N},x2::MC{N}) where {N}
 		cc = -cct
 		cc_grad = cc_gradt
 	end
-	if (min(x1lo,x2lo) < 0.0 < max(x1hi,x2hi))
-		lo_Intv_calc::Float64 = gCxAIntv(x1.Intv,x2.Intv,x1.Intv,x2.Intv,x1,x2)
-		hi_Intv_calc::Float64 = -gCxAIntv(-x1.Intv,x2.Intv,-x1.Intv,x2.Intv,x1,x2)
-		Intv_calc::IntervalType = IntervalType(lo_Intv_calc,hi_Intv_calc)
-	else
-		Intv_calc = x1.Intv*x2.Intv
-	end
 	cnst = x2.cnst ? x1.cnst : (x1.cnst ? x2.cnst : x1.cnst || x2.cnst)
-	return MC{N}(cv, cc, Intv_calc, cv_grad, cc_grad, cnst)
+	return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
 
-function mul1_u1pos_u2pos(x1::MC{N},x2::MC{N},cnst::Bool) where N
-  Intv = x1.Intv*x2.Intv
-  xLc = Intv.lo
-  xUc = Intv.hi
+@inline function mul1_u1pos_u2pos(x1::MC{N}, x2::MC{N}, z::Interval{Float64}, cnst::Bool) where N
+  xLc = z.lo
+  xUc = z.hi
   cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
   cv2 = x2.Intv.lo*x1.cv + x1.Intv.lo*x2.cv - x1.Intv.lo*x2.Intv.lo
   if (cv1 > cv2)
@@ -676,13 +668,12 @@ function mul1_u1pos_u2pos(x1::MC{N},x2::MC{N},cnst::Bool) where N
     cc_grad = x2.Intv.hi*x1.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+  return MC{N}(cv,cc,z,cv_grad,cc_grad,cnst)
 end
 
-function mul1_u1pos_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where N
-  Intv = x1.Intv*x2.Intv
-  xLc = Intv.lo
-  xUc = Intv.hi
+@inline function mul1_u1pos_u2mix(x1::MC{N}, x2::MC{N}, z::Interval{Float64}, cnst::Bool) where N
+  xLc = z.lo
+  xUc = z.hi
   cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
   cv2 = x2.Intv.lo*x1.cc + x1.Intv.lo*x2.cv - x1.Intv.lo*x2.Intv.lo
   if (cv1 > cv2)
@@ -703,12 +694,11 @@ function mul1_u1pos_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where N
     cc_grad = x2.Intv.hi*x1.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+  return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
-function mul1_u1mix_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where {N}
-  Intv = x1.Intv*x2.Intv
-  xLc = Intv.lo
-  xUc = Intv.hi
+@inline function mul1_u1mix_u2mix(x1::MC{N}, x2::MC{N}, z::Interval{Float64}, cnst::Bool) where {N}
+  xLc = z.lo
+  xUc = z.hi
   cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
   cv2 = x2.Intv.lo*x1.cc + x1.Intv.lo*x2.cc - x1.Intv.lo*x2.Intv.lo
   cv = cv1
@@ -730,12 +720,11 @@ function mul1_u1mix_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where {N}
     cc_grad = x2.Intv.hi*x1.cc_grad
   end
   cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+  return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
-function mul2_u1pos_u2pos(x1::MC{N},x2::MC{N}) where N
-	Intv = x1.Intv*x2.Intv
-	xLc = Intv.lo
-	xUc = Intv.hi
+@inline function mul2_u1pos_u2pos(x1::MC{N}, x2::MC{N}, z::Interval{Float64}) where N
+	xLc = z.lo
+	xUc = z.hi
 	cnst = x2.cnst ? x1.cnst : (x1.cnst ? x2.cnst : x1.cnst || x2.cnst)
 	cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
 	cv2 = x2.Intv.lo*x1.cv + x1.Intv.lo*x2.cv - x1.Intv.lo*x2.Intv.lo
@@ -746,7 +735,6 @@ function mul2_u1pos_u2pos(x1::MC{N},x2::MC{N}) where N
 		cv = cv2
 		cv_grad = x2.Intv.lo*x1.cv_grad + x1.Intv.lo*x2.cv_grad
 	end
-
 	cc1 = x2.Intv.lo*x1.cc + x1.Intv.hi*x2.cc - x1.Intv.hi*x2.Intv.lo
 	cc2 = x2.Intv.hi*x1.cc + x1.Intv.lo*x2.cc - x1.Intv.lo*x2.Intv.hi
 	if (cc1 < cc2)
@@ -756,14 +744,12 @@ function mul2_u1pos_u2pos(x1::MC{N},x2::MC{N}) where N
 		cc = cc2
 		cc_grad = x2.Intv.hi*x1.cc_grad + x1.Intv.lo*x2.cc_grad
 	end
-	cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+	cv, cc, cv_grad, cc_grad = cut(xLc, xUc, cv, cc, cv_grad, cc_grad)
+	return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
-
-function mul2_u1pos_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where N
-  Intv = x1.Intv*x2.Intv
-  xLc = Intv.lo
-  xUc = Intv.hi
+@inline function mul2_u1pos_u2mix(x1::MC{N}, x2::MC{N}, z::Interval{Float64}, cnst::Bool) where N
+  xLc = z.lo
+  xUc = z.hi
   cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
   cv2 = x2.Intv.lo*x1.cc + x1.Intv.lo*x2.cv - x1.Intv.lo*x2.Intv.lo
   if (cv1 > cv2)
@@ -773,7 +759,6 @@ function mul2_u1pos_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where N
     cv = cv2
     cv_grad = x1.Intv.lo*x2.cc_grad
   end
-
   cc1 = x2.Intv.lo*x1.cv + x1.Intv.hi*x2.cc - x1.Intv.hi*x2.Intv.lo
   cc2 = x2.Intv.hi*x1.cc + x1.Intv.lo*x2.cc - x1.Intv.lo*x2.Intv.hi
   if (cc1 < cc2)
@@ -783,14 +768,12 @@ function mul2_u1pos_u2mix(x1::MC{N},x2::MC{N},cnst::Bool) where N
     cc = cc2
     cc_grad = x1.Intv.lo*x2.cc_grad
   end
-  cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-  return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+  cv, cc, cv_grad, cc_grad = cut(xLc, xUc, cv, cc, cv_grad, cc_grad)
+  return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
-
-function mul2_u1mix_u2mix(x1::MC{N},x2::MC{N}) where N
-	Intv = x1.Intv*x2.Intv
-	xLc = Intv.lo
-	xUc = Intv.hi
+@inline function mul2_u1mix_u2mix(x1::MC{N}, x2::MC{N}, z::Interval{Float64}) where N
+	xLc = z.lo
+	xUc = z.hi
   	cnst = x2.cnst ? x1.cnst : (x1.cnst ? x2.cnst : x1.cnst || x2.cnst)
 	cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
 	cv2 = x2.Intv.lo*x1.cc + x1.Intv.lo*x2.cc - x1.Intv.lo*x2.Intv.lo
@@ -801,7 +784,6 @@ function mul2_u1mix_u2mix(x1::MC{N},x2::MC{N}) where N
 		cv = cv2
 		cv_grad = x2.Intv.lo*x1.cc_grad + x1.Intv.lo*x2.cc_grad
 	end
-
 	cc1 = x2.Intv.lo*x1.cv + x1.Intv.hi*x2.cc - x1.Intv.hi*x2.Intv.lo
 	cc2 = x2.Intv.hi*x1.cc + x1.Intv.lo*x2.cv - x1.Intv.lo*x2.Intv.hi
 	if (cc1 < cc2)
@@ -811,13 +793,12 @@ function mul2_u1mix_u2mix(x1::MC{N},x2::MC{N}) where N
 		cc = cc2
 		cc_grad = x2.Intv.hi*x1.cc_grad + x1.Intv.lo*x2.cv_grad
 	end
-	cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+	cv, cc, cv_grad, cc_grad = cut(xLc, xUc, cv, cc, cv_grad, cc_grad)
+	return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
-function mul3_u1pos_u2mix(x1::MC{N},x2::MC{N}) where N
-	Intv = x1.Intv*x2.Intv
-	xLc = Intv.lo
-	xUc = Intv.hi
+@inline function mul3_u1pos_u2mix(x1::MC{N}, x2::MC{N}, z::Interval{Float64}) where N
+	xLc = z.lo
+	xUc = z.hi
     cnst = x2.cnst ? x1.cnst : (x1.cnst ? x2.cnst : x1.cnst || x2.cnst)
 	cv1 = x2.Intv.hi*x1.cv + x1.Intv.hi*x2.cv - x1.Intv.hi*x2.Intv.hi
 	cv2 = x2.Intv.lo*x1.cc + x1.Intv.lo*x2.cv - x1.Intv.lo*x2.Intv.lo
@@ -828,7 +809,6 @@ function mul3_u1pos_u2mix(x1::MC{N},x2::MC{N}) where N
 		cv = cv2
 		cv_grad = x2.Intv.lo*x1.cc_grad + x1.Intv.lo*x2.cv_grad
 	end
-
 	cc1 = x2.Intv.lo*x1.cv + x1.Intv.hi*x2.cc - x1.Intv.hi*x2.Intv.lo
 	cc2 = x2.Intv.hi*x1.cc + x1.Intv.lo*x2.cc - x1.Intv.lo*x2.Intv.hi
 	if (cc1 < cc2)
@@ -838,18 +818,18 @@ function mul3_u1pos_u2mix(x1::MC{N},x2::MC{N}) where N
 		cc = cc2
 		cc_grad = x2.Intv.hi*x1.cc_grad + x1.Intv.lo*x2.cc_grad
 	end
-	cv,cc,cv_grad,cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return MC{N}(cv,cc,Intv,cv_grad,cc_grad,cnst)
+	cv, cc, cv_grad, cc_grad = cut(xLc, xUc, cv, cc, cv_grad, cc_grad)
+	return MC{N}(cv, cc, z, cv_grad, cc_grad, cnst)
 end
 
-mul_MV_ns1cv(x1,x2,MC1::MC,MC2::MC) = MC2.Intv.hi*x1+MC1.Intv.hi*x2-MC2.Intv.hi*MC1.Intv.hi
-mul_MV_ns2cv(x1,x2,MC1::MC,MC2::MC) = MC2.Intv.lo*x1+MC1.Intv.lo*x2-MC2.Intv.lo*MC1.Intv.lo
-mul_MV_ns3cv(x1,x2,MC1::MC,MC2::MC) = max(mul_MV_ns1cv(x1,x2,MC1,MC2),mul_MV_ns2cv(x1,x2,MC1,MC2))
-mul_MV_ns1cc(x1,x2,MC1::MC,MC2::MC) = MC2.Intv.lo*x1+MC1.Intv.hi*x2-MC2.Intv.lo*MC1.Intv.hi
-mul_MV_ns2cc(x1,x2,MC1::MC,MC2::MC) = MC2.Intv.hi*x1+MC1.Intv.lo*x2-MC2.Intv.hi*MC1.Intv.lo
-mul_MV_ns3cc(x1,x2,MC1::MC,MC2::MC) = min(mul_MV_ns1cc(x1,x2,MC1,MC2),mul_MV_ns2cc(x1,x2,MC1,MC2))
+@inline mul_MV_ns1cv(x1::Float64,x2::Float64,MC1::MC,MC2::MC) = MC2.Intv.hi*x1+MC1.Intv.hi*x2-MC2.Intv.hi*MC1.Intv.hi
+@inline mul_MV_ns2cv(x1::Float64,x2::Float64,MC1::MC,MC2::MC) = MC2.Intv.lo*x1+MC1.Intv.lo*x2-MC2.Intv.lo*MC1.Intv.lo
+@inline mul_MV_ns3cv(x1::Float64,x2::Float64,MC1::MC,MC2::MC) = max(mul_MV_ns1cv(x1,x2,MC1,MC2),mul_MV_ns2cv(x1,x2,MC1,MC2))
+@inline mul_MV_ns1cc(x1::Float64,x2::Float64,MC1::MC,MC2::MC) = MC2.Intv.lo*x1+MC1.Intv.hi*x2-MC2.Intv.lo*MC1.Intv.hi
+@inline mul_MV_ns2cc(x1::Float64,x2::Float64,MC1::MC,MC2::MC) = MC2.Intv.hi*x1+MC1.Intv.lo*x2-MC2.Intv.hi*MC1.Intv.lo
+@inline mul_MV_ns3cc(x1::Float64,x2::Float64,MC1::MC,MC2::MC) = min(mul_MV_ns1cc(x1,x2,MC1,MC2),mul_MV_ns2cc(x1,x2,MC1,MC2))
 
-function multiply_MV_NS(x1::MC{N},x2::MC{N},ngrad::Int,cnst::Bool) where N
+@inline function multiply_MV_NS(x1::MC{N},x2::MC{N},ngrad::Int,cnst::Bool) where N
 
  k = diam(x2.Intv)/diam(x1.Intv)
  z = (x1.Intv.hi*x2.Intv.hi - x1.Intv.lo*x2.Intv.lo)/diam(x1.Intv)
@@ -995,32 +975,24 @@ function multiply_MV_NS(x1::MC{N},x2::MC{N},ngrad::Int,cnst::Bool) where N
 	end
 	cc_grad = term1*sigma_cc1 + term2*sigma_cc2
  end
- return MC{N}(cv,cc,x1.Intv*x2.Intv,cv_grad,cc_grad,cnst)
+ return MC{N}(cv, cc, x1.Intv*x2.Intv, cv_grad, cc_grad, cnst)
 end
 
-function multiply_STD_NS(x1::MC{N},x2::MC{N}) where N
+@inline function multiply_STD_NS(x1::MC{N}, x2::MC{N}) where N
 	if (x2.Intv.lo >= 0.0)
-    	if (x2.cnst)
-      		return mul1_u1pos_u2pos(x1,x2,x1.cnst) # cnst to do
-    	elseif (x1.cnst)
-      		return mul1_u1pos_u2pos(x2,x1,x2.cnst) # cnst to do
-    	else
-      		return mul2_u1pos_u2pos(x1,x2) # DONE
-    	end
+    	(x2.cnst) && (return mul1_u1pos_u2pos(x1, x2, y, x1.cnst))
+    	(x1.cnst) && (return mul1_u1pos_u2pos(x2, x1, y, x2.cnst))
+  		return mul2_u1pos_u2pos(x1, x2, y)
 	elseif (x2.Intv.hi <= 0.0)
-		return -(x1*(-x2))
+		return -mult_kernel(x1, -x2, y)
 	else
-    	if (x2.cnst)
-      		return mul1_u1pos_u2mix(x1,x2,x1.cnst) # cnst to do
-    	elseif (x1.cnst)
-      		return mul2_u1pos_u2mix(x1,x2,x2.cnst) # cnst to do
-    	else
-	  		return mul3_u1pos_u2mix(x1,x2) # cnst to do
-    	end
+    	(x2.cnst) && (return mul1_u1pos_u2mix(x1, x2, y, x1.cnst))
+    	(x1.cnst) && (return mul2_u1pos_u2mix(x1, x2, y, x2.cnst))
+  		return mul3_u1pos_u2mix(x1, x2, y)
 	end
 end
 
-function STD_NS_ALT(x::MC{N},y::MC{N}) where N
+@inline function STD_NS_ALT_kernel(x::MC{N}, y::MC{N}, z::Interval{Float64}) where N
 	alpha1 = min( y.Intv.lo*x.cv,  y.Intv.lo*x.cc )
 	alpha2 = min( x.Intv.lo*y.cv,  x.Intv.lo*y.cc )
 	beta1  = min( y.Intv.hi*x.cv,  y.Intv.hi*x.cc )
@@ -1059,21 +1031,15 @@ function STD_NS_ALT(x::MC{N},y::MC{N}) where N
 	    cc = cc2
 	    cc_grad = s_delta1 + s_delta2
 	end
-	Intv = x.Intv*y.Intv
-	return MC{N}(cv,cc,Intv,cv_grad,cc_grad,(x.cnst && y.cnst))
+	return MC{N}(cv, cc, z, cv_grad, cc_grad, (x.cnst && y.cnst))
 end
 
-function *(x1::MC{N},x2::MC{N}) where N
-	if x1 == x2
-		#println("sqr trace")
-		return sqr(x1)
-	end
+@inline function mult_kernel(x1::MC, x2::MC, y::Interval{Float64})
 
 	degen1 = ((x1.Intv.hi - x1.Intv.lo) == 0.0)
 	degen2 = ((x2.Intv.hi - x2.Intv.lo) == 0.0)
-
 	if (MC_param.mu >= 1 && ~(degen1||degen2))
-		return multiply_MV(x1,x2)
+		return multiply_MV_kernel(x1, x2, y)
 		#=
 	elseif (MC_param.multivar_refine && ~(degen1||degen2))
 		#println("NS MV mult trace 1")
@@ -1089,30 +1055,35 @@ function *(x1::MC{N},x2::MC{N}) where N
 		return multiply_MV_NS(x1,x2,N,cnst) # DONE (minus gradients & case handling?)
 		=#
 	elseif (x1.Intv.lo >= 0.0)
-		return multiply_STD_NS(x1,x2)
+		return multiply_STD_NS_kernel(x1, x2, y)
 		#return STD_NS_ALT(x1,x2)
 	elseif (x1.Intv.hi <= 0.0)
-		if (x2.Intv.lo >= 0.0)
-			return -((-x1)*x2)
-		elseif (x2.Intv.hi <= 0.0)
-			return (-x1)*(-x2)
-		else
-			return -(x2*(-x1))
-		end
+		(x2.Intv.lo >= 0.0) && (return -mult_kernel(-x1, x2, y))
+	    (x2.Intv.hi <= 0.0) && (return mult_kernel(-x1, -x2, y))
+		return -mult_kernel(x2, -x1, y)
 	elseif (x2.Intv.lo >= 0.0)
-		return x2*x1
+		return mult_kernel(x2, x1, y)
 	elseif (x2.Intv.hi <= 0.0)
-		return -((-x2)*x1)
+		return -mult_kernel(-x2, x1, y)
 	else
-    	if (x2.cnst)
-	  		return STD_NS_ALT(x1,x2)
-      		#return mul1_u1mix_u2mix(x1,x2,x1.cnst)
-    	elseif (x1.cnst)
-	  		return STD_NS_ALT(x1,x2)
-      		#return mul1_u1mix_u2mix(x2,x1,x2.cnst)
-    	else
-	  		#return STD_NS_ALT(x1,x2)
-	  		return mul2_u1mix_u2mix(x1,x2)
-    	end
+    	(x2.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x1,x2,x1.cnst)
+    	(x1.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x2,x1,x2.cnst)
+  		return mul2_u1mix_u2mix(x1, x2, y) #return STD_NS_ALT(x1,x2)
 	end
+end
+@inline function *(x1::MC, x2::MC)
+	degen1 = ((x1.Intv.hi - x1.Intv.lo) == 0.0)
+	degen2 = ((x2.Intv.hi - x2.Intv.lo) == 0.0)
+	if (MC_param.mu >= 1 && ~(degen1||degen2))
+		if (min(x1.Intv.lo, x2.Intv.lo) < 0.0 < max(x1.Intv.hi, x2.Intv.hi))
+			lo_Intv_calc::Float64 = gCxAIntv(x1.Intv, x2.Intv, x1.Intv, x2.Intv, x1, x2)
+			hi_Intv_calc::Float64 = -gCxAIntv(-x1.Intv, x2.Intv, -x1.Intv, x2.Intv, x1, x2)
+			z = Interval{Float64}(lo_Intv_calc, hi_Intv_calc)
+		else
+			z = x1.Intv*x2.Intv
+		end
+	else
+		z = x1.Intv*x2.Intv
+	end
+	return mult_kernel(x1, x2, z)
 end

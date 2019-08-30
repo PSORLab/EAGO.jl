@@ -4,27 +4,31 @@
 Bisect node `S` on the maximum relative width dimension and return the two
 resulting nodes.
 """
-function continuous_relative_bisect(B::Optimizer,S::NodeBB)
+function continuous_relative_bisect(B::Optimizer, S::NodeBB)
+  var_number = B.variable_number
+  lower_variable_bounds = S.lower_variable_bounds
+  upper_variable_bounds = S.upper_variable_bounds
   Pos = 0; Max = -Inf; TempMax = 0.0
-  for i in 1:B.variable_number
+  for i in 1:var_number
     if (~B.fixed_variable[i]) && (B.bisection_variable[i])
-      TempMax = (S.upper_variable_bounds[i] - S.lower_variable_bounds[i])/(B.variable_info[i].upper_bound - B.variable_info[i].lower_bound)
+      TempMax = (upper_variable_bounds[i] - lower_variable_bounds[i])/(B.variable_info[i].upper_bound - B.variable_info[i].lower_bound)
       if TempMax > Max
         Pos = i; Max = TempMax
       end
     end
   end
-  branch_pnt::Float64 = B.mid_cvx_factor*B.current_lower_info.solution[Pos] + (1.0-B.mid_cvx_factor)*(S.lower_variable_bounds[Pos]+S.upper_variable_bounds[Pos])/2.0
-  N1::IntervalType = IntervalType(S.lower_variable_bounds[Pos], branch_pnt)
-  N2::IntervalType = IntervalType(branch_pnt, S.upper_variable_bounds[Pos])
-  #N2::IntervalType = bisect(IntervalType(S.lower_variable_bounds[Pos], S.upper_variable_bounds[Pos]), branch_pnt)
+  branch_pnt::Float64 = B.mid_cvx_factor*B.current_lower_info.solution[Pos] +
+                        (1.0-B.mid_cvx_factor)*(lower_variable_bounds[Pos]+upper_variable_bounds[Pos])/2.0
+  N1::Interval{Float64} = Interval{Float64}(lower_variable_bounds[Pos], branch_pnt)
+  N2::Interval{Float64} = Interval{Float64}(branch_pnt, upper_variable_bounds[Pos])
   S.lower_bound = max(S.lower_bound, B.current_lower_info.value)
   S.upper_bound = min(S.upper_bound, B.current_upper_info.value)
-  X1 = NodeBB(S.lower_variable_bounds, S.upper_variable_bounds,
-              S.lower_bound, S.upper_bound, S.depth + 1, -1, false)
-  X2 = NodeBB(X1)
-  X1.lower_variable_bounds[Pos] = N1.lo; X1.upper_variable_bounds[Pos] = N1.hi
-  X2.lower_variable_bounds[Pos] = N2.lo; X2.upper_variable_bounds[Pos] = N2.hi
+  lvb_1 = Float64[ (i == Pos) ? N1.lo : lower_variable_bounds[i] for i in 1:var_number]
+  uvb_1 = Float64[ (i == Pos) ? N1.hi : upper_variable_bounds[i] for i in 1:var_number]
+  lvb_2 = Float64[ (i == Pos) ? N2.lo : lower_variable_bounds[i] for i in 1:var_number]
+  uvb_2 = Float64[ (i == Pos) ? N2.hi : upper_variable_bounds[i] for i in 1:var_number]
+  X1 = NodeBB(lvb_1, uvb_1, S.lower_bound, S.upper_bound, S.depth + 1, -1, false)
+  X2 = NodeBB(lvb_2, uvb_2, S.lower_bound, S.upper_bound, S.depth + 1, -1, false)
   return X1, X2
 end
 

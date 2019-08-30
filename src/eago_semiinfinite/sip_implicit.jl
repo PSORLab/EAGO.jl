@@ -1,4 +1,4 @@
-function set_xpbar(problem_storage::SIP_Problem_Storage)
+function set_xpbar_implicit(problem_storage::SIP_Problem_Storage)
   xbar = (problem_storage.x_u + problem_storage.x_l)/2.0
   pbar = (problem_storage.p_u + problem_storage.p_l)/2.0
   return xbar, pbar, problem_storage.nx, problem_storage.np
@@ -155,6 +155,6 @@ function implicit_sip_solve(f::Function, gSIP::Function, h::Function, hj::Functi
   problem_storage = SIP_Problem_Storage(f2, gSIP, x_l, x_u, p_l, p_u, n_p, n_x, opts,
                                         h, hj, y_l, y_u, n_y, :nothing, Float64[], Float64[], 0)
 
-  sip_sto = core_sip_routine(implicit_llp, implicit_bnd, set_xpbar, problem_storage)
+  sip_sto = core_sip_routine(implicit_llp, implicit_bnd, set_xpbar_implicit, problem_storage)
   return sip_sto
 end

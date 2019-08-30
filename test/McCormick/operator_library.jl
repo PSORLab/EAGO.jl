@@ -1,949 +1,504 @@
-set_mc_differentiability!# DONE
-@testset "Test Exponentials" begin
+# Create functions for comparing MC object to reference object and detail failures
+function chk_ref_kernel(y::MC, yref::MC, mctol::Float64)
+    pass_flag::Bool = true
+    descr = "Failing Components: ("
+    ~isapprox(y.cv, yref.cv; atol = mctol) && (descr = descr*" cv = $(y.cv)"; pass_flag = false)
+    ~isapprox(y.cc, yref.cc; atol = mctol) && (descr = descr*" cc = $(y.cc) "; pass_flag = false)
+    ~isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol) && (descr = descr*" Intv.lo = $(y.Intv.lo) "; pass_flag = false)
+    ~isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol) && (descr = descr*" Intv.hi = $(y.Intv.hi) "; pass_flag = false)
+    ~isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol) && (descr = descr*" cv_grad[1] "; pass_flag = false)
+    ~isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol) && (descr = descr*" cv_grad[2] "; pass_flag = false)
+    ~isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol) && (descr = descr*" cc_grad[1] "; pass_flag = false)
+    ~isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol) && (descr = descr*" cc_grad[2] "; pass_flag = false)
+    println(descr*")")
+    pass_flag
+end
+check_vs_ref1(f::Function, x::MC, yref::MC, mctol::Float64) = chk_ref_kernel(f(x), yref, mctol)
+check_vs_ref2(f::Function, x::MC, y::MC, yref::MC, mctol::Float64) = chk_ref_kernel(f(x,y), yref, mctol)
+check_vs_refv(f::Function, x::MC, c::Float64, yref::MC, mctol::Float64) = chk_ref_kernel(f(x, c), yref, mctol)
+function check_vs_ref2(f::Function, x::MC, c::Float64, yref1::MC, yref2::MC, mctol::Float64)
+    pass_flag = check_vs_ref_kernel(f(x, c), yref1, mctol)
+    check_vs_ref_kernel(f(c, x), yref2, mctol) && pass_flag
+end
+
+@testset "Test Univariate" begin
 
    mctol = 1E-4
-   m = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0),
-             seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
 
-   y = McCormick.exp(m)
-   yref = MC{2}(15.154262241479262, 37.30486063158251, EAGO.IntervalType(2.71828, 54.5982), SVector{2,Float64}([0.0, 0.0]), SVector{2,Float64}([17.2933, 0.0]), false)
+   ##### Exponent #####
+   x_exp = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_exp2 = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_exp10 = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_expm1 = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   yref_exp = MC{2}(15.154262241479262, 37.30486063158251, EAGO.IntervalType(2.71828, 54.5982), SVector{2,Float64}([0.0, 0.0]), SVector{2,Float64}([17.2933, 0.0]), false)
+   yref_exp2 = MC{2}(4.0, 11.33333333333333, EAGO.IntervalType(1.99999, 16.0001), SVector{2,Float64}([2.77259, 0.0]), SVector{2,Float64}([4.66667, 0.0]), false)
+   yref_exp10 = MC{2}(100.0, 6670.0000000000055, EAGO.IntervalType(9.999999999999999999, 10000.00000000001), SVector{2,Float64}([2302.5850929940457, 0.0]), SVector{2,Float64}([3330.0, 0.0]), false)
+   yref_expm1 = MC{2}(6.38905609893065, 36.304860631582514, EAGO.IntervalType(1.71828, 53.5982), SVector{2,Float64}([7.38906, 0.0]), SVector{2,Float64}([17.2933, 0.0]), false)
 
-   y = McCormick.exp2(m)
-   yref = MC{2}(4.0, 11.33333333333333, EAGO.IntervalType(1.99999, 16.0001), SVector{2,Float64}([2.77259, 0.0]), SVector{2,Float64}([4.66667, 0.0]), false)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(exp, x_exp, yref_exp, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(exp2, x_exp2, yref_exp2, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(exp10, x_exp10, yref_exp10, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(expm1, x_expm1, yref_expm1, mctol)
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   ##### Logarithm #####
+   x_log = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_log2 = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_log10 = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_log1p = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
 
-   y = McCormick.exp10(m)
-   yref = MC{2}(100.0, 6670.0000000000055, EAGO.IntervalType(9.999999999999999999, 10000.00000000001), SVector{2,Float64}([2302.5850929940457, 0.0]), SVector{2,Float64}([3330.0, 0.0]), false)
+   yref_log = MC{2}(0.46209812037329695, 0.6931471805599453, EAGO.IntervalType(0, 1.3863), SVector{2,Float64}([0.462098, 0.0]), SVector{2,Float64}([0.5, 0.0]), false)
+   yref_log2 = MC{2}(0.6666666666666666, 1.0, EAGO.IntervalType(0, 2), SVector{2,Float64}([0.666667, 0.0]), SVector{2,Float64}([0.721348, 0.0]), false)
+   yref_log10 = MC{2}(0.20068666377598746, 0.3010299956639812, EAGO.IntervalType(0, 0.60206), SVector{2,Float64}([0.200687, 0.0]), SVector{2,Float64}([0.217147, 0.0]), false)
+   yref_log1p = MC{2}(0.998577424517997, 1.0986122886681098, EAGO.IntervalType(0.693147, 1.60944), SVector{2,Float64}([0.30543, 0.0]), SVector{2,Float64}([0.333333, 0.0]), false)
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(log, x_log, yref_log, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(log2, x_log2, yref_log2, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(log10, x_log10, yref_log10, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(log1p, x_log1p, yref_log1p, mctol)
 
-   y = McCormick.expm1(m)
-   yref = MC{2}(6.38905609893065, 36.304860631582514, EAGO.IntervalType(1.71828, 53.5982), SVector{2,Float64}([7.38906, 0.0]), SVector{2,Float64}([17.2933, 0.0]), false)
+   #####  Square root #####
+   x_sqrt_ns = MC{2}(4.5, 4.5, EAGO.IntervalType(3.0,9.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sqrt_d1 = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   yref_sqrt_ns = MC{2}(2.049038105676658, 2.1213203435596424, EAGO.IntervalType(1.73205, 3.0), SVector{2,Float64}([0.211325, 0.0]), SVector{2,Float64}([0.235702, 0.0]), false)
+   yref_sqrt_d1 = MC{2}(1.9604759334428057, 2.0, EAGO.IntervalType(1.73205, 2.64576), SVector{2,Float64}([0.228425, 0.0]), SVector{2,Float64}([0.25, 0.0]), false)
+
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(sqrt, x_sqrt_ns, yref_sqrt_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sqrt, x_sqrt_d1, yref_sqrt_d1, mctol)
+
+   #####  Step #####
+   x_step_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_step_n = MC{2}(-4.0, -4.0, -EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_step_z = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_step_zp = MC{2}(0.5, 0.5, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_step_p = MC{2}(1.0, 1.0, EAGO.IntervalType(1.0, 1.0), @SVector[0.0, 0.0], @SVector[0.0, 0.0], false)
+   yref_step_n = MC{2}(0.0, 0.0, EAGO.IntervalType(0.0, 0.0), @SVector[0.0, 0.0], @SVector[0.0, 0.0], false)
+   yref_step_ns_z = MC{2}(0.0, 0.3333333333333333, EAGO.IntervalType(0.0, 1.0), @SVector[0.0, 0.0], @SVector[-0.6666666666666666, 0.0], false)
+   yref_step_ns_zp = MC{2}(0.5, 1.0, EAGO.IntervalType(0.0, 1.0), @SVector[1.0, 0.0], @SVector[0.0, 0.0], false)
+   yref_step_d1_z = MC{2}(0.0, 0.5555555555555556, EAGO.IntervalType(0.0, 1.0), @SVector[0.0, 0.0], @SVector[0.444444, 0.0], false)
+
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(step, x_step_p, yref_step_p, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(step, x_step_n, yref_step_n, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(step, x_step_z, yref_step_ns_z, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(step, x_step_zp, yref_step_ns_zp, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(step, x_step_p, yref_step_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(step, x_step_n, yref_step_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(step, x_step_z, yref_step_d1_z, mctol)
+
+   #####  Absolute value #####
+   x_abs_ns = MC{2}(4.5, 4.5, EAGO.IntervalType(-3.0,8.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_abs_d1 = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_abs_ns = MC{2}(4.5, 6.409090909090908, EAGO.IntervalType(0.0, 8.0), @SVector[1.0, 0.0], @SVector[0.454545, 0.0], false)
+   yref_abs_d1 = MC{2}(1.3061224489795915, 2.0, EAGO.IntervalType(3.0, 7.0), @SVector[0.979592, 0.0], @SVector[1.0, 0.0], false)
+
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(abs, x_abs_ns, yref_abs_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(abs, x_abs_d1, yref_abs_d1, mctol)
+
+   #####  Sign #####
+   x_sign_d1_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sign_d1_n = MC{2}(-4.0, -4.0, EAGO.IntervalType(-7.0,-3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sign_d1_z = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_sign_d1_p = MC{2}(1.0, 1.0, EAGO.IntervalType(1.0, 1.0), @SVector[0.0, 0.0], @SVector[0.0, 0.0], false)
+   yref_sign_d1_n = MC{2}(-1.0, -1.0, EAGO.IntervalType(-1.0, -1.0), @SVector[0.0, 0.0], @SVector[0.0, 0.0], false)
+   yref_sign_d1_z = MC{2}(-1.0, 0.11111111111111116, EAGO.IntervalType(-1.0, 1.0), @SVector[0.0, 0.0], @SVector[0.888889, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sign, x_sign_d1_p, yref_sign_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sign, x_sign_d1_n, yref_sign_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sign, x_sign_d1_z, yref_sign_d1_z, mctol)
+
+   #####  Sine #####
+   x_sin_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sin_n = MC{2}(-4.0, -4.0, EAGO.IntervalType(-7.0,-3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sin_z = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_sin_ns_p = MC{2}(-0.7568024953079283, 0.2700866557245978, EAGO.IntervalType(-1.0, 0.656987), @SVector[-0.653644, 0.0], @SVector[0.128967, 0.0], false)
+   yref_sin_ns_n = MC{2}(-0.2700866557245979, 0.7568024953079283, EAGO.IntervalType(-0.656987, 1.0), @SVector[0.128967, 0.0], @SVector[-0.653644, 0.0], false)
+   yref_sin_ns_z = MC{2}(-0.9092974268256817, 0.10452774015707458, EAGO.IntervalType(-1.0, 0.841471), @SVector[-0.416147, 0.0], @SVector[0.245648, 0.0], false)
+   yref_sin_d1_z = MC{2}(-0.9092974268256817, 0.10452774015707458, EAGO.IntervalType(-1.0, 0.841471), @SVector[-0.416147, 0.0], @SVector[0.245648, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sin, x_sin_p, yref_sin_ns_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sin, x_sin_n, yref_sin_ns_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sin, x_sin_z, yref_sin_ns_z, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(sin, x_sin_z, yref_sin_d1_z, mctol)
+
+   #####  Cosine #####
+   x_cos_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_cos_n = MC{2}(-4.0, -4.0, EAGO.IntervalType(-7.0,-3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_cos_z = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_cos_d1_p = MC{2}(-0.703492113936536, -0.31034065427934965, EAGO.IntervalType(-1.0, 1.0), @SVector[0.485798, 0.0], @SVector[0.679652, 0.0], false)
+   yref_cos_d1_n = MC{2}(-0.703492113936536, -0.31034065427934965, EAGO.IntervalType(-1.0, 1.0), @SVector[-0.485798, 0.0], @SVector[-0.679652, 0.0], false)
+   yref_cos_d1_z = MC{2}(-0.6314158569813042, -0.222468094224762, EAGO.IntervalType(-0.989993, 1.0), @SVector[0.390573, 0.0], @SVector[0.76752, 0.0], false)
+   yref_cos_ns_z = MC{2}(-0.6314158569813042, -0.222468094224762, EAGO.IntervalType(-0.989993, 1.0), @SVector[0.390573, 0.0], @SVector[0.76752, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(cos, x_cos_p, yref_cos_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(cos, x_cos_n, yref_cos_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(cos, x_cos_z, yref_cos_d1_z, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(cos, x_cos_z, yref_cos_ns_z, mctol)
+
+   ##### Tangent #####
+   x_tan_p = MC{2}(0.6, 0.6, EAGO.IntervalType(0.5,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_tan_n = MC{2}(-0.8, -0.8, EAGO.IntervalType(-1.0,-0.5), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_tan_z = MC{2}(-0.3,-0.3, EAGO.IntervalType(-0.5,0.5), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_tan_err = MC{2}(0.6, 0.6, EAGO.IntervalType(-4.5, 5.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_tan_ns_p = MC{2}(0.6841368083416923, 0.7485235368060128, EAGO.IntervalType(0.546302, 1.55741), @SVector[1.46804, 0.0], @SVector[2.02221, 0.0], false)
+   yref_tan_ns_n = MC{2}(-1.1529656307304577, -1.0296385570503641, EAGO.IntervalType(-1.55741, -0.546302), @SVector[2.02221, 0.0], @SVector[2.06016, 0.0], false)
+   yref_tan_ns_z = MC{2}(-0.332534, -0.30933624960962325, EAGO.IntervalType(-0.546303,0.546303), @SVector[1.06884, 0.0], @SVector[1.09569, 0.0], false)
+   yref_tan_d1_z = MC{2}(-0.332534, -0.309336, EAGO.IntervalType(-0.546303,0.546303), @SVector[1.06884, 0.0], @SVector[1.09569, 0.0], false)
+
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(tan, x_tan_p, yref_tan_ns_p, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(tan, x_tan_n, yref_tan_ns_n, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(tan, x_tan_z, yref_tan_ns_z, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(tan, x_tan_z, yref_tan_d1_z, mctol)
+   @test_throws ErrorException tan(x_tan_err)
+
+   #####  Arcsine #####
+   x_asin_p = MC{2}(-0.7, -0.7, EAGO.IntervalType(-0.9,-0.5), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_asin_n = MC{2}(0.7, 0.7, EAGO.IntervalType(0.5,0.9), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_asin_z = MC{2}(-0.1, -0.1, EAGO.IntervalType(-0.5,0.5), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_asin_d1_p = MC{2}(-0.8216841452984665, -0.775397496610753, EAGO.IntervalType(-1.11977, -0.523598), @SVector[1.49043, 0.0], @SVector[1.40028, 0.0], false)
+   yref_asin_d1_n = MC{2}(0.775397496610753, 0.8216841452984665, EAGO.IntervalType(0.523598, 1.11977), @SVector[1.40028, 0.0], @SVector[1.49043, 0.0], false)
+   yref_asin_d1_z = MC{2}(-0.10958805193420748, -0.0974173098978382, EAGO.IntervalType(-0.523599, 0.523599), @SVector[1.03503, 0.0], @SVector[1.03503, 0.0], false)
+   yref_asin_ns_z = MC{2}(-0.10958805193420748, -0.0974173098978382, EAGO.IntervalType(-0.523599, 0.523599), @SVector[1.03503, 0.0], @SVector[1.03503, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asin, x_asin_p, yref_asin_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asin, x_asin_n, yref_asin_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asin, x_asin_z, yref_asin_d1_z, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(asin, x_asin_z, yref_asin_ns_z, mctol)
+
+   ##### Arctangent #####
+   x_atan_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0, 7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   yref_atan_d1_p = MC{2}(1.294009147346374, 1.3258176636680326, EAGO.IntervalType(1.24904, 1.4289), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(atan, x_atan_p, yref_atan_d1_p, mctol)
+
+   ##### Hyperbolic Sine #####
+   x_sinh_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sinh_n = MC{2}(4.0, -4.0, EAGO.IntervalType(-7.0,-3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_sinh_z = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_sinh_d1_p = MC{2}(27.28991719712775, 144.59243701386904, EAGO.IntervalType(10.0178, 548.3161232732466), @SVector[27.3082, 0.0], @SVector[134.575, 0.0], false)
+   yref_sinh_d1_n = MC{2}(-144.59243701386904, -10.017874927409903, EAGO.IntervalType(-548.3161232732466, -10.0178), @SVector[134.575, 0.0], @SVector[27.3082, 0.0], false)
+   yref_sinh_d1_z = MC{2}(-7.219605897146477, -3.626860407847019, EAGO.IntervalType(-10.0179, 1.17521), @SVector[2.79827, 0.0], @SVector[3.7622, 0.0], false)
+   yref_sinh_ns_p = MC{2}(27.28991719712775, 144.59243701386904, EAGO.IntervalType(10.0178, 548.317), @SVector[27.3082, 0.0], @SVector[134.575, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sinh, x_sinh_p, yref_sinh_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sinh, x_sinh_n, yref_sinh_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(sinh, x_sinh_z, yref_sinh_d1_z, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(sinh, x_sinh_p, yref_sinh_d1_p, mctol)
+
+   ##### Hyperbolic Cosine #####
+   x_cosh = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   yref_cosh_ns = MC{2}(27.308232836016487, 144.63000528563632, EAGO.IntervalType(10.0676, 548.318), @SVector[-27.2899, 0.0], @SVector[134.562, 0.0], false)
+   yref_cosh_d1 = MC{2}(27.308232836016487, 144.63000528563632, EAGO.IntervalType(10.0676, 548.318), @SVector[-27.2899, 0.0], @SVector[134.562, 0.0], false)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(cosh, x_cosh, yref_cosh_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(cosh, x_cosh, yref_cosh_d1, mctol)
+
+   ##### Hyperbolic Tangent #####
+   x_tanh_p = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_tanh_n = MC{2}(-4.0, -4.0, EAGO.IntervalType(-7.0,-3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_tanh_z1 = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_tanh_z2 = MC{2}(2.0, 2.0, EAGO.IntervalType(-1.0,3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_tanh_d1_p = MC{2}(0.996290649501034, 0.999329299739067, EAGO.IntervalType(0.995054,0.999999), @SVector[0.0012359, 0.0], @SVector[0.00134095, 0.0], false)
+   yref_tanh_d1_n = MC{2}(-0.999329299739067, -0.996290649501034, EAGO.IntervalType(-0.999999, -0.995054), @SVector[0.00134095, 0.0], @SVector[0.0012359, 0.0], false)
+   yref_tanh_d1_z1 = MC{2}(-0.9640275800758169, -0.5558207301372651, EAGO.IntervalType(-0.995055, 0.761595), @SVector[0.0706508, 0.0], @SVector[0.439234, 0.0], false)
+   yref_tanh_d1_z2 = MC{2}(0.5558207301372651, 0.9640275800758169, EAGO.IntervalType(-0.761595, 0.995055), @SVector[0.439234, 0.0], @SVector[0.0706508, 0.0], false)
+   yref_tanh_ns = MC{2}(-0.9640275800758169, -0.5558207301372651, EAGO.IntervalType(-0.995055, 0.761595), @SVector[0.0706508, 0.0], @SVector[0.439234, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(tanh, x_tanh_p, yref_tanh_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(tanh, x_tanh_n, yref_tanh_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(tanh, x_tanh_z1, yref_tanh_d1_z1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(tanh, x_tanh_z2, yref_tanh_d1_z2, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(tanh, x_tanh_z1, yref_tanh_ns, mctol)
+
+   ##### Inverse Hyperbolic Sine #####
+   x_asinh_p = MC{2}(0.3, 0.3, EAGO.IntervalType(0.1,0.7), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_asinh_n = MC{2}(-0.3, -0.3, EAGO.IntervalType(-0.7,-0.1), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_asinh_z1 = MC{2}(2.0, 2.0, EAGO.IntervalType(-3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_asinh_z2 = MC{2}(-2.0, -2.0, EAGO.IntervalType(-7.0,3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_asinh_d1_p = MC{2}(0.2841115746269236, 0.29567304756342244, EAGO.IntervalType(0.099834,0.652667), @SVector[0.921387, 0.0], @SVector[0.957826, 0.0], false)
+   yref_asinh_d1_n = MC{2}(-0.29567304756342244, -0.2841115746269236, EAGO.IntervalType(-0.652667,-0.099834), @SVector[0.957826, 0.0], @SVector[0.921387, 0.0], false)
+   yref_asinh_d1_z1 = MC{2}(0.3730697449603356, 1.4436354751788103, EAGO.IntervalType(-1.81845, 2.64413), @SVector[0.45421, 0.0], @SVector[0.447214, 0.0], false)
+   yref_asinh_d1_z2 = MC{2}(-1.4436354751788103, -0.3730697449603356, EAGO.IntervalType(-2.64413,1.81845), @SVector[0.447214, 0.0], @SVector[0.45421, 0.0], false)
+   yref_asinh_ns = MC{2}(0.2841115746269236, 0.29567304756342244, EAGO.IntervalType(0.099834,0.652667), @SVector[0.921387, 0.0], @SVector[0.957826, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asinh, x_asinh_p, yref_asinh_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asinh, x_asinh_n, yref_asinh_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asinh, x_asinh_z1, yref_asinh_d1_z1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(asinh, x_asinh_z2, yref_asinh_d1_z2, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(asinh, x_asinh_z1, yref_asinh_ns, mctol)
+
+   ##### Inverse Hyperbolic Cosine #####
+   x_acosh = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0,7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   yref_acosh = MC{2}(1.9805393289917226, 2.0634370688955608, EAGO.IntervalType(1.76274,2.63392), @SVector[0.217792, 0.0], @SVector[0.258199, 0.0], false)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(acosh, x_acosh, yref_acosh, mctol)
+
+   ##### Inverse Hyperbolic Tangent #####
+   x_atanh_p = MC{2}(0.3, 0.3, EAGO.IntervalType(0.1,0.7), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_atanh_n = MC{2}(-0.3, -0.3, EAGO.IntervalType(-0.7,-0.1), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_atanh_z1 = MC{2}(0.2, 0.2, EAGO.IntervalType(-0.6,0.7), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x_atanh_z2 = MC{2}(-0.2, -0.2, EAGO.IntervalType(-0.7,0.6), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_atanh_d1_p = MC{2}(0.30951960420311175, 0.3559904077187347, EAGO.IntervalType(0.100335,0.867301), @SVector[1.0989, 0.0], @SVector[1.27828, 0.0], false)
+   yref_atanh_d1_n = MC{2}(-0.3559904077187347, -0.30951960420311175, EAGO.IntervalType(-0.867301,-0.100335), @SVector[1.27828, 0.0], @SVector[1.0989, 0.0], false)
+   yref_atanh_d1_z1 = MC{2}(0.2027325540540822, 0.2788904617454707, EAGO.IntervalType(-0.30952,0.867301), @SVector[1.04167, 0.0], @SVector[1.17682, 0.0], false)
+   yref_atanh_d1_z2 = MC{2}(-0.2788904617454707, -0.2027325540540822, EAGO.IntervalType(-0.867301,0.30952), @SVector[1.17682, 0.0], @SVector[1.04167, 0.0], false)
+   yref_atanh_ns = MC{2}(0.30951960420311175, 0.3559904077187347, EAGO.IntervalType(0.100335,0.867301), @SVector[1.0989, 0.0], @SVector[1.27828, 0.0], false)
+
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(atanh, x_atanh_p, yref_atanh_d1_p, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(atanh, x_atanh_n, yref_atanh_d1_n, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(atanh, x_atanh_z1, yref_atanh_d1_z1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref1(atanh, x_atanh_z2, yref_atanh_d1_z2, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref1(atanh, x_atanh_z1, yref_atanh_ns, mctol)
+
+   # CONVERSION
+   X = MC{2}(4.5, 4.5, EAGO.IntervalType(-3.0,8.0), seed_gradient(Float64, 1, 2), seed_gradient(Float64, 1, 2), false)
+   X1 = convert(MC{2}, 1)
+   X2 = convert(MC{2}, 1.1)
+   X3 = convert(MC{2}, EAGO.IntervalType(2.1,4.3))
+   @test X1.cc == 1.0
+   @test X1.cv == 1.0
+   @test X2.cc == 1.1
+   @test X2.cv == 1.1
+   @test X3.cc == 4.3
+   @test X3.cv == 2.1
+
+   @test +x_step_p == x_step_p
 end
 
-# DONE
-@testset "Test Logarithms" begin
+@testset "Test Multivariant w/Constant" begin
+   x = MC{2}(4.5, 4.5, EAGO.IntervalType(-3.0,8.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
 
-   mctol = 1E-4
-   m = MC{2}(2.0, 3.0, EAGO.IntervalType(1.0,4.0),
-             seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x1 = x + 2.1; @test x1.cv == x1.cc == 6.6
+   x2 = 2.3 + x; @test x2.cv == x2.cc == 6.8
+   x3 = x + 2;   @test x3.cv == x3.cc == 6.5
+   x4 = 3 + x;   @test x4.cv == x4.cc == 7.5
 
-   y = log(m)
-   yref = MC{2}(0.46209812037329695, 0.6931471805599453, EAGO.IntervalType(0, 1.3863), SVector{2,Float64}([0.462098, 0.0]), SVector{2,Float64}([0.5, 0.0]), false)
+   x1 = x + Float16(2.1); @test x1.cv == x1.cc == 6.599609375
+   x2 = Float16(2.3) + x; @test x2.cv == x2.cc == 6.80078125
+   x3 = x + Int16(2);     @test x3.cv == x3.cc == 6.5
+   x4 = Int16(3) + x;     @test x4.cv == x4.cc == 7.5
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   x1 = x - 2.1; @test x1.cv == x1.cc == 2.4
+   x2 = 2.3 - x; @test x2.cv == x2.cc == -2.2
+   x3 = x - 2;   @test x3.cv == x3.cc == 2.5
+   x4 = 3 - x;   @test x4.cv == x4.cc == -1.5
 
-   y = log2(m)
-   yref = MC{2}(0.6666666666666666, 1.0, EAGO.IntervalType(0, 2), SVector{2,Float64}([0.666667, 0.0]), SVector{2,Float64}([0.721348, 0.0]), false)
+   x1 = x - Float16(2.1); @test x1.cv == x1.cc == 2.400390625
+   x2 = Float16(2.3) - x; @test x2.cv == x2.cc == -2.19921875
+   x3 = x - Int16(2);     @test x3.cv == x3.cc == 2.5
+   x4 = Int16(3) - x;     @test x4.cv == x4.cc == -1.5
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   x1 = x * 2.1; @test x1.cv == x1.cc == 9.450000000000001
+   x2 = 2.3 * x; @test x2.cv == x2.cc == 10.35
+   x3 = x * 2;   @test x3.cv == x3.cc == 9.0
+   x4 = 3 * x;   @test x4.cv == x4.cc == 13.5
 
-   y = log10(m)
-   yref = MC{2}(0.20068666377598746, 0.3010299956639812, EAGO.IntervalType(0, 0.60206), SVector{2,Float64}([0.200687, 0.0]), SVector{2,Float64}([0.217147, 0.0]), false)
+   x1 = x * Float16(2.1); @test x1.cv == x1.cc == 9.4482421875
+   x2 = Float16(2.3) * x; @test x2.cv == x2.cc == 10.353515625
+   x3 = x * Int16(2);     @test x3.cv == x3.cc == 9.0
+   x4 =  Int16(3) * x;    @test x4.cv == x4.cc == 13.5
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   x1 = x * (-2.1); @test x1.cv == x1.cc == -9.450000000000001
+   x2 = (-2.3) * x; @test x2.cv == x2.cc == -10.35
+   x3 = x * (-2);   @test x3.cv == x3.cc == -9.0
+   x4 = (-3) * x;   @test x4.cv == x4.cc == -13.5
 
-   y = log1p(m)
-   yref = MC{2}(0.998577424517997, 1.0986122886681098, EAGO.IntervalType(0.693147, 1.60944), SVector{2,Float64}([0.30543, 0.0]), SVector{2,Float64}([0.333333, 0.0]), false)
+   x1 = x * Float16(-2.1); @test x1.cv == x1.cc == -9.4482421875
+   x2 = Float16(-2.3) * x; @test x2.cv == x2.cc == -10.353515625
+   x3 = x * Int16(-2);     @test x3.cv == x3.cc == -9.0
+   x4 =  Int16(-3) * x;    @test x4.cv == x4.cc == -13.5
 
-   @test isapprox(y.cv, yref.cv; atol = mctol)
-   @test isapprox(y.cc, yref.cc; atol = mctol)
-   @test isapprox(y.Intv.lo, yref.Intv.lo; atol = mctol)
-   @test isapprox(y.Intv.hi, yref.Intv.hi; atol = mctol)
-   @test isapprox(y.cv_grad[1], yref.cv_grad[1]; atol = mctol)
-   @test isapprox(y.cv_grad[2], yref.cv_grad[2]; atol = mctol)
-   @test isapprox(y.cc_grad[1], yref.cc_grad[1]; atol = mctol)
-   @test isapprox(y.cc_grad[2], yref.cc_grad[2]; atol = mctol)
+   x1 = 1.0/x
+   @test isapprox(x1.cc, -0.25, atol=mctol)
+   @test isapprox(x1.cv, -0.266666666, atol=mctol)
+   @test isapprox(x1.cc_grad[1], 0.0, atol=mctol)
+   @test isapprox(x1.cc_grad[2], -0.0625,atol=mctol)
+   @test isapprox(x1.cv_grad[1], 0.0, atol=mctol)
+   @test isapprox(x1.cv_grad[2],-0.0666667, atol=mctol)
+
+   x2 = 1/x
+   @test isapprox(x2.cc, -0.25, atol=1E-6)
+   @test isapprox(x2.cv, -0.266666666, atol=1E-6)
+   @test isapprox(x2.cc_grad[1], 0.0, atol=1E-6)
+   @test isapprox(x2.cc_grad[2], -0.0625, atol=1E-6)
+   @test isapprox(x2.cv_grad[1], 0.0, atol=1E-6)
+   @test isapprox(x2.cv_grad[2], -0.0666667, atol=1E-6)
+
+   yref1_min_ns = MC{2}(1.0909090909090908, 3.0, EAGO.IntervalType(-3.0, 3.0), @SVector[0.545455, 0.0], @SVector[0.0, 0.0], false)
+   yref2_min_ns = MC{2}(1.0909090909090908, 3.0, EAGO.IntervalType(-3.0, 3.0), @SVector[0.545455, 0.0], @SVector[0.0, 0.0], false)
+   yref1_max_ns = MC{2}(5.0, 7.045454545454545, EAGO.IntervalType(5.0, 8.0), @SVector[0.0, 0.0], @SVector[0.272727, 0.0], false)
+   yref2_max_ns = MC{2}(5.0, 7.045454545454545, EAGO.IntervalType(5.0, 8.0), @SVector[0.0, 0.0], @SVector[0.272727, 0.0], false)
+   yref1_min_d1 = MC{2}(1.0909090909090908, 3.0, EAGO.IntervalType(-3.0, 3.0), @SVector[0.545455, 0.0], @SVector[0.0, 0.0], false)
+   yref2_min_d1 = MC{2}(1.0909090909090908, 3.0, EAGO.IntervalType(-3.0, 3.0), @SVector[0.545455, 0.0], @SVector[0.0, 0.0], false)
+   yref1_max_d1 = MC{2}(5.0, 7.045454545454545, EAGO.IntervalType(5.0, 8.0), @SVector[0.0, 0.0], @SVector[0.272727, 0.0], false)
+   yref2_max_d1 = MC{2}(5.0, 7.045454545454545, EAGO.IntervalType(5.0, 8.0), @SVector[0.0, 0.0], @SVector[0.272727, 0.0], false)
+
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(min, x_min, 3.0, yref1_min_ns, yref2_min_ns, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(max, x_max, 5.0, yref1_max_ns, yref2_max_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(min, x_min, 3.0, yref1_min_d1, yref2_min_d1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(max, x_max, 5.0, yref1_max_d1, yref2_max_d1, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(min, x_min, Float16(3.0), yref1_min_ns, yref2_min_ns, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(max, x_max, Float16(5.0), yref1_max_ns, yref2_max_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(min, x_min, Float16(3.0), yref1_min_d1, yref2_min_d1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(max, x_max, Float16(5.0), yref1_max_d1, yref2_max_d1, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(min, x_min, Float32(3.0), yref1_min_ns, yref2_min_ns, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(max, x_max, Float32(5.0), yref1_max_ns, yref2_max_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(min, x_min, Float32(3.0), yref1_min_d1, yref2_min_d1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(max, x_max, Float32(5.0), yref1_max_d1, yref2_max_d1, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(min, x_min, 3, yref1_min_ns, yref2_min_ns, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_ref2(max, x_max, 5, yref1_max_ns, yref2_max_ns, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(min, x_min, 3, yref1_min_d1, yref2_min_d1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_ref2(max, x_max, 5, yref1_max_d1, yref2_max_d1, mctol)
+
+   x1 = MC{2}(4.0, 4.0, EAGO.IntervalType(3.0, 7.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x2 = MC{2}(-4.5, -4.5, EAGO.IntervalType(-8.0, -3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x3 = MC{2}(4.5, 4.5, EAGO.IntervalType(3.0, 8.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x4 = MC{2}(-4.5, -4.5, EAGO.IntervalType(-8.0, -3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x5 = MC{2}(-4.0, -4.0, EAGO.IntervalType(-7.0, -3.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+   x6 = MC{2}(-2.0, -2.0,EAGO.IntervalType(-3.0, 1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+
+   yref_ns_pow1 = MC{2}(16.0, 19.0, EAGO.IntervalType(9.0, 49.0), @SVector[8.0, 0.0], @SVector[10.0, 0.0], false)
+   yref_ns_pow2 = MC{2}(0.0625, 0.08843537414965986, EAGO.IntervalType(0.0204081, 0.111112), @SVector[-0.03125, 0.0], @SVector[-0.0226757, 0.0], false)
+   yref_ns_pow3 = MC{2}(0.04938271604938271, 0.08246527777777776, EAGO.IntervalType(0.015625, 0.111112), @SVector[0.0219479, 0.0], @SVector[0.0190972, 0.0], false)
+   yref_ns_pow4 = MC{2}(20.25, 25.5, EAGO.IntervalType(9.0, 64.0), @SVector[-9.0, 0.0], @SVector[-11.0, 0.0], false)
+   yref_ns_pow5 = MC{2}(-172.5, -91.125, EAGO.IntervalType(-512.0, -27.0), @SVector[97.0, 0.0], @SVector[60.75, 0.0], false)
+   yref_ns_pow6 = MC{2}(410.0625, 1285.5, EAGO.IntervalType(81.0, 4096.0), @SVector[-364.5, 0.0], @SVector[-803.0, 0.0], false)
+   yref_ns_pow7 = MC{2}(91.125, 172.5, EAGO.IntervalType(27.0, 512.0), @SVector[60.75, 0.0], @SVector[97.0, 0.0], false)
+   yref_ns_pow8 = MC{2}(410.0625, 1285.5, EAGO.IntervalType(81.0, 4096.0), @SVector[364.5, 0.0], @SVector[803.0, 0.0], false)
+   yref_ns_pow9 = MC{2}(410.0625, 2818.5, EAGO.IntervalType(0, 4096.0), @SVector[-364.5, 0.0], @SVector[-365.0, 0.0], false)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x1, 2, yref_ns_pow1, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x1, -2, yref_ns_pow2, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x2, -2, yref_ns_pow3, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x2, 2, yref_ns_pow4, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x2, 3, yref_ns_pow5, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x2, 4, yref_ns_pow6, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x3, 3, yref_ns_pow7, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x3, 4, yref_ns_pow8, mctol)
+   EAGO.set_mc_differentiability!(0); @test check_vs_refv(^, x4, 4, yref_ns_pow9, mctol)
+   EAGO.set_mc_differentiability!(0); @test x2^(1) == x2
+
+   yref_d1_pow1 = MC{2}(0.25, 0.2857142857142857, EAGO.IntervalType(0.142857, 0.333334), @SVector[-0.0625, 0.0], @SVector[-0.047619, 0.0], false)
+   yref_d1_pow2 = MC{2}(16.0, 19.0, EAGO.IntervalType(9.0, 49.0), @SVector[8.0, 0.0], @SVector[10.0, 0.0], false)
+   yref_d1_pow3 = MC{2}(16.0, 19.0, EAGO.IntervalType(9.0, 49.0), @SVector[-8.0, 0.0], @SVector[-10.0, 0.0], false)
+   yref_d1_pow4 = MC{2}(2.66666666666666, 7.0, EAGO.IntervalType(0.0, 9.0), @SVector[-4.0, 0.0], @SVector[-2.0, 0.0], false)
+   yref_d1_pow5 = MC{2}(64.0, 106.0, EAGO.IntervalType(27.0, 343.0), @SVector[48.0, 0.0], @SVector[79.0, 0.0], false)
+   yref_d1_pow6 = MC{2}(-106.0, -64.0, EAGO.IntervalType(-343.0, -27.0), @SVector[79.0, 0.0], @SVector[48.0, 0.0], false)
+   yref_d1_pow7 = MC{2}(-20.25, -7.750, EAGO.IntervalType(-27.0, 1.0), @SVector[6.75, 0.0], @SVector[12.25, 0.0], false)
+   yref_d1_pow8 = MC{2}(0.015625, 0.02850664075153871, EAGO.IntervalType(0.00291545, 0.0370371), @SVector[-0.0117188, 0.0], @SVector[-0.0085304, 0.0], false)
+   yref_d1_pow9 = MC{2}(-0.02850664075153871, -0.015625, EAGO.IntervalType(-0.0370371, -0.00291545), @SVector[-0.0085304, 0.0], @SVector[-0.0117188, 0.0], false)
+   yref_d1_pow10 = MC{2}(0.00390625, 0.009363382541225106, EAGO.IntervalType(0.000416493, 0.0123457), @SVector[-0.00390625, 0.0], @SVector[-0.0029823, 0.0], false)
+   yref_d1_pow11 = MC{2}(0.00390625, 0.009363382541225106, EAGO.IntervalType(0.000416493, 0.0123457), @SVector[0.00390625, 0.0], @SVector[0.0029823, 0.0], false)
+   yref_d1_pow12 = MC{2}(256.0, 661.0, EAGO.IntervalType(81.0, 2401.0), @SVector[256.0, 0.0], @SVector[580.0, 0.0], false)
+   yref_d1_pow13 = MC{2}(256.0, 661.0, EAGO.IntervalType(81.0, 2401.0), @SVector[-256.0, 0.0], @SVector[-580.0, 0.0], false)
+   yref_d1_pow14 = MC{2}(16.0, 61.0,  EAGO.IntervalType(0.0, 81.0), @SVector[-32.0, 0.0], @SVector[-20.0, 0.0], false)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x1, -1, yref_d1_pow1, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x1, 2, yref_d1_pow2, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x5, 2, yref_d1_pow3, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x6, 2, yref_d1_pow4, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x1, 3, yref_d1_pow5, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x5, 3, yref_d1_pow6, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x6, 3, yref_d1_pow7, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x1, -3, yref_d1_pow8, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x5, -3, yref_d1_pow9, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x1, -4, yref_d1_pow10, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x5, -4, yref_d1_pow11, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x1, 4, yref_d1_pow12, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x5, 4, yref_d1_pow13, mctol)
+   EAGO.set_mc_differentiability!(1); @test check_vs_refv(^, x6, 4, yref_d1_pow14, mctol)
 end
 
-# DONE
-@testset "Addition/Subtraction Constant" begin
-    EAGO.set_mc_differentiability!(0)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,EAGO.IntervalType}([EAGO.IntervalType(-3.0,8.0);EAGO.IntervalType(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-
-    X1 = X + 2.1
-    X2 = 2.3 + X
-    X3 = X + 2
-    X4 = 3 + X
-    @test +X == X
-    @test X1.cv == 6.6
-    @test X1.cc == 6.6
-    @test X2.cv == 6.8
-    @test X2.cc == 6.8
-    @test X3.cv == 6.5
-    @test X3.cc == 6.5
-    @test X4.cv == 7.5
-    @test X4.cc == 7.5
-
-    X1 = X + Float16(2.1)
-    X2 = Float16(2.3) + X
-    X3 = X + Int16(2)
-    X4 =  Int16(3) + X
-    @test +X == X
-    @test X1.cv == 6.599609375
-    @test X1.cc == 6.599609375
-    @test X2.cv == 6.80078125
-    @test X2.cc == 6.80078125
-    @test X3.cv == 6.5
-    @test X3.cc == 6.5
-    @test X4.cv == 7.5
-    @test X4.cc == 7.5
-
-    X1n = X - 2.1
-    X2n = 2.3 - X
-    X3n = X - 2
-    X4n = 3 - X
-    @test X1n.cv == 2.4
-    @test X1n.cc == 2.4
-    @test X2n.cv == -2.2
-    @test X2n.cc == -2.2
-    @test X3n.cv == 2.5
-    @test X3n.cc == 2.5
-    @test X4n.cv == -1.5
-    @test X4n.cc == -1.5
-
-    X1n = X - Float16(2.1)
-    X2n = Float16(2.3) - X
-    X3n = X - Int16(2)
-    X4n = Int16(3) - X
-    @test X1n.cv == 2.400390625
-    @test X1n.cc == 2.400390625
-    @test X2n.cv == -2.19921875
-    @test X2n.cc == -2.19921875
-    @test X3n.cv == 2.5
-    @test X3n.cc == 2.5
-    @test X4n.cv == -1.5
-    @test X4n.cc == -1.5
-end
-
-# DOUBLE CHECK DIVISION
-@testset "Multiplication/Division Constant" begin
-
-    EAGO.set_mc_differentiability!(0)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0);Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-
-    X1 = X * 2.1
-    X2 = 2.3 * X
-    X3 = X * 2
-    X4 = 3 * X
-    @test X1.cv == 9.450000000000001
-    @test X1.cc == 9.450000000000001
-    @test X2.cv == 10.35
-    @test X2.cc == 10.35
-    @test X3.cv == 9.0
-    @test X3.cc == 9.0
-    @test X4.cv == 13.5
-    @test X4.cc == 13.5
-
-    X1 = X * Float16(2.1)
-    X2 = Float16(2.3) * X
-    X3 = X * Int16(2)
-    X4 =  Int16(3) * X
-    @test X1.cv == 9.4482421875
-    @test X1.cc == 9.4482421875
-    @test X2.cv == 10.353515625
-    @test X2.cc == 10.353515625
-    @test X3.cv == 9.0
-    @test X3.cc == 9.0
-    @test X4.cv == 13.5
-    @test X4.cc == 13.5
-
-    X1 = X * (-2.1)
-    X2 = (-2.3) * X
-    X3 = X * (-2)
-    X4 = (-3) * X
-    @test X1.cv == -9.450000000000001
-    @test X1.cc == -9.450000000000001
-    @test X2.cv == -10.35
-    @test X2.cc == -10.35
-    @test X3.cv == -9.0
-    @test X3.cc == -9.0
-    @test X4.cv == -13.5
-    @test X4.cc == -13.5
-
-    X1 = X * Float16(-2.1)
-    X2 = Float16(-2.3) * X
-    X3 = X * Int16(-2)
-    X4 =  Int16(-3) * X
-    @test X1.cv == -9.4482421875
-    @test X1.cc == -9.4482421875
-    @test X2.cv == -10.353515625
-    @test X2.cc == -10.353515625
-    @test X3.cv == -9.0
-    @test X3.cc == -9.0
-    @test X4.cv == -13.5
-    @test X4.cc == -13.5
-
-    #=
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(-5.0,-3.0)])
-    Y = MC{2}(-4.0,-4.0,xIBox[2],b,b,false)
-    out = 1.0/Y
-    out1 = 1/Y
-    @test isapprox(out.cc,-0.25,atol=1E-6)                    # FAIL
-    @test isapprox(out.cv,-0.266666666,atol=1E-6)             # FAIL
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-6)
-    @test isapprox(out.cc_grad[2],-0.0625,atol=1E-6)          # FAIL
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-6)
-    @test isapprox(out.cv_grad[2],-0.0666667,atol=1E-6)       # FAIL
-    @test isapprox(out.Intv.lo,-0.33333333,atol=1E-5)         # FAIL
-    @test isapprox(out.Intv.hi,-0.199999,atol=1E-5)           # FAIL
-
-    @test isapprox(out1.cc,-0.25,atol=1E-6)                   # FAIL
-    @test isapprox(out1.cv,-0.266666666,atol=1E-6)            # FAIL
-    @test isapprox(out1.cc_grad[1],0.0,atol=1E-6)
-    @test isapprox(out1.cc_grad[2],-0.0625,atol=1E-6)         # FAIL
-    @test isapprox(out1.cv_grad[1],0.0,atol=1E-6)
-    @test isapprox(out1.cv_grad[2],-0.0666667,atol=1E-6)      # FAIL
-    @test isapprox(out1.Intv.lo,-0.33333333,atol=1E-5)        # FAIL
-    @test isapprox(out1.Intv.hi,-0.199999,atol=1E-5)          # FAIL
-    =#
-end
-
-# DONE
-@testset "Minimum/Maximum Constant" begin
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = min(3,X)
-    @test isapprox(out.cc,3.0,atol=1E-1)
-    @test isapprox(out.cv,1.0909090909090908,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.545455,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-3,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    out = min(X,3)
-    @test isapprox(out.cc,3.0,atol=1E-1)
-    @test isapprox(out.cv,1.0909090909090908,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.545455,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-3,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = max(5,X)
-    @test isapprox(out.cc,7.045454545454545,atol=1E-1)
-    @test isapprox(out.cv,5.0,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.272727,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,5,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = max(X,5)
-    @test isapprox(out.cc,7.045454545454545,atol=1E-1)
-    @test isapprox(out.cv,5.0,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.272727,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,5,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = min(3.0,X)
-    @test isapprox(out.cc,3.0,atol=1E-1)
-    @test isapprox(out.cv,1.0909090909090908,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.545455,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-3,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    out = min(X,3.0)
-    @test isapprox(out.cc,3.0,atol=1E-1)
-    @test isapprox(out.cv,1.0909090909090908,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.545455,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-3,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = max(5.0,X)
-    @test isapprox(out.cc,7.045454545454545,atol=1E-1)
-    @test isapprox(out.cv,5.0,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.272727,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,5,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = max(X,5.0)
-    @test isapprox(out.cc,7.045454545454545,atol=1E-1)
-    @test isapprox(out.cv,5.0,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.272727,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,5,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = min(Float16(3.0),X)
-    @test isapprox(out.cc,3.0,atol=1E-1)
-    @test isapprox(out.cv,1.0909090909090908,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.545455,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-3,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    out = min(X,Float16(3.0))
-    @test isapprox(out.cc,3.0,atol=1E-1)
-    @test isapprox(out.cv,1.0909090909090908,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.545455,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-3,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = max(Float16(5.0),X)
-    @test isapprox(out.cc,7.045454545454545,atol=1E-1)
-    @test isapprox(out.cv,5.0,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.272727,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,5,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = max(X,Float16(5.0))
-    @test isapprox(out.cc,7.045454545454545,atol=1E-1)
-    @test isapprox(out.cv,5.0,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.272727,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,5,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-end
-
-# DONE
-@testset "Conversion" begin
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0),Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    X1 = convert(MC{2},1)
-    X2 = convert(MC{2},1.1)
-    X3 = convert(MC{2},Interval(2.1,4.3))
-    @test X1.cc == 1.0
-    @test X1.cv == 1.0
-    @test X2.cc == 1.1
-    @test X2.cv == 1.1
-    @test X3.cc == 4.3
-    @test X3.cv == 2.1
-end
-
-# DOUBLE CHECK A CASE
 @testset "Multiplication Operator" begin
 
+    ##### Case 1 #####
+    x1 = MC{2}(0.0, 0.0, EAGO.IntervalType(-2.0,1.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y1 = MC{2}(1.0, 1.0, EAGO.IntervalType(-1.0,2.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref1 = MC{2}(-1.0, 2.0, EAGO.IntervalType(-4.0,2.0), @SVector[2.0, 1.0], @SVector[2.0, -2.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x1, y1, yref1, mctol)
 
-    ##############      Testing for Nonsmooth Standard Mult           ##############
-    EAGO.set_mc_differentiability!(0)
+    ##### Case 2 #####
+    x2 = MC{2}(3.0, 3.0, EAGO.IntervalType(1.0,5.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y2 = MC{2}(1.0, 1.0, EAGO.IntervalType(-1.0,2.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref2 = MC{2}(1.0, 5.0, EAGO.IntervalType(-5.0,10.0), @SVector[2.0, 5.0], @SVector[2.0, 1.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x2, y2, yref2, mctol)
 
-    ################### Test Nonsmooth Zero in Both Case (Failing)   ###############
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-2.0,1.0);Interval(-1.0,2.0)])
-    X = MC{2}(0.0,0.0,xIBox[1],a,a,false)
-    Y = MC{2}(1.0,1.0,xIBox[2],b,b,false)
-    out = X*Y
+    ##### Case 3 #####
+    x3 = MC{2}(-4.0, -4.0, EAGO.IntervalType(-6.0,-2.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y3 = MC{2}(2.0, 2.0, EAGO.IntervalType(1.0,3.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref3 = MC{2}(-10.0, -6.0, EAGO.IntervalType(-18.0,-2.0), @SVector[3.0, -2.0], @SVector[1.0, -2.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x3, y3, yref3, mctol)
 
-    @test out.cc == 2.0
-    @test out.cv == -1.0
-    @test out.cc_grad[1] == 2.0
-    @test out.cc_grad[2] == -2.0
-    @test out.cv_grad[1] == 2.0
-    @test out.cv_grad[2] == 1.0
-    @test out.Intv.lo == -4.0
-    @test out.Intv.hi == 2.0
+    ##### Case 4 #####
+    x4 = MC{2}(-4.0, -4.0, EAGO.IntervalType(-6.0,-2.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y4 = MC{2}(-5.0, -5.0, EAGO.IntervalType(-7.0,-3.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref4 = MC{2}(16.0, 24.0, EAGO.IntervalType(6.0,42.0), @SVector[-3.0, -2.0], @SVector[-7.0, -2.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x4, y4, yref4, mctol)
 
-    ###################### Test Nonsmooth X1.l>0   (Passing)  ######################
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(1.0,5.0);Interval(-1.0,2.0)])
-    X = MC{2}(3.0,3.0,xIBox[1],a,a,false)
-    Y = MC{2}(1.0,1.0,xIBox[2],b,b,false)
-    out = X*Y
+    ##### Case 5 #####
+    x5 = MC{2}(-4.0, -4.0, EAGO.IntervalType(-6.0,-2.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y5 = MC{2}(-5.0, -5.0, EAGO.IntervalType(-7.0,4.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref5 = MC{2}(16.0, 24.0, EAGO.IntervalType(-24.0,42.0), @SVector[-7.0, -6.0], @SVector[-7.0, -2.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x5, y5, yref5, mctol)
 
-    @test out.cc == 5.0
-    @test out.cv == 1.0
-    @test out.cc_grad[1] == 2.0
-    @test out.cc_grad[2] == 1.0
-    @test out.cv_grad[1] == 2.0
-    @test out.cv_grad[2] == 5.0
-    @test out.Intv.lo == -5.0
-    @test out.Intv.hi == 10.0
+    ##### Case 6 #####
+    x6 = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y6 = MC{2}(3.0, 3.0, EAGO.IntervalType(1.0,4.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref6 = MC{2}(-8.0, -5.0, EAGO.IntervalType(-12.0, 16.0), @SVector[1.0, -3.0], @SVector[4.0, -3.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x6, y6, yref6, mctol)
 
-    ############## Test Nonsmooth X1.h<0  &&  X2.l>0 (Passing)  ######################
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-6.0,-2.0);Interval(1.0,3.0)])
-    X = MC{2}(-4.0,-4.0,xIBox[1],a,a,false)
-    Y = MC{2}(2.0,2.0,xIBox[2],b,b,false)
-    out = X*Y
+    ##### Case 7 #####
+    x7 = MC{2}(-2.0, -2.0, EAGO.IntervalType(-3.0,4.0), seed_gradient(Float64,1,2), seed_gradient(Float64,1,2), false)
+    y7 = MC{2}(-4.0, -4.0, EAGO.IntervalType(-5.0,-3.0), seed_gradient(Float64,2,2), seed_gradient(Float64,2,2), false)
+    yref7 = MC{2}(7.0, 9.0, EAGO.IntervalType(-20.0, 15.0), @SVector[-5.0, -3.0], @SVector[-3.0, -3.0], false)
+    EAGO.set_mc_differentiability!(0); @test check_vs_ref2(*, x7, y7, yref7, mctol)
 
-    @test out.cc == -6.0
-    @test out.cv == -10.0
-    @test out.cc_grad[1] == 1.0
-    @test out.cc_grad[2] == -2.0
-    @test out.cv_grad[1] == 3.0
-    @test out.cv_grad[2] == -2.0
-    @test out.Intv.lo == -18.0
-    @test out.Intv.hi == -2.0
-
-    ############## Test Nonsmooth X1.h<0  &&  X2.h<0 (Passing)  ######################
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-6.0,-2.0);Interval(-7.0,-3.0)])
-    X = MC{2}(-4.0,-4.0,xIBox[1],a,a,false)
-    Y = MC{2}(-5.0,-5.0,xIBox[2],b,b,false)
-    out = X*Y
-
-    @test out.cc == 24.0
-    @test out.cv == 16.0
-    @test out.cc_grad[1] == -7.0
-    @test out.cc_grad[2] == -2.0
-    @test out.cv_grad[1] == -3.0
-    @test out.cv_grad[2] == -2.0
-    @test out.Intv.lo == 6.0
-    @test out.Intv.hi == 42.0
-
-    ############## Test Nonsmooth X1.h<0  &&  0 in X2 (Passing)  ###################
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-6.0,-2.0);Interval(-7.0,4.0)])
-    X = MC{2}(-4.0,-4.0,xIBox[1],a,a,false)
-    Y = MC{2}(-5.0,-5.0,xIBox[2],b,b,false)
-    out = X*Y
-
-    @test out.cc == 24.0
-    @test out.cv == 16.0
-    @test out.cc_grad[1] == -7.0
-    @test out.cc_grad[2] == -2.0
-    @test out.cv_grad[1] == -7.0
-    @test out.cv_grad[2] == -6.0
-    @test out.Intv.lo == -24.0
-    @test out.Intv.hi == 42.0
-
-    ############## Test Nonsmooth 0 in X1  &&  X2.l > 0 ()  #################
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(1.0,4.0)])
-    X = MC{2}(-2.0,-2.0,xIBox[1],a,a,false)
-    Y = MC{2}(3.0,3.0,xIBox[2],b,b,false)
-    out = X*Y
-
-    @test out.cc == -5.0
-    @test out.cv == -8.0
-    @test out.cc_grad[1] == 4.0
-    @test out.cc_grad[2] == -3.0
-    @test out.cv_grad[1] == 1.0
-    @test out.cv_grad[2] == -3.0
-    @test out.Intv.lo == -12.0
-    @test out.Intv.hi == 16.0
-
-    ############## Test Nonsmooth 0 in X1  &&  X2.h < 0 ()         #################
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(-5.0,-3.0)])
-    X = MC{2}(-2.0,-2.0,xIBox[1],a,a,false)
-    Y = MC{2}(-4.0,-4.0,xIBox[2],b,b,false)
-    out = X*Y
-
-    @test out.cc == 9.0
-    @test out.cv == 7.0
-    @test out.cc_grad[1] == -3.0
-    @test out.cc_grad[2] == -3.0
-    @test out.cv_grad[1] == -5.0
-    @test out.cv_grad[2] == -3.0
-    @test out.Intv.lo == -20.0
-    @test out.Intv.hi == 15.0
-
-    ##############      Testing for Smooth Standard Mult           ##############
+    ##### Testing for Smooth Standard Mult #####
     EAGO.set_mc_differentiability!(1)
 
     seed1 = seed_gradient(Float64,1,2)
     seed2 = seed_gradient(Float64,2,2)
-    x1 = MC{2}(0.0,0.0,Interval(-200.0,200.0),seed1,seed1,false)
-    y1 = MC{2}(200.0,200.0,Interval(0.0,400.0),seed2,seed2,false)
+    x1 = MC{2}(0.0,0.0,EAGO.IntervalType(-200.0,200.0),seed1,seed1,false)
+    y1 = MC{2}(200.0,200.0,EAGO.IntervalType(0.0,400.0),seed2,seed2,false)
     z1 = x1*y1
     @test isapprox(z1.cc,40000,atol=1E-4)
     @test isapprox(z1.cv,-40000,atol=1E-4)
 
-    x2 = MC{2}(170.0,170.0,Interval(100.0,240.0),seed1,seed1,false)
-    y2 = MC{2}(250.0,250.0,Interval(100.0,400.0),seed2,seed2,false)
+    x2 = MC{2}(170.0,170.0,EAGO.IntervalType(100.0,240.0),seed1,seed1,false)
+    y2 = MC{2}(250.0,250.0,EAGO.IntervalType(100.0,400.0),seed2,seed2,false)
     z2 = x2*y2
     @test isapprox(z2.cc,53000,atol=1E-4)
     @test isapprox(z2.cv,32000,atol=1E-4)
 
-    x3 = MC{2}(-200.0,-200.0,Interval(-300.0,-100.0),seed1,seed1,false)
-    y3 = MC{2}(-300.0,-300.0,Interval(-400.0,-200.0),seed2,seed2,false)
+    x3 = MC{2}(-200.0,-200.0,EAGO.IntervalType(-300.0,-100.0),seed1,seed1,false)
+    y3 = MC{2}(-300.0,-300.0,EAGO.IntervalType(-400.0,-200.0),seed2,seed2,false)
     z3 = x3*y3
     @test isapprox(z3.cc,70000,atol=1E-4)
     @test isapprox(z3.cv,50000,atol=1E-4)
 
     # CHECK ME AGAIN???? -47187.5 new, -47460.9375 old
-    x4 = MC{2}(150.0,150.0,Interval(100.0,200.0),seed1,seed1,false)
-    y4 = MC{2}(-250.0,-250.0,Interval(-500.0,-100.0),seed2,seed2,false)
+    x4 = MC{2}(150.0,150.0,EAGO.IntervalType(100.0,200.0),seed1,seed1,false)
+    y4 = MC{2}(-250.0,-250.0,EAGO.IntervalType(-500.0,-100.0),seed2,seed2,false)
     z4 = x4*y4
     @test isapprox(z4.cc,-30000,atol=1E-3)
     @test isapprox(z4.cv,-47187.5,atol=1E-3)
 
-    x5 = MC{2}(-150.0,-150.0,Interval(-200.0,-100.0),seed1,seed1,false)
-    y5 = MC{2}(300.0,300.0,Interval(200.0,400.0),seed2,seed2,false)
+    x5 = MC{2}(-150.0,-150.0,EAGO.IntervalType(-200.0,-100.0),seed1,seed1,false)
+    y5 = MC{2}(300.0,300.0,EAGO.IntervalType(200.0,400.0),seed2,seed2,false)
     z5 = x5*y5
     @test isapprox(z5.cv,-50000,atol=1E-4)
     @test isapprox(z5.cc,-40000,atol=1E-4)
 end
 
-# MOSTLY DONE!
-@testset "Power" begin
-
-    # tests powers (square)
-    println("test 1")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0); Interval(3.0,7.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    out = X^2
-    @test isapprox(out.cc,19,atol=1E-8)
-    @test isapprox(out.cv,16,atol=1E-8)
-    @test isapprox(out.cc_grad[1],10.0,atol=1E-1)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],8.0,atol=1E-5)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out.Intv.lo,9,atol=1E-4)
-    @test isapprox(out.Intv.hi,49,atol=1E-4)
-
-    # tests powers (^-2 on positive domain)
-    println("test 2")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,7.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    out = X^(-2)
-    @test isapprox(out.cc,0.08843537414965986,atol=1E-8)
-    @test isapprox(out.cv,0.0625,atol=1E-8)
-    @test isapprox(out.cc_grad[1],-0.0226757,atol=1E-1)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-4)
-    @test isapprox(out.cv_grad[1],-0.03125,atol=1E-5)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-4)
-    @test isapprox(out.Intv.lo,0.0204081,atol=1E-4)
-    @test isapprox(out.Intv.hi,0.111112,atol=1E-4)
-
-    # tests powers (^-2 on negative domain)
-    println("test 3")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-8.0,-3.0);Interval(-8.0,-3.0)])
-    X = MC{2}(-4.5,-4.5,xIBox[1],a,a,false)
-    out = X^(-2)
-    @test isapprox(out.cc,0.08246527777777776,atol=1E-8)
-    @test isapprox(out.cv,0.04938271604938271,atol=1E-8)
-    @test isapprox(out.cc_grad[1],0.0190972,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.0219479,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,0.015625,atol=1E-4)
-    @test isapprox(out.Intv.hi,0.111112,atol=1E-4)
-
-    # tests powers (^1)
-    println("test 4")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-8.0,-3.0),Interval(-8.0,-3.0)])
-    X = MC{2}(-4.5,-4.5,xIBox[1],a,a,false)
-    out = X^(1)
-    @test isapprox(out.cc,-4.5,atol=1E-8)
-    @test isapprox(out.cv,-4.5,atol=1E-8)
-    @test isapprox(out.cc_grad[1],1.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],1.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-8.0,atol=1E-4)
-    @test isapprox(out.Intv.hi,-3.0,atol=1E-4)
-
-    # tests powers (^2)
-    println("test 5")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-8.0,-3.0),Interval(-8.0,-3.0)])
-    X = MC{2}(-4.5,-4.5,xIBox[1],a,a,false)
-    out = X^(2)
-    @test isapprox(out.cc,25.5,atol=1E-8)
-    @test isapprox(out.cv,20.25,atol=1E-8)
-    @test isapprox(out.cc_grad[1],-11.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],-9.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,9.0,atol=1E-4)
-    @test isapprox(out.Intv.hi,64.0,atol=1E-4)
-
-    # tests powers (^3)
-    println("test 6")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-8.0,-3.0);Interval(-8.0,-3.0)])
-    X = MC{2}(-4.5,-4.5,xIBox[1],a,a,false)
-    out = X^(3)
-    @test isapprox(out.cc,-91.125,atol=1E-8)
-    @test isapprox(out.cv,-172.5,atol=1E-8)
-    @test isapprox(out.cc_grad[1],60.75,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],97.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,-512,atol=1E-4)
-    @test isapprox(out.Intv.hi,-27,atol=1E-4)
-
-    # tests powers (^4)
-    println("test 7")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-8.0,-3.0),Interval(-8.0,-3.0)])
-    X = MC{2}(-4.5,-4.5,xIBox[1],a,a,false)
-    out = X^(4)
-    @test isapprox(out.cc,1285.5,atol=1E-8)
-    @test isapprox(out.cv,410.0625,atol=1E-8)
-    @test isapprox(out.cc_grad[1],-803.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],-364.5,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,81,atol=1E-4)
-    @test isapprox(out.Intv.hi,4096,atol=1E-4)
-
-    # tests powers (^3 greater than zero ISSUE WITH CC)
-    println("test 8")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,8.0),Interval(3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = X^(3)
-    @test isapprox(out.cc,172.5,atol=1E-8)
-    @test isapprox(out.cv,91.125,atol=1E-8)
-    @test isapprox(out.cc_grad[1],97.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],60.75,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,27,atol=1E-4)
-    @test isapprox(out.Intv.hi,512,atol=1E-4)
-
-    # tests powers (^4 greater than zero)
-    println("test 9")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,8.0),Interval(3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-    out = X^(4)
-    @test isapprox(out.cc,1285.5,atol=1E-1)
-    @test isapprox(out.cv,410.0625,atol=1E-1)
-    @test isapprox(out.cc_grad[1],803.0,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],364.5,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,81,atol=1E-4)
-    @test isapprox(out.Intv.hi,4096,atol=1E-4)
-
-    # tests powers (^4 zero in range)
-    println("test 10")
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-8.0,3.0),Interval(-8.0,3.0)])
-    X = MC{2}(-4.5,-4.5,xIBox[1],a,a,false)
-    out = X^(4)
-    @test isapprox(out.cc,2818.5,atol=1)
-    @test isapprox(out.cv,410.0625,atol=1)
-    @test isapprox(out.cc_grad[1],-365.0,atol=1)
-    @test isapprox(out.cc_grad[2],0.0,atol=1)
-    @test isapprox(out.cv_grad[1],-364.5,atol=1)
-    @test isapprox(out.cv_grad[2],0.0,atol=1)
-    @test isapprox(out.Intv.lo,0,atol=1)
-    @test isapprox(out.Intv.hi,4096,atol=1)
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    println("test 11")
-    out14 = inv(X)
-    @test isapprox(out14.cc,0.2857142857142857,atol=1E-5)
-    @test isapprox(out14.cv,0.25,atol=1E-5)
-    @test isapprox(out14.cc_grad[1],-0.047619,atol=1E-5)
-    @test isapprox(out14.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out14.cv_grad[1],-0.0625,atol=1E-5)
-    @test isapprox(out14.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out14.Intv.lo,0.142857,atol=1E-5)
-    @test isapprox(out14.Intv.hi,0.333334,atol=1E-5)
-    out14a = inv(Xn)
-
-    println("test 12")
-    out23 = pow(X,2)
-    @test isapprox(out23.cc,19.0,atol=1E-5)
-    @test isapprox(out23.cv,16.0,atol=1E-5)
-    @test isapprox(out23.cc_grad[1],10.0,atol=1E-5)
-    @test isapprox(out23.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out23.cv_grad[1],8.0,atol=1E-5)
-    @test isapprox(out23.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out23.Intv.lo,9.0,atol=1E-5)
-    @test isapprox(out23.Intv.hi,49.0,atol=1E-5)
-
-    println("test 13")
-    out23a = pow(Xn,2)
-    @test isapprox(out23a.cc,19.0,atol=1E-5)
-    @test isapprox(out23a.cv,16.0,atol=1E-5)
-    @test isapprox(out23a.cc_grad[1],-10.0,atol=1E-5)
-    @test isapprox(out23a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out23a.cv_grad[1],-8.0,atol=1E-5)
-    @test isapprox(out23a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out23a.Intv.lo,9.0,atol=1E-5)
-    @test isapprox(out23a.Intv.hi,49.0,atol=1E-5)
-
-    println("test 14")
-    out23b = pow(Xz,2)
-    @test isapprox(out23b.cc,7.0,atol=1E-5)
-    @test isapprox(out23b.cv,2.66666666666666,atol=1E-5) #  double check me 4.0
-    @test isapprox(out23b.cc_grad[1],-2.0,atol=1E-5)
-    @test isapprox(out23b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out23b.cv_grad[1],-4.0,atol=1E-5) # double check me -4.0
-    @test isapprox(out23b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out23b.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out23b.Intv.hi,9.0,atol=1E-5)
-
-    println("test 15")
-    out1a = pow(X,3)
-    @test isapprox(out1a.cc,106.0,atol=1E-5)
-    @test isapprox(out1a.cv,64.0,atol=1E-5)
-    @test isapprox(out1a.cc_grad[1],79.0,atol=1E-5)
-    @test isapprox(out1a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1a.cv_grad[1],48.0,atol=1E-5)
-    @test isapprox(out1a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1a.Intv.lo,27.0,atol=1E-5)
-    @test isapprox(out1a.Intv.hi,343.0,atol=1E-5)
-
-    println("test 16")
-    out1b = pow(Xn,3)
-    @test isapprox(out1b.cc,-64.0,atol=1E-5)
-    @test isapprox(out1b.cv,-106.0,atol=1E-5)
-    @test isapprox(out1b.cc_grad[1],48.0,atol=1E-5)
-    @test isapprox(out1b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1b.cv_grad[1],79,atol=1E-5)
-    @test isapprox(out1b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1b.Intv.lo,-343.0,atol=1E-5)
-    @test isapprox(out1b.Intv.hi,-27.0,atol=1E-5)
-
-    println("test 17")
-    out1c = pow(Xz,3)
-    @test isapprox(out1c.cc,-7.75,atol=1E-5)
-    @test isapprox(out1c.cv,-20.25,atol=1E-5)
-    @test isapprox(out1c.cc_grad[1],12.25,atol=1E-5)
-    @test isapprox(out1c.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1c.cv_grad[1],6.75,atol=1E-5)
-    @test isapprox(out1c.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1c.Intv.lo,-27.0,atol=1E-5)
-    @test isapprox(out1c.Intv.hi,1.0,atol=1E-5)
-
-    println("test 18")
-    out2a = pow(X,-3)
-    @test isapprox(out2a.cc,0.02850664075153871,atol=1E-5)
-    @test isapprox(out2a.cv,0.015625,atol=1E-5)
-    @test isapprox(out2a.cc_grad[1],-0.0085304,atol=1E-5)
-    @test isapprox(out2a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out2a.cv_grad[1],-0.0117188,atol=1E-5)
-    @test isapprox(out2a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out2a.Intv.lo,0.00291545,atol=1E-5)
-    @test isapprox(out2a.Intv.hi,0.0370371,atol=1E-5)
-
-    println("test 19")
-    out2b = pow(Xn,-3)
-    @test isapprox(out2b.cc,-0.015625,atol=1E-5)
-    @test isapprox(out2b.cv,-0.02850664075153871,atol=1E-5)
-    @test isapprox(out2b.cc_grad[1],-0.0117188,atol=1E-5)
-    @test isapprox(out2b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out2b.cv_grad[1],-0.0085304,atol=1E-5)
-    @test isapprox(out2b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out2b.Intv.lo,-0.0370371,atol=1E-5)
-    @test isapprox(out2b.Intv.hi,-0.00291545,atol=1E-5)
-
-    println("test 20")
-    out3a = pow(X,-4)
-    @test isapprox(out3a.cc,0.009363382541225106,atol=1E-5)
-    @test isapprox(out3a.cv,0.00390625,atol=1E-5)
-    @test isapprox(out3a.cc_grad[1],-0.0029823,atol=1E-5)
-    @test isapprox(out3a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out3a.cv_grad[1],-0.00390625,atol=1E-5)
-    @test isapprox(out3a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out3a.Intv.lo,0.000416493,atol=1E-5)
-    @test isapprox(out3a.Intv.hi,0.0123457,atol=1E-5)
-
-    println("test 21")
-    out3b = pow(Xn,-4)
-    @test isapprox(out3b.cc,0.009363382541225106,atol=1E-5)
-    @test isapprox(out3b.cv,0.00390625,atol=1E-5)
-    @test isapprox(out3b.cc_grad[1],0.0029823,atol=1E-5)
-    @test isapprox(out3b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out3b.cv_grad[1],0.00390625,atol=1E-5)
-    @test isapprox(out3b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out3b.Intv.lo,0.000416493,atol=1E-5)
-    @test isapprox(out3b.Intv.hi,0.0123457,atol=1E-5)
-
-    println("test 22")
-    out4 = pow(X,4)
-    @test isapprox(out4.cc,661.0,atol=1E-5)
-    @test isapprox(out4.cv,256.0,atol=1E-5)
-    @test isapprox(out4.cc_grad[1],580.0,atol=1E-5)
-    @test isapprox(out4.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out4.cv_grad[1],256,atol=1E-5)
-    @test isapprox(out4.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out4.Intv.lo,81.0,atol=1E-5)
-    @test isapprox(out4.Intv.hi,2401.0,atol=1E-5)
-
-    println("test 23")
-    out4a = pow(Xn,4)
-    @test isapprox(out4a.cc,661.0,atol=1E-5)
-    @test isapprox(out4a.cv,256.0,atol=1E-5)
-    @test isapprox(out4a.cc_grad[1],-580.0,atol=1E-5)
-    @test isapprox(out4a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out4a.cv_grad[1],-256,atol=1E-5)
-    @test isapprox(out4a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out4a.Intv.lo,81.0,atol=1E-5)
-    @test isapprox(out4a.Intv.hi,2401.0,atol=1E-5)
-
-    println("test 24")
-    out4b = pow(Xz,4)
-    @test isapprox(out4b.cc,61.0,atol=1E-5)
-    @test isapprox(out4b.cv,16.0,atol=1E-5)
-    @test isapprox(out4b.cc_grad[1],-20.0,atol=1E-5)
-    @test isapprox(out4b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out4b.cv_grad[1],-32.0,atol=1E-5)
-    @test isapprox(out4b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out4b.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out4b.Intv.hi,81.0,atol=1E-5)
-end
-
-#=
-# MOSTLY DONE! (NEED TO FIX THIS)
-@testset "Square Root" begin
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,9.0),Interval(3.0,9.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-
-    out = sqrt(X)
-    @test isapprox(out.cc,2.1213203435596424,atol=1E-8)
-    @test isapprox(out.cv,2.049038105676658,atol=1E-8)
-    @test isapprox(out.cc_grad[1],0.235702,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],0.211325,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,1.73205,atol=1E-4)
-    @test isapprox(out.Intv.hi,3,atol=1E-4)
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-
-    out1 = sqrt(X)
-    @test isapprox(out1.cc,2.0,atol=1E-5)
-    @test isapprox(out1.cv,1.9604759334428057,atol=1E-5)
-    @test isapprox(out1.cc_grad[1],0.25,atol=1E-5)
-    @test isapprox(out1.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1.cv_grad[1],0.228425,atol=1E-5)
-    @test isapprox(out1.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out1.Intv.lo,1.73205,atol=1E-5)
-    @test isapprox(out1.Intv.hi,2.64576,atol=1E-5)
-end
-=#
-
-# MOSTLY DONE!
 @testset "Division" begin
     EAGO.set_mc_differentiability!(0)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,4.0);Interval(-5.0,-3.0)])
+    xIBox = SVector{2,EAGO.IntervalType}([EAGO.IntervalType(-3.0,4.0);EAGO.IntervalType(-5.0,-3.0)])
     a = seed_gradient(Float64,1,2)
     b = seed_gradient(Float64,2,2)
     X = MC{2}(-2.0,-2.0,xIBox[1],a,a,false)
@@ -958,733 +513,3 @@ end
     @test isapprox(out.Intv.lo,-1.33333333,atol=1E-6)
     @test isapprox(out.Intv.hi,1.0,atol=1E-6)
 end
-
-# MOSTLY DONE!
-@testset "Step Function" begin
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-    Xzp = MC{2}(0.5,0.5,Interval(-3.0,1.0),a,a,false)
-
-    EAGO.set_mc_differentiability!(0)
-
-    out21 = step(X)
-    @test isapprox(out21.cc,1.0,atol=1E-5)
-    @test isapprox(out21.cv,1.0,atol=1E-5)
-    @test isapprox(out21.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21.Intv.lo,1.0,atol=1E-5)
-    @test isapprox(out21.Intv.hi,1.0,atol=1E-5)
-
-    out21a = step(Xn)
-    @test isapprox(out21a.cc,0.0,atol=1E-5)
-    @test isapprox(out21a.cv,0.0,atol=1E-5)
-    @test isapprox(out21a.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21a.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21a.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out21a.Intv.hi,0.0,atol=1E-5)
-
-    out21b = step(Xz)
-    @test isapprox(out21b.cc,0.3333333333333333,atol=1E-5)
-    @test isapprox(out21b.cv,0.0,atol=1E-5)
-    @test isapprox(out21b.cc_grad[1],-0.6666666666666666,atol=1E-5) #0.3333333333333333
-    @test isapprox(out21b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21b.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21b.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out21b.Intv.hi,1.0,atol=1E-5)
-
-    out21b = step(Xzp)
-    @test isapprox(out21b.cc,1.0,atol=1E-5)
-    @test isapprox(out21b.cv,0.5,atol=1E-5)
-    @test isapprox(out21b.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21b.cv_grad[1],1.0,atol=1E-5)
-    @test isapprox(out21b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21b.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out21b.Intv.hi,1.0,atol=1E-5)
-
-    EAGO.set_mc_differentiability!(1)
-
-    out21 = step(X)
-    @test isapprox(out21.cc,1.0,atol=1E-5)
-    @test isapprox(out21.cv,1.0,atol=1E-5)
-    @test isapprox(out21.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21.Intv.lo,1.0,atol=1E-5)
-    @test isapprox(out21.Intv.hi,1.0,atol=1E-5)
-
-    out21a = step(Xn)
-    @test isapprox(out21a.cc,0.0,atol=1E-5)
-    @test isapprox(out21a.cv,0.0,atol=1E-5)
-    @test isapprox(out21a.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21a.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21a.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out21a.Intv.hi,0.0,atol=1E-5)
-
-    out21b = step(Xz)
-    @test isapprox(out21b.cc,0.5555555555555556,atol=1E-5)
-    @test isapprox(out21b.cv,0.0,atol=1E-5)
-    @test isapprox(out21b.cc_grad[1],0.444444,atol=1E-5)
-    @test isapprox(out21b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21b.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out21b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out21b.Intv.lo,0.0,atol=1E-5)
-    @test isapprox(out21b.Intv.hi,1.0,atol=1E-5)
-end
-
-# MOSTLY DONE!
-@testset "Sign Function" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    out22 = sign(X)
-    @test isapprox(out22.cc,1.0,atol=1E-5)
-    @test isapprox(out22.cv,1.0,atol=1E-5)
-    @test isapprox(out22.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out22.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out22.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out22.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out22.Intv.lo,1.0,atol=1E-5)
-    @test isapprox(out22.Intv.hi,1.0,atol=1E-5)
-
-    out22a = sign(Xn)
-    @test isapprox(out22a.cc,-1.0,atol=1E-5)
-    @test isapprox(out22a.cv,-1.0,atol=1E-5)
-    @test isapprox(out22a.cc_grad[1],0.0,atol=1E-5)
-    @test isapprox(out22a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out22a.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out22a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out22a.Intv.lo,-1.0,atol=1E-5)
-    @test isapprox(out22a.Intv.hi,-1.0,atol=1E-5)
-
-    out22b = sign(Xz)
-    @test isapprox(out22b.cc,0.11111111111111116,atol=1E-5)
-    @test isapprox(out22b.cv,-1.0,atol=1E-5)
-    @test isapprox(out22b.cc_grad[1],0.888889,atol=1E-5)
-    @test isapprox(out22b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out22b.cv_grad[1],0.0,atol=1E-5)
-    @test isapprox(out22b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out22b.Intv.lo,-1.0,atol=1E-5)
-    @test isapprox(out22b.Intv.hi,1.0,atol=1E-5)
-end
-
-# MOSTLY DONE!
-#=
-@testset "Absolute Value" begin
-    EAGO.set_mc_differentiability!(0)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-3.0,8.0);Interval(-3.0,8.0)])
-    X = MC{2}(4.5,4.5,xIBox[1],a,a,false)
-
-    out = abs(X)
-    @test isapprox(out.cc,6.409090909090908,atol=1E-1)
-    @test isapprox(out.cv,4.5,atol=1E-1)
-    @test isapprox(out.cc_grad[1],0.454545,atol=1E-4)
-    @test isapprox(out.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.cv_grad[1],1.0,atol=1E-4)
-    @test isapprox(out.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out.Intv.lo,0,atol=1E-4)
-    @test isapprox(out.Intv.hi,8,atol=1E-4)
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    out7 = abs(X)
-    @test isapprox(out7.cc,atol=4.0,1E-5)
-    @test isapprox(out7.cv,1.3061224489795915,atol=1E-5)
-    @test isapprox(out7.cc_grad[1],1.0,atol=1E-5)
-    @test isapprox(out7.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out7.cv_grad[1],0.979592,atol=1E-5)
-    @test isapprox(out7.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out7.Intv.lo,3.0,atol=1E-5)
-    @test isapprox(out7.Intv.hi,7.0,atol=1E-5)
-end
-=#
-# MOSTLY DONE!
-@testset "Sine" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    out17 = sin(X)
-    @test isapprox(out17.cc,0.2700866557245978,atol=1E-5)
-    @test isapprox(out17.cv,-0.7568024953079283,atol=1E-5)
-    @test isapprox(out17.cc_grad[1],0.128967,atol=1E-5)
-    @test isapprox(out17.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17.cv_grad[1],-0.653644,atol=1E-5)
-    @test isapprox(out17.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17.Intv.lo,-1,atol=1E-2)
-    @test isapprox(out17.Intv.hi,0.656987,atol=1E-5)
-
-    out17a = sin(Xn)
-    @test isapprox(out17a.cc,0.7568024953079283,atol=1E-5)
-    @test isapprox(out17a.cv,-0.2700866557245979,atol=1E-5)
-    @test isapprox(out17a.cc_grad[1],-0.653644,atol=1E-5)
-    @test isapprox(out17a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17a.cv_grad[1],0.128967,atol=1E-5)
-    @test isapprox(out17a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17a.Intv.lo,-0.656987,atol=1E-2)
-    @test isapprox(out17a.Intv.hi,1.0,atol=1E-5)
-
-    out17b = sin(Xz)
-    @test isapprox(out17b.cc,0.10452774015707458,atol=1E-5)
-    @test isapprox(out17b.cv,-0.9092974268256817,atol=1E-5)
-    @test isapprox(out17b.cc_grad[1],0.245648,atol=1E-5)
-    @test isapprox(out17b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.cv_grad[1],-0.416147,atol=1E-5)
-    @test isapprox(out17b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.Intv.lo,-1,atol=1E-2)
-    @test isapprox(out17b.Intv.hi,0.841471,atol=1E-5)
-
-    EAGO.set_mc_differentiability!(0)
-
-    out17b = sin(Xz)
-    @test isapprox(out17b.cc,0.10452774015707458,atol=1E-5)
-    @test isapprox(out17b.cv,-0.9092974268256817,atol=1E-5)
-    @test isapprox(out17b.cc_grad[1],0.245648,atol=1E-5)
-    @test isapprox(out17b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.cv_grad[1],-0.416147,atol=1E-5)
-    @test isapprox(out17b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.Intv.lo,-1,atol=1E-2)
-    @test isapprox(out17b.Intv.hi,0.841471,atol=1E-5)
-end
-
-# MOSTLY DONE!
-@testset "Cosine" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    out19 = cos(X)
-    @test isapprox(out19.cc,-0.31034065427934965,atol=1E-5)
-    @test isapprox(out19.cv,-0.703492113936536,atol=1E-5)
-    @test isapprox(out19.cc_grad[1],0.679652,atol=1E-5)
-    @test isapprox(out19.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19.cv_grad[1],0.485798,atol=1E-5)
-    @test isapprox(out19.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19.Intv.lo,-1.0,atol=1E-5)
-    @test isapprox(out19.Intv.hi,1.0,atol=1E-5)
-
-    out19a = cos(Xn)
-    @test isapprox(out19a.cc,-0.31034065427934965,atol=1E-5)
-    @test isapprox(out19a.cv,-0.703492113936536,atol=1E-5)
-    @test isapprox(out19a.cc_grad[1],-0.679652,atol=1E-5)
-    @test isapprox(out19a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19a.cv_grad[1],-0.485798,atol=1E-5)
-    @test isapprox(out19a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19a.Intv.lo,-1.0,atol=1E-5)
-    @test isapprox(out19a.Intv.hi,1.0,atol=1E-5)
-
-    out19b = cos(Xz)
-    @test isapprox(out19b.cc,-0.222468094224762,atol=1E-5)
-    @test isapprox(out19b.cv,-0.6314158569813042,atol=1E-5)
-    @test isapprox(out19b.cc_grad[1],0.76752,atol=1E-5)
-    @test isapprox(out19b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19b.cv_grad[1],0.390573,atol=1E-5)
-    @test isapprox(out19b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19b.Intv.lo,-0.989993,atol=1E-5)
-    @test isapprox(out19b.Intv.hi,1.0,atol=1E-5)
-
-    EAGO.set_mc_differentiability!(0)
-
-    out19b = cos(Xz)
-    @test isapprox(out19b.cc,-0.222468094224762,atol=1E-5)
-    @test isapprox(out19b.cv,-0.6314158569813042,atol=1E-5)
-    @test isapprox(out19b.cc_grad[1],0.76752,atol=1E-5)
-    @test isapprox(out19b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19b.cv_grad[1],0.390573,atol=1E-5)
-    @test isapprox(out19b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19b.Intv.lo,-0.989993,atol=1E-5)
-    @test isapprox(out19b.Intv.hi,1.0,atol=1E-5)
-end
-
-#=
-# MOSTLY DONE!
-@testset "Tangent" begin
-
-    EAGO.set_mc_differentiability!(0)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(0.5,1.0);Interval(-0.5,0.5)])
-    X = MC{2}(0.6,0.6,xIBox[1],a,a,false)
-    Xn = MC{2}(-0.8,-0.8,-xIBox[1],a,a,false)
-    Xz = MC{2}(-0.3,-0.3,xIBox[2],a,a,false)
-    Xerr = MC{2}(0.6,0.6,Interval(-4.5,5.0),a,a,false)
-
-    out19 = tan(X)
-    @test isapprox(out19.cc,0.7485235368060128,atol=1E-5)
-    @test isapprox(out19.cv,0.6841368083416923,atol=1E-5)
-    @test isapprox(out19.cc_grad[1],2.02221,atol=1E-5)
-    @test isapprox(out19.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19.cv_grad[1],1.46804,atol=1E-5)
-    @test isapprox(out19.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19.Intv.lo,0.546302,atol=1E-5)
-    @test isapprox(out19.Intv.hi,1.55741,atol=1E-5)
-
-    out19a = tan(Xn)
-    @test isapprox(out19a.cc,-1.0296385570503641,atol=1E-5)
-    @test isapprox(out19a.cv,-1.1529656307304577,atol=1E-5)
-    @test isapprox(out19a.cc_grad[1],2.06016,atol=1E-5)
-    @test isapprox(out19a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19a.cv_grad[1],2.02221,atol=1E-5)
-    @test isapprox(out19a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19a.Intv.lo,-1.55741,atol=1E-5)
-    @test isapprox(out19a.Intv.hi,-0.546302,atol=1E-5)
-
-    out19b = tan(Xz)
-    @test isapprox(out19b.cc,-0.30933624960962325,atol=1E-5)
-    @test isapprox(out19b.cv,-0.332534,atol=1E-5)
-    @test isapprox(out19b.cc_grad[1],1.09569,atol=1E-5)
-    @test isapprox(out19b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19b.cv_grad[1],1.06884,atol=1E-5)
-    @test isapprox(out19b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19b.Intv.lo,-0.546303,atol=1E-5)
-    @test isapprox(out19b.Intv.hi,0.546303,atol=1E-5)
-
-    EAGO.set_mc_differentiability!(1)
-
-    out19c = tan(Xz)
-    @test isapprox(out19c.cc,-0.309336,atol=1E-5)
-    @test isapprox(out19c.cv,-0.332534,atol=1E-5)
-    @test isapprox(out19c.cc_grad[1],1.09569,atol=1E-5)
-    @test isapprox(out19c.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19c.cv_grad[1],1.06884,atol=1E-5)
-    @test isapprox(out19c.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out19c.Intv.lo,-0.546303,atol=1E-5)
-    @test isapprox(out19c.Intv.hi,0.546303,atol=1E-5)
-
-    @test_throws ErrorException tan(Xerr)
-end
-
-# MOSTLY DONE!
-@testset "Inverse Sine" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(-0.9,-0.5);Interval(-0.5,0.5)])
-    X = MC{2}(-0.7,-0.7,xIBox[1],a,a,false)
-    Xn = MC{2}(0.7,0.7,-xIBox[1],a,a,false)
-    Xz = MC{2}(-0.1,-0.1,xIBox[2],a,a,false)
-
-    out17 = asin(X)
-    @test isapprox(out17.cc,-0.775397496610753,atol=1E-5)
-    @test isapprox(out17.cv,-0.8216841452984665,atol=1E-5)
-    @test isapprox(out17.cc_grad[1],1.40028,atol=1E-5)
-    @test isapprox(out17.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17.cv_grad[1],1.49043,atol=1E-5)
-    @test isapprox(out17.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17.Intv.lo,-1.11977,atol=1E-2)
-    @test isapprox(out17.Intv.hi,-0.523598,atol=1E-5)
-
-    out17a = asin(Xn)
-    @test isapprox(out17a.cc,0.8216841452984665,atol=1E-5)
-    @test isapprox(out17a.cv,0.775397496610753,atol=1E-5)
-    @test isapprox(out17a.cc_grad[1],1.49043,atol=1E-5)
-    @test isapprox(out17a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17a.cv_grad[1],1.40028,atol=1E-5)
-    @test isapprox(out17a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17a.Intv.lo,0.523598,atol=1E-2)
-    @test isapprox(out17a.Intv.hi,1.11977,atol=1E-5)
-
-    out17b = asin(Xz)
-    @test isapprox(out17b.cc,-0.0974173098978382,atol=1E-5)
-    @test isapprox(out17b.cv,-0.10958805193420748,atol=1E-5)
-    @test isapprox(out17b.cc_grad[1],1.03503,atol=1E-5)
-    @test isapprox(out17b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.cv_grad[1],1.03503,atol=1E-5)
-    @test isapprox(out17b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.Intv.lo,-0.523599,atol=1E-2)
-    @test isapprox(out17b.Intv.hi,0.523599,atol=1E-5)
-
-    EAGO.set_mc_differentiability!(0)
-    out17b = asin(Xz)
-    @test isapprox(out17b.cc,-0.0974173098978382,atol=1E-5)
-    @test isapprox(out17b.cv,-0.10958805193420748,atol=1E-5)
-    @test isapprox(out17b.cc_grad[1],1.03503,atol=1E-5)
-    @test isapprox(out17b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.cv_grad[1],1.03503,atol=1E-5)
-    @test isapprox(out17b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out17b.Intv.lo,-0.523599,atol=1E-2)
-    @test isapprox(out17b.Intv.hi,0.523599,atol=1E-5)
-end
-
-#=
-@testset "Inverse Cosine" begin
-end
-=#
-
-# MOSTLY DONE!
-@testset "Inverse Tangent" begin
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-
-    out16 = atan(X)
-    @test isapprox(out16.cc,1.3258176636680326,atol=1E-5)
-    @test isapprox(out16.cv,1.294009147346374,atol=1E-5)
-    @test isapprox(out16.cc_grad[1],0.0588235,atol=1E-5)
-    @test isapprox(out16.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out16.cv_grad[1],0.0449634,atol=1E-5)
-    @test isapprox(out16.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out16.Intv.lo,1.24904,atol=1E-3)
-    @test isapprox(out16.Intv.hi,1.4289,atol=1E-3)
-
-    out16a = atan(Xn)
-    @test isapprox(out16a.cc,-1.294009147346374,atol=1E-5)
-    @test isapprox(out16a.cv,-1.3258176636680326,atol=1E-5)
-    @test isapprox(out16a.cc_grad[1],0.0449634,atol=1E-5)
-    @test isapprox(out16a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out16a.cv_grad[1],.0588235,atol=1E-5)
-    @test isapprox(out16a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out16a.Intv.lo,-1.4289,atol=1E-3)
-    @test isapprox(out16a.Intv.hi,-1.24904,atol=1E-3)
-
-    out16b = atan(Xz)
-    @test isapprox(out16b.cc,-0.7404162771337869,atol=1E-5)
-    @test isapprox(out16b.cv,-1.1071487177940904,atol=1E-5)
-    @test isapprox(out16b.cc_grad[1],0.508629,atol=1E-5)
-    @test isapprox(out16b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out16b.cv_grad[1],0.2,atol=1E-5)
-    @test isapprox(out16b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out16b.Intv.lo,-1.24905,atol=1E-3)
-    @test isapprox(out16b.Intv.hi,0.785399,atol=1E-3)
-end
-
-# MOSTLY DONE!
-@testset "Hyperbolic Sine" begin
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    out10 = sinh(X)
-    @test isapprox(out10.cc,144.59243701386904,atol=1E-5)
-    @test isapprox(out10.cv,27.28991719712775,atol=1E-5)
-    @test isapprox(out10.cc_grad[1],134.575,atol=1E-2)
-    @test isapprox(out10.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.cv_grad[1],27.3082,atol=1E-2)
-    @test isapprox(out10.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.Intv.lo,10.0178,atol=1E-2)
-    @test isapprox(out10.Intv.hi,548.317,atol=1E-2)
-
-    out10a = sinh(Xn)
-    @test isapprox(out10a.cc,-27.28991719712775,atol=1E-5)
-    @test isapprox(out10a.cv,-144.59243701386904,atol=1E-5)
-    @test isapprox(out10a.cc_grad[1],27.3082,atol=1E-2)
-    @test isapprox(out10a.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10a.cv_grad[1],134.575,atol=1E-2)
-    @test isapprox(out10a.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10a.Intv.lo,-548.317,atol=1E-2)
-    @test isapprox(out10a.Intv.hi,-10.0178,atol=1E-2)
-
-    out10b = sinh(Xz)
-    @test isapprox(out10b.cc,-3.626860407847019,atol=1E-5)
-    @test isapprox(out10b.cv,-7.219605897146477,atol=1E-5)
-    @test isapprox(out10b.cc_grad[1],3.7622,atol=1E-2)
-    @test isapprox(out10b.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10b.cv_grad[1],2.79827,atol=1E-2)
-    @test isapprox(out10b.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10b.Intv.lo,-10.0179,atol=1E-2)
-    @test isapprox(out10b.Intv.hi,1.17521,atol=1E-2)
-
-    EAGO.set_mc_differentiability!(0)
-    out10 = sinh(X)
-    @test isapprox(out10.cc,144.59243701386904,atol=1E-5)
-    @test isapprox(out10.cv,27.28991719712775,atol=1E-5)
-    @test isapprox(out10.cc_grad[1],134.575,atol=1E-2)
-    @test isapprox(out10.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.cv_grad[1],27.3082,atol=1E-2)
-    @test isapprox(out10.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.Intv.lo,10.0178,atol=1E-2)
-    @test isapprox(out10.Intv.hi,548.317,atol=1E-2)
-end
-
-# MOSTLY DONE!
-@testset "Hyperbolic Cosine" begin
-    EAGO.set_mc_differentiability!(0)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-
-    out8 = cosh(X)
-    @test isapprox(out8.cc,144.63000528563632,atol=1E-5)
-    @test isapprox(out8.cv,27.308232836016487,atol=1E-5)
-    @test isapprox(out8.cc_grad[1],134.562,atol=1E-2)
-    @test isapprox(out8.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out8.cv_grad[1],-27.2899,atol=1E-3)
-    @test isapprox(out8.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out8.Intv.lo,10.0676,atol=1E-3)
-    @test isapprox(out8.Intv.hi,548.318,atol=1E-3)
-
-    EAGO.set_mc_differentiability!(1)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    mBox = mid.(xIBox)
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-
-    out8 = cosh(X)
-    @test isapprox(out8.cc,144.63000528563632,atol=1E-5)
-    @test isapprox(out8.cv,27.308232836016487,atol=1E-5)
-    @test isapprox(out8.cc_grad[1],134.562,atol=1E-2)
-    @test isapprox(out8.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out8.cv_grad[1],-27.2899,atol=1E-3)
-    @test isapprox(out8.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out8.Intv.lo,10.0676,atol=1E-3)
-    @test isapprox(out8.Intv.hi,548.318,atol=1E-3)
-end
-
-# MOSTLY DONE!
-@testset "Hyperbolic Tangent" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    Y = MC{2}(7.0,7.0,xIBox[2],b,b,false)
-    Xn = MC{2}(-4.0,-4.0,-xIBox[1],a,a,false)
-    Xz = MC{2}(-2.0,-2.0,Interval(-3.0,1.0),a,a,false)
-    Xz1 = MC{2}(2.0,2.0,Interval(-1.0,3.0),a,a,false)
-
-    out12 = tanh(X)
-    @test isapprox(out12.cc,0.999329299739067,atol=1E-5)
-    @test isapprox(out12.cv,0.996290649501034,atol=1E-5)
-    @test isapprox(out12.cc_grad[1],0.00134095,atol=1E-5)
-    @test isapprox(out12.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12.cv_grad[1],0.0012359,atol=1E-5)
-    @test isapprox(out12.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12.Intv.lo,0.995054,atol=1E-5)
-    @test isapprox(out12.Intv.hi,0.999999,atol=1E-5)
-
-    out12a = tanh(Xn)
-    @test isapprox(out12a.cc,-0.996290649501034,atol=1E-5)
-    @test isapprox(out12a.cv,-0.999329299739067,atol=1E-5)
-    @test isapprox(out12a.cc_grad[1],0.0012359,atol=1E-5)
-    @test isapprox(out12a.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12a.cv_grad[1],0.00134095,atol=1E-5)
-    @test isapprox(out12a.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12a.Intv.lo,-0.999999,atol=1E-5)
-    @test isapprox(out12a.Intv.hi,-0.995054,atol=1E-5)
-
-    out12b = tanh(Xz)
-    @test isapprox(out12b.cc,-0.5558207301372651,atol=1E-5)
-    @test isapprox(out12b.cv,-0.9640275800758169,atol=1E-5)
-    @test isapprox(out12b.cc_grad[1],0.439234,atol=1E-5)
-    @test isapprox(out12b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12b.cv_grad[1],0.0706508,atol=1E-5)
-    @test isapprox(out12b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12b.Intv.lo,-0.995055,atol=1E-5)
-    @test isapprox(out12b.Intv.hi,0.761595,atol=1E-5)
-
-    out12b = tanh(Xz1)
-    @test isapprox(out12b.cc,0.9640275800758169,atol=1E-5)
-    @test isapprox(out12b.cv,0.5558207301372651,atol=1E-5)
-    @test isapprox(out12b.cc_grad[1],0.0706508,atol=1E-5)
-    @test isapprox(out12b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12b.cv_grad[1],0.439234,atol=1E-5)
-    @test isapprox(out12b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12b.Intv.lo,-0.761595,atol=1E-5)
-    @test isapprox(out12b.Intv.hi,0.995055,atol=1E-5)
-
-    EAGO.set_mc_differentiability!(0)
-    out12b = tanh(Xz)
-    @test isapprox(out12b.cc,-0.5558207301372651,atol=1E-5)
-    @test isapprox(out12b.cv,-0.9640275800758169,atol=1E-5)
-    @test isapprox(out12b.cc_grad[1],0.439234,atol=1E-5)
-    @test isapprox(out12b.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12b.cv_grad[1],0.0706508,atol=1E-5)
-    @test isapprox(out12b.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out12b.Intv.lo,-0.995055,atol=1E-5)
-    @test isapprox(out12b.Intv.hi,0.761595,atol=1E-5)
-end
-
-# MOSTLY DONE!
-@testset "Inverse Hyperbolic Sine" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(0.1,0.7);Interval(-3,7)])
-    X = MC{2}(0.3,0.3,xIBox[1],a,a,false)
-    Xn = MC{2}(-0.3,-0.3,-xIBox[1],a,a,false)
-    Xz = MC{2}(2.0,2.0,xIBox[2],a,a,false)
-    Xz1 = MC{2}(-2.0,-2.0,-xIBox[2],a,a,false)
-
-    out10 = asinh(X)
-    @test isapprox(out10.cc,0.29567304756342244,atol=1E-5)
-    @test isapprox(out10.cv,0.2841115746269236,atol=1E-5)
-    @test isapprox(out10.cc_grad[1],0.957826,atol=1E-2)
-    @test isapprox(out10.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.cv_grad[1],0.921387,atol=1E-2)
-    @test isapprox(out10.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.Intv.lo,0.099834,atol=1E-2)
-    @test isapprox(out10.Intv.hi,0.652667,atol=1E-2)
-
-    out10a = asinh(Xn)
-    @test isapprox(out10a.cc,-0.2841115746269236,atol=1E-5)
-    @test isapprox(out10a.cv,-0.29567304756342244,atol=1E-5)
-    @test isapprox(out10a.cc_grad[1],0.921387,atol=1E-2)
-    @test isapprox(out10a.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10a.cv_grad[1],0.957826,atol=1E-2)
-    @test isapprox(out10a.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10a.Intv.lo,-0.652667,atol=1E-2)
-    @test isapprox(out10a.Intv.hi,-0.099834,atol=1E-2)
-
-    out10b = asinh(Xz)
-    @test isapprox(out10b.cc,1.4436354751788103,atol=1E-5)
-    @test isapprox(out10b.cv,0.3730697449603356,atol=1E-5)
-    @test isapprox(out10b.cc_grad[1],0.447214,atol=1E-2)
-    @test isapprox(out10b.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10b.cv_grad[1],0.45421,atol=1E-2)
-    @test isapprox(out10b.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10b.Intv.lo,-1.81845,atol=1E-2)
-    @test isapprox(out10b.Intv.hi,2.64413,atol=1E-2)
-
-    out10c = asinh(Xz1)
-    @test isapprox(out10c.cc,-0.3730697449603356,atol=1E-5)
-    @test isapprox(out10c.cv,-1.4436354751788103,atol=1E-5)
-    @test isapprox(out10c.cc_grad[1],0.45421,atol=1E-2)
-    @test isapprox(out10c.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10c.cv_grad[1],0.447214,atol=1E-2)
-    @test isapprox(out10c.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10c.Intv.lo,-2.64413,atol=1E-2)
-    @test isapprox(out10c.Intv.hi,1.81845,atol=1E-2)
-
-    EAGO.set_mc_differentiability!(0)
-
-    out10d = asinh(X)
-    @test isapprox(out10d.cc,0.29567304756342244,atol=1E-5)
-    @test isapprox(out10d.cv,0.2841115746269236,atol=1E-5)
-    @test isapprox(out10d.cc_grad[1],0.957826,atol=1E-2)
-    @test isapprox(out10d.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10d.cv_grad[1],0.921387,atol=1E-2)
-    @test isapprox(out10d.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10d.Intv.lo,0.099834,atol=1E-2)
-    @test isapprox(out10d.Intv.hi,0.652667,atol=1E-2)
-end
-
-# MOSTLY DONE!
-@testset "Inverse Hyperbolic Cosine" begin
-    a = seed_gradient(Float64,1,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(3.0,7.0);Interval(3.0,9.0)])
-    X = MC{2}(4.0,4.0,xIBox[1],a,a,false)
-    out9 = acosh(X)
-
-    @test isapprox(out9.cc,2.0634370688955608,atol=1E-5)
-    @test isapprox(out9.cv,1.9805393289917226,atol=1E-5)
-    @test isapprox(out9.cc_grad[1],0.258199,atol=1E-5)
-    @test isapprox(out9.cc_grad[2],0.0,atol=1E-5)
-    @test isapprox(out9.cv_grad[1],0.217792,atol=1E-5)
-    @test isapprox(out9.cv_grad[2],0.0,atol=1E-5)
-    @test isapprox(out9.Intv.lo,1.76274,atol=1E-5)
-    @test isapprox(out9.Intv.hi,2.63392,atol=1E-5)
-end
-
-# MOSTLY DONE!
-@testset "Inverse Hyperbolic Tangent" begin
-
-    EAGO.set_mc_differentiability!(1)
-    a = seed_gradient(Float64,1,2)
-    b = seed_gradient(Float64,2,2)
-    xIBox = SVector{2,Interval{Float64}}([Interval(0.1,0.7);Interval(-0.3,0.7)])
-    X = MC{2}(0.3,0.3,xIBox[1],a,a,false)
-    Xn = MC{2}(-0.3,-0.3,-xIBox[1],a,a,false)
-    Xz = MC{2}(0.2,0.2,xIBox[2],a,a,false)
-    Xz1 = MC{2}(-0.2,-0.2,-xIBox[2],a,a,false)
-
-    out10 = atanh(X)
-    @test isapprox(out10.cc,0.3559904077187347,atol=1E-5)
-    @test isapprox(out10.cv,0.30951960420311175,atol=1E-5)
-    @test isapprox(out10.cc_grad[1],1.27828,atol=1E-2)
-    @test isapprox(out10.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.cv_grad[1],1.0989,atol=1E-2)
-    @test isapprox(out10.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10.Intv.lo,0.100335,atol=1E-2)
-    @test isapprox(out10.Intv.hi,0.867301,atol=1E-2)
-
-    out10a = atanh(Xn)
-    @test isapprox(out10a.cc,-0.30951960420311175,atol=1E-5)
-    @test isapprox(out10a.cv,-0.3559904077187347,atol=1E-5)
-    @test isapprox(out10a.cc_grad[1],1.0989,atol=1E-2)
-    @test isapprox(out10a.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10a.cv_grad[1],1.27828,atol=1E-2)
-    @test isapprox(out10a.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10a.Intv.lo,-0.867301,atol=1E-2)
-    @test isapprox(out10a.Intv.hi,-0.100335,atol=1E-2)
-
-    out10b = atanh(Xz)
-    @test isapprox(out10b.cc,0.2788904617454707,atol=1E-5)
-    @test isapprox(out10b.cv,0.2027325540540822,atol=1E-5)
-    @test isapprox(out10b.cc_grad[1],1.17682,atol=1E-2)
-    @test isapprox(out10b.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10b.cv_grad[1],1.04167,atol=1E-2)
-    @test isapprox(out10b.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10b.Intv.lo,-0.30952,atol=1E-2)
-    @test isapprox(out10b.Intv.hi,0.867301,atol=1E-2)
-
-    out10c = atanh(Xz1)
-    @test isapprox(out10c.cc,-0.2027325540540822,atol=1E-5)
-    @test isapprox(out10c.cv,-0.2788904617454707,atol=1E-5)
-    @test isapprox(out10c.cc_grad[1],1.04167,atol=1E-2)
-    @test isapprox(out10c.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10c.cv_grad[1],1.17682,atol=1E-2)
-    @test isapprox(out10c.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10c.Intv.lo,-0.867301,atol=1E-2)
-    @test isapprox(out10c.Intv.hi,0.30952,atol=1E-2)
-
-    EAGO.set_mc_differentiability!(0)
-
-    out10d = atanh(X)
-    @test isapprox(out10d.cc,0.3559904077187347,atol=1E-5)
-    @test isapprox(out10d.cv,0.30951960420311175,atol=1E-5)
-    @test isapprox(out10d.cc_grad[1],1.27828,atol=1E-2)
-    @test isapprox(out10d.cc_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10d.cv_grad[1],1.0989,atol=1E-2)
-    @test isapprox(out10d.cv_grad[2],0.0,atol=1E-1)
-    @test isapprox(out10d.Intv.lo,0.100335,atol=1E-2)
-    @test isapprox(out10d.Intv.hi,0.867301,atol=1E-2)
-end
-=#

@@ -1,43 +1,98 @@
-function copy_to_function(T::S,x::JuMP._FunctionStorage) where {S<:DataType}
+function copy_to_function(N::Int, x::JuMP._FunctionStorage)
     lenx = length(x.nd)
-    mc_inf = T(IntervalType(-Inf,Inf))
-    temp_set = T[mc_inf for i=1:lenx]
-    temp_flt = Array{Float64}(undef,lenx)
-    temp_bool = Array{Bool}(undef,lenx)
-    FunctionSetStorage{T}(x.nd, x.adj, x.const_values, temp_set, temp_flt, temp_bool,
-                          x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
-end
+    temp_set = fill(MC{N}(Interval(-Inf, Inf)), (lenx,))
+    temp_flt = Array{Float64}(undef, lenx)
+    temp_bool = Array{Bool}(undef, lenx)
 
-function copy_to_subexpr(T::S,x::JuMP._SubexpressionStorage) where {S<:DataType}
+    tpdict = Dict{Int,Tuple{Int,Int,Int,Int}}()
+    tp1_count = 0
+    tp2_count = 0
+    tp3_count = 0
+    tp4_count = 0
+    for i in 1:lenx
+        op = nd[i].index
+        if double_tp(op)
+            tp1_count += 1
+            tp2_count += 1
+            tp3_count += 1
+            tp4_count += 1
+            tpdict[i] = (tp1_count, tp2_count, tp3_count, tp4_count)
+        elseif single_tp(op)
+            tp1_count += 1
+            tp2_count += 1
+            tpdict[i] = (tp1_count, tp2_count, -1, -1)
+        end
+    end
+    tp1storage = zeros(tp1_count)
+    tp2storage = zeros(tp2_count)
+    tp3storage = zeros(tp3_count)
+    tp4storage = zeros(tp4_count)
+
+    FunctionSetStorage{MC{N}}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+                              temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
+                              x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
+end
+function copy_to_subexpr(N::Int, x::JuMP._SubexpressionStorage)
     lenx = length(x.nd)
-    mc_inf = T(IntervalType(-Inf,Inf))
-    temp_set = T[mc_inf for i=1:lenx]
-    temp_flt = Array{Float64}(undef,lenx)
-    temp_bool = Array{Bool}(undef,lenx)
-    SubexpressionSetStorage{T}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
-                               temp_bool, x.linearity)
-end
+    temp_set = fill(MC{N}(Interval(-Inf, Inf)), (lenx,))
+    temp_flt = Array{Float64}(undef, lenx)
+    temp_bool = Array{Bool}(undef, lenx)
 
-function neg_objective!(d::Evaluator{T}) where T<:Real
+    tpdict = Dict{Int,Tuple{Int,Int,Int,Int}}()
+    tp1_count = 0
+    tp2_count = 0
+    tp3_count = 0
+    tp4_count = 0
+    for i in 1:lenx
+        op = nd[i].index
+        if double_tp(op)
+            tp1_count += 1
+            tp2_count += 1
+            tp3_count += 1
+            tp4_count += 1
+            tpdict[i] = (tp1_count, tp2_count, tp3_count, tp4_count)
+        elseif single_tp(op)
+            tp1_count += 1
+            tp2_count += 1
+            tpdict[i] = (tp1_count, tp2_count, -1, -1)
+        end
+    end
+    tp1storage = zeros(tp1_count)
+    tp2storage = zeros(tp2_count)
+    tp3storage = zeros(tp3_count)
+    tp4storage = zeros(tp4_count)
+
+    SubexpressionSetStorage{MC{N}}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+                               temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
+                               x.linearity)
+end
+function neg_objective!(d::Evaluator)
     if (d.has_nlobj)
         # shifts the adjacency matrix to introduce -f(x) as first element of nd array
         rowval = rowvals(d.objective.adj) .+ 1; pushfirst!(rowval, 2)
         colptr = copy(d.objective.adj.colptr) .+ 1; pushfirst!(colptr, 1)
         nzval = nonzeros(d.objective.adj); pushfirst!(nzval, true)
         m, n = size(d.objective.adj)
-        d.objective.adj = SparseMatrixCSC{Bool,Int}(m+1,n+1,colptr,rowval,nzval)
+        d.objective.adj = SparseMatrixCSC{Bool,Int}(m+1, n+1, colptr, rowval, nzval)
 
         # shifts the node list (and parents)
-        shift_nd = [JuMP.NodeData(JuMP.CALLUNIVAR,2,2)]
+        shift_nd = [JuMP.NodeData(JuMP.CALLUNIVAR, 2, 2)]
         for nd in d.objective.nd
-            push!(shift_nd,JuMP.NodeData(nd.nodetype,nd.index,nd.parent+1))
+            push!(shift_nd, JuMP.NodeData(nd.nodetype, nd.index, nd.parent+1))
         end
         d.objective.nd = shift_nd
+        #=
+        new_tpdict = Dict{Int,Tuple{Int,Int}}()
+        for key in keys(d.tpdict)
+            new_tpdict[key+1] = d.tpdict[key]
+        end
+        d.objective.tpdict = new_tpdict
+        =#
 
         nvflag = length(d.objective.numvalued) > 0 ? d.objective.numvalued[1] : false
-        pushfirst!(d.objective.numvalued,nvflag)
-        pushfirst!(d.objective.numberstorage,0.0)
-        pushfirst!(d.objective.setstorage,zero(T))
+        pushfirst!(d.objective.numvalued, nvflag)
+        pushfirst!(d.objective.numberstorage ,0.0)
+        pushfirst!(d.objective.setstorage, zero(MC{eltype(d)}))
     end
 end
 
@@ -47,13 +102,13 @@ end
 Builds the evaluator used to generate relaxations of the nonlinear equations
 and constraints from a source model.
 """
-function build_nlp_evaluator(S::R, src::T, x::Optimizer, bool_flag::Bool) where {R<:Type, T<:MOI.AbstractNLPEvaluator}
+function build_nlp_evaluator(N::Int, src::T, x::Optimizer, bool_flag::Bool) where {T<:MOI.AbstractNLPEvaluator}
 
     # Checks to see if nlp data block evaluator is present
-    if ~isa(src,EAGO.EmptyNLPEvaluator)
+    if ~isa(src, EAGO.EmptyNLPEvaluator)
 
         # Creates the empty evaluator
-        d = Evaluator{S}(src.m)
+        d = Evaluator{N}(src.m)
 
         num_variables_ = JuMP.num_variables(d.m)
         d.variable_number = num_variables_
@@ -66,17 +121,17 @@ function build_nlp_evaluator(S::R, src::T, x::Optimizer, bool_flag::Bool) where 
         d.last_node = NodeBB()
 
         # Set valued operators must contain a (sub)gradient and/or (sub)hessian field to support 1st/2nd order eval
-        d.disable_1storder = !in(:cv_grad,fieldnames(eltype(d)))
-        d.disable_2ndorder = !in(:cv_hess,fieldnames(eltype(d)))
+        d.disable_1storder = false
+        d.disable_2ndorder = true
 
         # Add objective functions, constraints, subexpressions
         d.has_nlobj = isa(nldata.nlobj, JuMP._NonlinearExprData)
         if (src.has_nlobj)
-            d.objective = copy_to_function(S,src.objective)
+            d.objective = copy_to_function(N, src.objective)
         end
 
         for i in 1:length(src.constraints)
-            push!(d.constraints, copy_to_function(S,src.constraints[i]))
+            push!(d.constraints, copy_to_function(N, src.constraints[i]))
         end
 
         d.subexpression_order = src.subexpression_order
@@ -86,11 +141,11 @@ function build_nlp_evaluator(S::R, src::T, x::Optimizer, bool_flag::Bool) where 
             d.subexpressions_as_julia_expressions = src.subexpressions_as_julia_expressions
         end
 
-        d.subexpression_values_set = S[]
+        d.subexpression_values_set = MC{N}[]
         d.subexpression_values_flt = Float64[]
-        d.subexpressions = SubexpressionSetStorage{S}[]
+        d.subexpressions = SubexpressionSetStorage{N}[]
         for i in 1:length(src.subexpressions)
-            temp = copy_to_subexpr(S,src.subexpressions[i])
+            temp = copy_to_subexpr(N, src.subexpressions[i])
             push!(d.subexpressions,temp)
         end
         d.subexpression_values_set = fill(NaN, length(d.subexpressions))
@@ -108,7 +163,7 @@ function build_nlp_evaluator(S::R, src::T, x::Optimizer, bool_flag::Bool) where 
         d.has_reverse = x.evaluation_reverse
         d.subgrad_tighten = x.subgrad_tighten
         d.subgrad_tighten_reverse = x.subgrad_tighten_reverse
-        d.jac_storage = Array{Float64}(undef,max(num_variables_, d.m.nlp_data.largest_user_input_dimension)) # DO I NEED THIS
+        d.jac_storage = Array{Float64}(undef, max(num_variables_, d.m.nlp_data.largest_user_input_dimension))
 
         d.constraint_number = length(d.constraints)
         d.subexpression_number = length(d.subexpressions)
@@ -144,35 +199,9 @@ function build_nlp_evaluator(S::R, src::T, x::Optimizer, bool_flag::Bool) where 
             end
         end
 
-        d.subexpression_isnum = fill(true,(d.subexpression_number,))
+        d.subexpression_isnum = fill(true, (d.subexpression_number,))
 
-        return deepcopy(d)
+        return d #deepcopy(d)
     end
 end
-
-function get_node(d::Evaluator)
-    #=
-    n_var = d.variable_number
-    n = NodeBB(fill(-Inf, (n_var,)), fill(Inf, (n_var,)),
-                    d.current_node.lower_bound, d.current_node.upper_bound,
-                    d.current_node.depth, d.current_node.last_branch,
-                    d.current_node.branch_direction)
-
-    for i in 1:d.variable_number
-        indx_num, eqn_num, sto = d.index_to_variable[i]
-        if ~(eqn_num == -1)
-            if (sto == 1)
-                set = d.objective.setstorage[indx_num]
-            elseif (sto == 2)
-                set = d.constraints[eqn_num].setstorage[indx_num]
-            else
-                set = d.subexpressions[eqn_num].setstorage[indx_num]
-            end
-            n.lower_variable_bounds[i] = set.Intv.lo
-            n.upper_variable_bounds[i] = set.Intv.hi
-        end
-    end
-    =#
-    n = d.current_node
-    return n
-end
+get_node(d::Evaluator) = d.current_node

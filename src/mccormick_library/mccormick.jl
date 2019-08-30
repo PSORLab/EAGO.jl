@@ -1,6 +1,5 @@
 @reexport module McCormick
 
-using CommonSubexpressions: cse
 using DiffRules: diffrule
 using StaticArrays: @SVector, SVector, zeros, ones
 

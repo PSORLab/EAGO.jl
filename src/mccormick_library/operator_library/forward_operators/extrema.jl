@@ -1,89 +1,39 @@
-function cv_max(x::Float64, xL::Float64, xU::Float64, ca::Float64)
-    if (xU<=ca)
-        return ca, zero(Float64)
-    elseif (ca<=xL)
-        return x, one(Float64)
-    else
-        term::Float64 = max(zero(Float64),(x-ca)/(xU-ca))
-        val::Float64 = ca + (xU-ca)*(term)^(MC_param.mu+1)
-        dval::Float64 = (MC_param.mu+1)*(term)^(MC_param.mu)
-        return val, dval
-    end
+@inline deriv_max(x::Float64, c::Float64) = (x < c) ? 0.0 : 1.0
+@inline function cv_max(x::Float64, xL::Float64, xU::Float64, a::Float64)
+    (xU <= ca) && (return ca, 0.0)
+    (ca <= xL) && (return x, 1.0)
+    term::Float64 = max(0.0, (x - a)/(xU - a))
+    val::Float64 = ca + (xU - ca)*(term)^(MC_param.mu + 1)
+    dval::Float64 = (MC_param.mu + 1)*(term)^(MC_param.mu)
+    return val, dval
 end
-
-function max(x::MC{N}, c::Float64) where N
-    xL = x.Intv.lo
-    xU = x.Intv.hi
-    maxxL = max(xL,c)
-    maxxU = max(xU,c)
+@inline cc_max(x::Float64, xL::Float64, xU::Float64, a::Float64) = dline_seg(max, deriv_max, x, xL, xU, a)
+@inline function max_kernel(x::MC{N}, c::Float64, z::Interval{Float64}) where N
+    midcv, cv_id = mid3(x.cc, x.cv, x.Intv.lo)
+    midcc, cc_id = mid3(x.cc, x.cv, x.Intv.hi)
+    cv, dcv = cv_max(midcv, x.Intv.lo, x.Intv.hi, c)
+    cc, dcc = cc_max(midcc, x.Intv.lo, x.Intv.hi, c)
     if (MC_param.mu >= 1)
-      if (x.cc <= xL)
-        cv, dcv = cv_max(x.cc, xL, xU, c)
-        cv_grad = dcv*x.cv_grad
-      elseif (x.Intv.lo >= x.cv)
-        cv, dcv = cv_max(xL, xL, xU, c)
-        cv_grad = dcv*x.cv_grad
-      else
-        cv, dcv = cv_max(x.cv, xL, xU, c)
-        cv_grad = cv*x.cv_grad
-      end
-
-      # calc concave term
-      if (neq(xU,xL))
-        dcc = (maxxU-maxxL)/(xU-xL)
-        cc_grad = dcc*x.cc_grad
-        if (x.cc <= xU)
-          cc = maxxL + dcc*(x.cc - xL)
-        elseif (xU >= x.cv)
-          cc = maxxL + dcc*(xU - xL)
-        else
-          cc = maxxL + dcc*(x.cv - xL)
-        end
-      else
-        cc = maxxU
-        cc_grad = zeros(SVector{N,Float64})
-      end
+      gcc1,gdcc1 = cc_max(x.cv, x.Intv.lo, x.Intv.hi)
+      gcv1,gdcv1 = cv_max(x.cv, x.Intv.lo, x.Intv.hi)
+      gcc2,gdcc2 = cc_max(x.cc, x.Intv.lo, x.Intv.hi)
+      gcv2,gdcv2 = cv_max(x.cc, x.Intv.lo, x.Intv.hi)
+      cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
+      cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
     else
-      # calc convex term
-      if (xL < x.cv)
-        cv = max(x.cv,c)
-        cv_grad = (x.cv > c) ? x.cv_grad : zeros(SVector{N,Float64})
-      elseif (xL > x.cc)
-        cv = max(x.cc,c)
-        cv_grad = (x.cc > c) ? x.cc_grad : zeros(SVector{N,Float64})
-      else
-        cv = max(xL,c)
-        cv_grad = zeros(SVector{N,Float64})
-      end
-
-      # calc concave term
-      if (neq(xU,xL))
-          dcc = (maxxU-maxxL)/(xU-xL)
-          if (xU < x.cv)
-            cc = maxxL + dcc*(x.cv - xL)
-            cc_grad = dcc*x.cv_grad
-          elseif (xU > x.cc)
-            cc = maxxL + dcc*(x.cc - xL)
-            cc_grad = dcc*x.cc_grad
-          else
-            cc = maxxL + dcc*(xU - xL)
-            cc_grad = zeros(SVector{N,Float64})
-          end
-      else
-          cc = xU
-          cc_grad = zeros(SVector{N,Float64})
-      end
-      # applies cut operator
-      cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
+      cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
+      cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
+      cv, cc, cv_grad, cc_grad = cut(z.lo, z.hi, cv, cc, cv_grad, cc_grad)
     end
-    return MC{N}(cv, cc, max(x.Intv,c), cv_grad, cc_grad, x.cnst)
+    return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
+@inline max(x::MC, c::Float64) = max_kernel(x, c, max(x.Intv, c))
 
 # defines functions on which bivariant maximum mapping from Khan 2016
-function psil_max(x,y,lambda,nu,f1::MC{N},f2::MC{N}) where N
-   if (nu.hi<=lambda.lo)
+@inline function psil_max(x::Float64, y::Float64, lambda::Interval{Float64}, nu::Interval{Float64}, f1::MC{N}, f2::MC{N}) where N
+   if (nu.hi <= lambda.lo)
      val = x
-   elseif (lambda.hi<=nu.lo)
+   elseif (lambda.hi <= nu.lo)
      val = y
    elseif ((nu.lo<=lambda.lo)&&(lambda.lo<nu.hi))
      val = x+(nu.hi-lambda.lo)*max(0.0,((y-x)/(nu.hi-lambda.lo)))^(MC_param.mu+1)
@@ -102,29 +52,24 @@ function psil_max(x,y,lambda,nu,f1::MC{N},f2::MC{N}) where N
    end
    return val,grad_val
 end
-function thetar(x,y,lambda,nu)
+@inline function thetar(x::Float64, y::Float64, lambda::Interval{Float64}, nu::Interval{Float64})
     return (max(lambda.lo,nu.lo) + max(lambda.hi,nu.hi)-max(lambda.lo,nu.hi) +
     max(lambda.hi,nu.lo))*max(0.0,((lambda.hi-x)/(lambda.hi-lambda.lo)-(y-nu.lo)/(nu.hi-nu.lo)))^(MC_param.mu+1)
 end
-function psil_max_dx(x,y,lambda,nu)
-  if (nu.lo <= lambda.lo < nu.hi)
-    return 1.0-(MC_param.mu+1)*max(0.0,(y-x)/(nu.hi-lambda.lo))^MC_param.mu
-  else
-    return (MC_param.mu+1)*max(0.0,(x-y)/(lambda.hi-nu.lo))^MC_param.mu
-  end
+@inline function psil_max_dx(x::Float64, y::Float64, lambda::Interval{Float64}, nu::Interval{Float64})
+  (nu.lo <= lambda.lo < nu.hi) && (1.0-(MC_param.mu+1)*max(0.0,(y-x)/(nu.hi-lambda.lo))^MC_param.mu)
+  return (MC_param.mu+1)*max(0.0,(x-y)/(lambda.hi-nu.lo))^MC_param.mu
 end
-function psil_max_dy(x,y,lambda,nu)
-  if (nu.lo <= lambda.lo < nu.hi)
-    return (MC_param.mu+1)*max(0.0,(y-x)/(nu.hi-lambda.lo))^MC_param.mu
-  else
-    return 1.0-(MC_param.mu+1)*max(0.0,(x-y)/(lambda.hi-nu.lo))^MC_param.mu
-  end
+@inline function psil_max_dy(x::Float64, y::Float64, lambda::Interval{Float64}, nu::Interval{Float64})
+  (nu.lo <= lambda.lo < nu.hi) && (return (MC_param.mu+1)*max(0.0,(y-x)/(nu.hi-lambda.lo))^MC_param.mu)
+  return 1.0-(MC_param.mu+1)*max(0.0,(x-y)/(lambda.hi-nu.lo))^MC_param.mu
 end
 
-function psir_max(x,y,xgrad,ygrad,lambda,nu)
-    if (nu.hi<=lambda.lo)
+@inline function psir_max(x::Float64, y::Float64, xgrad::SVector{N,Float64}, ygrad::SVector{N,Float64},
+                  lambda::Interval{Float64}, nu::Interval{Float64}) where N
+    if (nu.hi <= lambda.lo)
       return x,xgrad
-    elseif (lambda.hi<=nu.lo)
+    elseif (lambda.hi <= nu.lo)
       return y,ygrad
     else
       val = max(lambda.hi,nu.hi)-(max(lambda.hi,nu.hi)-max(lambda.lo,nu.hi))*
@@ -135,14 +80,13 @@ function psir_max(x,y,xgrad,ygrad,lambda,nu)
                  (MC_param.mu+1)*(max(lambda.hi,nu.lo)+max(lambda.lo,nu.hi)-max(lambda.lo,nu.lo)-max(lambda.hi,nu.hi))*
                  max(0.0,((lambda.hi-x)/(lambda.hi-lambda.lo))-((y-nu.lo)/(nu.hi-nu.lo)))^MC_param.mu*
                  ((1.0/(lambda.hi-lambda.lo))*xgrad+(1.0/(nu.hi-nu.lo))*ygrad)
-      return val,grad_val
+      return val, grad_val
     end
 end
 
-function max(x::MC{N},y::MC{N}) where N
-    maxIntv = max(x.Intv,y.Intv)
-    maxxL = maxIntv.lo
-    maxxU = maxIntv.hi
+@inline function max_kernel(x::MC{N}, y::MC{N}, z::Interval{Float64}) where N
+    maxxL = z.lo
+    maxxU = z.hi
     if (MC_param.mu >= 1)
       cc = 0.0
       cv = 0.0
@@ -160,10 +104,10 @@ function max(x::MC{N},y::MC{N}) where N
       return MC{N}(cv, cc, maxIntv, cv_grad, cc_grad, (x.cnst && y.cnst))
     elseif (x.Intv.hi <= y.Intv.lo)
       cc = y.cc
-      cc_grad = y.cnst ? zeros(y.cc_grad) : y.cc_grad
+      cc_grad = y.cnst ? zero(SVector{N,Float64}) : y.cc_grad
     elseif (x.Intv.lo >= y.Intv.hi)
       cc = x.cc
-      cc_grad = x.cnst ? zeros(x.cc_grad) : x.cc_grad
+      cc_grad = x.cnst ? zero(SVector{N,Float64}) : x.cc_grad
       #=
     elseif (MC_param.multivar_refine)
       maxLL::T = max(x.Intv.lo,y.Intv.lo)
@@ -192,16 +136,15 @@ function max(x::MC{N},y::MC{N}) where N
       cc = ccMC.cc
       cc_grad = ccMC.cc_grad
     end
-      cv = max(x.cv,y.cv)
-      cv_grad = (x.cv > y.cv) ? (x.cnst ? zeros(x.cv_grad) : x.cv_grad) :
-                                (y.cnst ? zeros(y.cv_grad) : y.cv_grad)
-      cv,cc,cv_grad,cc_grad = cut(maxxL,maxxU,cv,cc,cv_grad,cc_grad)
-      cnst = y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) )
-      temp = MC{N}(cv, cc, maxIntv, cv_grad, cc_grad, cnst)
-      return temp
+    cv = max(x.cv,y.cv)
+    cv_grad = (x.cv > y.cv) ? (x.cnst ? zeros(SVector{N,Float64}) : x.cv_grad) :
+                              (y.cnst ? zeros(SVector{N,Float64}) : y.cv_grad)
+    cv, cc, cv_grad, cc_grad = cut(maxxL, maxxU, cv,cc,cv_grad,cc_grad)
+    return MC{N}(cv, cc, z, cv_grad, cc_grad, y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) ))
 end
+@inline max(x::MC, y::MC) = max_kernel(x, y, max(x.Intv, y.Intv))
 
-function maxcv(x::MC,y::MC)
+@inline function maxcv(x::MC, y::MC)
         cv = 0.0
         temp_mid = 0.0
         if ((y.Intv.hi<=x.Intv.lo)||(x.Intv.hi<=y.Intv.lo))
@@ -215,14 +158,10 @@ function maxcv(x::MC,y::MC)
         end
         return cv
 end
-function maxcc(x::MC,y::MC)
+@inline function maxcc(x::MC,y::MC)
         psir_max(x.cc,y.cc,x.Intv,y.Intv)
 end
-mincv(x::MC,y::MC) = - maxcc(-x,-y)
-min(x::MC,y::MC) = -max(-x,-y)
-#=
-@inline max(x::SMCg{N,V,T},y::V) where {N,V,T<:AbstractFloat} = max(x,SMCg{N,V,T}(y))
-@inline max(y::V,x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = max(x,SMCg{N,V,T}(y))
-@inline min(x::SMCg{N,V,T},y::V) where {N,V,T<:AbstractFloat} = min(x,SMCg{N,V,T}(y))
-@inline min(y::V,x::SMCg{N,V,T}) where {N,V,T<:AbstractFloat} = min(x,SMCg{N,V,T}(y))
-=#
+@inline mincv(x::MC,y::MC) = - maxcc(-x,-y)
+
+@inline min_kernel(x::MC, y::MC, z::Interval{Float64}) = -max(-x,-y)
+@inline min(x::MC,y::MC) = -max(-x,-y)

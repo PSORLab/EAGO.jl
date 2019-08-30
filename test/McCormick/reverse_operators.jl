@@ -1,5 +1,4 @@
-using EAGO, StaticArrays
-
+#=
 function MC_1_is_equal(y, x, tol)
     bool1 = isapprox(y.cc,x.cc,atol=tol)
     bool2 = isapprox(y.cv,x.cv,atol=tol)
@@ -9,7 +8,7 @@ function MC_1_is_equal(y, x, tol)
     bool6 = isapprox(y.Intv.hi, x.Intv.hi, atol=tol)
     return (bool1 && bool2 && bool3 && bool4 && bool5 && bool6)
 end
-
+=#
 #=
 a = MC{1}(1.0,EAGO.IntervalType(0.4,3.0),1)
 a1 = MC{1}(-7.0,EAGO.IntervalType(-12.0,-4.0),1)

@@ -59,3 +59,69 @@ switchexpr_rev = binaryswitch(1:length(exprs_rev), exprs_rev)
     $switchexpr_rev
     error("No match for operator_id")
 end
+
+function make_uv_gate(symbol_list)
+   n = Expr(:||)
+   for (i, sym) in enumerate(symbol_list)
+      if i !== 1
+         n = :(x == $(univariate_operator_to_id[sym]) || $n)
+      else
+        n = Expr(:||)
+        n = :(x == $(univariate_operator_to_id[sym]))
+      end
+   end
+   n
+end
+
+single_tp_ops = [:tan, :cot, :asin, :acos, :atan, :sinh, :tanh,
+                 :erf, :erfinv, :erfc, :erfcinv, :erfi, :erfcx, :tand, :cotd,
+                 :acosd, :atand, :asind, :asinh, :atanh, :asech]
+single_tp_gate = make_uv_gate(single_tp_ops)
+@eval @inline single_tp(x::Int) = $single_tp_gate
+
+double_tp_ops = [:sin, :cos, :sind, :cosd, :sech, :dawson]
+double_tp_gate = make_uv_gate(double_tp_ops)
+@eval @inline double_tp(x::Int) = $double_tp_gate
+
+function make_tp_gate_1(symbol_list, ref::Symbol)
+    n = Expr(:block)
+    for (i, sym) in enumerate(symbol_list)
+        sym_kernel = Symbol(String(sym)*"_kernel")
+        a = :(op == $(univariate_operator_to_id[sym]) && (return ($sym_kernel)(x, ($ref).Intv, tp1, tp2)))
+        push!(n.args, a)
+    end
+    push!(n.args, :(error("No operator")))
+    n
+end
+
+function make_tp_gate_2(symbol_list, ref::Symbol)
+    n = Expr(:block)
+    for (i, sym) in enumerate(symbol_list)
+        sym_kernel = Symbol(String(sym)*"_kernel")
+        a = :(op == $(univariate_operator_to_id[sym]) && (return ($sym_kernel)(x, ($ref).Intv, tp1, tp2, tp3, tp4)))
+        push!(n.args, a)
+    end
+    push!(n.args, :(error("No operator")))
+    n
+end
+
+single_tp_expra = make_tp_gate_1(single_tp_ops, :x)
+single_tp_exprb = make_tp_gate_1(single_tp_ops, :z)
+@eval @inline function single_tp_set(op::Int, x::MC, z::MC, tp1::Float64,
+                               tp2::Float64, flag::Bool)
+    if flag
+        $single_tp_expra
+    else
+        $single_tp_exprb
+    end
+end
+double_tp_expra = make_tp_gate_2(double_tp_ops, :x)
+double_tp_exprb = make_tp_gate_2(double_tp_ops, :z)
+@eval @inline function double_tp_set(op::Int, x::MC, z::MC, tp1::Float64,
+                               tp2::Float64, tp3::Float64, tp4::Float64, flag::Bool)
+    if flag
+        $double_tp_expra
+    else
+        $double_tp_exprb
+    end
+end

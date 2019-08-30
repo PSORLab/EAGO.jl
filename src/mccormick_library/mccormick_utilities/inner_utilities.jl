@@ -36,32 +36,39 @@ function mid_grad(cc_grad::SVector{N,Float64}, cv_grad::SVector{N,Float64}, id::
 end
 
 """
-    line_seg(x0::T,x1::T,y1::T,x2::T,y2::T)
+    dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64)
 
-Calculates the value of the line segment between `(x1,y1)` and `(x2,y2)` at `x = x0`.
-"""
-function line_seg(x0::Float64,x1::Float64,
-                  y1::Float64,x2::Float64,y2::Float64)
-   if (x2-x1) == zero(Float64)
-     return y1
-   else
-     return y1*((x2-x0)/(x2-x1)) + y2*((x0-x1)/(x2-x1))
-   end
-end
-
-"""
-    dline_seg(x0::T,x1::T,y1::T,x2::T,y2::T)
-
-Calculates the value of the slope line segment between `(x1,y1)` and `(x2,y2)`
+Calculates the value of the slope line segment between `(xL, f(xL))` and `(xU, f(xU))`
 defaults to evaluating the derivative of the function if the interval is tight.
 """
-function dline_seg(x0::Float64,x1::Float64,
-                   y1::Float64,x2::Float64,
-                   y2::Float64,d::Float64)
-    if (x2 == x1)
-      return d
+@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64)
+    delta = xU - xL
+    if delta == 0.0
+        return f(x), df(x)
     else
-      return (y2-y1)/(x2-x1)
+        yL = f(xL)
+        yU = f(xU)
+        return (yL*(xU - x) + yU*(x - xL))/delta, (yU - yL)/delta
+    end
+end
+@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64, n::Int)
+    delta = xU - xL
+    if delta == 0.0
+        return f(x, n), df(x, n)
+    else
+        yL = f(xL, n)
+        yU = f(xU, n)
+        return (yL*(xU - x) + yU*(x - xL))/delta, (yU - yL)/delta
+    end
+end
+@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64, n::Float64)
+    delta = xU - xL
+    if delta == 0.0
+        return f(x, c), df(x, c)
+    else
+        yL = f(xL, c)
+        yU = f(xU, c)
+        return (yL*(xU - x) + yU*(x - xL))/delta, (yU - yL)/delta
     end
 end
 

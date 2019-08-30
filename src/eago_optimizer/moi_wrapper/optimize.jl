@@ -36,7 +36,7 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     # Creates initial EAGO nlp evaluator for relaxations
     m.working_evaluator_block = m.nlp_data
     if ~isa(m.nlp_data.evaluator, EAGO.EmptyNLPEvaluator) || false #flag
-        built_evaluator = build_nlp_evaluator(MC{m.variable_number}, m.nlp_data.evaluator, m, false)
+        built_evaluator = build_nlp_evaluator(m.variable_number, m.nlp_data.evaluator, m, false)
         (m.optimization_sense == MOI.MAX_SENSE) && neg_objective!(built_evaluator)
         m.working_evaluator_block = MOI.NLPBlockData(m.nlp_data.constraint_bounds, built_evaluator, m.nlp_data.has_objective)
     end

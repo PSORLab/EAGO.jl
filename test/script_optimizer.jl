@@ -1,31 +1,23 @@
-
-module Check_Script_Bridge
-
-    using Compat
-    using Compat.Test
-    using JuMP, Ipopt, EAGO
-
-    function check_node(nd,type,indx,child)
-        flag = true
-        if nd.nodetype != type
-            flag = false
-            return flag
-        end
-        if nd.index != indx
-            flag = false
-            return flag
-        end
-        for i in 1:length(child)
-            if nd.children[i] != child[i]
-                flag = false
-                return flag
-            end
-        end
+function check_node(nd::EAGO.NodeInfo, type::JuMP._Derivatives.NodeType , indx::Int, child::Vector{Int})
+    flag = true
+    if nd.nodetype != type
+        flag = false
         return flag
     end
+    if nd.index != indx
+        flag = false
+        return flag
+    end
+    for i in 1:length(child)
+        if nd.children[i] != child[i]
+            flag = false
+            return flag
+        end
+    end
+    return flag
+end
 
-    @testset "Test Trace Script" begin
-
+@testset "Test Trace Script" begin
     function f1(x)
         return sin(3.0*x[1]) + x[2]
     end
@@ -100,5 +92,4 @@ module Check_Script_Bridge
     @test check_node(tape3.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])
     @test check_node(tape3.nd[2], JuMP._Derivatives.VARIABLE, 2, [-1])
     @test check_node(tape3.nd[3], JuMP._Derivatives.CALLUNIVAR, 3, [1])
-    end
 end
