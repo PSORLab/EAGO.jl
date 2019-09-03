@@ -768,9 +768,6 @@ function reverse_eval_all(d::Evaluator, x::Vector{Float64})
         # Cut constraints on constraint bounds & reverse
         if feas
             ex = d.constraints[i]
-            println("ex.setstorage: $(ex.setstorage)")
-            println("d.constraints_lbd: $(d.constraints_lbd)")
-            println("d.constraints_ubd: $(d.constraints_ubd)")
             ex.setstorage[1] = ex.setstorage[1] ∩ IntervalType(d.constraints_lbd[i], d.constraints_ubd[i])
             feas &= reverse_eval(ex.setstorage, ex.numberstorage, ex.numvalued, subexpr_isnum,
                                   subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
