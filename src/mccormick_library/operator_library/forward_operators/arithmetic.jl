@@ -68,7 +68,7 @@ end
 	(c >= 0.0) && (return MC{N}(c*x.cv, c*x.cc, z, c*x.cv_grad, c*x.cc_grad, x.cnst))
 	return MC{N}(c*x.cc, c*x.cv, z, c*x.cc_grad, c*x.cv_grad, x.cnst)
 end
-@inline mult_kernel(c::Float64, x::MC, z::Interval{Float64}) = mult_kernel(x, c)
+@inline mult_kernel(c::Float64, x::MC, z::Interval{Float64}) = mult_kernel(x, c, z)
 @inline *(x::MC, c::Float64) = mult_kernel(x, c, c*x.Intv)
 @inline *(c::Float64, x::MC) = mult_kernel(x, c, c*x.Intv)
 

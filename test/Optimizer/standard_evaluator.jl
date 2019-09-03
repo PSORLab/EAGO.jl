@@ -22,9 +22,15 @@
         built_evaluator.current_node = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1, true)
         xpoint = Float64[1.5,5.5]
 
+        built_evaluator.constraints_lbd = [-Inf]
+        built_evaluator.constraints_ubd = [0.0];
+
         user_operators = built_evaluator.m.nlp_data.user_operators
         nlp_data = built_evaluator.m.nlp_data
         user_input_buffer = built_evaluator.jac_storage
+
+        subgrad_tighten = false
+        first_eval_flag = false
 
         EAGO.forward_eval(built_evaluator.objective.setstorage, built_evaluator.objective.numberstorage,
                           built_evaluator.objective.numvalued,
@@ -32,15 +38,21 @@
                           built_evaluator.objective.const_values, built_evaluator.parameter_values,
                           built_evaluator.current_node, xpoint, built_evaluator.subexpression_values_flt,
                           built_evaluator.subexpression_values_set, built_evaluator.subexpression_isnum,
-                          user_input_buffer, user_operators = user_operators)
+                          user_input_buffer, subgrad_tighten, built_evaluator.objective.tpdict,
+                          built_evaluator.objective.tp1storage, built_evaluator.objective.tp2storage,
+                          built_evaluator.objective.tp3storage, built_evaluator.objective.tp4storage,
+                          first_eval_flag, user_operators = user_operators)
 
         EAGO.forward_eval_all(built_evaluator,xpoint)
 
         EAGO.reverse_eval(built_evaluator.objective.setstorage,
                           built_evaluator.objective.numberstorage,
                           built_evaluator.objective.numvalued,
+                          built_evaluator.subexpression_isnum,
+                          built_evaluator.subexpression_values_set,
                           built_evaluator.objective.nd,
-                          built_evaluator.objective.adj,xpoint)
+                          built_evaluator.objective.adj, xpoint,
+                          built_evaluator.current_node, subgrad_tighten)
 
         EAGO.reverse_eval_all(built_evaluator,xpoint)
 
@@ -64,8 +76,8 @@
 
         @test temp1[1] == :Grad
         @test temp1[2] == :Jac
-        @test isapprox(dfstar1[1],-5099.264424,atol=1E-3)
-        @test dfstar1[2] == 3400.0
+        @test isapprox(dfstar1[1],-5099.264424,atol=1E-3)  # FAIL
+        @test dfstar1[2] == 3400.0                         # FAIL
         @test temp5[1][1] == 1
         @test temp5[1][2] == 1
         @test temp5[2][1] == 1
