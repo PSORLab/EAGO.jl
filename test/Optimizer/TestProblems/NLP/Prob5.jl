@@ -3,7 +3,7 @@ using EAGO, JuMP
 
 newopt = EAGO.Optimizer()
 
-m = Model(with_optimizer(EAGO.Optimizer))
+m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
 
 # ----- Variables ----- #
 @variable(m, y)
@@ -31,7 +31,7 @@ JuMP.optimize!(m)
 #status_term = JuMP.termination_status(m)
 #status_prim = JuMP.primal_status(m)
 
-#=
+
 @testset "NLP Problem #5: ex4_1_9 (global library)" begin
 
     m = Model(with_optimizer(EAGO.Optimizer))
@@ -65,4 +65,3 @@ JuMP.optimize!(m)
     @test status_term == MOI.Success
     @test status_prim == MOI.FeasiblePoint
 end
-=#
