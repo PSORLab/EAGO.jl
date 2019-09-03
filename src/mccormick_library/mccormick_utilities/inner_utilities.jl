@@ -61,7 +61,7 @@ end
         return (yL*(xU - x) + yU*(x - xL))/delta, (yU - yL)/delta
     end
 end
-@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64, n::Float64)
+@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64, c::Float64)
     delta = xU - xL
     if delta == 0.0
         return f(x, c), df(x, c)

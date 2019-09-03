@@ -10,7 +10,7 @@ function copy_to_function(N::Int, x::JuMP._FunctionStorage)
     tp3_count = 0
     tp4_count = 0
     for i in 1:lenx
-        op = nd[i].index
+        op = x.nd[i].index
         if double_tp(op)
             tp1_count += 1
             tp2_count += 1
@@ -28,7 +28,7 @@ function copy_to_function(N::Int, x::JuMP._FunctionStorage)
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    FunctionSetStorage{MC{N}}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+    FunctionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
                               temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
                               x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
 end
@@ -44,7 +44,7 @@ function copy_to_subexpr(N::Int, x::JuMP._SubexpressionStorage)
     tp3_count = 0
     tp4_count = 0
     for i in 1:lenx
-        op = nd[i].index
+        op = x.nd[i].index
         if double_tp(op)
             tp1_count += 1
             tp2_count += 1
@@ -62,7 +62,7 @@ function copy_to_subexpr(N::Int, x::JuMP._SubexpressionStorage)
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    SubexpressionSetStorage{MC{N}}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+    SubexpressionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
                                temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
                                x.linearity)
 end
@@ -81,13 +81,12 @@ function neg_objective!(d::Evaluator)
             push!(shift_nd, JuMP.NodeData(nd.nodetype, nd.index, nd.parent+1))
         end
         d.objective.nd = shift_nd
-        #=
-        new_tpdict = Dict{Int,Tuple{Int,Int}}()
+
+        new_tpdict = Dict{Int,Tuple{Int,Int,Int,Int}}()
         for key in keys(d.tpdict)
-            new_tpdict[key+1] = d.tpdict[key]
+            new_tpdict[key+2] = d.tpdict[key]
         end
         d.objective.tpdict = new_tpdict
-        =#
 
         nvflag = length(d.objective.numvalued) > 0 ? d.objective.numvalued[1] : false
         pushfirst!(d.objective.numvalued, nvflag)

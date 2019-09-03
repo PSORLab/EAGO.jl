@@ -12,8 +12,8 @@ function is_convex_quadratic(func::MOI.ScalarQuadraticFunction{Float64},NumVar::
         end
     end
     if length(Q.nzval) > 1
-        eigmin = LinearAlgebra.eigmin(Array(Q))
-        if (eigmin) > 0.0
+        eigval = eigmin(Array(Q))
+        if (eigval) > 0.0
             return true
         end
     else

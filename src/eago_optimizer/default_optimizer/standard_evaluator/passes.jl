@@ -34,8 +34,8 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N}, node::NodeBB, fla
                 @inbounds upper += cc_val*(node.lower_variable_bounds[i] - x_values[i])
             end
         end
-        lower = max(lower, val.lo)
-        upper = min(upper, val.hi)
+        lower = max(lower, val.Intv.lo)
+        upper = min(upper, val.Intv.hi)
         return MC{N}(val.cv, val.cc, Interval(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
     else
         return val
@@ -44,12 +44,13 @@ end
 
 id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
-                      nd::AbstractVector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int}, const_values::Vector{Float64},
+                      nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int}, const_values::Vector{Float64},
                       parameter_values::Vector{Float64}, current_node::NodeBB, x_values::Vector{Float64},
                       subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N}},
-                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{Float64}, subgrad_tighten::Bool,
-                      tpdict::Dict{Int,Int}, tp1storage::Vector{Float64},
-                      tp2storage::Vector{Float64}, first_eval_flag::Bool;
+                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N}}, subgrad_tighten::Bool,
+                      tpdict::Dict{Int,Tuple{Int,Int,Int,Int}}, tp1storage::Vector{Float64},
+                      tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
+                      first_eval_flag::Bool;
                       user_operators::JuMP._Derivatives.UserOperatorRegistry = JuMP._Derivatives.UserOperatorRegistry()) where N
 
     @assert length(numberstorage) >= length(nd)
@@ -300,8 +301,9 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                     @inbounds setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
                 end
             elseif single_tp(op) && chdset
-                @inbounds tindx1 = tpdict[k][1]
-                @inbounds tindx2 = tpdict[k][2]
+                @inbounds tpdict_tuple = tpdict[k]
+                tindx1 = tpdict_tuple[1]
+                tindx2 = tpdict_tuple[2]
                 @inbounds tp1 = tp1storage[tindx1]
                 @inbounds tp2 = tp2storage[tindx2]
                 fval, tp1, tp2 = single_tp_set(op, child_val, setstorage[k], tp1, tp2, first_eval_flag)
@@ -309,19 +311,20 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                 @inbounds tp1storage[tindx] = tp2
                 @inbounds setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
             elseif double_tp(op) && chdset
-                @inbounds tindx1 = tpdict[k][1]
-                @inbounds tindx2 = tpdict[k][2]
-                @inbounds tindx3 = tpdict[k][3]
-                @inbounds tindx4 = tpdict[k][4]
+                @inbounds tpdict_tuple = tpdict[k]
+                tindx1 = tpdict_tuple[1]
+                tindx2 = tpdict_tuple[2]
+                tindx3 = tpdict_tuple[3]
+                tindx4 = tpdict_tuple[4]
                 @inbounds tp1 = tp1storage[tindx1]
                 @inbounds tp2 = tp2storage[tindx2]
-                @inbounds tp1 = tp1storage[tindx3]
-                @inbounds tp2 = tp2storage[tindx4]
+                @inbounds tp3 = tp1storage[tindx3]
+                @inbounds tp4 = tp2storage[tindx4]
                 fval, tp1, tp2, tp3, tp4 = double_tp_set(op, child_val, setstorage[k], tp1, tp2, tp3, tp4, first_eval_flag)
                 @inbounds tp1storage[tindx1] = tp1
                 @inbounds tp2storage[tindx2] = tp2
-                @inbounds tp1storage[tindx1] = tp3
-                @inbounds tp2storage[tindx2] = tp4
+                @inbounds tp3storage[tindx1] = tp3
+                @inbounds tp4storage[tindx2] = tp4
                 @inbounds setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
             else
                 fval = eval_univariate_set(op, child_val)
@@ -444,12 +447,12 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
     for (ind, k) in enumerate(reverse(d.subexpression_order))
         ex = d.subexpressions[k]
         temp = forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
-                                         ex.nd, ex.adj, ex.const_values,
-                                         d.parameter_values, d.current_node,
-                                         x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                                         user_input_buffer, subgrad_tighten, #ex.tpdict,
-                                         first_eval_flag,
-                                         user_operators=user_operators)
+                            ex.nd, ex.adj, ex.const_values,
+                            d.parameter_values, d.current_node,
+                            x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
+                            user_input_buffer, subgrad_tighten, ex.tpdict,
+                            ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
+                            first_eval_flag, user_operators=user_operators)
         d.subexpression_isnum[ind] = ex.numvalued[1]
         if d.subexpression_isnum[ind]
             d.subexpression_values_flt[k] = temp
@@ -464,9 +467,9 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
                      ex.nd, ex.adj, ex.const_values,
                      d.parameter_values, d.current_node,
                      x, subexpr_values_flt, subexpr_values_set,
-                     d.subexpression_isnum, user_input_buffer, subgrad_tighten, #ex.tpdict,
-                     first_eval_flag,
-                     user_operators=user_operators)
+                     d.subexpression_isnum, user_input_buffer, subgrad_tighten, ex.tpdict,
+                     ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
+                     first_eval_flag, user_operators=user_operators)
     end
 
     for (ind,ex) in enumerate(d.constraints)
@@ -474,9 +477,9 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
                      ex.nd, ex.adj, ex.const_values,
                      d.parameter_values, d.current_node,
                      x, subexpr_values_flt, subexpr_values_set,
-                     d.subexpression_isnum, user_input_buffer, subgrad_tighten, #ex.tpdict,
-                     first_eval_flag,
-                     user_operators=user_operators)
+                     d.subexpression_isnum, user_input_buffer, subgrad_tighten, ex.tpdict,
+                     ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
+                     first_eval_flag, user_operators=user_operators)
     end
 end
 

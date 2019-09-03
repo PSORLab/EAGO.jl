@@ -117,9 +117,11 @@ function udf_loader!(m::AbstractOptimizer)
         remove_subexpr_children!(expr)
         m.reform_flatten_flag && flatten_expression!(expr, parameter_values)
     end
-    replace_subexpressions!(jnlp_data.nlobj, mv_len, n_expr0)
-    remove_subexpr_children!(jnlp_data.nlobj)
-    m.reform_flatten_flag && flatten_expression!(jnlp_data.nlobj, parameter_values)
+    if (jnlp_data.nlobj !== nothing) 
+        replace_subexpressions!(jnlp_data.nlobj, mv_len, n_expr0)
+        remove_subexpr_children!(jnlp_data.nlobj)
+        m.reform_flatten_flag && flatten_expression!(jnlp_data.nlobj, parameter_values)
+    end
     constr_len = length(jnlp_data.nlconstr)
     for i in 1:constr_len
         @inbounds constr = jnlp_data.nlconstr[i]

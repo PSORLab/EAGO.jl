@@ -134,7 +134,7 @@ end
   return y
 end
 
-@inline sinh_deriv(x::Float64, y::Float64, z::Float64) = cosh(x)
+@inline sinh_deriv(x::Float64) = cosh(x)
 @inline sinh_env(x::Float64, y::Float64, z::Float64) = (x-y)*cosh(x)-(sinh(x)-sinh(y))
 @inline function cv_sinh(x::Float64, xL::Float64, xU::Float64, p::Float64)
   (xL >= 0.0) && (return sinh(x), sinh_deriv(x), p)
@@ -145,7 +145,7 @@ end
           p = golden_section(xL, 0.0, sinh_env, xU, 0.0)
       end
   end
-  (x <= p) && (return dline_seg(sinh, sinh_deriv, x, p, xU)..., p)
+  (x <= p) && (return dline_seg(sinh, sinh_deriv, x, xL, p)..., p)
   return sinh(x), sinh_deriv(x), p
 end
 @inline function cc_sinh(x::Float64, xL::Float64, xU::Float64, p::Float64)
@@ -158,10 +158,10 @@ end
       end
   end
   (x <= p) && (return sinh(x), sinh_deriv(x), p)
-  return dline_seg(sinh, sinh_deriv, x, xL, p)..., p
+  return dline_seg(sinh, sinh_deriv, x, p, xU)..., p
 end
 
-@inline atanh_deriv(x::Float64, y::Float64, z::Float64) = 1.0/(1.0 - x^2)
+@inline atanh_deriv(x::Float64) = 1.0/(1.0 - x^2)
 @inline atanh_env(x::Float64, y::Float64, z::Float64) = (atanh(x) - atanh(y))*(1.0 - x^2) - x + y
 @inline function cv_atanh(x::Float64, xL::Float64, xU::Float64, p::Float64)
   (xL >= 0.0) && (return atanh(x), atanh_deriv(x), p)
@@ -172,20 +172,20 @@ end
           p = golden_section(xL, 0.0, atanh_env, xU, 0.0)
       end
   end
-  (x <= p) && (return dline_seg(atanh, atanh_deriv, x, p, xU)..., p)
+  (x <= p) && (return dline_seg(atanh, atanh_deriv, x, xL, p)..., p)
   return atanh(x), atanh_deriv(x), p
 end
 @inline function cc_atanh(x::Float64, xL::Float64, xU::Float64, p::Float64)
   (xL >= 0.0) && (return dline_seg(atanh, atanh_deriv, x, xL, xU)..., p)
   (xU <= 0.0) && (return atanh(x), atanh_deriv(x), p)
   if p === Inf
-      p, flag = secant(0.0, xU, 0.0, xU, atanh_deriv, xL, 0.0)
+      p, flag = secant(0.0, xU, 0.0, xU, atanh_env, xL, 0.0)
       if flag
-          p = golden_section(0.0, xU, atanh_deriv, xL, 0.0)
+          p = golden_section(0.0, xU, atanh_env, xL, 0.0)
       end
   end
   (x <= p) && (return atanh(x), atanh_deriv(x), p)
-  return dline_seg(atanh, atanh_deriv, x, xL, p)..., p
+  return dline_seg(atanh, atanh_deriv, x, p, xU)..., p
 end
 
 @inline tanh_deriv(x::Float64, y::Float64, z::Float64) = sech(x)^2

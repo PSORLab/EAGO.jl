@@ -1,9 +1,9 @@
 @inline deriv_max(x::Float64, c::Float64) = (x < c) ? 0.0 : 1.0
 @inline function cv_max(x::Float64, xL::Float64, xU::Float64, a::Float64)
-    (xU <= ca) && (return ca, 0.0)
-    (ca <= xL) && (return x, 1.0)
+    (xU <= a) && (return a, 0.0)
+    (a <= xL) && (return x, 1.0)
     term::Float64 = max(0.0, (x - a)/(xU - a))
-    val::Float64 = ca + (xU - ca)*(term)^(MC_param.mu + 1)
+    val::Float64 = a + (xU - a)*(term)^(MC_param.mu + 1)
     dval::Float64 = (MC_param.mu + 1)*(term)^(MC_param.mu)
     return val, dval
 end
@@ -14,10 +14,10 @@ end
     cv, dcv = cv_max(midcv, x.Intv.lo, x.Intv.hi, c)
     cc, dcc = cc_max(midcc, x.Intv.lo, x.Intv.hi, c)
     if (MC_param.mu >= 1)
-      gcc1,gdcc1 = cc_max(x.cv, x.Intv.lo, x.Intv.hi)
-      gcv1,gdcv1 = cv_max(x.cv, x.Intv.lo, x.Intv.hi)
-      gcc2,gdcc2 = cc_max(x.cc, x.Intv.lo, x.Intv.hi)
-      gcv2,gdcv2 = cv_max(x.cc, x.Intv.lo, x.Intv.hi)
+      gcc1,gdcc1 = cc_max(x.cv, x.Intv.lo, x.Intv.hi, c)
+      gcv1,gdcv1 = cv_max(x.cv, x.Intv.lo, x.Intv.hi, c)
+      gcc2,gdcc2 = cc_max(x.cc, x.Intv.lo, x.Intv.hi, c)
+      gcv2,gdcv2 = cv_max(x.cc, x.Intv.lo, x.Intv.hi, c)
       cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
       cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
     else
@@ -28,6 +28,8 @@ end
     return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
 @inline max(x::MC, c::Float64) = max_kernel(x, c, max(x.Intv, c))
+@inline min_kernel(x::MC, c::Float64, z::Interval{Float64}) = -max(-x,-c)
+@inline min(x::MC, c::Float64) = -max(-x,-c)
 
 # defines functions on which bivariant maximum mapping from Khan 2016
 @inline function psil_max(x::Float64, y::Float64, lambda::Interval{Float64}, nu::Interval{Float64}, f1::MC{N}, f2::MC{N}) where N

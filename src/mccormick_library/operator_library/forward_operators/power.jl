@@ -62,7 +62,7 @@ end
 end
 # convex/concave relaxation of odd powers
 @inline function cv_powodd(x::Float64, xL::Float64, xU::Float64, n::Integer)
-    (xU <= 0.0) && (return dline_seg(^, powodd_deriv, x, xL, xU, n))
+    (xU <= 0.0) && (return dline_seg(^, pow_deriv, x, xL, xU, n))
     (0.0 <= xL) && (return x^n, n*x^(n - 1))
     val = (xL^n)*(xU - x)/(xU - xL) + (max(0.0, x))^n
     dval = -(xL^n)/(xU - xL) + n*(max(0.0, x))^(n-1)
@@ -70,7 +70,7 @@ end
 end
 @inline function cc_powodd(x::Float64, xL::Float64, xU::Float64, n::Integer)
     (xU <= 0.0) && (return x^n, n*x^(n - 1))
-    (0.0 <= xL) && (return dline_seg(^, powodd_deriv, x, xL, xU, n))
+    (0.0 <= xL) && (return dline_seg(^, pow_deriv, x, xL, xU, n))
     val = (xU^n)*(x - xL)/(xU - xL) + (min(0.0, x))^n
     dval = (xU^n)/(xU - xL) + n*(min(0.0, x))^(n-1)
     return val, dval
@@ -128,6 +128,7 @@ end
 @inline function neg_powneg_odd(x::MC{N}, c::Integer, y::Interval{Float64}) where {N}
   xL = x.Intv.lo
   xU = x.Intv.hi
+  xUc = y.hi
   eps_max = xU
   eps_min = xL
   if (MC_param.mu >= 1)
@@ -168,7 +169,7 @@ end
         cv_grad = zeros(SVector{N,Float64})
       end
     end
-		cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
+		cv, cc, cv_grad, cc_grad = cut(y.lo,xUc, cv, cc, cv_grad, cc_grad)
   end
 	return MC{N}(cv, cc, y, cv_grad, cc_grad, x.cnst)
 end
@@ -211,9 +212,9 @@ end
 	if (x.Intv.lo <= 0.0 <= x.Intv.hi) && (c < 0)
 		error("Function unbounded on this domain")
 	end
-	return pow_kernel(x, c, pow(x.Intv, c))
+	return pow_kernel(x, c, x.Intv^c)
 end
-@inline (^)(x::MC, c::Q) where {Q <: Integer} = pow(x, c)
+@inline (^)(x::MC, c::Q) where {Q <: Integer} = pow(x,c)
 
 # Power of MC to float
 @inline cv_flt_pow_1(x::Float64, xL::Float64, xU::Float64, n::Float64) = dline_seg(^, pow_deriv, x, xL, xU, n)
@@ -263,7 +264,7 @@ end
 ########### Defines inverse
 @inline function inv_kernel(x::MC, y::Interval{Float64})
   (x.Intv.lo <= 0.0 <= x.Intv.hi) && error("Function unbounded on domain: $(x.Intv)")
-  (x.Intv.hi < 0.0) && (return neg_powneg_odd_kernel(x, -1, y))
-  (x.Intv.lo > 0.0) && (return neg_powpos_kernel(x, -1, y))
+  (x.Intv.hi < 0.0) && (return neg_powneg_odd(x, -1, y))
+  (x.Intv.lo > 0.0) && (return npp_or_pow4(x, -1, y))
 end
-@inline inv_kernel(x::MC) = inv_kernel(x, (x.Intv)^(-1))
+@inline inv(x::MC) = inv_kernel(x, (x.Intv)^(-1))

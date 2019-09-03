@@ -14,7 +14,7 @@
     end
 end
 
-@inline function div_MV(x::MC, y::MC)
+@inline function div_MV(x::MC, y::MC, z::Interval{Float64})
     if (0.0 < y.Intv.lo)
         cv = div_diffcv(x, y)
         cc = -div_diffcv(-x, y)
@@ -28,7 +28,7 @@ end
     else
         error("Division (x/y) is unbounded on intervals y containing 0.")
     end
-    return cv, cc, cv_grad, cc_grad
+    return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst && y.cnst)
 end
 
 @inline function div_kernel(x::MC{N}, y::MC{N}, z::Interval{Float64}) where N
@@ -36,20 +36,19 @@ end
     degen1 = ((x.Intv.hi - x.Intv.lo) == 0.0)
     degen2 = ((y.Intv.hi - y.Intv.lo) == 0.0)
     if (x === y)
-        cv, cc, cv_grad, cc_grad = one_kernel(x)
+        zMC = one(x)
     elseif  (MC_param.mu >= 1 && ~(degen1||degen2))
-        cv, cc, cv_grad, cc_grad = div_MV(x, y, z)
+        zMC = div_MV(x, y, z)
     elseif (MC_param.multivar_refine) && (MC_param.mu < 1) && pos_orth
         # TODO ADD Multivariant Nonsmooth Division
     else
-        q = inv(x)
-        cv, cc, cv_grad, cc_grad = mult_kernel(x, q, z)
-        cv, cc, cv_grad, cc_grad = cut(z.lo, z.hi, cv, cc, cv_grad, cc_grad)
+        q = inv(y)
+        zMC = mult_kernel(x, q, z)
     end
-    return MC{N}(cv, cc, z, cv_grad, cc_grad, (x.cnst && y.cnst))
+    return zMC
 end
 
 @inline function /(x::MC, y::MC)
-    @assert ~(y.lo <= 0.0 <= y.hi)
+    @assert ~(y.Intv.lo <= 0.0 <= y.Intv.hi)
     return div_kernel(x, y, x.Intv/y.Intv)
 end

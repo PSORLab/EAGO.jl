@@ -17,9 +17,9 @@ mutable struct FunctionSetStorage{N}
 end
 
 FunctionSetStorage(N) = FunctionSetStorage{N}(JuMP.NodeData[],spzeros(Bool,1),
-                                           Float64[],T[],Float64[], Bool[],
+                                           Float64[],MC{N}[],Float64[], Bool[],
                                            Float64[], Float64[], Float64[], Float64[],
-                                           Int[],Int[],Int[],Int[])
+                                           Dict{Int,Tuple{Int,Int,Int,Int}}(), Int[],Int[],Int[],Int[])
 eltype(x::FunctionSetStorage{N}) where N = N
 
 mutable struct SubexpressionSetStorage{N}

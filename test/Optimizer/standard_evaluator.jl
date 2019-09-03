@@ -16,7 +16,7 @@
         MOI.initialize(source_evaluator , Symbol[:Grad])
 
         opt = m.moi_backend.optimizer.model.optimizer
-        built_evaluator = EAGO.build_nlp_evaluator(MC{2}, source_evaluator, opt)
+        built_evaluator = EAGO.build_nlp_evaluator(2, source_evaluator, opt, true)
 
         # Add current node and define point
         built_evaluator.current_node = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1, true)

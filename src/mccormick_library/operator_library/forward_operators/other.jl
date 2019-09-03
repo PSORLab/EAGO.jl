@@ -55,20 +55,15 @@ end
 @inline sign(x::MC) = sign_kernel(x, sign(x.Intv))
 
 @inline function cv_abs(x::Float64, xL::Float64, xU::Float64)
+	 (xL >= 0.0) && (return x, 1.0)
+	 (xU <= 0.0) && (return -x, -1.0)
 	 if (x >= 0.0)
-		 return xU*(x/xU)^(MC_param.mu+1), (MC_param.mu+1)*(x/xU)^MC_param.mu
+	 	return xU*(x/xU)^(MC_param.mu+1), (MC_param.mu+1)*(x/xU)^MC_param.mu
 	 else
 		 return -xL*(x/xL)^(MC_param.mu+1), -(MC_param.mu+1)*(x/xL)^MC_param.mu
 	 end
  end
-@inline function cc_abs(x::Float64,xL::Float64,xU::Float64)
-	if (x >= 0.0)
-		(x/xU)^(MC_param.mu+1), (MC_param.mu+1)*(x/xU)^MC_param.mu
-	else
-		-(x/xL)^(MC_param.mu+1), -(MC_param.mu+1)*(x/xL)^MC_param.mu
-	end
-end
-@inline cc_abs_NS(x::Float64,xL::Float64,xU::Float64) = dline_seg(abs, sign, x, xL, xU)
+@inline cc_abs(x::Float64,xL::Float64,xU::Float64) = dline_seg(abs, sign, x, xL, xU)
 @inline cv_abs_NS(x::Float64,xL::Float64,xU::Float64) = abs(x), sign(x)
 
 @inline function abs_kernel(x::MC{N}, z::Interval{Float64}) where N
@@ -90,7 +85,7 @@ end
 	cv_grad = max(0.0,gdcv1)*x.cv_grad + min(0.0,gdcv2)*x.cc_grad
 	cc_grad = min(0.0,gdcc1)*x.cv_grad + max(0.0,gdcc2)*x.cc_grad
   else
-    cc, dcc = cc_abs_NS(midcc, x.Intv.lo, x.Intv.hi)
+    cc, dcc = cc_abs(midcc, x.Intv.lo, x.Intv.hi)
     cv, dcv = cv_abs_NS(midcv, x.Intv.lo, x.Intv.hi)
     cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv

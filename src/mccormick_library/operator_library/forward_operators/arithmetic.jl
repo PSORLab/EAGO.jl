@@ -48,7 +48,7 @@ end
 	MC{N}(x.cv - c, x.cc - c, z, x.cv_grad, x.cc_grad, x.cnst)
 end
 @inline function minus_kernel(c::Float64, x::MC{N}, z::Interval{Float64}) where N
-	MC{N}(c - x.cc, c - x.cv, -x.cc_grad, -x.cv_grad, x.cnst)
+	MC{N}(c - x.cc, c - x.cv, z, -x.cc_grad, -x.cv_grad, x.cnst)
 end
 @inline -(x::MC, c::Float64) = minus_kernel(x, c, x.Intv - c)
 @inline -(c::Float64, x::MC) = minus_kernel(c, x, c - x.Intv)
@@ -88,9 +88,9 @@ end
 @inline div_kernel(x::MC, y::C, z::Interval{Float64}) where {C<:Integer}  = mult_kernel(x, inv(y), z)
 @inline div_kernel(x::C, y::MC, z::Interval{Float64}) where {C<:Integer}  = mult_kernel(x, inv(y), z)
 @inline /(x::MC, y::C) where {C<:AbstractFloat} = x*inv(convert(Float64,y))
-@inline /(x::C, y::MC) where {C<:AbstractFloat} = x*inv(convert(Float64,y))
+@inline /(x::C, y::MC) where {C<:AbstractFloat} = convert(Float64,x)*inv(y)
 @inline /(x::MC, y::C) where {C<:Integer} = x*inv(convert(Float64,y))
-@inline /(x::C, y::MC) where {C<:Integer} = x*inv(convert(Float64,y))
+@inline /(x::C, y::MC) where {C<:Integer} = convert(Float64,x)*inv(y)
 
 # Maximization
 @inline max_kernel(c::Float64, x::MC, z::Interval{Float64}) = max_kernel(x, c, z)
@@ -106,7 +106,6 @@ end
 @inline max(c::C, x::MC) where {C<:Integer} = max_kernel(x, convert(Float64, c), max(x.Intv, c))
 
 # Minimization
-@inline min_kernel(c::Float64, x::MC, z::Interval{Float64}) = min_kernel(x, c, z)
 @inline min_kernel(x::MC, c::C, z::Interval{Float64}) where {C<:AbstractFloat} = min_kernel(x, convert(Float64, c), z)
 @inline min_kernel(c::C, x::MC, z::Interval{Float64}) where {C<:AbstractFloat} = min_kernel(x, convert(Float64, c), z)
 @inline min_kernel(x::MC, c::C, z::Interval{Float64}) where {C<:Integer} = min_kernel(x, convert(Float64, c), z)
