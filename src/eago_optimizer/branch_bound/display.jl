@@ -6,8 +6,8 @@ solution, and time spent solving subproblems.
 """
 function print_solution!(x::Optimizer)
   temp::Float64 = 0.0
-  println("First Solution Found at Node $(x.first_solution_node)")
   if (x.verbosity > 0)
+    println("First Solution Found at Node $(x.first_solution_node)")
     println("UBD = $(x.objective_value)")
     println("Solution is :")
     if (x.feasible_solution_found)

@@ -1,4 +1,4 @@
-function check_node(nd::EAGO.NodeData, type::JuMP._Derivatives.NodeType , indx::Int, child::Vector{Int})
+function check_node(nd::EAGO.Script.NodeInfo, type::JuMP._Derivatives.NodeType , indx::Int, child::Vector{Int})
     flag = true
     if nd.nodetype != type
         flag = false
@@ -21,7 +21,7 @@ end
     function f1(x)
         return sin(3.0*x[1]) + x[2]
     end
-    tape1 = Tracer.trace_script(f1,2)
+    tape1 = EAGO.Script.trace_script(f1,2)
     @test check_node(tape1.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])
     @test check_node(tape1.nd[2], JuMP._Derivatives.VARIABLE, 2, [-1])
     @test check_node(tape1.nd[3], JuMP._Derivatives.VALUE, 1, [-2])
@@ -46,7 +46,7 @@ end
         end
         return sin(3.0*x[2]) + y
     end
-    tape2 = Tracer.trace_script(f2,2)
+    tape2 = EAGO.Script.trace_script(f2,2)
     @test check_node(tape2.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])
     @test check_node(tape2.nd[2], JuMP._Derivatives.VARIABLE, 2, [-1])
     @test check_node(tape2.nd[3], JuMP._Derivatives.CALLUNIVAR, 3, [1])
@@ -86,7 +86,7 @@ end
         z = abs(x[1])::Float64
         return z
     end
-    tape3 = Tracer.trace_script(f3,2)
+    tape3 = EAGO.Script.trace_script(f3,2)
     @test tape3.const_count == 0
     @test tape3.set_trace_count == 3
     @test check_node(tape3.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])

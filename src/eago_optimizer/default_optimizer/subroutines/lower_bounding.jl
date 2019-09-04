@@ -1,10 +1,17 @@
-
 function interval_lower_bound!(x::Optimizer, y::NodeBB, flag::Bool)
 
     feas = true
 
     d = x.working_evaluator_block.evaluator
-    objective_lo = get_node_lower(d.objective, 1)
+    if x.objective === nothing
+        objective_lo = get_node_lower(d.objective, 1)
+    #elseif isa(x.objective)
+    #    objective_lo
+    #elseif isa(x.objective)
+#        objective_lo
+#    elseif isa(x.objective)
+#        objective_lo
+    end
     constraints_intv_lo = get_node_lower.(d.constraints, 1)
     constraints_intv_hi = get_node_upper.(d.constraints, 1)
     constraints_bnd_lo = d.constraints_lbd
@@ -57,13 +64,11 @@ function default_lower_bounding!(x::Optimizer, y::NodeBB)
     result_status_code = MOI.get(x.working_relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(termination_status, result_status_code)
     solution = MOI.get(x.working_relaxed_optimizer, MOI.VariablePrimal(), x.lower_variables)
-    #println("initial solution: $solution")
 
     if valid_flag
         if feasible_flag
             x.current_lower_info.feasibility = true
             x.current_lower_info.value = MOI.get(x.working_relaxed_optimizer, MOI.ObjectiveValue())
-            #interval_lower_bound!(x, y, false)
             vprimal_solution = MOI.get(x.working_relaxed_optimizer, MOI.VariablePrimal(), x.lower_variables)
             x.current_lower_info.solution[1:end] = vprimal_solution
             x.cut_add_flag = x.current_lower_info.feasibility

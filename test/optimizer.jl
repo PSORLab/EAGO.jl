@@ -46,7 +46,6 @@ end
 
     @test_nowarn EAGO.check_inbounds(model, MOI.VariableIndex(1))
     @test_throws ErrorException EAGO.check_inbounds(model,MOI.VariableIndex(6))
-
 end
 
 @testset "Add Variable Bounds" begin
@@ -177,7 +176,7 @@ end
     @test model.quadratic_eq_constraints[1][3] == 1
 end
 
-@testset "Empty/Isempty, EaGO Model " begin
+@testset "Empty/Isempty, EAGO Model " begin
     model = EAGO.Optimizer()
     @test MOI.is_empty(model)
 end
@@ -187,8 +186,10 @@ end
 #include("implicit_optimizer.jl")
 
 @testset "LP Problems" begin
-    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
-    #m = Model(with_optimizer(Clp.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
 
     @variable(m, 1 <= x <= 3)
     @variable(m, 1 <= y <= 3)
@@ -201,20 +202,16 @@ end
 
     JuMP.optimize!(m)
 
-    xval = JuMP.value(x)
-    yval = JuMP.value(y)
+    @test isapprox(JuMP.value(x), 1.0, atol=1E-4)
+    @test isapprox(JuMP.value(y), 1.0, atol=1E-4)
+    @test isapprox(JuMP.objective_value(m), 2.0, atol=1E-4)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
-    fval = JuMP.objective_value(m)
-    status_term = JuMP.termination_status(m)
-    status_prim = JuMP.primal_status(m)
-
-    @test isapprox(xval,1.0,atol=1E-4)
-    @test isapprox(yval,1.0,atol=1E-4)
-    @test isapprox(fval,2.0,atol=1E-4)
-    @test status_term == MOI.OPTIMAL
-    @test status_prim == MOI.FEASIBLE_POINT
-
-    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
     @variable(m, -2 <= y <= 2)
@@ -228,22 +225,17 @@ end
 
     JuMP.optimize!(m)
 
-    xval = JuMP.value(x)
-    yval = JuMP.value(y)
-    zval = JuMP.value(z)
-    fval = JuMP.objective_value(m)
-    status_term = JuMP.termination_status(m)
-    status_prim = JuMP.primal_status(m)
+    @test isapprox(JuMP.value(x), -3.0, atol=1E-4)
+    @test isapprox(JuMP.value(y), 2.0, atol=1E-4)
+    @test isapprox(JuMP.value(z), 1.0, atol=1E-4)
+    @test isapprox(JuMP.objective_value(m), -3.0, atol=1E-4)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
-    @test isapprox(xval,-3.0,atol=1E-4)
-    @test isapprox(yval,2.0,atol=1E-4)
-    @test isapprox(zval,1.0,atol=1E-4)
-    @test isapprox(fval,-3.0,atol=1E-4)
-    @test status_term == MOI.OPTIMAL
-    @test status_prim == MOI.FEASIBLE_POINT
-
-    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
-    #m = Model(with_optimizer(Clp.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
     @variable(m, -2 <= y <= 2)
@@ -259,24 +251,17 @@ end
 
     JuMP.optimize!(m)
 
-    xval = JuMP.value(x)
-    yval = JuMP.value(y)
-    zval = JuMP.value(z)
-    qval = JuMP.value(q)
+    @test isapprox(JuMP.value(x), -3.0, atol=1E-4)
+    @test isapprox(JuMP.value(y), 2.0, atol=1E-4)
+    @test isapprox(JuMP.value(z), 1.0, atol=1E-4)
+    @test isapprox(JuMP.objective_value(m), -10.0, atol=1E-4)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
-    fval = JuMP.objective_value(m)
-    status_term = JuMP.termination_status(m)
-    status_prim = JuMP.primal_status(m)
-
-    @test isapprox(xval,-3.0,atol=1E-4)
-    @test isapprox(yval,2.0,atol=1E-4)
-    @test isapprox(zval,1.0,atol=1E-4)
-    @test isapprox(fval,-10.0,atol=1E-4)
-    @test status_term == MOI.OPTIMAL
-    @test status_prim == MOI.FEASIBLE_POINT
-
-    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
-    #m = Model(with_optimizer(Clp.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
     @variable(m, -2 <= y <= 2)
@@ -292,38 +277,80 @@ end
 
     JuMP.optimize!(m)
 
-    xval = JuMP.value(x)
-    yval = JuMP.value(y)
-    zval = JuMP.value(z)
-    qval = JuMP.value(q)
-
-    fval = JuMP.objective_value(m)
-    status_term = JuMP.termination_status(m)
-    status_prim = JuMP.primal_status(m)
-
-    @test isapprox(xval,0.0,atol=1E-4)
-    @test isapprox(yval,0.0,atol=1E-4)
-    @test isapprox(zval,0.0,atol=1E-4)
-    @test isapprox(qval,0.0,atol=1E-4)
-    @test isapprox(fval,Inf,atol=1E-4)
-    @test status_term == MOI.INFEASIBLE
-    @test status_prim == MOI.INFEASIBILITY_CERTIFICATE
+    @test isapprox(JuMP.value(x), 0.0, atol=1E-4)
+    @test isapprox(JuMP.value(y), 0.0, atol=1E-4)
+    @test isapprox(JuMP.value(z), 0.0, atol=1E-4)
+    @test isapprox(JuMP.value(q), 0.0, atol=1E-4)
+    @test isapprox(JuMP.objective_value(m), Inf, atol=1E-4)
+    @test JuMP.termination_status(m) == MOI.INFEASIBLE
+    @test JuMP.primal_status(m) == MOI.INFEASIBILITY_CERTIFICATE
 end
 
-@testset "NLP Problem #1" begin
-    jumpmodel4 = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
-    @variable(jumpmodel4, -200 <= x <= -100)
-    @variable(jumpmodel4, 200 <= y <= 400)
-    @constraint(jumpmodel4, -500 <= x+2y <= 400)
-    @NLobjective(jumpmodel4, Min, x*y)
-    status4 = JuMP.optimize!(jumpmodel4)
+@testset "NLP Problems" begin
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
+    @variable(m, -200 <= x <= -100)
+    @variable(m, 200 <= y <= 400)
+    @constraint(m, -500 <= x+2y <= 400)
+    @NLobjective(m, Min, x*y)
+    JuMP.optimize!(m)
 
-    @test primal_status(jumpmodel4) == MOI.OPTIMAL
-    @test isapprox(getvalue(x), -200.0, atol=1E-5)
-    @test isapprox(getvalue(y), 300.0, atol=1E-5)
-    @test isapprox(getobjectivevalue(jumpmodel4), -60000.00119999499, atol=2.0)
-end
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
+    @test isapprox(JuMP.value(x), -200.0, atol=1E-5)
+    @test isapprox(JuMP.value(y), 300.0, atol=1E-5)
+    @test isapprox(JuMP.objective_value(m), -60000.00119999499, atol=2.0)
 
-for i in 2:5
-   include("TestProblems/NLP/Prob$i.jl")
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
+    x_Idx = Any[1, 2, 3]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[1], -5.0)
+    JuMP.set_upper_bound(x[1], 5.0)
+    JuMP.set_lower_bound(x[2], -5.0)
+    JuMP.set_upper_bound(x[2], 5.0)
+    JuMP.set_lower_bound(x[3], -100.0)
+    JuMP.set_upper_bound(x[3], 100.0)
+
+    @NLconstraint(m, e2, 2* (x[2])^2+4*x[1]*x[2]-42*x[1]+4* (x[1])^3-x[3] <= 14.0)
+    @NLconstraint(m, e3, (-2* (x[2])^2)-4*x[1]*x[2]+42*x[1]-4* (x[1])^3-x[3] <= -14.0)
+    @NLconstraint(m, e4, 2* (x[1])^2+4*x[1]*x[2]-26*x[2]+4* (x[2])^3-x[3] <= 22.0)
+    @NLconstraint(m, e5, (-2* (x[1])^2)-4*x[1]*x[2]+26*x[2]-4* (x[2])^3-x[3] <= -22.0)
+    @NLobjective(m, Min, x[3])
+    JuMP.optimize!(m)
+
+    @test isapprox(JuMP.objective_value(m), 0.000, atol=1E-3)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
+
+
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
+
+    @variable(m, y)
+    x_Idx = Any[1, 2]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[1], 0.0)
+    JuMP.set_lower_bound(x[2], 0.0)
+    JuMP.set_lower_bound(y, -20.0)
+    JuMP.set_upper_bound(x[1], 3.0)
+    JuMP.set_upper_bound(x[2], 4.0)
+    JuMP.set_upper_bound(y, 20.0)
+
+    @constraint(m, e1, x[1] + x[2] + y == 0.0)
+    @NLconstraint(m, e2, x[2] - 8*(x[1])^2 + 8*(x[1])^3-2*(x[1])^4 <= 2.0)
+    @NLconstraint(m, e3, 32*(x[1])^3-4*(x[1])^4-88*(x[1])^2+96*x[1]+x[2] <= 36.0)
+
+    @objective(m, Min, y)
+    JuMP.optimize!(m)
+
+    @test isapprox(JuMP.objective_value(m), -5.5080, atol=1E-3)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 end

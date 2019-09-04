@@ -21,8 +21,10 @@ end
 
 @testset "Poor Man's LP" begin
     # Puranik 2017 example
-    opt1 = EAGO.Optimizer()
-    x = MOI.add_variables(opt1,3)
+    opt1 = EAGO.Optimizer(udf_scrubber_flag = false,
+                          udf_to_JuMP_flag = false,
+                          verbosity = 0)
+    x = MOI.add_variables(opt1, 3)
 
     MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.LessThan(4.0))
     MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.GreaterThan(-2.0))
@@ -52,8 +54,10 @@ end
 end
 
 @testset "Classify Quadratic Types" begin
-    opt1 = EAGO.Optimizer()
-    x = MOI.add_variables(opt1,3)
+    opt1 = EAGO.Optimizer(udf_scrubber_flag = false,
+                          udf_to_JuMP_flag = false,
+                          verbosity = 0)
+    x = MOI.add_variables(opt1, 3)
 
     MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.LessThan(4.0))
     MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.GreaterThan(-2.0))
@@ -108,7 +112,9 @@ end
 end
 
 @testset "Quadratic Domain Reduction (Univariate)" begin
-    m = EAGO.Optimizer()
+    m = EAGO.Optimizer(udf_scrubber_flag = false,
+                       udf_to_JuMP_flag = false,
+                       verbosity = 0)
 
     n2 = NodeBB()
     n2.lower_variable_bounds = [-10.0, -10.0, -10.0]
@@ -176,7 +182,10 @@ end
 =#
 
 @testset "Optimization-Based Bound Tightening (Linear)" begin
-    m = Model(with_optimizer(EAGO.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             udf_scrubber_flag = false,
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
     xL = [-4.0; -2.0]
     xU = [4.0; 2.0]
 
@@ -215,7 +224,8 @@ end
 @testset "Optimization-Based Bound Tightening (Nonlinear)" begin
     m = Model(with_optimizer(EAGO.Optimizer,
                              udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false))
+                             udf_to_JuMP_flag = false,
+                             verbosity = 0))
     xL = [0.0; -2.0]
     xU = [4.0; 4.0]
 
