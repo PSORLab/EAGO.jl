@@ -1,5 +1,5 @@
 @testset "Test Continuous Branch Rules" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     B.variable_number = 2
     B.fixed_variable[1]  = false
     B.fixed_variable[2]  = false
@@ -17,7 +17,7 @@
 end
 
 @testset "Test Implicit Branch Rules" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     B.variable_number = 2
     B.fixed_variable[1]  = false
     B.fixed_variable[2]  = false
@@ -42,7 +42,7 @@ end
 end
 
 @testset "Test B&B Checks" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     B.variable_number = 2
     B.variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false),
                       EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
@@ -80,7 +80,7 @@ end
 end
 
 @testset "Find Lower Bound" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     B.global_upper_bound = -4.5
     B.stack[1] = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1, true)
     B.stack[2] = EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1, true)
@@ -91,7 +91,7 @@ end
 end
 
 @testset "Test Fathom!" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     B.global_upper_bound = -4.5
     B.stack[1] = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1, true)
     B.stack[2] = EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1, true)
@@ -103,7 +103,7 @@ end
 end
 
 @testset "Node Selection" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     B.global_upper_bound = -4.5
     B.stack[1] = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1, true)
     B.stack[2] = EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1, true)
@@ -115,7 +115,7 @@ end
 end
 
 @testset "Node Storage" begin
-    B = EAGO.Optimizer()
+    B = EAGO.Optimizer(verbosity = 0)
     y = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1, true)
     y1 = EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1, true)
     y2 = EAGO.NodeBB(Float64[2.0,3.0], Float64[4.0,5.0], -2.0, 3.0, 2, 1, true)

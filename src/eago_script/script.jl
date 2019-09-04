@@ -12,7 +12,7 @@ module Script
                               UserOperatorRegistry, adjmat
     import Cassette: @context, Cassette.overdub
     #import CodeTransformation: addmethod! TODO: add this later
-    import ForwardDiff: derivative, GradientConfig, gradient!
+    import ForwardDiff: derivative
 
     include("codetransformation.jl") # TODO: delete this later
     include("scrubber.jl")

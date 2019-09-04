@@ -9,6 +9,7 @@ module EAGO
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros
     using StaticArrays: SVector
     using LinearAlgebra: eigmin
+    using ForwardDiff: jacobian
 
     import Calculus.symbolic_derivatives_1arg
     import Printf.@sprintf
