@@ -32,8 +32,8 @@ Ipopt = "≥ 0.5.1"
 JuMP = "~0.19.0"
 MathOptInterface = "~0.8.1"
 Reexport = "0.2.0"
-StaticArrays = "~0.8.3"
-julia = "1"
+StaticArrays = "≥ 0.8.0"
+julia = "≥ 1.1.0"
 
 [extras]
 

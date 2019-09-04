@@ -1,7 +1,6 @@
 #!/usr/bin/env julia
 
-using Compat
-using Compat.Test
+using Test
 using EAGO, JuMP, MathOptInterface, StaticArrays, Ipopt
 const MOI = MathOptInterface
 
