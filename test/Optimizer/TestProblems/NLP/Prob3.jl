@@ -1,5 +1,5 @@
 using EAGO, JuMP
-m = Model(with_optimizer(EAGO.Optimizer, cut_max_iterations = 10))
+m = Model(with_optimizer(EAGO.Optimizer, cut_max_iterations = 10, verbosity = 0))
 
 # ----- Variables ----- #
 @variable(m, objvar)
@@ -31,7 +31,6 @@ fval = JuMP.objective_value(m)
 status_term = JuMP.termination_status(m)
 status_prim = JuMP.primal_status(m)
 
-#=
 @testset "NLP Problem #4: ex14_1_1 (global library)" begin
 
     m = Model(with_optimizer(EAGO.Optimizer))
@@ -65,4 +64,3 @@ status_prim = JuMP.primal_status(m)
     @test status_term == MOI.Success
     @test status_prim == MOI.FeasiblePoint
 end
-=#

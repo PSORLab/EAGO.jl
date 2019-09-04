@@ -182,20 +182,12 @@ end
     @test MOI.is_empty(model)
 end
 
-println("BEGIN TESTING QUADRATIC RELAXATIONS...")
 #include("quadratic_relaxation.jl")
-println("TESTING QUADRATIC RELAXATIONS COMPLETE.")
-
-println("BEGIN TESTING STANDARD EVALUATOR...")
-include("standard_evaluator.jl")
-println("TESTING STANDARD EVALUATOR COMPLETE.")
-
-println("BEGIN TESTING IMPLICIT EVALUATOR...")
-include("implicit_optimizer.jl")
-println("TESTING IMPLICIT EVALUATOR COMPLETE.")
+#include("standard_evaluator.jl")
+#include("implicit_optimizer.jl")
 
 @testset "LP Problems" begin
-    m = Model(with_optimizer(EAGO.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
     #m = Model(with_optimizer(Clp.Optimizer))
 
     @variable(m, 1 <= x <= 3)
@@ -222,7 +214,7 @@ println("TESTING IMPLICIT EVALUATOR COMPLETE.")
     @test status_term == MOI.OPTIMAL
     @test status_prim == MOI.FEASIBLE_POINT
 
-    m = Model(with_optimizer(EAGO.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
     @variable(m, -2 <= y <= 2)
@@ -249,11 +241,89 @@ println("TESTING IMPLICIT EVALUATOR COMPLETE.")
     @test isapprox(fval,-3.0,atol=1E-4)
     @test status_term == MOI.OPTIMAL
     @test status_prim == MOI.FEASIBLE_POINT
+
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
+    #m = Model(with_optimizer(Clp.Optimizer))
+
+    @variable(m, -3 <= x <= -1)
+    @variable(m, -2 <= y <= 2)
+    @variable(m, 1 <= z <= 3)
+    @variable(m, -10 <= q <= 9)
+
+    @NLobjective(m, Min, 2x - 3y + 2z)
+
+    @NLconstraint(m, x + 2y >= -10)
+    @NLconstraint(m, z - 2y <= 2)
+    @NLconstraint(m, y >= 0)
+    @NLconstraint(m, q-3*z-y >= 0)
+
+    JuMP.optimize!(m)
+
+    xval = JuMP.value(x)
+    yval = JuMP.value(y)
+    zval = JuMP.value(z)
+    qval = JuMP.value(q)
+
+    fval = JuMP.objective_value(m)
+    status_term = JuMP.termination_status(m)
+    status_prim = JuMP.primal_status(m)
+
+    @test isapprox(xval,-3.0,atol=1E-4)
+    @test isapprox(yval,2.0,atol=1E-4)
+    @test isapprox(zval,1.0,atol=1E-4)
+    @test isapprox(fval,-10.0,atol=1E-4)
+    @test status_term == MOI.OPTIMAL
+    @test status_prim == MOI.FEASIBLE_POINT
+
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
+    #m = Model(with_optimizer(Clp.Optimizer))
+
+    @variable(m, -3 <= x <= -1)
+    @variable(m, -2 <= y <= 2)
+    @variable(m, 1 <= z <= 3)
+    @variable(m, -10 <= q <= 9)
+
+    @NLobjective(m, Min, 2x - 3y + 2z)
+
+    @NLconstraint(m, x + 2y >= -10)
+    @NLconstraint(m, z - 2y <= 2)
+    @NLconstraint(m, y >= 4)
+    @NLconstraint(m, q-3*z-y >= 0)
+
+    JuMP.optimize!(m)
+
+    xval = JuMP.value(x)
+    yval = JuMP.value(y)
+    zval = JuMP.value(z)
+    qval = JuMP.value(q)
+
+    fval = JuMP.objective_value(m)
+    status_term = JuMP.termination_status(m)
+    status_prim = JuMP.primal_status(m)
+
+    @test isapprox(xval,0.0,atol=1E-4)
+    @test isapprox(yval,0.0,atol=1E-4)
+    @test isapprox(zval,0.0,atol=1E-4)
+    @test isapprox(qval,0.0,atol=1E-4)
+    @test isapprox(fval,Inf,atol=1E-4)
+    @test status_term == MOI.INFEASIBLE
+    @test status_prim == MOI.INFEASIBILITY_CERTIFICATE
 end
 
+@testset "NLP Problem #1" begin
+    jumpmodel4 = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
+    @variable(jumpmodel4, -200 <= x <= -100)
+    @variable(jumpmodel4, 200 <= y <= 400)
+    @constraint(jumpmodel4, -500 <= x+2y <= 400)
+    @NLobjective(jumpmodel4, Min, x*y)
+    status4 = JuMP.optimize!(jumpmodel4)
 
-println("BEGIN NLP TEST PROBLEMS...")
-for i in 1:5
+    @test primal_status(jumpmodel4) == MOI.OPTIMAL
+    @test isapprox(getvalue(x), -200.0, atol=1E-5)
+    @test isapprox(getvalue(y), 300.0, atol=1E-5)
+    @test isapprox(getobjectivevalue(jumpmodel4), -60000.00119999499, atol=2.0)
+end
+
+for i in 2:5
    include("TestProblems/NLP/Prob$i.jl")
 end
-println("NLP TEST COMPLETE.")

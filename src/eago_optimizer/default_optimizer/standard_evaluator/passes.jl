@@ -104,7 +104,7 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                         if first_eval_flag
                             @inbounds tmp_sum += setstorage[ix]
                         else
-                            @inbounds tmp_sum = plus_kernel(tmp_sum, setstorage[ix], setstorage[k].Intv)
+                            @inbounds tmp_sum = McCormick.plus_kernel(tmp_sum, setstorage[ix], setstorage[k].Intv)
                         end
                     end
                     @inbounds isnum &= chdset
@@ -135,7 +135,7 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                     if first_eval_flag
                         @inbounds tmp_sub -= setstorage[ix2]
                     else
-                        @inbounds tmp_sub = minus_kernel(tmp_sub, setstorage[ix2], setstorage[k].Intv)
+                        @inbounds tmp_sub = McCormick.minus_kernel(tmp_sub, setstorage[ix2], setstorage[k].Intv)
                     end
                 end
                 numvalued[k] = isnum
@@ -157,7 +157,7 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                         if first_eval_flag
                             @inbounds tmp_prod = tmp_prod*setstorage[children_arr[c_idx]]
                         else
-                            @inbounds tmp_prod = mult_kernel(tmp_prod, setstorage[children_arr[c_idx]], setstorage[k].Intv)
+                            @inbounds tmp_prod = McCormick.mult_kernel(tmp_prod, setstorage[children_arr[c_idx]], setstorage[k].Intv)
                         end
                     end
                 end
@@ -198,7 +198,7 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                         if first_eval_flag
                             tmp_pow = pow(base, exponent)
                         else
-                            @inbounds tmp_pow = pow_kernel(base, exponent, setstorage[k].Intv)
+                            @inbounds tmp_pow = ^(base, exponent, setstorage[k].Intv)
                         end
                         setstorage[k] = set_value_post(x_values, tmp_pow, current_node, subgrad_tighten)
                     end

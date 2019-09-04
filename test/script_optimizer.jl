@@ -1,4 +1,4 @@
-function check_node(nd::EAGO.NodeInfo, type::JuMP._Derivatives.NodeType , indx::Int, child::Vector{Int})
+function check_node(nd::EAGO.NodeData, type::JuMP._Derivatives.NodeType , indx::Int, child::Vector{Int})
     flag = true
     if nd.nodetype != type
         flag = false

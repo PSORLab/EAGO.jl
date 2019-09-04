@@ -19,9 +19,8 @@ module EAGO
                                expm1, log, log2, log10, log1p, sqrt,
                                sin, cos, tan, min, max, sec, csc, cot, step,
                                sign, dist, mid, pow, Interval, sinh, cosh, ∩,
-                               IntervalBox, bisect, isdisjoint
-                               # faster versions of: ^, inv, exp2, exp10, tanh,
-                               # asinh, acosh, atanh,
+                               IntervalBox, bisect, isdisjoint, ^, exp2, exp10,
+                               tanh, asinh, cosh, atanh
 
 
     const MOI = MathOptInterface
