@@ -9,7 +9,7 @@
                        EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
     B.current_lower_info.solution = [1.4, 5.3]
     S = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1, true)
-    X1,X2 = EAGO.continuous_relative_bisect(B,S)
+    X1,X2 = EAGO.bisection_function(B,S)
     @test isapprox(X1.lower_variable_bounds[1], 1.0; atol = 1E-4)
     @test isapprox(X1.upper_variable_bounds[1], 1.475; atol = 1E-2)
     @test isapprox(X2.lower_variable_bounds[1], 1.475; atol = 1E-2)
@@ -48,35 +48,35 @@ end
                       EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
     S = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1, true)
 
-    @test EAGO.default_repeat_check(B,S) == false
-    @test EAGO.default_termination_check(B) == false
+    @test EAGO.repeat_check(B,S) == false
+    @test EAGO.termination_check(B) == false
 
     B.stack[1] = S; B.iteration_limit = -1; B.current_iteration_count = 2
-    @test EAGO.default_termination_check(B) == false
+    @test EAGO.termination_check(B) == false
 
     B.iteration_limit = 1E8; B.node_limit = -1;
-    @test EAGO.default_termination_check(B) == false
+    @test EAGO.termination_check(B) == false
 
     B.node_limit = 1E8; B.current_lower_info.value = 1.1;
     B.current_upper_info.value = 1.1 + 1.0E-6; B.absolute_tolerance = 1.0E-4
-    @test EAGO.default_termination_check(B) == true
+    @test EAGO.termination_check(B) == true
 
     B.absolute_tolerance = 1.0E-1; B.relative_tolerance = 1.0E-12
-    @test EAGO.default_termination_check(B) == true
+    @test EAGO.termination_check(B) == true
 
     B.current_lower_info.value = -Inf;  B.current_upper_info.value = Inf
     B.relative_tolerance = 1.0E10;
-    @test EAGO.default_termination_check(B) == true
+    @test EAGO.termination_check(B) == true
 
     B.current_lower_info.value = 2.1;  B.current_upper_info.value = 2.1+1E-9
     B.relative_tolerance = 1.0E10; B.absolute_tolerance = 1.0E-6
-    @test EAGO.default_termination_check(B) == true
+    @test EAGO.termination_check(B) == true
 
     B.relative_tolerance = 1.0E-6; B.absolute_tolerance = 1.0E10
-    @test EAGO.default_termination_check(B) == true
+    @test EAGO.termination_check(B) == true
 
     B.relative_tolerance = 1.0E-20; B.absolute_tolerance = 1.0E-20
-    @test EAGO.default_termination_check(B) == true
+    @test EAGO.termination_check(B) == true
 end
 
 @testset "Find Lower Bound" begin
@@ -108,7 +108,7 @@ end
     B.stack[1] = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1, true)
     B.stack[2] = EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1, true)
     B.stack[3] = EAGO.NodeBB(Float64[2.0,3.0], Float64[4.0,5.0], -2.0, 3.0, 2, 1, true)
-    key,node = EAGO.node_select_best!(B)
+    key,node = EAGO.node_selection(B)
 
     @test key == 2
     @test node.lower_bound == -5.0
@@ -122,7 +122,7 @@ end
     EAGO.single_storage!(B,y)
     @test B.maximum_node_id == 1
 
-    EAGO.default_storage!(B,y1,y2)
+    EAGO.node_storage!(B,y1,y2)
     @test B.stack[1].lower_bound == -4.0
     @test B.stack[2].lower_bound == -5.0
     @test B.stack[3].lower_bound == -2.0

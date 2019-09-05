@@ -4,7 +4,7 @@
 Used to determine if optimizer should repeat processing due to node size reduction.
 Currently returns false.
 """
-function default_repeat_check(x::Optimizer,y::NodeBB)
+function repeat_check(x::Optimizer,y::NodeBB)
   return false
 end
 
@@ -13,7 +13,7 @@ end
 
 Checks for termination based on termination criteria.
 """
-function default_termination_check(x::Optimizer)
+function termination_check(x::Optimizer)
 
     L = x.global_lower_bound
     U = x.global_upper_bound
@@ -57,7 +57,7 @@ end
 
 Checks relative and absolute convergence.
 """
-function default_convergence_check(x::Optimizer)
+function convergence_check(x::Optimizer)
   L = x.current_lower_info.value
   U = x.current_upper_info.value
   t1 = (U - L) <= x.absolute_tolerance

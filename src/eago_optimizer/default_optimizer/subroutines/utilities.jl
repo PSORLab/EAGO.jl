@@ -261,7 +261,7 @@ function set_local_nlp!(m::Optimizer)
             end
         end
     else
-        @assert m.nlp_data != empty_nlp_data()
+        @assert m.nlp_data !== MOI.NLPBlockData(Float64[], EmptyNLPEvaluator(), false)
         MOI.set(m.initial_upper_optimizer, MOI.ObjectiveSense(), m.optimization_sense)
         #=
         if (m.optimization_sense == MOI.MAX_SENSE)
@@ -281,19 +281,6 @@ Checks to see if the user set any of EAGO's subroutines. If not, the subroutines
 are set to default values.
 """
 function set_to_default!(m::Optimizer)
-    (m.lower_problem! == dummy_function)       &&   (m.lower_problem! = default_lower_bounding!)
-    (m.upper_problem! == dummy_function)       &&   (m.upper_problem! = default_upper_bounding!)
-    (m.preprocess! == dummy_function)         &&   (m.preprocess! = default_preprocess!)
-    (m.postprocess! == dummy_function)        &&   (m.postprocess! = default_postprocess!)
-    (m.single_check == dummy_function)        &&   (m.single_check = default_repeat_check)
-    (m.convergence_check == dummy_function)   &&   (m.convergence_check = default_convergence_check)
-    (m.termination_check == dummy_function)   &&   (m.termination_check = default_termination_check)
-    (m.node_storage! == dummy_function)        &&   (m.node_storage! = default_storage!)
-    (m.node_selection == dummy_function)      &&   (m.node_selection = node_select_best!)
-    (m.bisection_function == dummy_function)  &&   (m.bisection_function = continuous_relative_bisect)
-    (m.cut_condition == dummy_function)       &&   (m.cut_condition = default_cut_condition)
-    (m.add_cut! == dummy_function)             &&   (m.add_cut! = default_add_cut!)
-    (m.relax_function! == dummy_function)      &&   (m.relax_function! = relax_model!)
     isa(m.initial_relaxed_optimizer, DummyOptimizer) && (m.initial_relaxed_optimizer = GLPK.Optimizer())
     isa(m.working_relaxed_optimizer, DummyOptimizer) && (m.working_relaxed_optimizer = GLPK.Optimizer())
     #isa(m.initial_relaxed_optimizer, DummyOptimizer) && (m.initial_relaxed_optimizer = CPLEX.Optimizer())
@@ -404,8 +391,8 @@ Retrieves the lower and upper duals for variable bounds from the
 `current_lower_info` field.
 """
 function set_dual!(x::Optimizer)
-    for (vi,VarIndxTuple) in enumerate(x.lower_variable_index)
-        (ci1,ci2,n) = VarIndxTuple
+    for (vi, VarIndxTuple) in enumerate(x.lower_variable_index)
+        (ci1, ci2, n) = VarIndxTuple
         if (n == 2)
             if isa(ci1,MOI.ConstraintIndex{MOI.SingleVariable,MOI.GreaterThan{Float64}})
                 x.current_lower_info.lower_variable_dual[vi] = MOI.get(x.working_relaxed_optimizer, MOI.ConstraintDual(), ci1)

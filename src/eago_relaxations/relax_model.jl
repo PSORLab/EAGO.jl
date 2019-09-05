@@ -4,7 +4,7 @@
 Takes an NLP data block structure, linear, quadratic constraints, and
 variable bounds and subsequently builds the relaxed model
 """
-function relax_model!(src::Optimizer, trg, n::NodeBB, r::RelaxationScheme, xpnt::Vector{Float64}; load::Bool = false)
+function relax_function!(src::Optimizer, trg, n::NodeBB, r::RelaxationScheme, xpnt::Vector{Float64}; load::Bool = false)
 
     if load
         #println("during load")

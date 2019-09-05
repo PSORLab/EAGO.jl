@@ -102,31 +102,55 @@ function user_reformed_optimizer(m::Optimizer)
     deepcopy(backend(m.nlp_data.evaluator.m).optimizer.model.optimizer)
 end
 
-function MOI.optimize!(m::Optimizer; custom_mod! = triv_function, custom_mod_args = (1,))
+function local_solve!(x::Optimizer)
+
+  key_pair::Pair{Int,NodeBB} = node_selection(x)
+  current_node::NodeBB = kn_pair[2]
+  upper_time = @elapsed solve_local_nlp!(x, current_node)
+
+  if x.current_upper_info.feasibility
+    x.feasible_solution_found = true
+    x.first_solution_node = x.maximum_node_id
+    x.solution_value = x.current_upper_info.value
+    x.continuous_solution[:] = x.current_upper_info.solution
+    x.termination_status_code = MOI.LOCALLY_SOLVED
+    x.result_status_code = MOI.FEASIBLE_POINT
+  else
+    x.feasible_solution_found = false
+    x.first_solution_node = x.maximum_node_id
+    x.termination_status_code = MOI.LOCALLY_INFEASIBLE
+    x.result_status_code = MOI.INFEASIBLE_POINT
+  end
+  x.history.upper_time[1] = upper_time
+
+end
+
+function MOI.optimize!(m::Optimizer)
+#function MOI.optimize!(m::Optimizer; ignore_optimize_hook = (model.optimize_hook === nothing))
 
 
     setrounding(Interval, m.rounding_mode)
 
     ########### Reformulate DAG using auxilliary variables ###########
-    NewVariableSize = length(m.variable_info)
-    m.continuous_variable_number = NewVariableSize
-    m.variable_number = NewVariableSize
+    _variable_len = length(m.variable_info)
+    m.continuous_variable_number = _variable_len
+    m.variable_number = _variable_len
 
     ########### Set Correct Size for Problem Storage #########
-    m.current_lower_info.solution = Float64[0.0 for i=1:NewVariableSize]
-    m.current_lower_info.lower_variable_dual = Float64[0.0 for i=1:NewVariableSize]
-    m.current_lower_info.upper_variable_dual = Float64[0.0 for i=1:NewVariableSize]
-    m.current_upper_info.solution = Float64[0.0 for i=1:NewVariableSize]
+    m.current_lower_info.solution = fill(0.0, _variable_len)
+    m.current_lower_info.lower_variable_dual = fill(0.0, _variable_len)
+    m.current_lower_info.upper_variable_dual = fill(0.0, _variable_len)
+    m.current_upper_info.solution = fill(0.0, _variable_len)
 
     # loads variables into the working model
     m.variable_index_to_storage = Dict{Int,Int}()
-    for i=1:NewVariableSize
+    for i=1:_variable_len
         m.variable_index_to_storage[i] = i
     end
     m.storage_index_to_variable = ReverseDict(m.variable_index_to_storage)
 
     # Get various other sizes
-    m.continuous_solution = zeros(Float64,NewVariableSize)
+    m.continuous_solution = zeros(Float64, _variable_len)
 
     set_to_default!(m)                             # Sets any unset functions to default values
     initialize_evaluators!(m, false)               # initializes the EAGO and JuMP NLP evaluators
@@ -141,30 +165,32 @@ function MOI.optimize!(m::Optimizer; custom_mod! = triv_function, custom_mod_arg
 
     create_initial_node!(m)                        # Create initial node and add it to the stack
 
-    m.upper_variables = MOI.add_variables(m.initial_relaxed_optimizer, m.variable_number)
-    m.lower_variables = MOI.VariableIndex.(1:m.variable_number)
+    m.lower_variables = MOI.VariableIndex[MOI.VariableIndex(i) for i in 1:_variable_len]
+    m.upper_variables = MOI.add_variables(m.initial_relaxed_optimizer, _variable_len)
 
     ###### OBBT Setup #####
     label_fixed_variables!(m)                                   # label variable fixed to a value
-    label_nonlinear_variables!(m, m.nlp_data.evaluator)
+    _nlpdata = m.nlp_data
+    _evaluator = _nlpdata.evaluator::MOI.AbstractNLPEvaluator
+    label_nonlinear_variables!(m, _evaluator)
     label_obbt_variables!(m)
 
     # Relax initial model terms
     xmid = 0.5*(lower_variable_bounds(m.stack[1]) + upper_variable_bounds(m.stack[1]))
-    relax_model!(m, m.initial_relaxed_optimizer, m.stack[1], m.relaxation, xmid, load = true)
+    relax_function!(m, m.initial_relaxed_optimizer, m.stack[1], m.relaxation, xmid, load = true)
 
-    # Runs a customized function if one is provided
-    m.custom_mod_flag = (custom_mod! != triv_function)
-    if m.custom_mod_flag
-        custom_mod!(m, custom_mod_args)
+    # Allow for a hook to modify branch and bound routine
+    ignore_optimize_hook = (m.optimize_hook === nothing)
+    if !ignore_optimize_hook
+        return m.optimize_hook(m; kwargs...)
     end
 
     (~m.use_upper_factory) && bld_user_upper_fact!(m) # if optimizer type is supplied for upper, build factory
 
     # Runs the branch and bound routine
     if m.local_solve_only
-        local_nlp_solve!(m)
+        local_solve!(m)
     else
-        solve_nlp!(m)
+        global_solve!(m)
     end
 end

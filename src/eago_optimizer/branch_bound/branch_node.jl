@@ -4,7 +4,7 @@
 Bisect node `S` on the maximum relative width dimension and return the two
 resulting nodes.
 """
-function continuous_relative_bisect(B::Optimizer, S::NodeBB)
+function bisection_function(B::Optimizer, S::NodeBB)
   var_number = B.variable_number
   lower_variable_bounds = S.lower_variable_bounds
   upper_variable_bounds = S.upper_variable_bounds

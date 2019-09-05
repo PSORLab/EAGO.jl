@@ -4,24 +4,11 @@ end
 
 function MOI.is_empty(m::Optimizer)
 
-    vb = Bool[false for i=1:15]
+    vb = Bool[false for i=1:3]
 
     vb[1] = isempty(m.variable_info)
-    vb[2] = m.started_solve
-    vb[3] = m.optimization_sense == MOI.FEASIBILITY_SENSE
-    vb[4] = m.termination_status_code == MOI.OPTIMIZE_NOT_CALLED
-    vb[5] = m.failed_solver == NO_FAILURE
-
-    vb[6] = m.lower_problem! == dummy_function
-    vb[7] = m.upper_problem! == dummy_function
-    vb[8] = m.preprocess! == dummy_function
-    vb[9] = m.postprocess! == dummy_function
-    vb[10] = m.single_check == dummy_function
-    vb[11] = m.convergence_check == dummy_function
-    vb[12] = m.termination_check == dummy_function
-    vb[13] = m.node_storage! == dummy_function
-    vb[14] = m.node_selection == dummy_function
-    vb[15] = m.bisection_function == dummy_function
+    vb[2] = m.optimization_sense == MOI.FEASIBILITY_SENSE
+    vb[3] = m.termination_status_code == MOI.OPTIMIZE_NOT_CALLED
 
     bool_out = (sum(vb) > 0)
 
@@ -134,10 +121,6 @@ function label_nonlinear_variables!(m::Optimizer, x)
                 end
             end
         end
-    end
-    # sets the following variable indexs to nonlinear
-    for i in m.treat_as_nonlinear
-        m.bisection_variable[i] = true
     end
 end
 

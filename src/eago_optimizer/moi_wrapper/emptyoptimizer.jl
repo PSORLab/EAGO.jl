@@ -29,6 +29,4 @@ function MOI.eval_hessian_lagrangian(::EmptyNLPEvaluator, H, x, σ, μ)
     return
 end
 
-empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
-
 struct DummyOptimizer <: MOI.AbstractOptimizer end

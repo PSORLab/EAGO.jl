@@ -37,7 +37,7 @@ end
 Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
-function default_lower_bounding!(x::Optimizer, y::NodeBB)
+function lower_problem!(x::Optimizer, y::NodeBB)
 
     # Copies initial model into working model (if initial model isn't dummy)
     # A dummy model is left iff all terms are relaxed
@@ -53,8 +53,8 @@ function default_lower_bounding!(x::Optimizer, y::NodeBB)
 
     xmid = 0.5*(lower_variable_bounds(y) + upper_variable_bounds(y))
     update_lower_variable_bounds1!(x, y, x.working_relaxed_optimizer)
-    x.relax_function!(x, x.working_relaxed_optimizer, y, x.relaxation, xmid, load = true)
-    x.relax_function!(x, x.working_relaxed_optimizer, y, x.relaxation, xmid, load = false)
+    relax_function!(x, x.working_relaxed_optimizer, y, x.relaxation, xmid, load = true)
+    relax_function!(x, x.working_relaxed_optimizer, y, x.relaxation, xmid, load = false)
 
     # Optimizes the object
     MOI.optimize!(x.working_relaxed_optimizer)
@@ -71,16 +71,16 @@ function default_lower_bounding!(x::Optimizer, y::NodeBB)
             x.current_lower_info.value = MOI.get(x.working_relaxed_optimizer, MOI.ObjectiveValue())
             vprimal_solution = MOI.get(x.working_relaxed_optimizer, MOI.VariablePrimal(), x.lower_variables)
             x.current_lower_info.solution[1:end] = vprimal_solution
-            x.cut_add_flag = x.current_lower_info.feasibility
+            x._cut_add_flag = x.current_lower_info.feasibility
             set_dual!(x)
         else
-            x.cut_add_flag = false
+            x._cut_add_flag = false
             x.current_lower_info.feasibility = false
             x.current_lower_info.value = -Inf
         end
     else
         interval_lower_bound!(x, y, true)
-        x.cut_add_flag = false
+        x._cut_add_flag = false
         #=
         error("Lower problem returned a TerminationStatus = $(termination_status) and
                ResultStatusCode = $(result_status_code). This pair of codes does not

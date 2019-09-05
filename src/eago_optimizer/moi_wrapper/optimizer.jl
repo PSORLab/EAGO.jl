@@ -11,9 +11,6 @@ VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false)
 lower_bound(x::VariableInfo) = x.lower_bound
 upper_bound(x::VariableInfo) = x.upper_bound
 
-@enum FailureLocation LOWER_SOLVER_FAILED UPPER_SOLVER_FAILED PREPROCESSING_FAILED POSTPROCESSING_FAILED NO_FAILURE
-@enum OptimizerType LP MILP NLP MINLP
-
 dummy_function() = nothing
 
 export Optimizer
@@ -31,7 +28,6 @@ commonly used options are described below and can be set via keyword arguments i
 * `convergence_check::Function` - Convergence criterion function
 * `termination_check::Function` - Termination check function
 * `node_storage!::Function` - Function defining manner in which node is stored to stack
-* `node_selection::Function` - Function which selects node from stack
 * `bisection_function::Function` - Bisection function
 * `cut_condition::Function` - Condition for adding cutting plane
 * `add_cut!::Function` - Function for adding additional cutting plane
@@ -114,33 +110,21 @@ commonly used options are described below and can be set via keyword arguments i
 """
 mutable struct Optimizer <: MOI.AbstractOptimizer
 
-    #input_model::Any
     integer_variables::Vector{Int}
     variable_info::Vector{VariableInfo}
     lower_variables::Vector{MOI.VariableIndex}
     upper_variables::Vector{MOI.VariableIndex}
     lower_variable_index::Vector{Tuple{MOI.ConstraintIndex,MOI.ConstraintIndex,Int}}
-    upper_variable_index::Vector{Tuple{MOI.ConstraintIndex,MOI.ConstraintIndex,Int}}
-    objective_constraint_index::Vector{MOI.ConstraintIndex}
-    initial_continuous_values::IntervalBox          # Interval box constraints
-    initial_integer_values::Vector{Int}               # Potential Integer Values
 
     bisection_variable::Dict{Int,Bool}
     fixed_variable::Dict{Int,Bool}
-    #=
-    pseudo_cost_lower::Vector{Float64}
-    pseudo_cost_upper::Vector{Float64}
-    prob_count_lower::Vector{Float64}
-    prob_count_upper::Vector{Float64}
-    =#
+
     variable_index_to_storage::Dict{Int,Int}
     storage_index_to_variable::Dict{Int,Int}
     constraint_convexity::Dict{MOI.ConstraintIndex,Bool}
-    constraint_label::Dict{Int,Symbol}
 
     continuous_solution::Vector{Float64}             # Stores a point in the IntervalSolutionBox
-    integer_solution::Vector{Bool}                   # Stores the integer solution point
-    stack::Dict{Int,NodeBB}                       # Map of Node ID to NodeData
+    stack::Dict{Int,NodeBB}                          # Map of Node ID to NodeData
 
     nlp_data
     working_evaluator_block
@@ -148,9 +132,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     state_variables::Int
     continuous_variable_number::Int
     integer_variable_number::Int
-    constraint_number::Int
-    linear_number::Int
-    quadratic_number::Int
 
     current_lower_info::LowerInfo                       # Problem solution info for lower bounding program
     current_upper_info::UpperInfo                       # Problem solution info for upper bounding program
@@ -159,7 +140,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     objective::Union{MOI.SingleVariable,MOI.ScalarAffineFunction{Float64},MOI.ScalarQuadraticFunction{Float64},Nothing}
     objective_convexity::Bool
-    custom_mod_flag::Bool
 
     linear_leq_constraints::Vector{Tuple{MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64},Int}}
     linear_geq_constraints::Vector{Tuple{MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64},Int}}
@@ -194,21 +174,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     relaxation::RelaxationScheme
 
-    # Stores functions for implementing Branch and Bound
-    lower_problem!::Function                                                 # Stores lower problem function
-    upper_problem!::Function                                                 # Stores upper problem function
-    preprocess!::Function                                                   # Preprocessing function
-    postprocess!::Function                                                  # Post processing function
-    single_check::Function                                                  # Repeation check
-    convergence_check::Function                                             # convergence criterion
-    termination_check::Function                                             # Stores termination check function
-    node_storage!::Function                                                  # Stores branching function
-    node_selection::Function                                                # Stores node selection function
-    bisection_function::Function                                            #
-    cut_condition::Function                                                 #
-    add_cut!::Function                                                       #
-    relax_function!::Function                                                # Stores code used to relax the model
-
     global_lower_bound::Float64                                              # Global Lower Bound
     global_upper_bound::Float64                                              # Global Upper Bound
     maximum_node_id::Int
@@ -217,8 +182,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     current_node_count::Int
 
     # Storage for output
-    solution_value::Float64                                                 # Value of the solution
-    first_found::Bool                                                       #
+    solution_value::Float64                                                 # Value of the solution for upper bound....
     feasible_solution_found::Bool                                           #
     first_solution_node::Int                                                #
     last_gap::Float64                                                       #
@@ -226,8 +190,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     objective_value::Float64
     termination_status_code::MOI.TerminationStatusCode                      #
     result_status_code::MOI.ResultStatusCode
-    started_solve::Bool                                                     #
-    failed_solver::FailureLocation                                          # Stores branching function
 
     # Output specification fields
     verbosity::Int                                                         # Stores output selection
@@ -236,14 +198,12 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     header_iterations::Int                                                 # Number of iterations to skip between printing heade
     digits_displayed::Int                                                  # digits displayed before decimal
     return_history::Bool                                                   # returns LBD, UBD array and time vector
-    flag_subsolver_errors::Bool                                            # If a subsolver has a problem termination code then stop the algorithm
-                                                                           # and record it
+
     # Termination Limits
     iteration_limit::Int                                                   # Maximum number of iterations
     node_limit::Int                                                        # Maximum number of nodes to store in memory
     absolute_tolerance::Float64                                            # Absolute tolerance for BnB
     relative_tolerance::Float64                                             # Relative tolerance for BnB
-    exhaustive_search::Bool                                                 # Exhaustive search: find all solns or find first
     local_solve_only::Bool
     feasible_local_continue::Bool
 
@@ -255,9 +215,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     obbt_aggressive_max_iteration::Int
     obbt_aggressive_min_dimension::Int
     obbt_tolerance::Float64
-    obbt_working_lower_index::Vector{MOI.VariableIndex}
-    obbt_working_upper_index::Vector{MOI.VariableIndex}
-    obbt_active_current::Bool
     obbt_performed_flag::Bool
 
     # Duality-Based Bound Tightening (DBBT) Options
@@ -275,9 +232,12 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Rounding mode (interval arithmetic options)
     rounding_mode::Symbol
-    treat_as_nonlinear::Vector{Int}
+
+    # Tolerance to add cuts and max number of cuts
     cut_max_iterations::Int
     cut_tolerance::Float64
+    _cut_iterations::Int
+    _cut_add_flag::Bool
 
     # Subgradient Tightening Flag
     subgrad_tighten::Bool
@@ -301,19 +261,10 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     repetition_volume_tolerance::Float64
 
     # Upper bounding nodes skipped
-    upper_bounding_interval::Int #Not used
     upper_bounding_depth::Int
-    upper_bnd_ni_cnt::Int  #Not used
-    upper_bnd_ni_tol::Int  #Not used
-    upper_bnd_this_int::Bool  #Not used
-
-    # Cutting Plane Options
-    cut_iterations::Int
-    cut_add_flag::Bool
     mid_cvx_factor::Float64
 
     # Status flags
-    first_relaxed::Bool
     upper_has_node::Bool
 
     # UDF options
@@ -326,20 +277,14 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     reform_flatten_flag::Bool
 
     # Debug
-    ext
+    ext::Dict{Symbol, Any}
+    optimize_hook
 
     function Optimizer(;options...)
 
         m = new()
 
         default_opt_dict = Dict{Symbol,Any}()
-
-        # set fallback for potentially user defined functions
-        for i in (:lower_problem!, :upper_problem!, :preprocess!, :postprocess!, :single_check,
-                  :convergence_check, :termination_check, :node_storage!, :node_selection,
-                  :bisection_function, :cut_condition, :add_cut!, :relax_function!)
-                  default_opt_dict[i] = dummy_function
-        end
 
         # set fallback for optimizers
         for i in (:linear_optimizer, :nlp_optimizer,
@@ -362,7 +307,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:header_iterations] = 10
         default_opt_dict[:digits_displayed] = 3
         default_opt_dict[:return_history] = false
-        default_opt_dict[:flag_subsolver_errors] = true
 
         # Duality-based bound tightening parameters
         default_opt_dict[:dbbt_depth] = Int(1E6)
@@ -409,17 +353,13 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:poor_man_lp_reptitions] = 1
 
         # Upper Bounding Interval
-        default_opt_dict[:upper_bounding_interval] = 10
         default_opt_dict[:upper_bounding_depth] = 10
-        default_opt_dict[:upper_bnd_ni_tol] = 3
 
         # Termination Limits
         default_opt_dict[:iteration_limit] = 100000 #Int(1E6)
         default_opt_dict[:node_limit] = Int(1E6)
         default_opt_dict[:absolute_tolerance] = 1E-3
         default_opt_dict[:relative_tolerance] = 1E-3
-        default_opt_dict[:exhaustive_search] = false
-        default_opt_dict[:first_relaxed] = false
         default_opt_dict[:upper_has_node] = false
         default_opt_dict[:local_solve_only] = false
         default_opt_dict[:feasible_local_continue] = false
@@ -434,8 +374,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:reform_epigraph_flag] = false
         default_opt_dict[:reform_cse_flag] = false
         default_opt_dict[:reform_flatten_flag] = false
-
-        default_opt_dict[:treat_as_nonlinear] = Int[]
 
         for i in keys(default_opt_dict)
             if (haskey(options,i))
@@ -479,24 +417,18 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         m.objective_value = -Inf
 
-        m.ext = []
-        #m.input_model = 0
+        m.ext = Dict{Symbol, Any}()
+        m.optimize_hook = nothing
         m.integer_variables = Int[]
         m.variable_info = VariableInfo[]
         m.lower_variables = MOI.VariableIndex[]
         m.upper_variables = MOI.VariableIndex[]
         m.lower_variable_index = Tuple{MOI.ConstraintIndex,MOI.ConstraintIndex,Int}[]
-        m.upper_variable_index = Tuple{MOI.ConstraintIndex,MOI.ConstraintIndex,Int}[]
-        m.objective_constraint_index = MOI.ConstraintIndex[]
-        m.initial_continuous_values = IntervalBox(Interval(0.0))      # Interval box constraints
-        m.initial_integer_values = Vector{Int}[]                      # Potential Integer Values
-        m.nlp_data = empty_nlp_data()
-        m.working_evaluator_block = empty_nlp_data()
+        m.nlp_data = MOI.NLPBlockData(Float64[], EmptyNLPEvaluator(), false)
+        m.working_evaluator_block = MOI.NLPBlockData(Float64[], EmptyNLPEvaluator(), false)
 
-        m.linear_number = 0
-        m.quadratic_number = 0
-        m.cut_iterations = 0
-        m.cut_add_flag = true
+        m._cut_iterations = 0
+        m._cut_add_flag = true
 
         m.constraint_convexity = Dict{MOI.ConstraintIndex,Bool}()
         m.variable_index_to_storage = Dict{Int,Int}()
@@ -504,21 +436,12 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         m.bisection_variable = Dict{Int,Bool}()
         m.fixed_variable =  Dict{Int,Bool}()
         m.quadratic_convexity = Bool[]
-        m.constraint_label = Dict{Int,Symbol}()
-        #=
-        m.PseudoCostLower = Float64[]
-        m.PseudoCostUpper = Float64[]
-        m.ProbCountLower = Float64[]
-        m.ProbCountUpper = Float64[]
-        =#
+
         m.continuous_solution = Float64[]                            # Stores a point in the IntervalSolutionBox
-        m.integer_solution = Bool[]                                  # Stores the integer solution point
         m.stack = Dict{Int,NodeBB}()                              # Map of Node ID to NodeData
         m.variable_number = 0
         m.state_variables = 0
         m.continuous_variable_number = 0
-        m.integer_variable_number = 0
-        m.constraint_number = 0
 
         m.linear_leq_constraints = Tuple{MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64}, Int}[]
         m.linear_geq_constraints = Tuple{MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64}, Int}[]
@@ -544,7 +467,6 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         m.objective = nothing
         m.objective_convexity = false
-        m.custom_mod_flag = false
 
         # Historical Information
         m.history = NodeHistory()
@@ -558,26 +480,19 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         # Output for Solution Storage
         m.solution_value = -Inf
-        m.first_found = false
         m.feasible_solution_found = false
         m.first_solution_node = -1
         m.last_gap = -Inf
         m.optimization_sense = MOI.FEASIBILITY_SENSE
-        m.termination_status_code = MOI.OPTIMIZE_NOT_CALLED #MOI.OptimizeNotCalled
+        m.termination_status_code = MOI.OPTIMIZE_NOT_CALLED
         m.result_status_code = MOI.OTHER_RESULT_STATUS
-        m.started_solve = false
-        m.failed_solver = NO_FAILURE
 
         # Optimality-Based Bound Tightening (OBBT) Storage
         m.obbt_performed_flag = false
         m.obbt_variables = MOI.VariableIndex[]
-        m.obbt_working_lower_index = MOI.VariableIndex[]
-        m.obbt_working_upper_index = MOI.VariableIndex[]
-
-        # NLP Upper Bound Heurestics
-        m.upper_bnd_ni_cnt = 0
-        m.upper_bnd_this_int = false
 
         return m
     end
 end
+
+set_optimize_hook(opt::Optimizer, f) = (opt.optimize_hook = f)

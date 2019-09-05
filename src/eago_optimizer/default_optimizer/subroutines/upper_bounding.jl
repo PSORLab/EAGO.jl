@@ -12,7 +12,7 @@ end
 Constructs and solves the problem locally on on node `y` and saves upper
 bounding info to `x.current_upper_info`.
 """
-function default_upper_bounding!(x::Optimizer,y::NodeBB)
+function solve_local_nlp!(x::Optimizer,y::NodeBB)
     if default_nlp_heurestic(x,y)
         if x.use_upper_factory
             factory = x.upper_factory()
@@ -53,3 +53,4 @@ function default_upper_bounding!(x::Optimizer,y::NodeBB)
         x.current_upper_info.value = Inf
     end
 end
+upper_problem!(x::Optimizer, y::NodeBB) = solve_local_nlp!(x, y)

@@ -4,7 +4,7 @@
 Runs interval, linear, and quadratic contractor methods up to tolerances
 specified in `EAGO.Optimizer` object.
 """
-function default_preprocess!(x::Optimizer,y::NodeBB)
+function preprocess!(x::Optimizer,y::NodeBB)
 
     # Sets initial feasibility
     feas = true; rept = 0

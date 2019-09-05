@@ -3,7 +3,7 @@
 
 Branch-and-cut feature currently under development. Currently, returns false.
 """
-default_cut_condition(x::Optimizer) = x.cut_add_flag && (x.cut_iterations < x.cut_max_iterations)
+cut_condition(x::Optimizer) = x._cut_add_flag && (x._cut_iterations < x.cut_max_iterations)
 
 #=
 function check_cut_tolerance(x::Optimizer, solution::Vector{Float64})
@@ -13,9 +13,9 @@ end
 """
     default_add_cut!
 
-Branch-and-Cut under development. Currently does nothing.
+Branch-and-Cut under development.
 """
-function default_add_cut!(x::Optimizer, y::NodeBB)
+function add_cut!(x::Optimizer, y::NodeBB)
 
     xpnt = x.current_lower_info.solution[1:end]
     update_lower_variable_bounds1!(x, y, x.working_relaxed_optimizer)

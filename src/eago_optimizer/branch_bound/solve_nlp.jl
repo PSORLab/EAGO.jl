@@ -3,7 +3,7 @@
 
 Solves the branch and bound problem with the input EAGO optimizer object.
 """
-function solve_nlp!(x::Optimizer)
+function global_solve!(x::Optimizer)
 
   # initializes Flags
   if (~x.warm_start)
@@ -24,7 +24,7 @@ function solve_nlp!(x::Optimizer)
 
   # terminates when max nodes or iteration is reach, or when node stack is empty
   iterationcountinternal = 0
-  while (x.termination_check(x))
+  while termination_check(x)
 
     iterationcountinternal += 1
 
@@ -36,21 +36,21 @@ function solve_nlp!(x::Optimizer)
     ran_upper_problem = false
     conv_check = false
 
-    x.cut_iterations = 0
-
+    x._cut_iterations = 0
 
     # Fathom nodes with lower bound greater than global upper bound
     x.global_lower_bound = find_lower_bound(x)
     x.history.lower_bound[x.current_iteration_count] = x.global_lower_bound
 
      # Selects node, deletes it from stack, prints based on verbosity
-    CurrentKey,CurrentNode = x.node_selection(x);  x.current_node_count -= 1
+    CurrentKey,CurrentNode = node_selection(x);  x.current_node_count -= 1
     (x.verbosity >= 3) && print_node!(CurrentKey,CurrentNode) # Prints node in full verbosity mode
 
     # Solves preprocessing/LBD/UBD/postprocessing once to get timing right
     x.current_preprocess_info.feasibility = true
     x.current_postprocess_info.feasibility = true
 
+    #=
     if (x.current_iteration_count == 1)
       OldLowerInfo = LowerInfo(x.current_lower_info)
       OldUpperInfo = UpperInfo(x.current_upper_info)
@@ -58,13 +58,13 @@ function solve_nlp!(x::Optimizer)
       OldPostprocessInfo = PostprocessInfo(x.current_postprocess_info)
       tempNode = NodeBB(CurrentNode)
       (x.verbosity >= 4) && println("started initial preprocessing")
-      x.preprocess!(x,tempNode)
+      preprocess!(x,tempNode)
       (x.verbosity >= 4) && println("finished initial preprocessing")
-      x.lower_problem!(x,tempNode)
+      lower_problem!(x,tempNode)
       (x.verbosity >= 4) && println("finished initial lower problem")
-      x.upper_problem!(x,tempNode)
+      upper_problem!(x,tempNode)
       (x.verbosity >= 4) && println("finished initial upper problem")
-      x.postprocess!(x,tempNode)
+      postprocess!(x,tempNode)
       (x.verbosity >= 4) && println("finished initial postprocessing")
       x.current_lower_info = OldLowerInfo
       x.current_upper_info = OldUpperInfo
@@ -73,34 +73,34 @@ function solve_nlp!(x::Optimizer)
     end
     x.current_preprocess_info.feasibility = true
     x.current_postprocess_info.feasibility = true
-
+    =#
 
     # Performs prepocessing and times
-    PreprocessTime = @elapsed x.preprocess!(x,CurrentNode)
+    PreprocessTime = @elapsed preprocess!(x,CurrentNode)
 
     x.current_upper_info.feasibility = true
 
     ran_lower_problem = x.current_preprocess_info.feasibility
     if ran_lower_problem
       # solves & times lower bounding problem
-      LowerProblemTime = @elapsed x.lower_problem!(x,CurrentNode)
+      LowerProblemTime = @elapsed lower_problem!(x,CurrentNode)
       x.history.lower_bound[x.current_iteration_count] = x.global_lower_bound
       print_results!(x,true)
 
-      while x.cut_condition(x)
-        LowerProblemTime += @elapsed x.add_cut!(x, CurrentNode)
-        x.cut_iterations += 1
+      while cut_condition(x)
+        LowerProblemTime += @elapsed add_cut!(x, CurrentNode)
+        x._cut_iterations += 1
         x.history.lower_bound[x.current_iteration_count] = x.global_lower_bound
       end
       print_results_post_cut!(x)
-      x.history.cut_count[x.current_iteration_count] = x.cut_iterations
+      x.history.cut_count[x.current_iteration_count] = x._cut_iterations
 
       # checks for infeasibility stores solution
       ran_upper_problem = x.current_lower_info.feasibility
       if ran_upper_problem
-        conv_check = ~x.convergence_check(x)
-        if (~x.convergence_check(x))
-          UpperProblemTime = @elapsed x.upper_problem!(x,CurrentNode)
+        conv_check = ~convergence_check(x)
+        if conv_check
+          UpperProblemTime = @elapsed upper_problem!(x,CurrentNode)
           print_results!(x,false)
 
           # Stores information if better feasible upper bound is formed
@@ -123,16 +123,16 @@ function solve_nlp!(x::Optimizer)
           end
 
           # Performs and times post processing
-          PostprocessTime = @elapsed x.postprocess!(x,CurrentNode)
+          PostprocessTime = @elapsed postprocess!(x,CurrentNode)
 
           # Checks to see if the node
           if (x.current_postprocess_info.feasibility)
-            if x.single_check(x, CurrentNode)
+            if repeat_check(x, CurrentNode)
               single_storage!(x, CurrentNode)
               x.node_repetitions += 1
             else
-              Y1,Y2 = x.bisection_function(x,CurrentNode)
-              x.node_storage!(x,Y1,Y2)
+              Y1,Y2 = bisection_function(x,CurrentNode)
+              node_storage!(x,Y1,Y2)
               x.node_repetitions = 1
             end
           end
