@@ -1,17 +1,15 @@
 ## Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
 
-codecov: true
-
 os:
   - linux
-  #- osx
+  - osx
 
 julia:
-  #- 1.0
+  - 1.0
   - 1.1
-  #- 1.2
-  #- nightly
+  - 1.2
+  - nightly
 
 matrix:
   allow_failures:
@@ -20,12 +18,6 @@ matrix:
 notifications:
   email: false
 
-sudo: false
-
 addons:
   apt_packages:
     - gfortran
-
-after_success:
-    - julia -e 'using Pkg; Pkg.add("Coverage")'
-    - julia -e 'using Coverage; Codecov.submit(process_folder())'
