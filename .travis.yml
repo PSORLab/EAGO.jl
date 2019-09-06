@@ -2,32 +2,23 @@
 language: julia
 codecov: true
 coveralls: true
-
-sudo: required
-
-services:
-  - docker
-
 os:
   - linux
-  - osx    #build never started in travis CI, will trouble shoot later
+  - osx
 
 julia:
-  #- 0.7 disabled to speed up CI tests
+  - 1.0
   - 1.1
   - 1.2
-  - nightly #disabled to speed up CI tests
-
-notifications:
-  email: false
-
-git:
-  depth: 99999999
+  - nightly
 
 matrix:
   allow_failures:
   - julia: nightly
 
+notifications:
+  email: false
+sudo: false
 addons:
   apt_packages:
     - gfortran
