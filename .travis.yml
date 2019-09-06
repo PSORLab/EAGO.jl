@@ -1,5 +1,7 @@
 ## Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
+codecov: true
+coveralls: true
 
 sudo: required
 
