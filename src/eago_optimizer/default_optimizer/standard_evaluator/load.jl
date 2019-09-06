@@ -83,8 +83,8 @@ function neg_objective!(d::Evaluator)
         d.objective.nd = shift_nd
 
         new_tpdict = Dict{Int,Tuple{Int,Int,Int,Int}}()
-        for key in keys(d.tpdict)
-            new_tpdict[key+2] = d.tpdict[key]
+        for key in keys(d.objective.tpdict)
+            new_tpdict[key+2] = d.objective.tpdict[key]
         end
         d.objective.tpdict = new_tpdict
 

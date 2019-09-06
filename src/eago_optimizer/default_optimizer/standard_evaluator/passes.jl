@@ -228,7 +228,7 @@ function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64},
                     if first_eval_flag
                         tmp_div = numerator/denominator
                     else
-                        @inbounds tmp_div = div_kernel(numerator, denominator, setstorage[k].Intv)
+                        @inbounds tmp_div = McCormick.div_kernel(numerator, denominator, setstorage[k].Intv)
                     end
                     setstorage[k] = set_value_post(x_values, tmp_div, current_node, subgrad_tighten)
                 end

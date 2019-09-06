@@ -25,6 +25,11 @@ module EAGO
 
 
     const MOI = MathOptInterface
+    #const SAF = ScalarAffineFunction{Float64}
+    #const SQF = ScalarQuadraticFunction{Float64}
+    #const LT = LessThan{Float64}
+    #const GT = GreaterThan{Float64}
+    #const ET = EqualTo{Float64}
     const MOIU = MOI.Utilities
 
     include("mccormick_library/mccormick.jl")

@@ -4,28 +4,29 @@ function set_xpbar(problem_storage::SIP_Problem_Storage)
   return xbar, pbar, problem_storage.nx, problem_storage.np
 end
 
-function explicit_llp(xbar::Vector{Float64}, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage)
+function explicit_llp(xbar::Vector{Float64}, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, gSIP)
 
+  println("to here...")
   np = problem_storage.np
   pL = problem_storage.p_l
   pU = problem_storage.p_u
 
   model_llp = deepcopy(problem_storage.opts.model)
   if np == 1
-    g(p) = problem_storage.gSIP(xbar, p)
+    g(p) = p -> gSIP(xbar, p)
     register(model_llp, :g, np, g, autodiff=true)
     @variable(model_llp, pL[i] <= p[i=1:np] <= pU[i])
     @NLobjective(model_llp, Min, -g(p[1]))
   else
-    gmulti(p...) = problem_storage.gSIP(xbar, p)
+    gmulti(p...) = p -> gSIP(xbar, p)
     register(model_llp, :gmulti, np, gmulti, autodiff=true)
     @variable(model_llp, pL[i] <= p[i=1:np] <= pU[i])
     @NLobjective(model_llp, Min, -gmulti(p...))
   end
-
+println("to here 2...")
 
   optimize!(model_llp)
-
+  println("to here 3...")
   termination_status = JuMP.termination_status(model_llp)
   result_status = JuMP.primal_status(model_llp)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
@@ -45,7 +46,7 @@ function explicit_llp(xbar::Vector{Float64}, sip_storage::SIP_Result, problem_st
 end
 
 # should be done
-function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, flag::Bool)
+function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, flag::Bool, f, gSIP)
   ng = length(disc_set)
   nx = problem_storage.nx
   xL = problem_storage.x_l
@@ -65,7 +66,7 @@ function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_sto
 
   for i in 1:ng
       gi = Symbol("g$i")
-      gtemp = x -> problem_storage.gSIP(x, disc_set[i])
+      gtemp = x -> gSIP(x, disc_set[i])
       g(x...) = gtemp(x)
       register(model_bnd, gi, nx, g, autodiff=true)
       func_call = Expr(:call)
@@ -80,19 +81,19 @@ function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_sto
       JuMP.add_NL_constraint(model_bnd, ineq_call)
   end
 
-  f(x...) =  problem_storage.f(x)
-  register(model_bnd, :f, nx, f, autodiff=true)
+  obj(x...) =  f(x)
+  register(model_bnd, :obj, nx, obj, autodiff=true)
   if nx == 1
     if problem_storage.sense == :min
-      @NLobjective(model_bnd, Min,  f(x[1]))
+      @NLobjective(model_bnd, Min, obj(x[1]))
     else
-      @NLobjective(model_bnd, Max,  f(x[1]))
+      @NLobjective(model_bnd, Max, obj(x[1]))
     end
   else
     if problem_storage.sense == :min
-      @NLobjective(model_bnd, Min, f(x...))
+      @NLobjective(model_bnd, Min, obj(x...))
     else
-      @NLobjective(model_bnd, Max, f(x...))
+      @NLobjective(model_bnd, Max, obj(x...))
     end
   end
 
@@ -167,6 +168,6 @@ function explicit_sip_solve(f::Function, gSIP::Function, x_l::Vector{Float64},
                                      nothing, nothing, Float64[], Float64[], 0,
                                      :nothing, sense, Float64[], Float64[], 0)
 
-  sip_sto = core_sip_routine(explicit_llp, explicit_bnd, set_xpbar, problem_storage)
+  sip_sto = core_sip_routine(explicit_llp, explicit_bnd, set_xpbar, problem_storage, f, gSIP)
   return sip_sto
 end

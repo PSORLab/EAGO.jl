@@ -133,6 +133,10 @@ overdub(ctx::TraceCtx, ::typeof(*), x, y) = afoldl(x, y)
 overdub(ctx::TraceCtx, ::typeof(afoldl), x, y, z) = afoldl(x, y, z)
 overdub(ctx::TraceCtx, ::typeof(afoldl), a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p...) = afoldl(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p...)
 
+# conversion
+overdub(ctx::TraceCtx, ::typeof(float), x) = x
+overdub(ctx::TraceCtx, ::typeof(AbstractFloat), x) = x
+
 # primitive for array access
 overdub(ctx::TraceCtx, ::typeof(getindex), A::Array, i::Int) = getindex(A,i)
 overdub(ctx::TraceCtx, ::typeof(getindex), A::SetTraceSto, i::Int) = getindex(A,i)

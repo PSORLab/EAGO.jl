@@ -81,11 +81,5 @@ function lower_problem!(x::Optimizer, y::NodeBB)
     else
         interval_lower_bound!(x, y, true)
         x._cut_add_flag = false
-        #=
-        error("Lower problem returned a TerminationStatus = $(termination_status) and
-               ResultStatusCode = $(result_status_code). This pair of codes does not
-               definitively prove the subproblem to be globally optimal or infeasible.
-               The subproblem must be solved to global optimality.")
-        =#
     end
 end

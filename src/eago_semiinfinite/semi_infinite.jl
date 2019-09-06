@@ -214,7 +214,7 @@ function post_llp2_update(INNg2::Float64, inner_tolerance::Float64, r::Float64,
 end
 
 function core_sip_routine(lower_level_problem::Function, bounding_problem::Function,
-                          set_xpbar::Function, problem_storage::SIP_Problem_Storage)
+                          set_xpbar::Function, problem_storage::SIP_Problem_Storage, f, gSIP)
 
   # initializes solution
   UBDg = Inf; LBDg = -Inf; k = 0
@@ -241,13 +241,13 @@ function core_sip_routine(lower_level_problem::Function, bounding_problem::Funct
     check_convergence(sip_result.lower_bound, sip_result.upper_bound, problem_storage.opts.tolerance) && (break)
 
     # solve lower bounding problem and check feasibility
-    feas = bounding_problem(lower_disc_set, 0.0, sip_result, problem_storage, true)
+    feas = bounding_problem(lower_disc_set, 0.0, sip_result, problem_storage, true, f, gSIP)::Bool
     print_lbp!(problem_storage.opts, sip_result.lower_bound, sip_result.x_bar, feas)
     sip_result.feasibility = check_lbp_feasible(feas)
     ~sip_result.feasibility && (break)
 
     # solve inner program  and update lower discretization set
-    INNg1, feas = lower_level_problem(sip_result.x_bar,  sip_result, problem_storage)
+    INNg1, feas = lower_level_problem(sip_result.x_bar, sip_result, problem_storage, gSIP)
     print_llp1!(problem_storage.opts, INNg1, sip_result.p_bar, feas)
     xstar, UBDg, return_flag = post_llp1_update(INNg1, problem_storage.opts.inner_tolerance,
                                                  sip_result.x_bar, sip_result.p_bar, sip_result.lower_bound,
@@ -256,10 +256,10 @@ function core_sip_routine(lower_level_problem::Function, bounding_problem::Funct
 
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
-    feas = bounding_problem(upper_disc_set, eps_g, sip_result, problem_storage, false)
+    feas = bounding_problem(upper_disc_set, eps_g, sip_result, problem_storage, false, f, gSIP)
     print_ubp!(problem_storage.opts, sip_result.upper_bound, sip_result.x_bar, feas)
     if (feas)
-      INNg2, feas = lower_level_problem(sip_result.x_bar,  sip_result, problem_storage)
+      INNg2, feas = lower_level_problem(sip_result.x_bar,  sip_result, problem_storage, gSIP)::Tuple{Float64,Bool}
       print_llp2!(problem_storage.opts, INNg2, sip_result.p_bar, feas)
       UBD_temp = copy(sip_result.upper_bound)
       sip_result.upper_bound, xstar, eps_g = post_llp2_update(INNg2, problem_storage.opts.inner_tolerance,
