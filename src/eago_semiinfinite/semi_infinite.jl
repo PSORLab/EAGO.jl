@@ -1,5 +1,3 @@
-module SemiInfinite
-
   mutable struct SIPResult
       iteration_number::Int
       upper_bound::Float64
@@ -140,5 +138,4 @@ mutable struct SIPProblem
   end
 
   include("sip_explicit.jl")
-  include("sip_implicit.jl")
-end
+  #include("sip_implicit.jl")

@@ -1,4 +1,4 @@
-function set_xpbar(problem_storage::SIP_Problem_Storage)
+function set_xpbar(problem_storage::SIPProblem)
   xbar = (problem_storage.x_u + problem_storage.x_l)/2.0
   pbar = (problem_storage.p_u + problem_storage.p_l)/2.0
   return xbar, pbar, problem_storage.nx, problem_storage.np
@@ -34,7 +34,7 @@ function sipRes_llp(xbar::Vector{Float64}, model, np::Int, pL::Vector{Float64},
 end
 
 # should be done
-function sipRes_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, flag::Bool, f, gSIP)
+function sipRes_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_storage::SIPResult, problem_storage::SIPProblem, flag::Bool, f, gSIP)
   ng = length(disc_set)
   nx = problem_storage.nx
   xL = problem_storage.x_l
