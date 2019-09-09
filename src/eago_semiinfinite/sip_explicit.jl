@@ -4,14 +4,10 @@ function set_xpbar(problem_storage::SIP_Problem_Storage)
   return xbar, pbar, problem_storage.nx, problem_storage.np
 end
 
-function explicit_llp(xbar::Vector{Float64}, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, gSIP)
+function sipRes_llp(xbar::Vector{Float64}, model, np::Int, pL::Vector{Float64},
+                    pU::Vector{Float64}, gSIP)
 
-  println("to here...")
-  np = problem_storage.np
-  pL = problem_storage.p_l
-  pU = problem_storage.p_u
-
-  model_llp = deepcopy(problem_storage.opts.model)
+  model_llp = deepcopy(model)
   if np == 1
     g(p) = p -> gSIP(xbar, p)
     register(model_llp, :g, np, g, autodiff=true)
@@ -23,30 +19,22 @@ function explicit_llp(xbar::Vector{Float64}, sip_storage::SIP_Result, problem_st
     @variable(model_llp, pL[i] <= p[i=1:np] <= pU[i])
     @NLobjective(model_llp, Min, -gmulti(p...))
   end
-println("to here 2...")
 
   optimize!(model_llp)
-  println("to here 3...")
   termination_status = JuMP.termination_status(model_llp)
   result_status = JuMP.primal_status(model_llp)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
+  (~valid_result || ~is_feasible) && error("Error encountered in lower level problem.")
 
-  sip_storage.lower_level_time += MOI.get(model_llp, MOI.SolveTime())
+  obj_val = -JuMP.objective_value(model_llp)
+  p_bar = JuMP.value.(p)
+  time += MOI.get(model_llp, MOI.SolveTime())
 
-  if valid_result
-      if is_feasible
-        INNg2 = -JuMP.objective_value(model_llp)
-        sip_storage.p_bar[:] = JuMP.value.(p)
-      end
-  else
-    error("Lower level problem.")
-  end
-
-  return INNg2, is_feasible
+  return obj_val, is_feasible, p_bar, time
 end
 
 # should be done
-function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, flag::Bool, f, gSIP)
+function sipRes_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_storage::SIP_Result, problem_storage::SIP_Problem_Storage, flag::Bool, f, gSIP)
   ng = length(disc_set)
   nx = problem_storage.nx
   xL = problem_storage.x_l
@@ -121,53 +109,113 @@ function explicit_bnd(disc_set::Vector{Vector{Float64}}, eps_g::Float64, sip_sto
   return is_feasible
 end
 
-"""
-    explicit_sip_solve
+const DEFINED_KWARGS_SIPRES = Symbol[:initialize_extras, :initialize_bnd_prob,
+                                     :sense, :algo, :m]
+function allowed_options_check!(kwarg::Dict{Symbol,Any})
+  flag = true
+  for (k,v) in kwargs
+    ~in(k, DEFINED_KWARGS_SIPRES)
+     if (String(x[1])[1:4] === "gSIP")
+       flag = false
+       println("Allowed keyword arguements are $DEFINED_KWARGS_SIPRES and any additional
+                SIP constraints of the form gSIPX...X.")
+       break
+     end
+  end
+  flag
+end
 
-Solves a semi-infinite program via the algorithm presented in Mitsos2011 using
-the EAGOGlobalSolver to solve the lower bounding problem, lower level problem,
-and the upper bounding problem. The options for the algorithm and the global
-solvers utilized are set by manipulating a sip_options containing the options info.
-Inputs:
-* `f::Function`: Objective in the decision variable. Takes a single argument
-                 vector that must be untyped.
-* `gSIP::Function`: The semi-infinite constraint. Takes two arguments: the first
-                    being a vector containing the decision variable and the
-                    second being a vector containing the uncertainity
-                    variables. The function must be untyped.
-* `x_l::Vector{Float64}`: Lower bounds on the decision variables.
-* `x_u::Vector{Float64}`: Upper bounds on the decision variables.
-* `p_l::Vector{Float64}`: Lower bounds on the uncertain variables.
-* `p_u::Vector{Float64}`: Upper bounds on the uncertain variables.
-* `m::JuMP.Model`: A JuMP model containing the optimizer to be used.
-* `opts`: Option type a keyword argument containing problem information
-Returns: A SIP_result composite type containing solution information.
-"""
-function explicit_sip_solve(f::Function, gSIP::Function, x_l::Vector{Float64},
-                            x_u::Vector{Float64}, p_l::Vector{Float64},
-                            p_u::Vector{Float64}, m::JuMP.Model; opts = nothing,
-                            initialize_bnd_prob = nothing, sense = :min, initialize_extras = nothing)
+function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
+                            p_l::Vector{Float64}, p_u::Vector{Float64},
+                            gSIP::Function, f::Function; kwargs...)
 
   @assert length(p_l) == length(p_u)
   @assert length(x_l) == length(x_u)
-  n_p = length(p_l)
-  n_x = length(x_l)
+  allowed_options_check!(kwargs)
 
-  if opts == nothing
-      opts = SIP_Options()
-      opts.model = m
-  end
-  if initialize_bnd_prob !== nothing
-    opts.initialize_bnd_prob = initialize_bnd_prob
-  end
-  if initialize_extras !== nothing
-    opts.initialize_extras = initialize_extras
-  end
+  # collects all keyword arguments of the form :gSIP1, gSIP24234, :gSIPHello
+  kv_gSIP = filter(x -> (String(x[1])[1:4] === "gSIP"), kwargs)
+  gSIP = values(kv_gSIP)
 
-  problem_storage = SIP_Problem_Storage(f, gSIP, x_l, x_u, p_l, p_u, n_p, n_x, opts,
-                                     nothing, nothing, Float64[], Float64[], 0,
-                                     :nothing, sense, Float64[], Float64[], 0)
+  haskey(kwargs, :init_bnd) && (initialize_bnd_prob = kwargs[:init_bnd])
+  haskey(kwargs, :init_llp) && (initialize_extras = kwargs[:init_llp])
 
-  sip_sto = core_sip_routine(explicit_llp, explicit_bnd, set_xpbar, problem_storage, f, gSIP)
+  prob = SIPProblem(x_l, x_u, p_l, p_u, kwargs)
+  result = SIPResult()
+
+  if (algo === :sipRes)
+    sip_sto = SIPres(prob, result, f, gSIP)
+  else
+    error("Desired algorithm unsupported.")
+  end
   return sip_sto
+end
+
+
+function sipRes(prob::SIPProblem, result, f, gSIP)
+
+
+  verbosity = problem_storage.verbosity
+  header_interval = problem_storage.header_interval
+  print_interval = problem_storage.print_interval
+
+  # initializes solution
+  UBDg = Inf;
+  LBDg = -Inf;
+  k = 0
+
+  result.xbar = (prob.x_u + prob.x_l)/2.0
+  result.pbar = (prob.p_u + prob.p_l)/2.0
+  nx = prob.nx
+  np = prob.np
+
+  lower_disc = prob.init_lower_disc
+  upper_disc = prob.init_upper_disc
+  llp1_obj_val = Inf;
+  llp2_obj_val = Inf;
+  feas = true
+  xstar = fill(NaN,(nx,))
+
+  # checks for convergence
+  for k = 1:problem_storage.opts.max_iterations
+
+    # check for termination
+    check_convergence(sto.lower_bound, sto.upper_bound, problem_storage.opts.tolerance) && (break)
+
+    # solve lower bounding problem and check feasibility
+    feas = sipRes_bnd(lower_disc_set, 0.0, sto, problem_storage, true, f, gSIP)::Bool
+    print_summary!(verbosity, sto.lower_bound, sto.x_bar, feas, "LBD")
+    sto.feasibility = check_lbp_feasible(feas)
+    ~sto.feasibility && (break)
+
+    # solve inner program  and update lower discretization set
+    for (i, gsip) in enumerate(gSIP)
+      llp1_objval, feas = sipRes_llp(sto.x_bar, sto, problem_storage, gsip)
+      print_summary!(verbosity, llp1_obj_val, sto.p_bar, feas, "LLP$i")
+      xstar, UBDg, return_flag = llp1_update(llp1_objval,
+                                            sto.x_bar, sto.p_bar, sto.lower_bound,
+                                            sto.upper_bound, lower_disc)
+      return_flag && (return sto.lower_bound, sto.upper_bound, sto)
+    end
+
+    # solve upper bounding problem, if feasible solve lower level problem,
+    # and potentially update upper discretization set
+    feas = sipRes_bnd(upper_disc_set, eps_g, sto, problem_storage, false, f, gSIP)
+    print_summary!(verbosity, sto.upper_bound, sto.x_bar, feas, "UBD")
+    if feas
+      llp2_obj_val, feas = lower_level_problem(sto.x_bar,  sto, problem_storage, gSIP)::Tuple{Float64,Bool}
+      print_llp2!(problem_storage.opts, llp2_obj_val, sto.p_bar, feas)
+      sto.upper_bound, xstar, eps_g = llp2_update(llp2_obj_val, r, eps_g,
+                                                  sto.x_bar, sto.p_bar, sto.upper_bound,
+                                                  UBDg, upper_disc)
+    else
+      eps_g = eps_g/r
+    end
+
+    # print iteration information and advance
+    print_int!(verbosity, header_interval, print_interval, k, sto.lower_bound, sto.upper_bound, eps_g, r)
+    sto.iteration_number = k
+  end
+
+  return sto
 end
