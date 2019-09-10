@@ -20,6 +20,7 @@ mutable struct SIPProblem
     p_u::Vector{Float64}
 
     np::Int
+    nSIP::Int
     nx::Int
     sense::Symbol
 
@@ -55,7 +56,9 @@ mutable struct SIPProblem
       init_lower_disc = haskey(kwargs, :init_lower_disc) ? kwargs[:init_lower_disc] : Vector{Vector{Float64}}[]
       init_upper_disc = haskey(kwargs, :init_upper_disc) ? kwargs[:init_upper_disc] : Vector{Vector{Float64}}[]
 
-      SIPProblem(x_l, x_u, p_l, p_u, np, nx, sense, init_lower_disc,
+      nSIP = count(x -> String(x)[1:4] === "gSIP", keys(kwargs))
+
+      SIPProblem(x_l, x_u, p_l, p_u, np, nSIP, nx, sense, init_lower_disc,
                  init_upper_disc, absolute_tolerance, iteration_limit,
                  initial_eps_g, initial_r, return_hist, header_interval,
                  print_interval, verbosity)
@@ -96,28 +99,6 @@ mutable struct SIPProblem
     return false
   end
 
-  function check_lbp_feasible(feas::Bool)
-    (~feas) && println("Lower Bounding Problem Not Feasible. Algorithm Terminated")
-    return feas
-  end
-
-  function llp1_update(llp1_obj_val::Float64,
-                       xbar::Vector{Float64}, pbar::Vector{Float64},
-                       LBDg::Float64, UBDg::Float64,
-                       disc_set::Vector{Vector{Vector{Float64}}}, i::Int)
-    xstar = fill(NaN,(length(xbar),))
-    UBDg_out = UBDg
-    return_flag = false
-    if (llp1_obj_val <= 0.0)
-      xstar[:] = xbar[:]
-      UBDg_out = LBDg
-      return_flag = true
-    else
-      push!(disc_set[i], pbar)
-    end
-    return xstar, UBDg_out, return_flag
-  end
-
   function llp2_update(llp2_obj_val::Float64, r::Float64, eps_g::Float64,
                        xbar::Vector{Float64}, pbar::Vector{Float64},
                        UBD::Float64, UBDg::Float64,
@@ -132,7 +113,7 @@ mutable struct SIPProblem
       end
       eps_g_out = eps_g/r
     else
-      push!(upper_disc_set[i], pbar)
+      push!(disc_set[i], pbar)
     end
     return UBDtemp, xstar, eps_g_out
   end
