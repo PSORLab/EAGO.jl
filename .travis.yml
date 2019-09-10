@@ -22,5 +22,5 @@ addons:
     - gfortran
 
 after_success:
-- julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'   # push coverage results to Coveralls
-- julia -e 'cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'        # push coverage results to Codecov
+- julia -e 'using Pkg; cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'   # push coverage results to Coveralls
+- julia -e 'using Pkg; cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'        # push coverage results to Codecov
