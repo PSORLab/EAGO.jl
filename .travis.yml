@@ -7,12 +7,12 @@ os:
 
 julia:
   - 1.1
-  - 1.2
-  - nightly
+#  - 1.2
+#  - nightly
 
-matrix:
-  allow_failures:
-  - julia: nightly
+#matrix:
+#  allow_failures:
+#  - julia: nightly
 
 notifications:
   email: false
