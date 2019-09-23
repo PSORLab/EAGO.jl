@@ -1,12 +1,3 @@
-# code for defining forward operators
-const univariate_operators = Symbol[:+,:-,:abs]
-const univariate_operator_to_id = Dict{Symbol,Int}(:+ => 1, :- => 2, :abs => 3)
-
-for (op, deriv) in symbolic_derivatives_1arg()
-    push!(univariate_operators, op)
-    univariate_operator_to_id[op] = length(univariate_operators)
-end
-
 exprs = Expr[]
 for i = 1:length(univariate_operators)
     op = univariate_operators[i]

@@ -189,8 +189,6 @@ function reform_epigraph!(m::Optimizer)
     end
     println("end reform epigraph4")
 end
-=#
-
 function reform_epigraph!(m::Optimizer)
 
     # calculate objective bounds
@@ -236,3 +234,5 @@ function reform_epigraph!(m::Optimizer)
     #inner_model.nlp_data.constraint_bounds
     push!(inner_model.nlp_data.nlconstr, c)
 end
+
+=#

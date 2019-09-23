@@ -66,29 +66,64 @@ mutable struct SIPProblem
 
   function print_int!(verbosity::Int, hdr_intv::Int, prt_intv::Int, k_int::Int,
                       lbd::Float64, ubd::Float64, eps::Float64, r::Float64)
+
     if (verbosity == 1 || verbosity == 2)
+
       # prints header line every hdr_intv times
-      if (mod(k_int, hdr_intv)==0 || k_int == 1)
-        println("Iteration   LBD    UBD     eps      r     Absolute_Gap    Absolute_Ratio")
+      if (mod(k_int, hdr_intv) == 0 || k_int == 1)
+        println("| Iteration | Lower Bound | Upper Bound |   eps   |   r   |  Gap  |  Ratio  |")
       end
+
       # prints iteration summary every prnt_intv times
-      if (mod(k_int, prt_intv)==0)
-        ptr_arr_temp = [k_int lbd ubd eps r (ubd-lbd) (lbd/ubd)]
-        ptr_arr1 = join([@sprintf("%6u",x) for x in ptr_arr_temp[1]], ",   ")
-        ptr_arr2 = join([@sprintf("%3.7f",x) for x in ptr_arr_temp[2:5]], ",     ")
-        ptr_arr3 = join([@sprintf("%6u",x) for x in ptr_arr_temp[6:7]], ",")
-        println(string(ptr_arr1,",      ",ptr_arr2,",      ",ptr_arr3))
+      if mod(k_int, prt_intv) == 0
+
+        print_str = "| "
+
+        max_len = 9
+        temp_str = string(k_int)
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" | "
+
+        max_len = 11
+        temp_str = string(round(lbd, digits = 6))
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" | "
+
+        max_len = 11
+        temp_str = string(round(ubd, digits = 6))
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" | "
+
+        max_len = 7
+        temp_str = string(round(eps, digits = 6))
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" | "
+
+        max_len = 5
+        temp_str = string(round((ubd-lbd), digits = 5))
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" | "
+
+        max_len = 7
+        temp_str = string(round((ubd-lbd)/abs(ubd), digits = 6))
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" |"
+
+        println(print_str)
       end
     end
+    return
   end
 
   function print_summary!(verb::Int, val::Float64, x::Vector{Float64}, feas::Bool, desc::String)
     (verb == 2 || verb == 1) && println("solved $desc: ", val, " ", x, " ", feas)
+    return
   end
 
   function check_inputs!(initial_r::Float64, initial_eps_g::Float64)
     (initial_r <= 1.0) && error("initial_r must be greater than 1")
     (initial_eps_g <= 0.0) && error("eps_g must be greater than 0")
+    return
   end
 
   function check_convergence(LBD::Float64, UBD::Float64, atol::Float64)

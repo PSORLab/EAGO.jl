@@ -1,18 +1,21 @@
+__precompile__()
+
 module EAGO
 
     import MathOptInterface
 
     using JuMP
-    import JuMP._Derivatives: operators
+    import JuMP._Derivatives: operators, NodeData
+    using JuMP._Derivatives: univariate_operators,
+                             univariate_operator_to_id
     using Ipopt, GLPK
 
+    using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros
     using StaticArrays: SVector
     using LinearAlgebra: eigmin
-    using ForwardDiff: jacobian
 
-    import Calculus.symbolic_derivatives_1arg
-    import Printf.@sprintf
+    import Base: ImmutableDict, isless
     import Reexport.@reexport
 
     import IntervalArithmetic: +, -, *, /, convert, in, isempty, one, zero,
@@ -23,59 +26,47 @@ module EAGO
                                IntervalBox, bisect, isdisjoint, ^, exp2, exp10,
                                tanh, asinh, cosh, atanh
 
-
-    const MOI = MathOptInterface
-    #const SAF = ScalarAffineFunction{Float64}
-    #const SQF = ScalarQuadraticFunction{Float64}
-    #const LT = LessThan{Float64}
-    #const GT = GreaterThan{Float64}
-    #const ET = EqualTo{Float64}
-    const MOIU = MOI.Utilities
-
     include("mccormick_library/mccormick.jl")
     using .McCormick
 
     import Base: eltype, copy, length
 
+    const MOI = MathOptInterface
+    const SAF = MOI.ScalarAffineFunction{Float64}
+    const SAT = MOI.ScalarAffineTerm{Float64}
+    const SQF = MOI.ScalarQuadraticFunction{Float64}
+    const SQT = MOI.ScalarQuadraticTerm{Float64}
+    const SV = MOI.SingleVariable
+    const LT = MOI.LessThan{Float64}
+    const GT = MOI.GreaterThan{Float64}
+    const ET = MOI.EqualTo{Float64}
+    const IT = MOI.Interval{Float64}
+    const ZO = MOI.ZeroOne
+    const VI = MOI.VariableIndex
+    const CI = MOI.ConstraintIndex
+    const SCoefC = MOI.ScalarCoefficientChange
+    const SConsC = MOI.ScalarConstantChange
+    const MOIU = MOI.Utilities
+
     # Add storage types for EAGO optimizers
     export NodeBB, get_history, get_lower_bound, get_upper_bound, get_lower_time,
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
            get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap
-    include("eago_optimizer/branch_bound/node_bb.jl")
-    include("eago_optimizer/branch_bound/subproblem_info.jl")
-    include("eago_relaxations/relax_scheme.jl")
-    include("eago_optimizer/moi_wrapper/optimizer.jl")
 
-    # Routines for (branch-and-bound/cut)
-    include("eago_optimizer/branch_bound/branch_bound.jl")
-
-    # Routines for loading relax models
-    include("eago_relaxations/relax_model.jl")
-
-    # MOI wrappers and basic optimization routines
-    include("eago_optimizer/moi_wrapper/moi_wrapper.jl")
-
-    # Domain reduction subroutines
-    include("eago_optimizer/domain_reduction/domain_reduction.jl")         # special character warning
-
-    # Default subroutines for optimizers
-    include("eago_optimizer/default_optimizer/default_optimizer.jl")
-
-    # Adds the parametric interval methods
-    export parametric_interval_params, param_intv_contractor
-    include("parametric_interval/parametric_interval.jl")
-
-    # Solve for implicit function optimization
-    export ImplicitLowerEvaluator, build_lower_evaluator!,
-           ImplicitUpperEvaluator, MidPointUpperEvaluator,
-           build_implicitupperevaluator!, build_midpointupperevaluator!, solve_implicit
-    include("eago_optimizer/implicit_optimizer/implicit_optimizer.jl")
+    include("eago_optimizer/node_bb.jl")
+    include("eago_optimizer/optimizer.jl")
+    include("eago_optimizer/evaluator/evaluator.jl")
+    include("eago_optimizer/logging.jl")
+    include("eago_optimizer/display.jl")
+    include("eago_optimizer/relax.jl")
+    include("eago_optimizer/domain_reduction.jl")
+    include("eago_optimizer/subroutines.jl")
+    include("eago_optimizer/optimize.jl")
 
     # Import the script solving utilities
     include("eago_script/script.jl")
 
-
     # Routines for solving SIPs
-    export SIP_Options, SIP_Result, explicit_sip_solve, implicit_sip_solve
+    #export SIP_Options, SIP_Result, explicit_sip_solve, implicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
 end

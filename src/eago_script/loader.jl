@@ -84,13 +84,13 @@ function add_subexpr_from_tape!(tape::Tape, jnlp_data)
     push!(jnlp_data.nlexpr, subexpr)
 end
 
-function udf_loader!(m::AbstractOptimizer)
-    reform_flag = in(:reform_flatten_flag, [fieldnames(typeof(m))...])
+function udf_loader!(x::AbstractOptimizer)
+    reform_flag = in(:presolve_flatten_flag, [fieldnames(typeof(x))...])
     if reform_flag
-        reform_flag &= getfield(m, :reform_flatten_flag)
+        reform_flag &= getfield(x, :presolve_flatten_flag)
     end
 
-    evaluator = m.nlp_data.evaluator
+    evaluator = x._nlp_data.evaluator
     parameter_values = evaluator.parameter_values
     jnlp_data = evaluator.m.nlp_data
     user_registry = jnlp_data.user_operators
@@ -115,19 +115,19 @@ function udf_loader!(m::AbstractOptimizer)
         @inbounds expr = jnlp_data.nlexpr[i]
         replace_subexpressions!(expr, mv_len, n_expr0)
         remove_subexpr_children!(expr)
-        m.reform_flatten_flag && flatten_expression!(expr, parameter_values)
+        x.presolve_flatten_flag && flatten_expression!(expr, parameter_values)
     end
-    if (jnlp_data.nlobj !== nothing) 
+    if (jnlp_data.nlobj !== nothing)
         replace_subexpressions!(jnlp_data.nlobj, mv_len, n_expr0)
         remove_subexpr_children!(jnlp_data.nlobj)
-        m.reform_flatten_flag && flatten_expression!(jnlp_data.nlobj, parameter_values)
+        x.presolve_flatten_flag && flatten_expression!(jnlp_data.nlobj, parameter_values)
     end
     constr_len = length(jnlp_data.nlconstr)
     for i in 1:constr_len
         @inbounds constr = jnlp_data.nlconstr[i]
         replace_subexpressions!(constr.terms, mv_len, n_expr0)
         remove_subexpr_children!(constr.terms)
-        m.reform_flatten_flag && flatten_expression!(constr.terms, parameter_values)
+        x.presolve_flatten_flag && flatten_expression!(constr.terms, parameter_values)
     end
 
     # void previously defined udfs
@@ -135,12 +135,13 @@ function udf_loader!(m::AbstractOptimizer)
     jnlp_data.largest_user_input_dimension = 0
     evaluator.m.nlp_data = jnlp_data
     evaluator.eval_objective_timer = 0.0
-    m.nlp_data = NLPBlockData(m.nlp_data.constraint_bounds, evaluator, m.nlp_data.has_objective)
+    x._nlp_data = NLPBlockData(x._nlp_data.constraint_bounds, evaluator, x._nlp_data.has_objective)
 
     # reinitialize evaluator
-    features = features_available(m.nlp_data.evaluator)
+    features = features_available(x._nlp_data.evaluator)
     init_feat = [:Grad, :Hess]
-    num_nlp_constraints = length(m.nlp_data.constraint_bounds)
+    num_nlp_constraints = length(x._nlp_data.constraint_bounds)
     num_nlp_constraints > 0 && push!(init_feat, :Jac)
-    initialize(m.nlp_data.evaluator, init_feat)
+    initialize(x._nlp_data.evaluator, init_feat)
+    return
 end

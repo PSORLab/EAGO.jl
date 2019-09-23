@@ -90,11 +90,11 @@ mutable struct Evaluator{N} <: MOI.AbstractNLPEvaluator
     has_user_mv_operator::Bool
     parameter_values::Vector{Float64}
     variable_number::Int
-    index_to_variable::Vector{Tuple{Int,Int,Int}}
+    index_to_variable::Vector{Tuple{Int64,Int64,Int64}}
     current_node::NodeBB
     disable_1storder::Bool
     disable_2ndorder::Bool
-    constraint_number::Int
+    constraint_number::Int64
     subexpression_number::Int
     has_nlobj::Bool
     has_reverse::Bool
