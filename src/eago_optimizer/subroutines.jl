@@ -399,24 +399,137 @@ function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
     return
 end
 
-function interval_lower_bound!(x::Optimizer, y::NodeBB, flag::Bool)
+function interval_bound(s::SAF, y::NodeBB, flag::true)
+    val_lo = flag ? s.constant : -1.0*s.constant
+    lo_bnds = y.lower_variable_bound
+    up_bnds = y.upper_variable_bounds
+    if flag
+        for term in s.terms
+            vi = term.variable_index.value
+            if (term.coefficient > 0.0)
+                if flag
+                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
+                else
+                    @inbounds val_lo += term.coefficient*up_bnds[vi]
+                end
+            else
+                if flag
+                    @inbounds val_lo += term.coefficient*up_bnds[vi]
+                else
+                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
+                end
+            end
+        end
+    end
+    return val_lo
+end
+
+function interval_bound(s::SQF, y::NodeBB, flag::true)
+    val_lo = flag ? s.constant : -1.0*s.constant
+    lo_bnds = y.lower_variable_bound
+    up_bnds = y.upper_variable_bounds
+    if flag
+        for term in s.affine_terms
+            vi = term.variable_index.value
+            if (term.coefficient > 0.0)
+                if flag
+                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
+                else
+                    @inbounds val_lo += term.coefficient*up_bnds[vi]
+                end
+            else
+                if flag
+                    @inbounds val_lo += term.coefficient*up_bnds[vi]
+                else
+                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
+                end
+            end
+        end
+        for term in s.quadratic_terms
+            vi1 = term.variable_index.value
+            vi2 = term.variable_index.value
+            if (term.coefficient > 0.0)
+                if flag
+                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
+                else
+                    @inbounds val_lo += term.coefficient*up_bnds[vi]
+                end
+            else
+                if flag
+                    @inbounds val_lo += term.coefficient*up_bnds[vi]
+                else
+                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
+                end
+            end
+        end
+    end
+    return val_lo
+end
+
+function interval_lower_bound!(x::Optimizer, y::NodeBB)
 
     feas = true
 
     d = x.working_evaluator_block.evaluator
     if x.objective === nothing
         objective_lo = get_node_lower(d.objective, 1)
-    #elseif isa(x.objective)
-    #    objective_lo
-    #elseif isa(x.objective)
-     #        objective_lo
-     #    elseif isa(x.objective)
-     #        objective_lo
+    elseif isa(x.objective, SV)
+        obj_indx = x.objective.variable_index
+        @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
+    elseif isa(x.objective, SAF)
+        objective_lo = interval_bound(x.objective, y, true)
+    elseif isa(x.objective, SAQ)
+        objective_lo = interval_bound(x.objective, y, true)
     end
     constraints_intv_lo = get_node_lower.(d.constraints, 1)
     constraints_intv_hi = get_node_upper.(d.constraints, 1)
     constraints_bnd_lo = d.constraints_lbd
     constrains_bnd_hi = d.constraints_ubd
+    for (func, set, i) in x._linear_leq_constraints
+        if feas
+            interval_bound(set, y, true) - set.value
+        else
+            break
+        end
+    end
+    for (func, set, i) in x._linear_geq_constraints
+        if feas
+            interval_bound(set, y, false) + set.value
+        else
+            break
+        end
+    end
+    for (func, set, i) in x._linear_eq_constraints
+        if feas
+            interval_bound(set, y, true) - set.value
+            interval_bound(set, y, false) + set.value
+        else
+            break
+        end
+    end
+
+    for (func, set, i) in x._quadratic_leq_constraints
+        if feas
+            interval_bound(set, y, true) - set.value
+        else
+            break
+        end
+    end
+    for (func, set, i) in x._quadratic_geq_constraints
+        if feas
+            interval_bound(set, y, false) + set.value
+        else
+            break
+        end
+    end
+    for (func, set, i) in x._quadratic_eq_constraints
+        if feas
+            interval_bound(set, y, true) - set.value
+            interval_bound(set, y, false) + set.value
+        else
+            break
+        end
+    end
 
     for i in 1:d.constraint_number
         if (constraints_bnd_lo[i] > constraints_intv_hi[i]) ||
@@ -426,9 +539,13 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB, flag::Bool)
         end
     end
 
-    x.current_lower_info.feasibility = feas
-    flag && (objective_lo = max(x.current_lower_info.value, objective_lo))
-    x.current_lower_info.value = feas ? objective_lo : -Inf
+    x._lower_feasibility = feas
+    if feas
+        x._lower_objective_value = max(x._lower_objective_value, objective_lo)
+    else
+        x._lower_objective_value = -Inf
+    end
+    return
 end
 
 """
@@ -471,7 +588,7 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
             x._lower_objective_value = -Inf
         end
     else
-        interval_lower_bound!(x, y, true)
+        interval_lower_bound!(x, y)
         x._cut_add_flag = false
     end
     return

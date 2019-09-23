@@ -183,16 +183,19 @@ function load_relaxed_problem!(x::Optimizer)
 end
 
 is_lp(m::Optimizer) = ~in(true, m.branch_variable)
-# TODO
 function linear_solve!(m::Optimizer)
-    println("Linear solve to be implemented. Recommend using linear solver such as GLPK directly. EAGO will continue...")
-    # Nonlinear terms which are actually linear
-    # Solve LP
-    #=
-    =#
-    # Unpack results to EAGO solver
-    #=
-    =#
+    opt = m.relaxed_optimizer
+    # TODO: Nonlinear terms which are actually linear
+    if isa(m._objective, SV) || isa(m._objective, SAF)
+        MOI.set(opt, MOI.ObjectiveFunction(), m._objective)
+        MOI.optimize!(opt)
+        m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
+        m._termination_status_code = MOI.get(opt, MOI.TerminationStatusCode())
+        m._result_status_code = MOI.get(opt, MOI.ResultStatusCode())
+        m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)
+        #m._run_time = MOI.get(opt, MOI.SolveTime())
+    end
+    return
 end
 
 """
