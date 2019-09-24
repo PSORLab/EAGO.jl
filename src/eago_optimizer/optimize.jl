@@ -188,7 +188,7 @@ function linear_solve!(m::Optimizer)
 
     opt = m.relaxed_optimizer
 
-    # TODO: Nonlinear terms which are actually linear
+    # TODO: Add check for nonlinear terms which are actually linear
     if isa(m._objective, SV)
         MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective)
     elseif isa(m._objective, SAF)
@@ -196,8 +196,10 @@ function linear_solve!(m::Optimizer)
     end
 
     MOI.optimize!(opt)
-    println("opt: $opt")
+    m._objective_value = MOI.get(opt, MOI.ObjectiveValue())
     m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
+    m._global_lower_bound = MOI.get(opt, MOI.ObjectiveValue())
+    m._global_upper_bound = MOI.get(opt, MOI.ObjectiveValue())
     m._termination_status_code = MOI.get(opt, MOI.TerminationStatus())
     m._result_status_code = MOI.get(opt, MOI.PrimalStatus())
     m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)

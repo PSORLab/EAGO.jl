@@ -186,12 +186,12 @@ function obbt(x::Optimizer)
     feasibility = true
 
     y = x._current_node
-    ymid = mid(y)
+    ymid = 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
 
     # solve initial problem to feasibility
-    update_relaxed_problem_box!(x)
-    relax_problem!(t, x, ymid)
-    relax_objective!(t, x, ymid)
+    update_relaxed_problem_box!(x, y)
+    relax_problem!(x.ext_type, x, ymid)
+    relax_objective!(x.ext_type, x, ymid)
     objective_cut_linear!(x)
     MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(x.relaxed_optimizer)
@@ -368,7 +368,7 @@ function lp_bound_tighten(m::Optimizer)
     end
 
     # Runs Poor Man LP on constraints of form ax <= b
-    for (func, constr, ind) in m.linear_leq_constraints
+    for (func, constr, ind) in m._linear_leq_constraints
         temp_value = (constr.upper - func.constant)
         for term in func.terms
             indx = term.variable_index.value
@@ -398,7 +398,7 @@ function lp_bound_tighten(m::Optimizer)
         end
     end
 
-    for (func, constr, ind) in m.linear_eq_constraints
+    for (func, constr, ind) in m._linear_eq_constraints
         temp_value = (constr.value - func.constant)
         for term in func.terms
             indx = term.variable_index.value
@@ -595,10 +595,11 @@ function classify_quadratics!(m::Optimizer)
 end
 
 function univariate_kernel(n::NodeBB,a::Float64,b::Float64,c::Float64,vi::Int)
+        flag = true
         term1 = c + (b^2)/(4.0*a)
         term2 = term1/a
         if ((term1 > 0.0) && (a < 0.0)) # No solution, fathom node
-            return false
+            flag = false
         elseif (term2 >= 0.0)
             xlo = n.lower_variable_bounds[vi]
             xhi = n.upper_variable_bounds[vi]
@@ -612,31 +613,40 @@ function univariate_kernel(n::NodeBB,a::Float64,b::Float64,c::Float64,vi::Int)
                 n.upper_variable_bounds[vi] = min(xhi,chk2)
             end
             if (n.lower_variable_bounds[vi] <= n.upper_variable_bounds[vi])
-                return true
+                flag = true
             end
         else
-            return true
+            flag = true
         end
+        return flag
 end
 
 function univariate_quadratic(m::Optimizer)
     feas = true
     # fathom ax^2 + bx + c > l quadratics
-    for (a,b,c,vi) in m._univariate_quadratic_geq_constraints
-        feas = univariate_kernel(n,a,b,c,vi)
-        (feas == false) && return feas
+    for (a, b, c, vi) in m._univariate_quadratic_geq_constraints
+        if ~feas
+            break
+        end
+        feas = univariate_kernel(n, a, b, c , vi)
     end
     # fathom ax^2 + bx + c < u quadratics
-    for (a,b,c,vi) in m._univariate_quadratic_leq_constraints
-         feas = univariate_kernel(n,-a,-b,-c,vi)
-         (feas == false) && return feas
+    for (a, b, c, vi) in m._univariate_quadratic_leq_constraints
+        if ~feas
+            break
+        end
+        feas = univariate_kernel(n, -a, -b, -c, vi)
     end
     # fathom ax^2 + bx + c = v quadratics
-    for (a,b,c,vi) in m._univariate_quadratic_eq_constraints
-          feas = univariate_kernel(n,a,b,c,vi)
-          (feas == false) && return feas
-          feas = univariate_kernel(n,-a,-b,-c,vi)
-          (feas == false) && return feas
+    for (a, b, c, vi) in m._univariate_quadratic_eq_constraints
+        if ~feas
+            break
+        end
+        feas = univariate_kernel(n, a, b, c, vi)
+        if ~feas
+            break
+        end
+        feas = univariate_kernel(n, -a, -b, -c, vi)
      end
      return feas
 end

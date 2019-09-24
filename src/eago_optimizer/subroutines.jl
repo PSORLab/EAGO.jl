@@ -21,7 +21,7 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     lvbs = y.lower_variable_bounds
     uvbs = y.upper_variable_bounds
 
-    max_pos = 0;
+    max_pos = 0
     max_val = -Inf
     temp_max = 0.0
 
@@ -29,9 +29,10 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     for i in 1:nvar
         @inbounds flag = ~x._fixed_variable[i]
         @inbounds flag &= x.branch_variable[i]
+        @inbounds vi = x._variable_info[i]
         if flag
             @inbounds temp_max = uvbs[i] - lvbs[i]
-            @inbounds temp_max /= x.variable_info[i].upper_bound - x.variable_info[i].lower_bound
+            @inbounds temp_max /= vi.upper_bound - vi.lower_bound
             if temp_max > max_val
                 max_pos = i
                 max_val = temp_max
@@ -41,14 +42,14 @@ function branch_node!(t::ExtensionType, x::Optimizer)
 
     @inbounds lvb = lvbs[max_pos]
     @inbounds uvb = uvbs[max_pos]
-    @inbounds lsol = x.lower_solution[max_pos]
+    @inbounds lsol = x._lower_solution[max_pos]
     branch_pnt = x.branch_cvx_factor*lsol + (1.0-x.branch_cvx_factor)*(lvb + uvb)/2.0
     N1::Interval{Float64} = Interval{Float64}(lvb, branch_pnt)
     N2::Interval{Float64} = Interval{Float64}(branch_pnt, uvb)
-    lvb_1 = zeros(nvar)
-    uvb_1 = zeros(nvar)
-    lvb_2 = zeros(nvar)
-    uvb_2 = zeros(nvar)
+    lvb_1 = copy(lvbs)
+    uvb_1 = copy(uvbs)
+    lvb_2 = copy(lvbs)
+    uvb_2 = copy(uvbs)
     @inbounds lvb_1[max_pos] = N1.lo
     @inbounds uvb_1[max_pos] = N1.hi
     @inbounds lvb_2[max_pos] = N2.lo
@@ -56,12 +57,14 @@ function branch_node!(t::ExtensionType, x::Optimizer)
 
     y.lower_bound = max(y.lower_bound, x._lower_objective_value)
     y.upper_bound = min(y.upper_bound, x._upper_objective_value)
-    X1 = NodeBB(lvb_1, uvb_1, y.lower_bound, y.upper_bound, y.depth + 1, -1)
-    X2 = NodeBB(lvb_2, uvb_2, y.lower_bound, y.upper_bound, y.depth + 1, -1)
-    push!(x._stack, X1, X2)
+    x._maximum_node_id += 1
+    X1 = NodeBB(lvb_1, uvb_1, y.lower_bound, y.upper_bound, y.depth + 1, x._maximum_node_id)
+    x._maximum_node_id += 1
+    X2 = NodeBB(lvb_2, uvb_2, y.lower_bound, y.upper_bound, y.depth + 1, x._maximum_node_id)
+    push!(x._stack, X1)
+    push!(x._stack, X2)
 
     x._node_repetitions = 1
-    x._maximum_node_id += 2
     x._node_count += 2
 
     return
@@ -75,14 +78,12 @@ Stores the one nodes to the stack.
 function single_storage!(t::ExtensionType, x::Optimizer)
     y = x._current_node
     x._node_repetitions += 1
-    x._maximum_node_id += 1
+    x._maximum_node_id += 0
     x._node_count += 1
-    lower_bound = max(y.lower_bound, x._lower_objective_value)
-    upper_bound = min(y.upper_bound, x._upper_objective_value)
-    n = NodeBB(y.lower_variable_bounds,
-               y.upper_variable_bounds,
-               lower_bound, upper_bound, y.depth + 1, -1)
-    push!(x._stack, n)
+    y.lower_bound = max(y.lower_bound, x._lower_objective_value)
+    y.upper_bound = min(y.upper_bound, x._upper_objective_value)
+    y.depth += 1
+    push!(x._stack, y)
     return
 end
 
@@ -131,7 +132,6 @@ end
 Checks for termination of algorithm due to satisfying absolute or relative
 tolerance, infeasibility, or a specified limit, returns a boolean valued true
 if algorithm should continue.
-
 """
 function termination_check(t::ExtensionType, x::Optimizer)
 
@@ -197,7 +197,6 @@ end
 
 Checks for termination of algorithm due to satisfying absolute or relative
 tolerance, infeasibility, or a specified limit.
-
 """
 function convergence_check(t::ExtensionType, x::Optimizer)
 
@@ -270,6 +269,7 @@ function set_dual!(x::Optimizer)
     relaxed_optimizer = x.relaxed_optimizer
 
     for (vi, VarIndxTuple) in enumerate(x._lower_variable_index)
+
         (ci1, ci2, n) = VarIndxTuple
 
         if n == 2
@@ -308,7 +308,7 @@ specified in `EAGO.Optimizer` object.
 function preprocess!(t::ExtensionType, x::Optimizer)
 
     # Sets initial feasibility
-    feas = true;
+    feas = true
     rept = 0
 
     x._initial_volume = prod(upper_variable_bounds(x._current_node) -
@@ -323,8 +323,8 @@ function preprocess!(t::ExtensionType, x::Optimizer)
     end
 
     # runs univariate quadratic contractor
-    if feas && (x.univariate_quadratic_depth >= x._iteration_count)
-        for i in 1:x.univariate_quadratic_reptitions
+    if feas && (x.quad_uni_depth >= x._iteration_count)
+        for i in 1:x.quad_uni_reptitions
             feas = univariate_quadratic(x)
             (~feas) && (break)
         end
@@ -399,9 +399,16 @@ function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
     return
 end
 
+"""
+    interval_bound
+
+Computes the natural interval extension of a ScalarAffineFunction or
+ScalarQuadaraticFunction on a node y. Returns the lower bound if flag
+is true and the upper bound if flag is false.
+"""
 function interval_bound(s::SAF, y::NodeBB, flag::Bool)
     val_lo = flag ? s.constant : -1.0*s.constant
-    lo_bnds = y.lower_variable_bound
+    lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
     if flag
         for term in s.terms
@@ -423,125 +430,113 @@ function interval_bound(s::SAF, y::NodeBB, flag::Bool)
     end
     return val_lo
 end
-
 function interval_bound(s::SQF, y::NodeBB, flag::Bool)
-    val_lo = flag ? s.constant : -1.0*s.constant
-    lo_bnds = y.lower_variable_bound
+    lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
+    val_intv = Interval(s.constant)
     if flag
         for term in s.affine_terms
+            coeff = term.coefficient
             vi = term.variable_index.value
-            if (term.coefficient > 0.0)
-                if flag
-                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
-                else
-                    @inbounds val_lo += term.coefficient*up_bnds[vi]
-                end
-            else
-                if flag
-                    @inbounds val_lo += term.coefficient*up_bnds[vi]
-                else
-                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
-                end
-            end
+            @inbounds il1b = lo_bnds[vi]
+            @inbounds iu1b = up_bnds[vi]
+            val_intv += coeff*Interval(il1b, iu1b)
         end
         for term in s.quadratic_terms
-            vi1 = term.variable_index.value
-            vi2 = term.variable_index.value
-            if (term.coefficient > 0.0)
-                if flag
-                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
-                else
-                    @inbounds val_lo += term.coefficient*up_bnds[vi]
-                end
-            else
-                if flag
-                    @inbounds val_lo += term.coefficient*up_bnds[vi]
-                else
-                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
-                end
-            end
+            coeff = term.coefficient
+            vi1 = term.variable_index_1.value
+            vi2 = term.variable_index_2.value
+            @inbounds il1b = lo_bnds[vi1]
+            @inbounds il2b = lo_bnds[vi2]
+            @inbounds iu1b = up_bnds[vi1]
+            @inbounds iu2b = up_bnds[vi2]
+            val_intv += coeff*Interval(il1b, iu1b)*Interval(il2b, iu2b)
         end
     end
-    return val_lo
+    return (flag ? val_intv.lo : val_intv.hi)
 end
 
+"""
+"""
 function interval_lower_bound!(x::Optimizer, y::NodeBB)
 
     feas = true
 
-    d = x.working_evaluator_block.evaluator
-    if x.objective === nothing
+    d = x._working_evaluator_block.evaluator
+
+    if x._objective === nothing
+
         objective_lo = get_node_lower(d.objective, 1)
-    elseif isa(x.objective, SV)
-        obj_indx = x.objective.variable_index
-        @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
-    elseif isa(x.objective, SAF)
-        objective_lo = interval_bound(x.objective, y, true)
-    elseif isa(x.objective, SAQ)
-        objective_lo = interval_bound(x.objective, y, true)
+        constraints = d.constraints
+        constraints_intv_lo = get_node_lower.(constraints, 1)
+        constraints_intv_hi = get_node_upper.(constraints, 1)
+        constraints_bnd_lo = d.constraints_lbd
+        constrains_bnd_hi = d.constraints_ubd
+
+        for i in 1:d.constraint_number
+            if (constraints_bnd_lo[i] > constraints_intv_hi[i]) ||
+               (constrains_bnd_hi[i] < constraints_intv_lo[i])
+                feas = false
+                break
+            end
+        end
+    else
+        opt_objective = x._objective
+        if isa(opt_objective, SV)
+            obj_indx = opt_objective.variable_index
+            @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
+        elseif isa(opt_objective, SAF)
+            objective_lo = interval_bound(opt_objective, y, true)
+        elseif isa(opt_objective, SAQ)
+            objective_lo = interval_bound(opt_objective, y, true)
+        end
     end
-    constraints_intv_lo = get_node_lower.(d.constraints, 1)
-    constraints_intv_hi = get_node_upper.(d.constraints, 1)
-    constraints_bnd_lo = d.constraints_lbd
-    constrains_bnd_hi = d.constraints_ubd
+
     for (func, set, i) in x._linear_leq_constraints
-        if feas
-            interval_bound(set, y, true) - set.value
-        else
-            break
+        (~feas) && break
+        if interval_bound(set, y, true) > set.upper
+            feas = false
         end
     end
     for (func, set, i) in x._linear_geq_constraints
-        if feas
-            interval_bound(set, y, false) + set.value
-        else
-            break
+        (~feas) && break
+        if interval_bound(set, y, false) < set.lower
+            feas = false
         end
     end
     for (func, set, i) in x._linear_eq_constraints
-        if feas
-            interval_bound(set, y, true) - set.value
-            interval_bound(set, y, false) + set.value
-        else
-            break
+        (~feas) && break
+        if (interval_bound(set, y, true) > set.value) ||
+           (interval_bound(set, y, false) < set.value)
+            feas = false
         end
     end
 
     for (func, set, i) in x._quadratic_leq_constraints
-        if feas
-            interval_bound(set, y, true) - set.value
-        else
-            break
+        (~feas) && break
+        if interval_bound(set, y, true) > set.upper
+            feas = false
         end
     end
     for (func, set, i) in x._quadratic_geq_constraints
-        if feas
-            interval_bound(set, y, false) + set.value
-        else
-            break
+        (~feas) && break
+        if interval_bound(set, y, false) < set.lower
+            feas = false
         end
     end
     for (func, set, i) in x._quadratic_eq_constraints
-        if feas
-            interval_bound(set, y, true) - set.value
-            interval_bound(set, y, false) + set.value
-        else
-            break
-        end
-    end
-
-    for i in 1:d.constraint_number
-        if (constraints_bnd_lo[i] > constraints_intv_hi[i]) ||
-           (constrains_bnd_hi[i] < constraints_intv_lo[i])
+        (~feas) && break
+        if (interval_bound(set, y, true) > set.value) ||
+           (interval_bound(set, y, false) < set.value)
             feas = false
-            break
         end
     end
 
     x._lower_feasibility = feas
     if feas
-        x._lower_objective_value = max(x._lower_objective_value, objective_lo)
+        if objective_lo > x._lower_objective_value
+            x._lower_objective_value = objective_lo
+        end
     else
         x._lower_objective_value = -Inf
     end
@@ -549,7 +544,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
 end
 
 """
-    lower_bounding!
+    lower_problem!
 
 Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.

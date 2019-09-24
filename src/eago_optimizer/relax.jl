@@ -122,31 +122,31 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
         MOI.set(x._relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
         MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    elseif eval_block.has_objective
-
+    else
         eval_block = x._working_evaluator_block
+        if eval_block.has_objective
 
-        # Calculates convex relaxation
-        f = MOI.eval_objective(eval_block.evaluator, x0)
+            # Calculates convex relaxation
+            f = MOI.eval_objective(eval_block.evaluator, x0)
 
-        # calculates the convex relaxation subgradient
-        df = zeros(nx)
-        MOI.eval_objective_gradient(eval_block.evaluator, df, x0)
+            # calculates the convex relaxation subgradient
+            df = zeros(nx)
+            MOI.eval_objective_gradient(eval_block.evaluator, df, x0)
 
-        # Add objective relaxation to model
-        saf_const = f
-        grad_c = 0.0
-        x0_c = 0.0
-        @simd for i in 1:nx
-            @inbounds grad_c = df[i]
-            @inbounds x0_c = x0[i]
-            @inbounds vindx = vi[i]
-            saf_const -= xpnt_c*grad_c
-            MOI.modify(x._relaxed_optimizer,  MOI.ObjectiveFunction{SAF}(), MOI.SCoef(vindx, grad_c))
+            # Add objective relaxation to model
+            saf_const = f
+            grad_c = 0.0
+            x0_c = 0.0
+            for i in 1:nx
+                @inbounds grad_c = df[i]
+                @inbounds x0_c = x0[i]
+                @inbounds vindx = vi[i]
+                saf_const -= xpnt_c*grad_c
+                MOI.modify(x._relaxed_optimizer,  MOI.ObjectiveFunction{SAF}(), MOI.SCoef(vindx, grad_c))
+            end
+            MOI.modify(x._relaxed_optimizer,  MOI.ObjectiveFunction{SAF}(), MOI.SConsC(saf_const))
+            MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
         end
-        MOI.modify(x._relaxed_optimizer,  MOI.ObjectiveFunction{SAF}(), MOI.SConsC(saf_const))
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
     end
     return
 end
@@ -233,9 +233,9 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64})
 
     eval_block = x._working_evaluator_block
 
-    if ~isempty(x._branch_variable)
+    if ~isempty(x.branch_variable)
 
-        if MOI.supports(x._relaxed_optimizer, MOI.NLPBlock())
+        if MOI.supports(x.relaxed_optimizer, MOI.NLPBlock())
 
             _nlp_data = MOI.NLPBlockData(x._nlp_data.constraint_bounds,
                                          eval_block.evaluator,
