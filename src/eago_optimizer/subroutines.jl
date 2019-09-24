@@ -399,7 +399,7 @@ function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
     return
 end
 
-function interval_bound(s::SAF, y::NodeBB, flag::true)
+function interval_bound(s::SAF, y::NodeBB, flag::Bool)
     val_lo = flag ? s.constant : -1.0*s.constant
     lo_bnds = y.lower_variable_bound
     up_bnds = y.upper_variable_bounds
@@ -424,7 +424,7 @@ function interval_bound(s::SAF, y::NodeBB, flag::true)
     return val_lo
 end
 
-function interval_bound(s::SQF, y::NodeBB, flag::true)
+function interval_bound(s::SQF, y::NodeBB, flag::Bool)
     val_lo = flag ? s.constant : -1.0*s.constant
     lo_bnds = y.lower_variable_bound
     up_bnds = y.upper_variable_bounds

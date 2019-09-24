@@ -183,18 +183,26 @@ function load_relaxed_problem!(x::Optimizer)
 end
 
 is_lp(m::Optimizer) = ~in(true, m.branch_variable)
+
 function linear_solve!(m::Optimizer)
+
     opt = m.relaxed_optimizer
+
     # TODO: Nonlinear terms which are actually linear
-    if isa(m._objective, SV) || isa(m._objective, SAF)
-        MOI.set(opt, MOI.ObjectiveFunction(), m._objective)
-        MOI.optimize!(opt)
-        m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
-        m._termination_status_code = MOI.get(opt, MOI.TerminationStatusCode())
-        m._result_status_code = MOI.get(opt, MOI.ResultStatusCode())
-        m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)
-        #m._run_time = MOI.get(opt, MOI.SolveTime())
+    if isa(m._objective, SV)
+        MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective)
+    elseif isa(m._objective, SAF)
+        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._objective)
     end
+
+    MOI.optimize!(opt)
+    println("opt: $opt")
+    m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
+    m._termination_status_code = MOI.get(opt, MOI.TerminationStatus())
+    m._result_status_code = MOI.get(opt, MOI.PrimalStatus())
+    m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)
+    #m._run_time = MOI.get(opt, MOI.SolveTime())
+
     return
 end
 
@@ -266,7 +274,6 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     m._working_evaluator_block = m._nlp_data
     if ~isa(m._nlp_data.evaluator, EAGO.EmptyNLPEvaluator) || false #flag
         built_evaluator = build_nlp_evaluator(m._variable_number, m._nlp_data.evaluator, m, false)
-        (m._optimization_sense == MOI.MAX_SENSE) && neg_objective!(built_evaluator)
         m._working_evaluator_block = MOI.NLPBlockData(m._nlp_data.constraint_bounds,
                                                       built_evaluator,
                                                       m._nlp_data.has_objective)

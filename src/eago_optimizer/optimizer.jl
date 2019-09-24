@@ -53,6 +53,8 @@ function MOI.eval_hessian_lagrangian(::EmptyNLPEvaluator, H, x, σ, μ)
     return
 end
 
+empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
+
 export Optimizer
 """
     Optimizer
@@ -508,8 +510,8 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         # Log
         m._log = Dict{Symbol,Any}()
 
-        #m._nlp_data = JuMP.empty_nlp_data()
-        #m._working_evaluator_block = JuMP.empty_nlp_data()
+        m._nlp_data = empty_nlp_data()
+        m._working_evaluator_block = empty_nlp_data()
 
         return m
     end
@@ -630,6 +632,7 @@ function label_nonlinear_variables!(m::Optimizer, x)
             end
         end
     end
+    return
 end
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
