@@ -63,7 +63,7 @@ The main optimizer object used by EAGO to solve problems during the optimization
 routine. The following commonly used options are described below and can be set
 via keyword arguments in the JuMP/MOI model:
 """
-mutable struct Optimizer <: MOI.AbstractOptimizer
+mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
 
     # Presolving options
     presolve_scrubber_flag::Bool
@@ -81,13 +81,14 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     cp_mccormick_tolerance::Float64
 
     # Options for optimality-based bound tightening
-    relaxed_optimizer::MOI.AbstractOptimizer
+    relaxed_optimizer::S
     obbt_depth::Int64
     obbt_reptitions::Int64
     obbt_aggressive_on::Bool
     obbt_aggressive_max_iteration::Int64
     obbt_aggressive_min_dimension::Int64
     obbt_tolerance::Float64
+    obbt_variable_values::BitArray
 
     # Options for linear bound tightening
     lp_depth::Int64
@@ -118,6 +119,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Node branching options
     branch_cvx_factor::Float64
+    branch_offset::Float64
     branch_variable::Vector{Bool}
     branch_max_repetitions::Int64
     branch_repetition_tol::Float64
@@ -138,11 +140,14 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     log_on::Bool
     log_subproblem_info::Bool
     log_interval::Bool
+    time_eago_kernel::Bool
 
     # Optimizer display options
     verbosity::Int64
     output_iterations::Int64
     header_iterations::Int64
+
+    upper_optimizer::T
 
     # Debug
     enable_optimize_hook::Bool
@@ -150,6 +155,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     ext_type::ExtensionType
 
     _current_node::NodeBB
+    _current_xref::Vector{Float64}
     _sense_multiplier::Float64
 
     _variable_number::Int64
@@ -175,7 +181,9 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     _lower_variable_et::Vector{CI{SV, ET}}
     _lower_variable_lt::Vector{CI{SV, LT}}
     _lower_variable_gt::Vector{CI{SV, GT}}
-    _lower_variable_style::Vector{Int64}
+    _lower_variable_et_indx::Vector{Int64}
+    _lower_variable_lt_indx::Vector{Int64}
+    _lower_variable_gt_indx::Vector{Int64}
 
     _preprocess_feasibility::Bool
     _preprocess_result_status::MOI.ResultStatusCode
@@ -199,14 +207,27 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _start_time::Float64
     _run_time::Float64
+    _time_left::Float64
+    _parse_time::Float64
+    _presolve_time::Float64
     _last_preprocess_time::Float64
     _last_lower_problem_time::Float64
     _last_upper_problem_time::Float64
     _last_postprocessing_time::Float64
 
-    _objective::Union{SV, SAF, SQF, Nothing}
+    _objective_sv::SV
+    _objective_saf::SAF
+    _objective_sqf::SQF
+    _objective_is_sv::Bool
+    _objective_is_saf::Bool
+    _objective_is_sqf::Bool
+    _objective_is_nlp::Bool
+
     _objective_convexity::Bool
-    _objective_cut_ci::Union{CI, Nothing}
+
+    _objective_cut_set::Bool
+    _objective_cut_ci_sv::CI{SV,LT}
+    _objective_cut_ci_saf::CI{SAF,LT}
 
     _linear_leq_constraints::Vector{Tuple{SAF, LT, Int64}}
     _linear_geq_constraints::Vector{Tuple{SAF, GT, Int64}}
@@ -236,6 +257,12 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _lower_nlp_affine::Vector{CI{SAF,LT}}
     _upper_nlp_affine::Vector{CI{SAF,LT}}
+
+    _lower_nlp_affine_indx::Vector{Int64}
+    _upper_nlp_affine_indx::Vector{Int64}
+
+    _lower_nlp_sparsity::Vector{Vector{Int64}}
+    _upper_nlp_sparsity::Vector{Vector{Int64}}
 
     _univariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}}
     _univariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}}
@@ -276,12 +303,16 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
     _final_volume::Float64
 
     # Log
-    _log::Dict{Symbol,Any}
+    _log::Log
 
     _nlp_data::MOI.NLPBlockData
-    _working_evaluator_block::MOI.NLPBlockData
 
-    function Optimizer(;options...)
+    _relaxed_evaluator::Evaluator
+    _relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair}
+    _relaxed_eval_has_objective::Bool
+
+    function Optimizer{S, T}(;options...) where {S <: MOI.AbstractOptimizer,
+                                                 T <: MOI.AbstractOptimizer}
 
         m = new()
 
@@ -308,6 +339,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:obbt_aggressive_max_iteration] = 2
         default_opt_dict[:obbt_aggressive_min_dimension] = 2
         default_opt_dict[:obbt_tolerance] = 1E-9
+        default_opt_dict[:obbt_variable_values] = trues(0)
 
         # Options for linear bound tightening
         default_opt_dict[:lp_depth] = 0
@@ -337,6 +369,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         # Node branching options
         default_opt_dict[:branch_cvx_factor] = 0.25
+        default_opt_dict[:branch_offset] = 0.15
         default_opt_dict[:branch_variable] = Bool[]
         default_opt_dict[:branch_max_repetitions] = 4
         default_opt_dict[:branch_repetition_tol] = 0.9
@@ -347,7 +380,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         # Termination limits
         default_opt_dict[:node_limit] = 10^6
         default_opt_dict[:time_limit] = 3600.0
-        default_opt_dict[:iteration_limit] = 10^5
+        default_opt_dict[:iteration_limit] = 3
         default_opt_dict[:absolute_tolerance] = 1E-3
         default_opt_dict[:relative_tolerance] = 1E-3
         default_opt_dict[:local_solve_only] = false
@@ -359,9 +392,9 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:log_interval] = false
 
         # Optimizer display options
-        default_opt_dict[:verbosity] = 0
+        default_opt_dict[:verbosity] = 1
         default_opt_dict[:output_iterations] = 10
-        default_opt_dict[:header_iterations] = 200
+        default_opt_dict[:header_iterations] = 100
 
         # Extension options
         default_opt_dict[:enable_optimize_hook] = false
@@ -369,6 +402,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         default_opt_dict[:ext_type] = DefaultExt()
 
         default_opt_dict[:relaxed_optimizer] = GLPK.Optimizer()
+        default_opt_dict[:upper_optimizer] = Ipopt.Optimizer()
         #=
         fac = with_optimizer(Ipopt.Optimizer, max_iter = 1000, acceptable_tol = 1E30,
                              acceptable_iter = 100, constr_viol_tol = 0.00001,
@@ -393,6 +427,7 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         m._stack = BinaryMinMaxHeap{NodeBB}()
         m._current_node = NodeBB()
+        m._current_xref = Float64[]
 
         m._variable_info = VariableInfo[]
         m._variable_number = 0
@@ -412,7 +447,9 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         m._lower_variable_et = CI{SV, ET}[]
         m._lower_variable_lt = CI{SV, LT}[]
         m._lower_variable_gt = CI{SV, GT}[]
-        m._lower_variable_style = Int64[]
+        m._lower_variable_et_indx = Int64[]
+        m._lower_variable_lt_indx = Int64[]
+        m._lower_variable_gt_indx = Int64[]
 
         m._preprocess_feasibility = true
         m._preprocess_result_status = MOI.OTHER_RESULT_STATUS
@@ -436,14 +473,26 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         m._start_time = 0.0
         m._run_time = 0.0
+        m._time_left = m.time_limit
+        m._parse_time = 0.0
+        m._presolve_time = 0.0
         m._last_preprocess_time = 0.0
         m._last_lower_problem_time = 0.0
         m._last_upper_problem_time = 0.0
         m._last_postprocessing_time = 0.0
 
-        m._objective = nothing
+        m._objective_sv = SV(VI(1))
+        m._objective_saf = SAF(SAT.([0.0],[VI(1)]), 0.0)
+        m._objective_sqf = SQF(SAT.([0.0],[VI(1)]), SQT.([0.0],[VI(1)],[VI(1)]), 0.0)
+        m._objective_is_sv = false
+        m._objective_is_saf = false
+        m._objective_is_sqf = false
+        m._objective_is_nlp = false
+        m._objective_cut_set = false
+        m._objective_cut_ci_sv = CI{SV,LT}(1)
+        m._objective_cut_ci_saf = CI{SAF,LT}(1)
+
         m._objective_convexity = false
-        m._objective_cut_ci = nothing
 
         m._linear_leq_constraints = Tuple{SAF, LT, Int64}[]
         m._linear_geq_constraints = Tuple{SAF, GT, Int64}[]
@@ -473,6 +522,13 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
 
         m._lower_nlp_affine = CI{SAF,LT}[]
         m._upper_nlp_affine = CI{SAF,LT}[]
+
+
+        m._lower_nlp_affine_indx = Int64[]
+        m._upper_nlp_affine_indx = Int64[]
+
+        m._lower_nlp_sparsity = Vector{Int64}[]
+        m._upper_nlp_sparsity = Vector{Int64}[]
 
         m._univariate_quadratic_leq_constraints = Tuple{Float64,Float64,Float64,Int64}[]
         m._univariate_quadratic_geq_constraints = Tuple{Float64,Float64,Float64,Int64}[]
@@ -508,14 +564,18 @@ mutable struct Optimizer <: MOI.AbstractOptimizer
         m._final_volume = 0.0
 
         # Log
-        m._log = Dict{Symbol,Any}()
+        m._log = Log()
 
         m._nlp_data = empty_nlp_data()
-        m._working_evaluator_block = empty_nlp_data()
+
+        m._relaxed_evaluator = Evaluator{1}()
+        m._relaxed_constraint_bounds = Vector{MOI.NLPBoundsPair}[]
+        m._relaxed_eval_has_objective = false
 
         return m
     end
 end
+Optimizer(;options...) = Optimizer{GLPK.Optimizer, Ipopt.Optimizer}(;options...)
 
 function MOI.empty!(m::Optimizer)
     m = Optimizer()
@@ -583,7 +643,7 @@ function is_integer_feasible(m::Optimizer)
     return flag
 end
 
-is_integer_variable(m::Optimizer, i::Int) = in(i, m.integer_variables)
+is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
 
 function ReverseDict(dict)
     Dict(value => key for (key, value) in dict)
@@ -593,40 +653,46 @@ function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
     return MOI.Utilities.default_copy_to(model, src, copy_names)
 end
 
-function label_nonlinear_variables!(m::Optimizer, x)
+function label_nonlinear_variables!(m::Optimizer)
+    _nlpdata = m._nlp_data
+    x = _nlpdata.evaluator
+
     # scans subexpressions, objective, and constraints for nonlinear terms
     if ~isa(x, EmptyNLPEvaluator)
         if x.has_nlobj
-            if (x.objective.linearity != JuMP._Derivatives.LINEAR) ||
+            if (x.objective.linearity != JuMP._Derivatives.LINEAR) &&
                (x.objective.linearity != JuMP._Derivatives.CONSTANT)
                 for i in 1:length(x.objective.nd)
                     nd = x.objective.nd[i]
                     if (nd.nodetype == JuMP._Derivatives.VARIABLE)
                         m.branch_variable[nd.index] = true
+                        m.obbt_variable_values[nd.index] = true
                     end
                 end
             end
         end
         for i in 1:length(x.constraints)
-            if (x.constraints[i].linearity != JuMP._Derivatives.LINEAR) ||
+            if (x.constraints[i].linearity != JuMP._Derivatives.LINEAR) &&
                (x.constraints[i].linearity != JuMP._Derivatives.CONSTANT)
                 for j in 1:length(x.constraints[i].nd)
                     nd = x.constraints[i].nd[j]
                     bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
                     if (nd.nodetype == JuMP._Derivatives.VARIABLE)
                         m.branch_variable[nd.index] = true
+                        m.obbt_variable_values[nd.index] = true
                     end
                 end
             end
         end
         for i in 1:length(x.subexpressions)
-            if (x.subexpressions[i].linearity != JuMP._Derivatives.LINEAR) ||
+            if (x.subexpressions[i].linearity != JuMP._Derivatives.LINEAR) &&
                (x.subexpressions[i].linearity != JuMP._Derivatives.CONSTANT)
                 for j in 1:length(x.subexpressions[i].nd)
                     nd = x.subexpressions[i].nd[j]
                     bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
                     if (nd.nodetype == JuMP._Derivatives.VARIABLE)
                         m.branch_variable[nd.index] = true
+                        m.obbt_variable_values[nd.index] = true
                     end
                 end
             end
@@ -704,6 +770,7 @@ function MOI.add_variable(m::Optimizer)
     if ~m._user_branch_variables
         push!(m.branch_variable, false)
     end
+    push!(m.obbt_variable_values, false)
     push!(m._fixed_variable, false)
     push!(m._variable_info, VariableInfo())
     return VI(m._variable_number)
@@ -849,6 +916,12 @@ end
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     m._nlp_data = nlp_data
+    if nlp_data.has_objective
+        m._objective_is_sv = false
+        m._objective_is_saf = false
+        m._objective_is_sqf = false
+        m._objective_is_nlp = true
+    end
     return
 end
 
@@ -858,19 +931,31 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SQF}) = true
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
     check_inbounds(m, func)
-    m._objective = func
+    m._objective_is_sv = true
+    m._objective_is_saf = false
+    m._objective_is_sqf = false
+    m._objective_is_nlp = false
+    m._objective_sv = func
     return
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
     check_inbounds(m, func)
-    m._objective = func
+    m._objective_is_sv = false
+    m._objective_is_saf = true
+    m._objective_is_sqf = false
+    m._objective_is_nlp = false
+    m._objective_saf = func
     return
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SQF)
     check_inbounds(m, func)
-    m._objective = func
+    m._objective_is_sv = false
+    m._objective_is_saf = false
+    m._objective_is_sqf = true
+    m._objective_is_nlp = false
+    m._objective_sqf = func
     for term in func.quadratic_terms
         @inbounds m.branch_variable[term.variable_index_1.value] = true
         @inbounds m.branch_variable[term.variable_index_1.value] = true
@@ -929,4 +1014,55 @@ function eval_objective(m::Optimizer, x)
     else
         return 0.0
     end
+end
+
+
+"""
+    initialize_log!
+
+Creates the required storage variables for logging data at various iterations.
+"""
+function initialize_log!(m::Optimizer)
+    m.log = Log()
+    return
+end
+
+"""
+    log_iteration!
+
+If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
+'run_time', and 'node_count' are stored every 'log_interval'. If
+'log_subproblem_info' then the lower bound, feasibility and run times of the
+subproblems are logged every 'log_interval'.
+"""
+function log_iteration!(x::Optimizer)
+
+    if x.log_on
+
+        log = x.log
+        if (mod(x._iteration_count, x.log_interval) == 0 || x._iteration_count == 1)
+
+            if x.log_subproblem_info
+                push!(log.current_lower_bound, x._lower_objective_value)
+                push!(log.current_upper_bound, x._upper_objective_value)
+
+                push!(log.preprocessing_time, x._last_preprocess_time)
+                push!(log.lower_problem_time, x._last_lower_problem_time)
+                push!(log.upper_problem_time, x._last_upper_problem_time)
+                push!(log.postprocessing_time, x._last_postprocessing_time)
+
+                push!(log.preprocess_feasibility, x._preprocess_feasibility)
+                push!(log.lower_problem_feasibility, x._lower_feasibility)
+                push!(log.upper_problem_feasibility, x._upper_feasibility)
+                push!(log.postprocess_feasibility, x._postprocess_feasibility)
+            end
+
+            push!(log.global_lower_bound, x._global_lower_bound)
+            push!(log.global_upper_bound, x._global_upper_bound)
+            push!(log.run_time, x._run_time)
+            push!(log.node_count, x._node_count)
+
+        end
+    end
+    return
 end

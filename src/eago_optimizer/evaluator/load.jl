@@ -1,10 +1,10 @@
-function copy_to_function(N::Int, x::JuMP._FunctionStorage)
+function copy_to_function!(d::Evaluator{N}, i::Int64, x::JuMP._FunctionStorage) where N
     lenx = length(x.nd)
     temp_set = fill(MC{N}(Interval(-Inf, Inf)), (lenx,))
     temp_flt = Array{Float64}(undef, lenx)
     temp_bool = Array{Bool}(undef, lenx)
 
-    tpdict = Dict{Int,Tuple{Int,Int,Int,Int}}()
+    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
     tp1_count = 0
     tp2_count = 0
     tp3_count = 0
@@ -28,17 +28,23 @@ function copy_to_function(N::Int, x::JuMP._FunctionStorage)
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    FunctionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
-                              temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
-                              x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
+    sto = FunctionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+                                temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
+                                x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
+    if i == 1
+        d.objective = sto
+    else
+        push!(d.constraints, sto)
+    end
+    return
 end
-function copy_to_subexpr(N::Int, x::JuMP._SubexpressionStorage)
+function copy_to_subexpr!(d::Evaluator{N}, x::JuMP._SubexpressionStorage) where N
     lenx = length(x.nd)
     temp_set = fill(MC{N}(Interval(-Inf, Inf)), (lenx,))
     temp_flt = Array{Float64}(undef, lenx)
     temp_bool = Array{Bool}(undef, lenx)
 
-    tpdict = Dict{Int,Tuple{Int,Int,Int,Int}}()
+    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
     tp1_count = 0
     tp2_count = 0
     tp3_count = 0
@@ -62,8 +68,9 @@ function copy_to_subexpr(N::Int, x::JuMP._SubexpressionStorage)
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    SubexpressionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
-                               temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
-                               x.linearity)
+    sto = SubexpressionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+                                     temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
+                                     x.linearity)
+    push!(d.constraints, sto)
 end
 get_node(d::Evaluator) = d.current_node

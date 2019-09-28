@@ -11,7 +11,7 @@ function print_solution!(x::Optimizer)
         println("Solution is :")
         if (x._feasible_solution_found)
             for i=1:x._variable_number
-                println("    X[$i] = $(x.continuous_solution[i]))")
+                println("    X[$i] = $(x._continuous_solution[i])")
             end
         end
      end
@@ -41,19 +41,21 @@ function print_iteration!(x::Optimizer)
     if (x.verbosity > 0)
 
         # prints header line every B.hdr_intv times
-        if (mod(x._iteration_count, x.header_interval) == 0 || x._iteration_count == 1)
-            println("|  Iteration #  |   Nodes  | Lower Bound | Upper Bound  |  Gap   | Ratio  | Time | Time Left |")
+        if (mod(x._iteration_count, x.header_iterations) == 0 || x._iteration_count == 1)
+            println("------------------------------------------------------------------------------------------------")
+            println("|  Iteration #  |   Nodes  | Lower Bound | Upper Bound  |  Gap   |  Ratio  |  Time  | Time Left |")
+            println("------------------------------------------------------------------------------------------------")
         end
 
         # prints iteration summary every B.itr_intv times
-        if (mod(x._iteration_count, x.output_interval) == 0)
+        if (mod(x._iteration_count, x.output_iterations) == 0)
 
             print_str = "| "
 
             max_len = 12
             temp_str = string(x._iteration_count)
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" | "
+            print_str *= (" "^(max_len - len_str))*temp_str*"  | "
 
             max_len = 8
             temp_str = string(x._node_count)
@@ -61,33 +63,33 @@ function print_iteration!(x::Optimizer)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 11
-            temp_str = string(round(x._global_lower_bound, digits = 6))
+            temp_str = string(round(x._global_lower_bound, sigdigits = 5))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            temp_str = string(round(x._global_upper_bound, digits = 6))
+            temp_str = string(round(x._global_upper_bound, sigdigits = 5))
+            len_str = length(temp_str)
+            print_str *= (" "^(max_len - len_str))*temp_str*"  |"
+
+            max_len = 7
+            temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 6
-            temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), digits = 6))
+            max_len = 7
+            temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 6
-            temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), digits = 6))
+            max_len = 7
+            temp_str = string(round(x._run_time, sigdigits = 3))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 4
-            temp_str = string(round(x._cpu_time, digits = 4))
+            max_len = 7
+            temp_str = string(round(x._time_left, sigdigits = 4))
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" | "
-
-            max_len = 9
-            temp_str = string(round(x._time_left, digits = 4))
-            len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" |"
+            print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
             println(print_str)
         end

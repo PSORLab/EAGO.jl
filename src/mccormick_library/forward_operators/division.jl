@@ -1,11 +1,11 @@
-@inline div_alphaxy(es::Float64, nu::Float64, x::Interval{Float64}, y::Interval{Float64}) = (es/y.hi) + (x.lo/(y.lo*y.hi))*(y.hi-nu)
-@inline div_gammay(omega::Float64, y::Interval{Float64}) = (y.lo*(max(0.0, omega))^2)/(y.hi - omega*(y.hi-y.lo))
-@inline div_deltaxy(omega::Float64, x::Interval{Float64}, y::Interval{Float64}) = (1.0/(y.hi*y.lo))*(x.hi - x.lo)*(y.hi - y.lo)*div_gammay(omega, y)
-@inline div_psixy(es::Float64, nu::Float64, x::Interval{Float64}, y::Interval{Float64}) = div_alphaxy(es, nu, x, y) + div_deltaxy(((es - x.lo)/(x.hi - x.lo))-((nu - y.lo)/(y.hi - y.lo)), x, y)
-@inline div_omegaxy(x::Interval{Float64}, y::Interval{Float64}) = (y.hi/(y.hi-y.lo))*(1.0 - sqrt((y.lo*(x.hi-x.lo))/((-x.lo)*(y.hi-y.lo)+(y.lo)*(x.hi-x.lo))))
-@inline div_lambdaxy(es::Float64, nu::Float64, x::Interval{Float64}) = (((es + sqrt(x.lo*x.hi))/(sqrt(x.lo) + sqrt(x.hi)))^2)/nu
-@inline div_nuline(x::Interval{Float64}, y::Interval{Float64}, z::Float64) = y.lo + (y.hi - y.lo)*(z - x.lo)/(x.hi - x.lo)
-@inline function div_diffcv(x::MC, y::MC)
+div_alphaxy(es::Float64, nu::Float64, x::Interval{Float64}, y::Interval{Float64}) = (es/y.hi) + (x.lo/(y.lo*y.hi))*(y.hi-nu)
+div_gammay(omega::Float64, y::Interval{Float64}) = (y.lo*(max(0.0, omega))^2)/(y.hi - omega*(y.hi-y.lo))
+div_deltaxy(omega::Float64, x::Interval{Float64}, y::Interval{Float64}) = (1.0/(y.hi*y.lo))*(x.hi - x.lo)*(y.hi - y.lo)*div_gammay(omega, y)
+div_psixy(es::Float64, nu::Float64, x::Interval{Float64}, y::Interval{Float64}) = div_alphaxy(es, nu, x, y) + div_deltaxy(((es - x.lo)/(x.hi - x.lo))-((nu - y.lo)/(y.hi - y.lo)), x, y)
+div_omegaxy(x::Interval{Float64}, y::Interval{Float64}) = (y.hi/(y.hi-y.lo))*(1.0 - sqrt((y.lo*(x.hi-x.lo))/((-x.lo)*(y.hi-y.lo)+(y.lo)*(x.hi-x.lo))))
+div_lambdaxy(es::Float64, nu::Float64, x::Interval{Float64}) = (((es + sqrt(x.lo*x.hi))/(sqrt(x.lo) + sqrt(x.hi)))^2)/nu
+div_nuline(x::Interval{Float64}, y::Interval{Float64}, z::Float64) = y.lo + (y.hi - y.lo)*(z - x.lo)/(x.hi - x.lo)
+function div_diffcv(x::MC, y::MC)
     nu_bar = div_nuline(x.Intv, y.Intv, x.cv)
     (0.0 <= x.Intv.lo) && (return div_lambdaxy(x.cv, y.cc, x.Intv))
     ((x.Intv.lo < 0.0) && (nu_bar <= y.cv)) && (return div_alphaxy(x.cv, y.cv, x.Intv, y.Intv))
@@ -14,7 +14,7 @@
     end
 end
 
-@inline function div_MV(x::MC, y::MC, z::Interval{Float64})
+function div_MV(x::MC, y::MC, z::Interval{Float64})
     if (0.0 < y.Intv.lo)
         cv = div_diffcv(x, y)
         cc = -div_diffcv(-x, y)
@@ -31,7 +31,7 @@ end
     return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst && y.cnst)
 end
 
-@inline function div_kernel(x::MC{N}, y::MC{N}, z::Interval{Float64}) where N
+function div_kernel(x::MC{N}, y::MC{N}, z::Interval{Float64}) where N
     pos_orth::Bool = (x.Intv.lo >= 0) && (y.Intv.lo >= 0)
     degen1 = ((x.Intv.hi - x.Intv.lo) == 0.0)
     degen2 = ((y.Intv.hi - y.Intv.lo) == 0.0)
@@ -48,7 +48,7 @@ end
     return zMC
 end
 
-@inline function /(x::MC, y::MC)
+function /(x::MC, y::MC)
     @assert ~(y.Intv.lo <= 0.0 <= y.Intv.hi)
     return div_kernel(x, y, x.Intv/y.Intv)
 end

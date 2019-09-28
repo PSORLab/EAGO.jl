@@ -43,7 +43,14 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     @inbounds lvb = lvbs[max_pos]
     @inbounds uvb = uvbs[max_pos]
     @inbounds lsol = x._lower_solution[max_pos]
-    branch_pnt = x.branch_cvx_factor*lsol + (1.0-x.branch_cvx_factor)*(lvb + uvb)/2.0
+    cvx_f = x.branch_cvx_factor
+    cvx_g = x.branch_offset
+    branch_pnt = cvx_f*lsol + (1.0 - cvx_f)*(lvb + uvb)/2.0
+    if branch_pnt < lvb*(1.0 - cvx_g) + cvx_g*uvb
+        branch_pnt = (1.0 - cvx_g)*lvb + cvx_g*uvb
+    elseif branch_pnt > cvx_g*lvb + (1.0 - cvx_g)*uvb
+        branch_pnt = cvx_g*lvb + (1.0 - cvx_g)*uvb
+    end
     N1::Interval{Float64} = Interval{Float64}(lvb, branch_pnt)
     N2::Interval{Float64} = Interval{Float64}(branch_pnt, uvb)
     lvb_1 = copy(lvbs)
@@ -55,12 +62,12 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     @inbounds lvb_2[max_pos] = N2.lo
     @inbounds uvb_2[max_pos] = N2.hi
 
-    y.lower_bound = max(y.lower_bound, x._lower_objective_value)
-    y.upper_bound = min(y.upper_bound, x._upper_objective_value)
+    lower_bound = max(y.lower_bound, x._lower_objective_value)
+    upper_bound = min(y.upper_bound, x._upper_objective_value)
     x._maximum_node_id += 1
-    X1 = NodeBB(lvb_1, uvb_1, y.lower_bound, y.upper_bound, y.depth + 1, x._maximum_node_id)
+    X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
     x._maximum_node_id += 1
-    X2 = NodeBB(lvb_2, uvb_2, y.lower_bound, y.upper_bound, y.depth + 1, x._maximum_node_id)
+    X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
     push!(x._stack, X1)
     push!(x._stack, X2)
 
@@ -165,13 +172,13 @@ function termination_check(t::ExtensionType, x::Optimizer)
         x._result_status_code = MOI.UNKNOWN_RESULT_STATUS
         (x.verbosity >= 3) && println("Maximum Iteration Exceeded")
 
-    elseif relative_tolerance(L, U, x.relative_tolerance)
+    elseif ~relative_tolerance(L, U, x.relative_tolerance)
 
         x._termination_status_code = MOI.OPTIMAL
         x._result_status_code = MOI.FEASIBLE_POINT
         (x.verbosity >= 3) && println("Relative Tolerance Achieved")
 
-    elseif (U - L) > x.absolute_tolerance
+    elseif (U - L) < x.absolute_tolerance
 
         x._termination_status_code = MOI.OPTIMAL
         x._result_status_code = MOI.FEASIBLE_POINT
@@ -261,41 +268,29 @@ end
     set_dual!
 
 Retrieves the lower and upper duals for variable bounds from the
-`working_relaxed_optimizer` and sets the appropriate values in the
-`current_lower_info` field.
+`relaxed_optimizer` and sets the appropriate values in the
+`_lower_lvd` and `_lower_uvd` storage fields.
 """
 function set_dual!(x::Optimizer)
 
-    relaxed_optimizer = x.relaxed_optimizer
+    opt = x.relaxed_optimizer
 
-    for (vi, VarIndxTuple) in enumerate(x._lower_variable_index)
-
-        (ci1, ci2, n) = VarIndxTuple
-
-        if n == 2
-            if isa(ci1, MOI.ConstraintIndex{MOI.SingleVariable, MOI.GreaterThan{Float64}})
-
-                @inbounds x._lower_lvd[vi] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci1)
-                @inbounds x._lower_uvd[vi] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci2)
-
-            else
-
-                @inbounds x._lower_lvd[vi] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci2)
-                @inbounds x._lower_uvd[vi] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci1)
-
-            end
-        else
-            if isa(ci1, MOI.ConstraintIndex{MOI.SingleVariable, MOI.GreaterThan{Float64}})
-
-                @inbounds x._lower_lvd[vi] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci1)
-
-            elseif isa(ci1,MOI.ConstraintIndex{MOI.SingleVariable,MOI.LessThan{Float64}})
-
-                @inbounds x._lower_uvd[vi] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci1)
-
-            end
-        end
+    lower_variable_lt_indx = x._lower_variable_lt_indx
+    lower_variable_lt = x._lower_variable_lt
+    for i in 1:length(lower_variable_lt_indx)
+        @inbounds vi = lower_variable_lt_indx[i]
+        @inbounds ci_lt = lower_variable_lt[i]
+        @inbounds x._lower_uvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_lt)
     end
+
+    lower_variable_gt_indx = x._lower_variable_gt_indx
+    lower_variable_gt = x._lower_variable_gt
+    for i in 1:length(lower_variable_gt_indx)
+        @inbounds vi = lower_variable_gt_indx[i]
+        @inbounds ci_gt = lower_variable_gt[i]
+        @inbounds x._lower_lvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_gt)
+    end
+
     return
 end
 
@@ -315,15 +310,12 @@ function preprocess!(t::ExtensionType, x::Optimizer)
                              lower_variable_bounds(x._current_node))
 
     # runs poor man's LP contractor
-    if (x.lp_depth >= x._iteration_count)
-        for i in 1:x.lp_reptitions
-            feas = lp_bound_tighten(x)
-            (~feas) && (break)
-        end
+    if ((x.lp_depth >= x._iteration_count) & feas)
+        feas = lp_bound_tighten(x)
     end
 
     # runs univariate quadratic contractor
-    if feas && (x.quad_uni_depth >= x._iteration_count)
+    if ((x.quad_uni_depth >= x._iteration_count) & feas)
         for i in 1:x.quad_uni_reptitions
             feas = univariate_quadratic(x)
             (~feas) && (break)
@@ -331,15 +323,19 @@ function preprocess!(t::ExtensionType, x::Optimizer)
     end
 
     x._obbt_performed_flag = false
-    if feas && (x.obbt_depth >= x._iteration_count)
-        x._obbt_performed_flag = true
-        for i in 1:x.obbt_reptitions
-            feas = obbt(x)
-            (~feas) && (break)
+    if (x.obbt_depth >= x._iteration_count)
+
+        #println("ran obbt... $(x.obbt_depth) >= $(x._iteration_count)")
+        if feas
+            x._obbt_performed_flag = true
+            for i in 1:x.obbt_reptitions
+                feas = obbt(x)
+                (~feas) && (break)
+            end
         end
     end
 
-    if feas && (x.cp_depth >= x._iteration_count)
+    if ((x.cp_depth >= x._iteration_count) & feas)
         feas = cpwalk(x)
     end
 
@@ -351,51 +347,38 @@ function preprocess!(t::ExtensionType, x::Optimizer)
 end
 
 function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
+
     opt = x.relaxed_optimizer
+    lower_node_bnd = y.lower_variable_bounds
+    upper_node_bnd = y.upper_variable_bounds
 
-    # updates box constraints
-    count_set_et = 1
-    count_set_lt = 1
-    count_set_gt = 1
-
-    for i in 1:x._variable_number
-        @inbounds var = x._variable_info[i]
-        @inbounds variable_i = x._lower_variable[i]
-
-        if var.is_integer
-        else
-            @inbounds set = x._lower_variable_style[i]
-            if set == 1
-                @inbounds ci_et = x._lower_variable_et[count_set_et]
-                @inbounds vb_et = y.lower_variable_bounds[i]
-                MOI.set(opt, MOI.ConstraintSet(), ci_et, ET(vb_et))
-                count_set_et += 1
-
-            elseif set == 2
-                @inbounds ci_lt = x._lower_variable_lt[count_set_lt]
-                @inbounds vb_lt = y.upper_variable_bounds[i]
-                MOI.set(opt, MOI.ConstraintSet(), ci_lt, LT(vb_lt))
-                @inbounds ci_gt = x._lower_variable_gt[count_set_gt]
-                @inbounds vb_gt = y.lower_variable_bounds[i]
-                MOI.set(opt, MOI.ConstraintSet(), ci_gt, GT(vb_gt))
-                count_set_lt += 1
-                count_set_gt += 1
-
-            elseif set == 3
-                @inbounds ci_gt1 = x._lower_variable_gt[count_set_gt]
-                @inbounds vb_gt1 = y.lower_variable_bounds[i]
-                MOI.set(opt, MOI.ConstraintSet(), ci_gt1, GT(vb_gt1))
-                count_set_gt += 1
-
-            elseif set == 4
-                @inbounds ci_lt1 = x._lower_variable_lt[count_set_lt]
-                @inbounds vb_lt1 = y.upper_variable_bounds[i]
-                MOI.set(opt, MOI.ConstraintSet(), ci_lt1, LT(vb_lt1))
-                count_set_lt += 1
-
-            end
-        end
+    lower_variable_et = x._lower_variable_et
+    lower_variable_et_indx = x._lower_variable_et_indx
+    for i in 1:length(lower_variable_et_indx)
+        @inbounds ci = lower_variable_et[i]
+        @inbounds ni = lower_variable_et_indx[i]
+        @inbounds vb = lower_node_bnd[ni]
+        MOI.set(opt, MOI.ConstraintSet(), ci, ET(vb))
     end
+
+    lower_variable_lt = x._lower_variable_lt
+    lower_variable_lt_indx = x._lower_variable_lt_indx
+    for i in 1:length(lower_variable_lt_indx)
+        @inbounds ci = lower_variable_lt[i]
+        @inbounds ni = lower_variable_lt_indx[i]
+        @inbounds vb = upper_node_bnd[ni]
+        MOI.set(opt, MOI.ConstraintSet(), ci, LT(vb))
+    end
+
+    lower_variable_gt = x._lower_variable_gt
+    lower_variable_gt_indx = x._lower_variable_gt_indx
+    for i in 1:length(x._lower_variable_gt_indx)
+        @inbounds ci = lower_variable_gt[i]
+        @inbounds ni = lower_variable_gt_indx[i]
+        @inbounds vb = lower_node_bnd[ni]
+        MOI.set(opt, MOI.ConstraintSet(), ci, GT(vb))
+    end
+
     return
 end
 
@@ -457,38 +440,45 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
 end
 
 """
+    interval_lower_bound!
+
+A fallback lower bounding probel
 """
 function interval_lower_bound!(x::Optimizer, y::NodeBB)
 
     feas = true
 
-    d = x._working_evaluator_block.evaluator
+    d = x._relaxed_evaluator
 
-    if x._objective === nothing
+    if x._objective_is_nlp
 
-        objective_lo = get_node_lower(d.objective, 1)
+        objective_lo = eval_objective_lo(d)
         constraints = d.constraints
-        constraints_intv_lo = get_node_lower.(constraints, 1)
-        constraints_intv_hi = get_node_upper.(constraints, 1)
+        constr_num = d.constraint_number
+        constraints_intv_lo = zeros(Float64, constr_num)
+        constraints_intv_hi = zeros(Float64, constr_num)
+        eval_constraint_lo!(d, constraints_intv_lo)
+        eval_constraint_hi!(d, constraints_intv_hi)
         constraints_bnd_lo = d.constraints_lbd
         constrains_bnd_hi = d.constraints_ubd
 
         for i in 1:d.constraint_number
-            if (constraints_bnd_lo[i] > constraints_intv_hi[i]) ||
-               (constrains_bnd_hi[i] < constraints_intv_lo[i])
+            @inbounds constaints_intv_li = constraints_bnd_lo[i]
+            @inbounds constaints_intv_hi = constraints_bnd_hi[i]
+            if (constaints_intv_li > constaints_intv_hi) ||
+               (constaints_intv_hi < constaints_intv_li)
                 feas = false
                 break
             end
         end
     else
-        opt_objective = x._objective
-        if isa(opt_objective, SV)
-            obj_indx = opt_objective.variable_index
+        if x._objective_is_sv
+            obj_indx = x._objective_sv.variable_index
             @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
-        elseif isa(opt_objective, SAF)
-            objective_lo = interval_bound(opt_objective, y, true)
-        elseif isa(opt_objective, SAQ)
-            objective_lo = interval_bound(opt_objective, y, true)
+        elseif x._objective_is_saf
+            objective_lo = interval_bound(x._objective_saf, y, true)
+        elseif x._objective_is_sqf
+            objective_lo = interval_bound(x._objective_sqf, y, true)
         end
     end
 
@@ -540,6 +530,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
     else
         x._lower_objective_value = -Inf
     end
+
     return
 end
 
@@ -552,23 +543,22 @@ and optimizer on node `y`.
 function lower_problem!(t::ExtensionType, x::Optimizer)
 
     y = x._current_node
-    ymid = mid(y)
     if ~x._obbt_performed_flag
-        update_relaxed_problem_box!(x)
-        relax_problem!(t, x, ymid)
+        x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
+        update_relaxed_problem_box!(x, y)
+        relax_problem!(t, x, x._current_xref)
     end
 
-    relax_objective!(t, x, ymid)
+    relax_objective!(t, x, x._current_xref)
     objective_cut_linear!(x)
 
     # Optimizes the object
-    opt = x._relaxed_optimizer
+    opt = x.relaxed_optimizer
     MOI.optimize!(opt)
 
-    # Process output info and save to CurrentUpperInfo object
-    termination_status = MOI.get(opt, MOI.TerminationStatus())
-    result_status = MOI.get(opt, MOI.PrimalStatus())
-    valid_flag, feas_flag = is_globally_optimal(termination_status, result_status)
+    x._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
+    x._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
+    valid_flag, feas_flag = is_globally_optimal(x._lower_termination_status, x._lower_result_status)
 
     if valid_flag
         if feas_flag
@@ -588,6 +578,7 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
     end
     return
 end
+
 
 """
     cut_condition
@@ -651,14 +642,15 @@ end
 Constructs and solves the problem locally on on node `y` and saves upper
 bounding info to `x.current_upper_info`.
 """
-function solve_local_nlp!(x::Optimizer)
+function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, T <: MOI.AbstractOptimizer}
 
     y = x._current_node
 
     if default_nlp_heurestic(x,y)
 
         nvar = x._variable_number
-        upper_optimizer = x.upper_factory()
+        x.upper_optimizer = x.upper_factory()
+        upper_optimizer = x.upper_optimizer
         upper_vars = MOI.add_variables(upper_optimizer, nvar)
         lvb = 0.0
         uvb = 0.0
@@ -683,7 +675,7 @@ function solve_local_nlp!(x::Optimizer)
                 elseif var.has_upper_bound
                     MOI.add_constraint(upper_optimizer, sv, LT(uvb))
                 end
-                x0 = 0.5*(lvb + uvb)
+                x0 = @. 0.5*(lvb + uvb)
                 MOI.set(upper_optimizer, MOI.VariablePrimalStart(), svi, x0)
             end
         end
@@ -698,12 +690,6 @@ function solve_local_nlp!(x::Optimizer)
         for (func, set) in x._linear_eq_constraints
             MOI.add_constraint(upper_optimizer, func, set)
         end
-        #=
-        for (func,set,ind) in x._linear_interval_constraints
-            MOI.add_constraint(upper_optimizer, func, GT(set.lower))
-            MOI.add_constraint(upper_optimizer, func, LT(set.upper))
-        end
-        =#
 
         for (func, set) in x._quadratic_leq_constraints
             MOI.add_constraint(upper_optimizer, func, set)
@@ -714,39 +700,36 @@ function solve_local_nlp!(x::Optimizer)
         for (func, set) in x._quadratic_eq_constraints
             MOI.add_constraint(upper_optimizer, func, set)
         end
-        #=
-        for (func, set, ind) in x._quadratic_interval_constraints
-            MOI.add_constraint(upper_optimizer, func, GT(set.lower))
-            MOI.add_constraint(upper_optimizer, func, LT(set.upper))
-        end
-        =#
 
         # Add nonlinear evaluation block
         MOI.set(upper_optimizer, MOI.NLPBlock(), x._nlp_data)
 
         MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-        if (x._objective === nothing)
-            @assert ~isa(x._nlp_data.evaluator, EmptyNLPEvaluator())
-        else
-            if isa(x._objective, SV)
-                MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), x._objective)
-            elseif isa(x._objective, SAF)
-                MOI.set(upper_optimizer, MOI.ObjectiveFunction{AF}(), x._objective)
-            elseif isa(x._objective, SQF)
-                MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective)
-            end
+        if x._objective_is_sv
+            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), x._objective_sv)
+        elseif x._objective_is_saf
+            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
+        elseif x._objective_is_sqf
+            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective_sqf)
         end
 
         # Optimizes the object
         MOI.optimize!(upper_optimizer)
 
         # Process output info and save to CurrentUpperInfo object
-        termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
-        result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
-        solution = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
+        temp_term_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
+        temp_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
+        #println("temp_term_status: $temp_term_status")
+        #println("temp_result_status: $temp_result_status")
+        x._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
+        x._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
 
-        if is_feasible_solution(termination_status, result_status)
+        if is_feasible_solution(x._upper_termination_status, x._upper_result_status)
             x._upper_feasibility = true
+            obj = MOI.get(upper_optimizer, MOI.ObjectiveValue())
+            sol = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
+            #println("obj: $obj")
+            #println("sol: $sol")
             x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
             x._upper_solution[1:end] = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else
@@ -762,7 +745,10 @@ end
 """
     postprocess!
 """
-upper_problem!(t::ExtensionType, x::Optimizer) = solve_local_nlp!(x)
+function upper_problem!(t::ExtensionType, x::Optimizer)
+    solve_local_nlp!(x)
+    return
+end
 
 
 """
@@ -771,9 +757,13 @@ upper_problem!(t::ExtensionType, x::Optimizer) = solve_local_nlp!(x)
 Perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, x::Optimizer)
-    variable_dbbt!(y._current_node, x._lower_lvd, x._lower_uvd,
-                   x._lower_objective_value, x._global_upper_bound)
+
+    variable_dbbt!(x._current_node, x._lower_lvd, x._lower_uvd,
+                   x._lower_objective_value, x._global_upper_bound,
+                   x._variable_number)
+
     x._postprocess_feasibility = true
+
     return
 end
 

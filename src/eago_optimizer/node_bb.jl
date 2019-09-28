@@ -10,13 +10,13 @@ Stores information associated with each node in Branch & Bound tree.
 - `last_branch::Int`: Last dimension branched on.
 - `branch_direction::Bool`: For future use with branching heurestics (false if nlp solve not in box, true otherwise).
 """
-mutable struct NodeBB
+struct NodeBB
     lower_variable_bounds::Vector{Float64}
     upper_variable_bounds::Vector{Float64}
     lower_bound::Float64
     upper_bound::Float64
-    depth::Int
-    id::Int
+    depth::Int64
+    id::Int64
 end
 NodeBB() = NodeBB(Float64[], Float64[], -Inf, Inf, 0, 1)
 isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
@@ -24,8 +24,8 @@ isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
 # Access functions for broadcasting data easily
 lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
 upper_variable_bounds(x::NodeBB) = x.upper_variable_bounds
-lower_variable_bounds(x::NodeBB,id::Int,nid::Int) = x.lower_variable_bounds[id:nid]
-upper_variable_bounds(x::NodeBB,id::Int,nid::Int) = x.upper_variable_bounds[id:nid]
+lower_variable_bounds(x::NodeBB, id::Int64, nid::Int64) = x.lower_variable_bounds[id:nid]
+upper_variable_bounds(x::NodeBB, id::Int64, nid::Int64) = x.upper_variable_bounds[id:nid]
 lower_bound(x::NodeBB) = x.lower_bound
 upper_bound(x::NodeBB) = x.upper_bound
 depth(x::NodeBB) = x.depth

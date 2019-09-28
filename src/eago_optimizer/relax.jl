@@ -98,20 +98,21 @@ A rountine that only relaxes the objective.
 function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
 
     nx = x._variable_number
+    opt = x.relaxed_optimizer
     @inbounds vi = x._lower_variable_index[1:nx]
 
     # Add objective
-    if isa(x._objective, SV)
+    if x._objective_is_sv
 
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveFunction{SV}(), x._objective)
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.set(opt, MOI.ObjectiveFunction{SV}(), x._objective_sv)
+        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    elseif isa(x._objective, SAF)
+    elseif x._objective_is_saf
 
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), x._objective)
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
+        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    elseif isa(x._objective, SQF)
+    elseif x._objective_is_sqf
 
         if (x._objective_convexity)
             saf = relax_convex_kernel(x._objective, vi, nx, x0)
@@ -119,19 +120,20 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
             saf = relax_nonconvex_kernel(x._objective, vi, x,  nx, x0)
         end
 
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
-        MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), saf)
+        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     else
-        eval_block = x._working_evaluator_block
-        if eval_block.has_objective
+        if x._objective_is_nlp
+
+            evaluator = x._relaxed_evaluator
 
             # Calculates convex relaxation
-            f = MOI.eval_objective(eval_block.evaluator, x0)
+            f = MOI.eval_objective(evaluator, x0)
 
             # calculates the convex relaxation subgradient
             df = zeros(nx)
-            MOI.eval_objective_gradient(eval_block.evaluator, df, x0)
+            MOI.eval_objective_gradient(evaluator, df, x0)
 
             # Add objective relaxation to model
             saf_const = f
@@ -141,11 +143,11 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
                 @inbounds grad_c = df[i]
                 @inbounds x0_c = x0[i]
                 @inbounds vindx = vi[i]
-                saf_const -= xpnt_c*grad_c
-                MOI.modify(x._relaxed_optimizer,  MOI.ObjectiveFunction{SAF}(), MOI.SCoef(vindx, grad_c))
+                saf_const -= x0_c*grad_c
+                MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SCoefC(vindx, grad_c))
             end
-            MOI.modify(x._relaxed_optimizer,  MOI.ObjectiveFunction{SAF}(), MOI.SConsC(saf_const))
-            MOI.set(x._relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+            MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SConsC(saf_const))
+            MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
         end
     end
     return
@@ -165,6 +167,7 @@ function relax_quadratic_inner!(flag::Bool, func::MOI.ScalarQuadraticFunction{Fl
                                 c2::CI{SAF, LT})
 
 
+    opt = x.relaxed_optimizer
     if flag
         saf = relax_convex_kernel(func, vi, nx, x0)
     else
@@ -174,29 +177,29 @@ function relax_quadratic_inner!(flag::Bool, func::MOI.ScalarQuadraticFunction{Fl
     if (lower == upper)
 
         for (i, term) in enumerate(saf.terms)
-            MOI.modify(x._relaxed_optimizer, c1, MOI.SCC(term.variable_index, term.coefficent))
+            MOI.modify(opt, c1, MOI.SCC(term.variable_index, term.coefficent))
         end
-        MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), c1, LT(upper - saf.constant))
+        MOI.set(opt, MOI.ConstraintSet(), c1, LT(upper - saf.constant))
 
         saf1 = copy(saf)
         for (i, term) in enumerate(saf1.terms)
-            MOI.modify(x._relaxed_optimizer, c2, MOI.SCC(term.variable_index, -1.0*term.coefficent))
+            MOI.modify(opt, c2, MOI.SCC(term.variable_index, -1.0*term.coefficent))
         end
-        MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), c2, LT(-lower + saf1.constant))
+        MOI.set(opt, MOI.ConstraintSet(), c2, LT(-lower + saf1.constant))
 
     elseif (lower != -Inf)
 
         for (i, term) in enumerate(saf.terms)
-            MOI.modify(x._relaxed_optimizer, c1, MOI.SCC(term.variable_index, -1.0*term.coefficent))
+            MOI.modify(opt, c1, MOI.SCC(term.variable_index, -1.0*term.coefficent))
         end
-        MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), c1, LT(-lower + saf.constant))
+        MOI.set(opt, MOI.ConstraintSet(), c1, LT(-lower + saf.constant))
 
     else
 
         for (i, term) in enumerate(saf.terms)
-            MOI.modify(x._relaxed_optimizer, c1, MOI.SCC(term.variable_index, term.coefficent))
+            MOI.modify(opt, c1, MOI.SCC(term.variable_index, term.coefficent))
         end
-        MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), c1, LT(upper - saf.constant))
+        MOI.set(opt, MOI.ConstraintSet(), c1, LT(upper - saf.constant))
 
     end
 
@@ -231,71 +234,79 @@ end
 
 function relax_nlp!(x::Optimizer, v::Vector{Float64})
 
-    eval_block = x._working_evaluator_block
+    evaluator = x._relaxed_evaluator
 
     if ~isempty(x.branch_variable)
 
         if MOI.supports(x.relaxed_optimizer, MOI.NLPBlock())
 
             _nlp_data = MOI.NLPBlockData(x._nlp_data.constraint_bounds,
-                                         eval_block.evaluator,
+                                         evaluator,
                                          x._nlp_data.has_objective)
             MOI.set(x._relaxed_optimizer, MOI.NLPBlock(), _nlp_data)
 
         else
 
             # Add other affine constraints
-            if length(eval_block.constraint_bounds) > 0
+            constraint_bounds = x._relaxed_constraint_bounds
+            leng = length(constraint_bounds)
+            if leng > 0
 
                 nx = x._variable_number
                 vi = x._lower_variable_index
 
-                leng = length(eval_block.constraint_bounds)
                 g = zeros(leng)
                 dg = zeros(leng, nx)
 
                 g_cc = zeros(leng)
                 dg_cc = zeros(leng, nx)
 
-                MOI.eval_constraint(eval_block.evaluator, g, v)
-                MOI.eval_constraint_jacobian(eval_block.evaluator, dg, v)
+                MOI.eval_constraint(evaluator, g, v)
+                MOI.eval_constraint_jacobian(evaluator, dg, v)
 
-                eval_constraint_cc(eval_block.evaluator, g_cc, v)
-                eval_constraint_cc_grad(eval_block.evaluator, dg_cc, v)
+                eval_constraint_cc(evaluator, g_cc, v)
+                eval_constraint_cc_grad(evaluator, dg_cc, v)
 
-                count_lower = 0
-                count_upper = 0
-                for (j, bns) in enumerate(eval_block.constraint_bounds)
-                    @inbounds nzidx = eval.constraints[j].grad_sparsity
+                lower_nlp_sparsity = x._lower_nlp_sparsity
+                lower_nlp_affine = x._lower_nlp_affine
+                lower_nlp_affine_indx = x._lower_nlp_affine_indx
+                for i in 1:length(lower_nlp_affine_indx)
+                    @inbounds g_indx = lower_nlp_affine_indx[i]
+                    @inbounds aff_ci = lower_nlp_affine[i]
+                    @inbounds nzidx = lower_nlp_sparsity[i]
                     @inbounds nzvar = vi[nzidx]
-                    if bns.upper != Inf
-                        @inbounds cu = x._upper_nlp_affine[count_upper]
-                        @inbounds constant = g[j]
-                        dg_cv_val = 0.0
-                        for i in nzidx
-                            @inbounds dg_cv_val = dg[j,i]
-                            @inbounds vindx = vi[i]
-                            constant -= vindx*dg_cv_val
-                            MOI.modify(x._relaxed_optimizer, cu, MOI.SCC(vindx, dg_cv_val))
-                        end
-                        set = LT(bns.upper-constant)
-                        MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), cu, set)
-                        count_upper += 1
+                    @inbounds constant = g[g_indx]
+                    dg_cv_val = 0.0
+                    for j in nzidx
+                        @inbounds dg_cv_val = dg[i,j]
+                        @inbounds vindx = vi[i]
+                        @inbounds constant -= v[i]*dg_cv_val
+                        MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cv_val))
                     end
-                    if bns.lower > -Inf
-                        @inbounds cl = x._upper_nlp_affine[count_lower]
-                        @inbounds constant = g_cc[j]
-                        dg_cc_val = 0.0
-                        for i in nzidx
-                            @inbounds dg_cc_val = dg_cc[j,i]
-                            @inbounds vindx = vi[i]
-                            constant -= vindx*dg_cc_val
-                            MOI.modify(x._relaxed_optimizer, cl, MOI.SCC(vindx, -dg_cc_val))
-                        end
-                        set = LT(constant)
-                        MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), cl, set)
-                        count_lower += 1
+                    @inbounds bns = constraint_bounds[i]
+                    set = LT(bns.upper-constant)
+                    MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
+                end
+
+                upper_nlp_sparsity = x._upper_nlp_sparsity
+                upper_nlp_affine = x._upper_nlp_affine
+                upper_nlp_affine_indx = x._upper_nlp_affine_indx
+                for i in 1:length(upper_nlp_affine_indx)
+                    @inbounds g_indx = upper_nlp_affine_indx[i]
+                    @inbounds aff_ci = upper_nlp_affine[i]
+                    @inbounds nzidx = upper_nlp_sparsity[i]
+                    @inbounds nzvar = vi[nzidx]
+                    @inbounds constant = g_cc[g_indx]
+                    dg_cc_val = 0.0
+                    for j in nzidx
+                        @inbounds dg_cc_val = dg[i,j]
+                        @inbounds vindx = vi[i]
+                        @inbounds constant -= v[i]*dg_cc_val
+                        MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cc_val))
                     end
+                    @inbounds bns = constraint_bounds[i]
+                    set = LT(constant - bns.lower)
+                    MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
                 end
             end
         end
@@ -305,8 +316,8 @@ end
 
 function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64})
 
-    eval_block = x._working_evaluator_block
-    set_current_node!(eval_block.evaluator, x._current_node)
+    evaluator = x._relaxed_evaluator
+    set_current_node!(evaluator, x._current_node)
     relax_quadratic!(x, v)
     relax_nlp!(x,v)
 
@@ -320,26 +331,33 @@ Adds linear objective cut constraint to `trg` optimizer.
 """
 function objective_cut_linear!(x::Optimizer)
     if x._global_upper_bound < Inf
-        if x._objective_cut_ci === nothing
+        if ~x._objective_cut_set
             set = LT(x._global_upper_bound)
-            if isa(x._objective, SV)
-                ci = MOI.add_constraint(x._relaxed_optimizer, x._objective, set)
-            elseif isa(x._objective, SAF)
-                ci = MOI.add_constraint(x._relaxed_optimizer, x._objective, set)
-            elseif isa(x._objective, SQF) || x._working_evaluator_block.evaluator.has_nlobj
-                saf = MOI.get(x._relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                ci = MOI.add_constraint(x._relaxed_optimizer, saf, set)
+            if x._objective_is_sv
+                ci_sv = MOI.add_constraint(x_relaxed_optimizer, x._objective_sv, set)
+                x._objective_cut_ci_sv = ci
+            elseif x._objective_is_saf
+                ci_saf = MOI.add_constraint(x.relaxed_optimizer, x._objective_saf, set)
+                x._objective_cut_ci_saf = ci_saf
+            elseif x._objective_is_sqf || x._objective_is_nlp
+                saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
+                set = LT(x._global_upper_bound - saf.constant)
+                saf.constant = 0.0
+                ci_saf = MOI.add_constraint(x.relaxed_optimizer, saf, set)
+                x._objective_cut_ci_saf = ci_saf
             end
-            x._objective_cut_ci = ci
         else
-            ci = x._objective_cut_ci
-            if ~isa(x._objective, SV)
-                saf = MOI.get(x._relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
+            if ~x._objective_is_sv
+                ci_saf = x._objective_cut_ci_saf
+                saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
                 for term in saf.terms
-                    MOI.modify(x._relaxed_optimizer, ci, MOI.SCC(term.variable_index, term.coefficient))
+                    MOI.modify(x.relaxed_optimizer, ci_saf, MOI.SCC(term.variable_index, term.coefficient))
                 end
+                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
+            else
+                ci_sv = x._objective_cut_ci_sv
+                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
             end
-            MOI.set(x._relaxed_optimizer, MOI.ConstraintSet(), ci, set)
         end
     end
     return

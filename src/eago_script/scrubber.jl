@@ -64,7 +64,6 @@ end
 # scrub the model
 function scrub!(d::_NLPData)
     # scrub multivariant
-    println("start scrub mv")
     user_ops = d.user_operators
     mvop_num = length(user_ops.multivariate_operator_evaluator)
     for i in 1:mvop_num
@@ -81,7 +80,6 @@ function scrub!(d::_NLPData)
         #evalr.∇f = fnew2
         user_ops.multivariate_operator_evaluator[i] = evalr
     end
-    println("end scrub mv")
 
     # scrub univariants
     svop_num = length(user_ops.univariate_operator_f)

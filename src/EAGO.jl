@@ -54,9 +54,9 @@ module EAGO
            get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap
 
     include("eago_optimizer/node_bb.jl")
-    include("eago_optimizer/optimizer.jl")
     include("eago_optimizer/evaluator/evaluator.jl")
     include("eago_optimizer/logging.jl")
+    include("eago_optimizer/optimizer.jl")
     include("eago_optimizer/display.jl")
     include("eago_optimizer/relax.jl")
     include("eago_optimizer/domain_reduction.jl")
@@ -69,4 +69,8 @@ module EAGO
     # Routines for solving SIPs
     #export SIP_Options, SIP_Result, explicit_sip_solve, implicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
+
+    # precomile in package....
+    println("wasn't precompiled")
+
 end
