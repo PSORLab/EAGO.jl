@@ -629,13 +629,7 @@ function presolve_problem!(m::Optimizer)
     #m.presolve_flatten_flag && dag_flattening!(m)
 
     #m = user_reformed_optimizer(m)
-    #m.debug1 = initialize_evaluators!(m, true)                      # re-initializes evaluators after reformulations are performed
-
     create_initial_node!(m)                        # Create initial node and add it to the stack
-
-    #m.lower_variables = MOI.VariableIndex[MOI.VariableIndex(i) for i in 1:_variable_len]
-    #m.upper_variables = MOI.add_variables(m.initial_relaxed_optimizer, _variable_len)
-
     label_fixed_variables!(m)
     label_nonlinear_variables!(m)
     label_quadratic_convexity!(m)
@@ -669,6 +663,20 @@ function set_global_lower_bound!(x::Optimizer)
     return
 end
 
+# wraps subroutine call to isolate ExtensionType
+termination_check(x::Optimizer) = termination_check(x.ext_type, x)
+cut_condition(x::Optimizer) = cut_condition(x.ext_type, x)
+convergence_check(x::Optimizer) = convergence_check(x.ext_type, x)
+repeat_check(x::Optimizer) = repeat_check(x.ext_type, x)
+node_selection!(x::Optimizer) = node_selection!(x.ext_type, x)
+preprocess!(x::Optimizer) = preprocess!(x.ext_type, x)
+lower_problem!(x::Optimizer) = lower_problem!(x.ext_type, x)
+add_cut!(x::Optimizer) = add_cut!(x.ext_type, x)
+upper_problem!(x::Optimizer) = upper_problem!(x.ext_type, x)
+postprocess!(x::Optimizer) = postprocess!(x.ext_type, x)
+single_storage!(x::Optimizer) = single_storage!(x.ext_type, x)
+branch_node!(x::Optimizer) = branch_node!(x.ext_type, x)
+fathom!(x::Optimizer) = fathom!(x.ext_type, x)
 """
     global_solve!
 
@@ -676,22 +684,19 @@ Solves the branch and bound problem with the input EAGO optimizer object.
 """
 function global_solve!(x::Optimizer)
 
-    ext_type = x.ext_type
     x._iteration_count = 1
     x._node_count = 1
 
     # terminates when max nodes or iteration is reach, or when node stack is empty
-    while ~termination_check(ext_type, x)
+    while ~termination_check(x)
 
         # Selects node, deletes it from stack, prints based on verbosity
-        node_selection!(ext_type, x)
+        node_selection!(x)
         (x.verbosity >= 3) && print_node!(x)
 
         # Performs prepocessing and times
-        println("preprocessing start time: $(time() - x._start_time)")
         x.log_on && (start_time = time())
-        preprocess!(ext_type, x)
-        println("preprocessing end time: $(time() - x._start_time)")
+        preprocess!(x)
         if x.log_on
             x._last_preprocess_time = time() - start_time
         end
@@ -701,9 +706,9 @@ function global_solve!(x::Optimizer)
             # solves & times lower bounding problem
             x.log_on && (start_time = time())
             x._cut_iterations = 0
-            lower_problem!(ext_type, x)
-            while cut_condition(ext_type, x)
-                add_cut!(ext_type, x)
+            lower_problem!(x)
+            while cut_condition(x)
+                add_cut!(x)
             end
             if x.log_on
                 x._last_lower_problem_time = time() - start_time
@@ -713,12 +718,10 @@ function global_solve!(x::Optimizer)
 
             # checks for infeasibility stores solution
             if x._lower_feasibility
-                if ~convergence_check(ext_type, x)
+                if ~convergence_check(x)
 
                     x.log_on && (start_time = time())
-                    println("upper start time: $(time() - x._start_time)")
-                    upper_problem!(ext_type, x)
-                    println("upper end time: $(time() - x._start_time)")
+                    upper_problem!(x)
                     if x.log_on
                         x._last_upper_problem_time = time() - start_time
                     end
@@ -732,22 +735,22 @@ function global_solve!(x::Optimizer)
 
                     # Performs and times post processing
                     x.log_on && (start_time = time())
-                    postprocess!(ext_type, x)
+                    postprocess!(x)
                     if x.log_on
                         x._last_postprocessing_time = time() - start_time
                     end
 
                     # Checks to see if the node
                     if (x._postprocess_feasibility)
-                        if repeat_check(ext_type, x)
-                            single_storage!(ext_type, x)
+                        if repeat_check(x)
+                            single_storage!(x)
                         else
-                            branch_node!(ext_type, x)
+                            branch_node!(x)
                         end
                     end
                 end
             end
-            fathom!(ext_type, x)
+            fathom!(x)
         else
             x._lower_objective_value = -Inf
             x._lower_feasibility = false
@@ -765,29 +768,31 @@ function global_solve!(x::Optimizer)
 
     # Prints the solution
     print_solution!(x)
+    return
+end
+
+function throw_optimize_hook!(m::Optimizer)
+    optimize_hook!(m.ext_type, m)
 end
 
 function MOI.optimize!(m::Optimizer)
 
     m._start_time = time()
     parse_problem!(m)
-    println("parse time: $(time() - m._start_time)")
     presolve_problem!(m)
-    println("presolve time: $(time() - m._start_time)")
-    # Allow for a hook to modify branch and bound routine
-    if m.enable_optimize_hook
-        optimize_hook!(m.ext_type, m)
-        return
-    end
 
     # Runs the branch and bound routine
-    if is_lp(m)
-        linear_solve!(m)
-    elseif m.local_solve_only
-        local_solve!(m)
+    if ~m.enable_optimize_hook
+        if is_lp(m)
+            linear_solve!(m)
+        elseif m.local_solve_only
+            local_solve!(m)
+        else
+            global_solve!(m)
+        end
     else
-        println("pre global solve time: $(time() - m._start_time)")
-        global_solve!(m)
+        throw_optimize_hook!(m)
     end
+
     return
 end

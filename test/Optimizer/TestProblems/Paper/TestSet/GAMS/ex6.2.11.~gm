@@ -74,7 +74,7 @@ psi(i) = q(i) + r(i)*(zr(i)+zb(i));
 
 vhat(m,i) = SUM(l, bigq(l)*v(l,i)*bip(l,m));
 lambda(m,i) = EXP(bigq(m)*(1-LOG(vhat(m,i)/q(i))
-                            -SUM(l,v(l,i)*bigq(l)*bip(m,l)/vhat(l,i))));
+			    -SUM(l,v(l,i)*bigq(l)*bip(m,l)/vhat(l,i))));
 *nu(i) = SUM(m, v(m,i)*lambda(m,i));
 nu(i) = 0.0;
 
@@ -96,13 +96,13 @@ EQUATIONS
 
 
 obj.. dist =e= SUM(i, x(i)*(gform(i)-chempot(i)-zr(i)*r(i)*LOG(r(i))
-                            + z*q(i)*LOG(q(i))/2.0 - nu(i)))
-              +SUM(i, za*r(i)*x(i))*LOG(SUM(j,r(j)*x(j)))
-              +SUM(i, zb(i)*r(i)*x(i)*LOG(x(i)/SUM(j, r(j)*x(j))))
-              +SUM(i, (z/2.0)*q(i)*x(i)*LOG(x(i)/SUM(j,q(j)*x(j))))
-              +SUM(i, q(i)*x(i))*LOG(SUM(j,q(j)*x(j)))
+			    + z*q(i)*LOG(q(i))/2.0 - nu(i)))
+	      +SUM(i, za*r(i)*x(i))*LOG(SUM(j,r(j)*x(j)))
+	      +SUM(i, zb(i)*r(i)*x(i)*LOG(x(i)/SUM(j, r(j)*x(j))))
+	      +SUM(i, (z/2.0)*q(i)*x(i)*LOG(x(i)/SUM(j,q(j)*x(j))))
+	      +SUM(i, q(i)*x(i))*LOG(SUM(j,q(j)*x(j)))
       +SUM(i, SUM(m, x(i)*v(m,i)*bigq(m)*LOG(x(i)/SUM(j,vhat(m,j)*x(j)))))
-              +SUM(i, -psi(i)*x(i)*LOG(x(i)));
+	      +SUM(i, -psi(i)*x(i)*LOG(x(i)));
 
 molesum.. SUM(i, x(i)) =e= 1.0;
 

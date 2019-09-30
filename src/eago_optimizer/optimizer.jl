@@ -88,7 +88,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     obbt_aggressive_max_iteration::Int64
     obbt_aggressive_min_dimension::Int64
     obbt_tolerance::Float64
-    obbt_variable_values::BitArray
+    obbt_variable_values::Vector{Bool}
 
     # Options for linear bound tightening
     lp_depth::Int64
@@ -148,6 +148,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     header_iterations::Int64
 
     upper_optimizer::T
+
+    objective_cut_on::Bool
 
     # Debug
     enable_optimize_hook::Bool
@@ -290,6 +292,14 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _result_status_code::MOI.ResultStatusCode
 
     # Optimality-Based Bound Tightening (OBBT) Options
+    _obbt_working_lower_index::Vector{Bool}
+    _obbt_working_upper_index::Vector{Bool}
+    _lower_indx_diff::Vector{Bool}
+    _upper_indx_diff::Vector{Bool}
+    _old_low_index::Vector{Bool}
+    _old_upp_index::Vector{Bool}
+    _new_low_index::Vector{Bool}
+    _new_upp_index::Vector{Bool}
     _obbt_variables::Vector{VI}
     _obbt_performed_flag::Bool
 
@@ -342,7 +352,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:obbt_aggressive_max_iteration] = 2
         default_opt_dict[:obbt_aggressive_min_dimension] = 2
         default_opt_dict[:obbt_tolerance] = 1E-9
-        default_opt_dict[:obbt_variable_values] = trues(0)
+        default_opt_dict[:obbt_variable_values] = Bool[]
 
         # Options for linear bound tightening
         default_opt_dict[:lp_depth] = 0
@@ -359,6 +369,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:subgrad_tighten_reverse] = false
 
         # Tolerance to add cuts and max number of cuts
+        default_opt_dict[:objective_cut_on] = true
         default_opt_dict[:cut_max_iterations] = 0
         default_opt_dict[:cut_offset] = 0.1
         default_opt_dict[:cut_tolerance] = 0.1
@@ -554,6 +565,14 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._termination_status_code = MOI.OPTIMIZE_NOT_CALLED
 
         # Optimality-based bound tightening (OBBT) options
+        m._obbt_working_lower_index = Bool[]
+        m._obbt_working_upper_index = Bool[]
+        m._lower_indx_diff = Bool[]
+        m._upper_indx_diff = Bool[]
+        m._old_low_index = Bool[]
+        m._old_upp_index = Bool[]
+        m._new_low_index = Bool[]
+        m._new_upp_index = Bool[]
         m._obbt_variables = VI[]
         m._obbt_performed_flag = false
 
@@ -778,6 +797,14 @@ function MOI.add_variable(m::Optimizer)
         push!(m.branch_variable, false)
     end
     push!(m.obbt_variable_values, false)
+    push!(m._obbt_working_lower_index, false)
+    push!(m._obbt_working_upper_index, false)
+    push!(m._lower_indx_diff, false)
+    push!(m._upper_indx_diff, false)
+    push!(m._old_low_index, false)
+    push!(m._old_upp_index, false)
+    push!(m._new_low_index, false)
+    push!(m._new_upp_index, false)
     push!(m._fixed_variable, false)
     push!(m._variable_info, VariableInfo())
     return VI(m._variable_number)

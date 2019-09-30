@@ -68,9 +68,7 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
                         numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                         current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
     tmp_num_1 = 0.0
-    tmp_num_2 = 0.0
     tmp_mc_1 = zero(MC{N,T})
-    tmp_mc_2 = zero(MC{N,T})
     @inbounds chdset1 = numvalued[ix1]
     @inbounds chdset2 = numvalued[ix2]
     isnum = chdset1
@@ -264,7 +262,9 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
     for k in length(nd):-1:1
         @inbounds nod = nd[k]
         op = nod.index
-        if nod.nodetype == JuMP._Derivatives.VARIABLE
+        if nod.nodetype == JuMP._Derivatives.VALUE
+        elseif nod.nodetype == JuMP._Derivatives.PARAMETER
+        elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             seed = seed_gradient(op, Val(N))
             xMC = MC{N,T}(x_values[op], x_values[op],
                         Interval{Float64}(current_node.lower_variable_bounds[op],
@@ -307,8 +307,6 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @assert n_children == 2
                 forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
                                setstorage, current_node, subgrad_tighten, first_eval_flag)
-            end
-                #=
             elseif op == 6 # ifelse
                 @assert n_children == 3
                 idx1 = first(children_idx)
@@ -332,7 +330,6 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 end
                 error("IF ELSE TO BE IMPLEMENTED SHORTLY")
                 #storage[k] = set_value_post(x_values, ifelse(condition == 1, lhs, rhs), current_node)                                                 # DONE
-
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 op_sym = id_to_operator[op]
                 evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]
@@ -471,7 +468,6 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
             end
         else                                                                        # DONE
             error("Unrecognized node type $(nod.nodetype).")
-            =#
         end
     end
     return
@@ -519,19 +515,19 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
     first_eval_flag = d.first_eval_flag
 
     for (ind, k) in enumerate(reverse(d.subexpression_order))
-        ex = d.subexpressions[k]
-        forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
-                    ex.nd, ex.adj, d.current_node,
+        subex = d.subexpressions[k]
+        forward_eval(subex.setstorage, subex.numberstorage, subex.numvalued,
+                    subex.nd, subex.adj, d.current_node,
                     x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                    user_input_buffer, subgrad_tighten, ex.tpdict,
-                    ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
-                    first_eval_flag, user_operators)
+                    user_input_buffer, subgrad_tighten, subex.tpdict,
+                    subex.tp1storage, subex.tp2storage, subex.tp3storage,
+                    subex.tp4storage, first_eval_flag, user_operators)
 
-        d.subexpression_isnum[ind] = ex.numvalued[1]
+        d.subexpression_isnum[ind] = subex.numvalued[1]
         if d.subexpression_isnum[ind]
-            d.subexpression_values_flt[k] = ex.numberstorage[1]
+            d.subexpression_values_flt[k] = subex.numberstorage[1]
         else
-            d.subexpression_values_set[k] = ex.setstorage[1]
+            d.subexpression_values_set[k] = subex.setstorage[1]
         end
     end
 
@@ -603,7 +599,6 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
             elseif (op == 1) # :+
                 lenx = length(children_idx)
                 if false #lenx == 2
-                    #=
                     @inbounds child1 = first(children_idx)
                     @inbounds child2 = last(children_idx)
                     println("child1: $child1")
@@ -646,7 +641,7 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                         println("infeasible +")
                         break
                     end
-                    =#
+
                 else
                     count = 0
                     child_arr_indx = children_arr[children_idx]

@@ -303,9 +303,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64})
                 g_cc = zeros(leng)
                 dg_cc = zeros(leng, nx)
 
-                println("first eval constraint: $(time()-x._start_time)")
                 MOI.eval_constraint(evaluator, g, v)
-                println("last eval constraint: $(time()-x._start_time)")
                 MOI.eval_constraint_jacobian(evaluator, dg, v)
 
                 eval_constraint_cc(evaluator, g_cc, v)
@@ -363,9 +361,7 @@ function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64})
     evaluator = x._relaxed_evaluator
     set_current_node!(evaluator, x._current_node)
     relax_quadratic!(x, v)
-    println("pre relax nlp: $(time() - x._start_time)")
     relax_nlp!(x,v)
-    println("post relax nlp: $(time() - x._start_time)")
 
     return
 end
@@ -394,17 +390,33 @@ function objective_cut_linear!(x::Optimizer)
             end
         else
             if ~x._objective_is_sv
+
                 ci_saf = x._objective_cut_ci_saf
                 saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
+                x_val = x._current_xref
+
+                f_grad = zeros(x._variable_number)
+                MOI.eval_objective_gradient(x._relaxed_evaluator, f_grad, x_val)
+
+                c_term = 0.0
                 for term in saf.terms
-                    MOI.modify(x.relaxed_optimizer, ci_saf, MOI.SCC(term.variable_index, term.coefficient))
+                    term_coeff = term.coefficient
+                    term_indx = term.variable_index
+                    MOI.modify(x.relaxed_optimizer, ci_saf, MOI.SCC(term_indx, term_coeff))
+                    @inbounds c_term += x_val[term_indx]*f_grad[term_indx]
                 end
+                fstar = MOI.eval_objective(x._relaxed_evaluator, x_val)
+                set = LT(x._global_upper_bound - fstar + cterm)
                 MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
             else
                 ci_sv = x._objective_cut_ci_sv
+                set = LT(x._global_upper_bound)
                 MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
             end
         end
     end
     return
 end
+
+relax_problem!(x::Optimizer, v::Vector{Float64}) = relax_problem!(x.ext_type, x, v)
+relax_objective!(x::Optimizer, v::Vector{Float64}) = relax_objective!(x.ext_type, x, v)

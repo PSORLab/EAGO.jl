@@ -314,7 +314,7 @@ function preprocess!(t::ExtensionType, x::Optimizer)
 
     # runs univariate quadratic contractor
     if ((x.quad_uni_depth >= x._iteration_count) & feas)
-        for i in 1:x.quad_uni_reptitions
+        for i = 1:x.quad_uni_reptitions
             feas = univariate_quadratic(x)
             (~feas) && (break)
         end
@@ -322,11 +322,10 @@ function preprocess!(t::ExtensionType, x::Optimizer)
 
     x._obbt_performed_flag = false
     if (x.obbt_depth >= x._iteration_count)
-
         #println("ran obbt... $(x.obbt_depth) >= $(x._iteration_count)")
         if feas
             x._obbt_performed_flag = true
-            for i in 1:x.obbt_reptitions
+            for i = 1:x.obbt_reptitions
                 feas = obbt(x)
                 (~feas) && (break)
             end
@@ -547,11 +546,13 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
     if ~x._obbt_performed_flag
         x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
         update_relaxed_problem_box!(x, y)
-        relax_problem!(t, x, x._current_xref)
+        relax_problem!(x, x._current_xref)
     end
 
-    relax_objective!(t, x, x._current_xref)
-    objective_cut_linear!(x)
+    relax_objective!(x, x._current_xref)
+    if (x.objective_cut_on)
+        objective_cut_linear!(x)
+    end
 
     # Optimizes the object
     opt = x.relaxed_optimizer
@@ -759,9 +760,11 @@ Perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, x::Optimizer)
 
-    variable_dbbt!(x._current_node, x._lower_lvd, x._lower_uvd,
-                   x._lower_objective_value, x._global_upper_bound,
-                   x._variable_number)
+    if (x.dbbt_depth > x._iteration_count)
+        variable_dbbt!(x._current_node, x._lower_lvd, x._lower_uvd,
+                       x._lower_objective_value, x._global_upper_bound,
+                       x._variable_number)
+    end
 
     x._postprocess_feasibility = true
 

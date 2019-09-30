@@ -1,13 +1,13 @@
 @testset "Test Continuous Branch Rules" begin
     B = EAGO.Optimizer(verbosity = 0)
-    B.variable_number = 2
+    B._variable_number = 2
     B.fixed_variable[1]  = false
     B.fixed_variable[2]  = false
-    B.bisection_variable[1] = true
-    B.bisection_variable[2] = true
-    B.variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false),
+    B.branch_variable[1] = true
+    B.branch_variable[2] = true
+    B._variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false),
                        EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
-    B.current_lower_info.solution = [1.4, 5.3]
+    B._current_lower_info.solution = [1.4, 5.3]
     S = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1, true)
     X1,X2 = EAGO.bisection_function(B,S)
     @test isapprox(X1.lower_variable_bounds[1], 1.0; atol = 1E-4)
@@ -18,7 +18,7 @@ end
 
 @testset "Test Implicit Branch Rules" begin
     B = EAGO.Optimizer(verbosity = 0)
-    B.variable_number = 2
+    B._variable_number = 2
     B.fixed_variable[1]  = false
     B.fixed_variable[2]  = false
     B.fixed_variable[3]  = false
@@ -43,7 +43,7 @@ end
 
 @testset "Test B&B Checks" begin
     B = EAGO.Optimizer(verbosity = 0)
-    B.variable_number = 2
+    B._variable_number = 2
     B.variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false),
                       EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
     S = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1, true)
