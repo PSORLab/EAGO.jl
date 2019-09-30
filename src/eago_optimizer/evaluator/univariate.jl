@@ -98,7 +98,7 @@ end
 
 single_tp_expra = make_tp_gate_1(single_tp_ops, :x)
 single_tp_exprb = make_tp_gate_1(single_tp_ops, :z)
-@eval @inline function single_tp_set(op::Int, x::MC, z::MC, tp1::Float64,
+@eval @inline function single_tp_set(op::Int64, x::MC, z::MC, tp1::Float64,
                                tp2::Float64, flag::Bool)
     if flag
         $single_tp_expra
@@ -108,7 +108,7 @@ single_tp_exprb = make_tp_gate_1(single_tp_ops, :z)
 end
 double_tp_expra = make_tp_gate_2(double_tp_ops, :x)
 double_tp_exprb = make_tp_gate_2(double_tp_ops, :z)
-@eval @inline function double_tp_set(op::Int, x::MC, z::MC, tp1::Float64,
+@eval @inline function double_tp_set(op::Int64, x::MC, z::MC, tp1::Float64,
                                tp2::Float64, tp3::Float64, tp4::Float64, flag::Bool)
     if flag
         $double_tp_expra

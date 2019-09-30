@@ -76,7 +76,6 @@ function branch_node!(t::ExtensionType, x::Optimizer)
 
     return
 end
-
 """
     single_storage!
 
@@ -124,7 +123,6 @@ end
     repeat_check
 
 Checks to see if current node should be reprocessed.
-
 """
 repeat_check(t::ExtensionType, x::Optimizer) = false
 
@@ -442,7 +440,10 @@ end
 """
     interval_lower_bound!
 
-A fallback lower bounding probel
+A fallback lower bounding problem that consists of an natural interval extension
+calculation. This is called when the optimizer used to compute the lower bound
+does not return a termination and primal status code indicating that it
+successfully solved the relaxation to a globally optimal point.
 """
 function interval_lower_bound!(x::Optimizer, y::NodeBB)
 

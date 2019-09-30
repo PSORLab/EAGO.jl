@@ -228,7 +228,6 @@ function obbt(x::Optimizer)
     # Prefiltering steps && and sets initial LP values
     trival_filtering!(x, y, obbt_working_lower_index,
                             obbt_working_upper_index)
-
     if aggressive_obbt_on_heurestic(x)
         feasibility = aggressive_filtering!(x, y, obbt_working_lower_index,
                                                   obbt_working_upper_index)
@@ -237,14 +236,13 @@ function obbt(x::Optimizer)
 
     while any(obbt_working_lower_index) & any(obbt_working_upper_index) & ~isempty(y)
 
-        println("any lower: $(obbt_working_lower_index)")
-        println("any upper: $(obbt_working_upper_index)")
-
         # Get lower value
         lower_indx = -1
         upper_indx = -1
         lower_value = Inf
         upper_value = Inf
+
+        # min of xLP - yL on active
         if any(obbt_working_lower_index)
             for i in 1:length(obbt_working_lower_index)
                 @inbounds active_flag = obbt_working_lower_index[i]
@@ -258,6 +256,7 @@ function obbt(x::Optimizer)
                 end
             end
         end
+        # min of yU - xLP on active
         if any(obbt_working_upper_index)
             for i in 1:length(obbt_working_upper_index)
                 @inbounds active_flag = obbt_working_upper_index[i]
@@ -336,7 +335,6 @@ function obbt(x::Optimizer)
         trival_filtering!(x, y, obbt_working_lower_index,
                                 obbt_working_upper_index)
     end
-
     return feasibility
 end
 

@@ -14,7 +14,7 @@ end
 Reverse McCormick operator for `acosh`.
 """
 function acosh_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(0.0, Inf)
+    y = y ∩ Interval{Float64}(0.0, Inf)
     if ~isempty(y)
         x = x ∩ cosh(y)
     end

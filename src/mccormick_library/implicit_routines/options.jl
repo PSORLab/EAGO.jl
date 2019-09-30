@@ -12,11 +12,11 @@ Storage type used for parameter options in implicit bounding routine.
 """
 mutable struct mc_opts
   lambda::Float64
-  kmax::Int
+  kmax::Int64
   linear_algebra::Symbol
   contractor_type::Symbol
-  np::Int
-  nx::Int
+  np::Int64
+  nx::Int64
   aff_correct_eps::Float64
 end
 

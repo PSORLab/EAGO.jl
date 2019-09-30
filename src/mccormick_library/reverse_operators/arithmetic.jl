@@ -49,8 +49,8 @@ function mul_rev(a::MC, b::MC, c::MC)  # a = b * c
     =#
     a,b,c
 end
-mul_rev(a::MC{N},b::MC{N},c::Float64) where N = mul_rev(a,b,MC{N}(c))
-mul_rev(a::MC{N},b::Float64,c::MC{N}) where N = mul_rev(a,MC{N}(b),c)
+mul_rev(a::MC{N,T},b::MC{N,T},c::Float64) where {N, T<:RelaxTag} = mul_rev(a,b,MC{N,T}(c))
+mul_rev(a::MC{N,T},b::Float64,c::MC{N,T}) where {N, T<:RelaxTag} = mul_rev(a,MC{N,T}(b),c)
 
 """
     div_rev
@@ -123,7 +123,7 @@ Creates reverse McCormick contractor for `a` = `abs(b)`
 """
 abs_rev(a::MC, b::MC) = (a,b)
 #=
-function abs_rev!(y::MC{N}, x::MC{N}) where N   # y = abs(x); refine x
+function abs_rev!(y::MC{N,T}, x::MC{N,T}) where {N, T<:RelaxTag}   # y = abs(x); refine x
 
     y_new = y ∩ (0..∞)
 
@@ -137,7 +137,7 @@ function abs_rev!(y::MC{N}, x::MC{N}) where N   # y = abs(x); refine x
     Intv = hull(Intv(x1),Intv(x2))
 
 
-    y = MC{N}(cv, cc, Intv, cv_grad, cc_grad, y.cnst)
+    y = MC{N,T}(cv, cc, Intv, cv_grad, cc_grad, y.cnst)
 
     return
 end

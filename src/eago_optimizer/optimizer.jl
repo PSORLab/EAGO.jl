@@ -242,18 +242,21 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}}
 
     _quadratic_ci_leq::Vector{CI{SAF,LT}}
-    _quadratic_ci_geq::Vector{CI{SAF,GT}}
-    _quadratic_ci_eq::Vector{CI{SAF,ET}}
+    _quadratic_ci_geq::Vector{CI{SAF,LT}}
+    _quadratic_ci_eq::Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}
 
-    _quadratic_leq_sparsity::Vector{Vector{Int64}}
-    _quadratic_geq_sparsity::Vector{Vector{Int64}}
-    _quadratic_eq_sparsity::Vector{Vector{Int64}}
+    _quadratic_leq_sparsity::Vector{Vector{VI}}
+    _quadratic_geq_sparsity::Vector{Vector{VI}}
+    _quadratic_eq_sparsity::Vector{Vector{VI}}
 
     _quadratic_leq_gradnz::Vector{Int64}
     _quadratic_geq_gradnz::Vector{Int64}
     _quadratic_eq_gradnz::Vector{Int64}
 
-    _quadratic_convexity::Vector{Bool}
+    _quadratic_leq_convexity::Vector{Bool}
+    _quadratic_geq_convexity::Vector{Bool}
+    _quadratic_eq_convexity_1::Vector{Bool}
+    _quadratic_eq_convexity_2::Vector{Bool}
 
     _lower_nlp_affine::Vector{CI{SAF,LT}}
     _upper_nlp_affine::Vector{CI{SAF,LT}}
@@ -506,19 +509,23 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._quadratic_geq_dict = ImmutableDict{Int64,Int64}[]
         m._quadratic_eq_dict = ImmutableDict{Int64,Int64}[]
 
-        m._quadratic_leq_sparsity = Vector{Int64}[]
-        m._quadratic_geq_sparsity = Vector{Int64}[]
-        m._quadratic_eq_sparsity = Vector{Int64}[]
+        m._quadratic_leq_sparsity = Vector{VI}[]
+        m._quadratic_geq_sparsity = Vector{VI}[]
+        m._quadratic_eq_sparsity = Vector{VI}[]
 
         m._quadratic_ci_leq = CI{SAF,LT}[]
-        m._quadratic_ci_geq = CI{SAF,GT}[]
-        m._quadratic_ci_eq = CI{SAF,ET}[]
+        m._quadratic_ci_geq = CI{SAF,LT}[]
+        m._quadratic_ci_eq = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
 
         m._quadratic_leq_gradnz = Int64[]
         m._quadratic_geq_gradnz = Int64[]
         m._quadratic_eq_gradnz = Int64[]
 
-        m._quadratic_convexity = Bool[]
+        m._quadratic_leq_convexity = Bool[]
+        m._quadratic_geq_convexity = Bool[]
+        m._quadratic_eq_convexity_1 = Bool[]
+        m._quadratic_eq_convexity_2 = Bool[]
+
 
         m._lower_nlp_affine = CI{SAF,LT}[]
         m._upper_nlp_affine = CI{SAF,LT}[]
@@ -568,7 +575,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         m._nlp_data = empty_nlp_data()
 
-        m._relaxed_evaluator = Evaluator{1}()
+        m._relaxed_evaluator = Evaluator{1,NS}()
         m._relaxed_constraint_bounds = Vector{MOI.NLPBoundsPair}[]
         m._relaxed_eval_has_objective = false
 

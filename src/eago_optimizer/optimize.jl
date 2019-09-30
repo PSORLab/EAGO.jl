@@ -32,61 +32,58 @@ function gen_quadratic_storage!(x::Optimizer)
 
         v = gen_quad_sparsity(func)
         nv = length(v)
-        push!(x._quadratic_leq_sparsity, v)
+        @inbounds nzvar = variable_index[v]
+        push!(x._quadratic_leq_sparsity, nzvar)
         push!(x._quadratic_leq_gradnz, nv)
 
         d = ImmutableDict{Int64,Int64}()
         for (i, val) in enumerate(v)
-            ImmutableDict(d, val => i)
+            d = ImmutableDict(d, val => i)
         end
         push!(x._quadratic_leq_dict, d)
 
-        @inbounds nzvar = variable_index[v]
         func = SAF(SAT.(zeros(nv), nzvar), 0.0)
         ci = MOI.add_constraint(opt, func, LT(0.0))
         push!(x._quadratic_ci_leq, ci)
-
     end
 
     for (func, set, ind) in x._quadratic_geq_constraints
 
         v = gen_quad_sparsity(func)
         nv = length(v)
-        push!(x._quadratic_geq_sparsity, v)
+        @inbounds nzvar = variable_index[v]
+        push!(x._quadratic_geq_sparsity, nzvar)
         push!(x._quadratic_geq_gradnz, nv)
 
         d = ImmutableDict{Int64,Int64}()
         for (i, val) in enumerate(v)
-            ImmutableDict(d, val => i)
+            d = ImmutableDict(d, val => i)
         end
         push!(x._quadratic_geq_dict, d)
 
-        @inbounds nzvar = variable_index[v]
         func = SAF(SAT.(zeros(nv), nzvar), 0.0)
         ci = MOI.add_constraint(opt, func, LT(0.0))
         push!(x._quadratic_ci_geq, ci)
-
     end
 
     for (func, set, ind) in x._quadratic_eq_constraints
 
         v = gen_quad_sparsity(func)
         nv = length(v)
-        push!(x._quadratic_eq_sparsity, v)
+        @inbounds nzvar = variable_index[v]
+        push!(x._quadratic_eq_sparsity, nzvar)
         push!(x._quadratic_eq_gradnz, nv)
 
         d = ImmutableDict{Int64,Int64}()
         for (i, val) in enumerate(v)
-            ImmutableDict(d, val => i)
+            d = ImmutableDict(d, val => i)
         end
         push!(x._quadratic_eq_dict, d)
 
-        @inbounds nzvar = variable_index[v]
         func = SAF(SAT.(zeros(nv), nzvar), 0.0)
         c1 = MOI.add_constraint(opt, func, LT(0.0))
         c2 = MOI.add_constraint(opt, func, LT(0.0))
-        push!(x._quadratic_ci_eq, c1, c2)
-
+        push!(x._quadratic_ci_eq, (c1, c2))
     end
     return
 end
@@ -268,7 +265,7 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
         # Scrub user-defined functions
         initialize_scrub!(m, evaluator)
 
-        built_evaluator = build_nlp_evaluator(m._variable_number, evaluator, m, false)
+        built_evaluator = build_nlp_evaluator(m._variable_number, NS(), evaluator, m, false)
         m._relaxed_evaluator = built_evaluator
         m._relaxed_eval_has_objective = m._nlp_data.has_objective
         append!(m._relaxed_constraint_bounds, m._nlp_data.constraint_bounds)
@@ -315,50 +312,58 @@ end
 
 Returns true if `func` < 0  based on eigenvalue tests, false otherwise.
 """
-function is_convex_quadratic(func::SQF, NumVar::Int, mult::Float64)
+function is_convex_quadratic(func::SQF, mult::Float64)
     # Riguous Convexity Test
-    Q = spzeros(NumVar, NumVar)
+    flag = false
+    row = Int64[]
+    column = Int64[]
+    value = Float64[]
     for term in func.quadratic_terms
-        if term.coefficient != 0.0
-            Q[term.variable_index_1.value, term.variable_index_2.value] = mult*term.coefficient
+        coeff = term.coefficient
+        if coeff != 0.0
+            push!(row, term.variable_index_1.value)
+            push!(column, term.variable_index_2.value)
+            push!(value, mult*coeff)
         end
     end
+    Q = sparse(row, column, value)
     if length(Q.nzval) > 1
         eigval = eigmin(Array(Q))
         if (eigval) > 0.0
-            return true
+            flag = true
         end
-    else
-        if Q.nzval[1] > 0.0
-            return true
-        else
-            return false
-        end
+    elseif Q.nzval[1] > 0.0
+        flag =  true
     end
-    return false
+    return flag
 end
 
 
 """
-    quadratic_convexity!
+    label_quadratic_convexity!
 
 Assigns boolean value to constraint_convexity dictionary entry corresponding to
 constraint index that is true if constraint is shown to be convex and false
 otherwise.
 """
-function quadratic_convexity!(x::Optimizer)
-    for (func, set, ind) in x._quadratic_leq_constraints
-        MOIindx = CI{SQF,LT}(ind)
-        x._constraint_convexity[MOIindx] = is_convex_quadratic(func, x._variable_number, 1.0)
+function label_quadratic_convexity!(x::Optimizer)
+
+    for i in 1:length(x._quadratic_leq_constraints)
+        @inbounds func, set, ind = x._quadratic_leq_constraints[i]
+        @inbounds x._quadratic_leq_convexity[i] = is_convex_quadratic(func, 1.0)
     end
-    for (func, set, ind) in x._quadratic_geq_constraints
-        MOIindx = CI{SQF, GT}(ind)
-        x._constraint_convexity[MOIindx] = is_convex_quadratic(func, x.variable_number, -1.0)
+
+    for i in 1:length(x._quadratic_geq_constraints)
+        @inbounds func, set, ind = x._quadratic_geq_constraints[i]
+        @inbounds x._quadratic_geq_convexity[i] = is_convex_quadratic(func, -1.0)
     end
-    for (func, set, ind) in x._quadratic_eq_constraints
-        MOIindx = CI{SQF, ET}(ind)
-        x.constraint_convexity[MOIindx] = false
+
+    for i in 1:length(x._quadratic_eq_constraints)
+        @inbounds func, set, ind = x._quadratic_geq_constraints[i]
+        @inbounds x._quadratic_eq_convexity_1[i] = is_convex_quadratic(func, 1.0)
+        @inbounds x._quadratic_eq_convexity_2[i] = is_convex_quadratic(func, -1.0)
     end
+
     return
 end
 
@@ -391,7 +396,7 @@ function local_solve!(x::Optimizer)
     return
 end
 
-function build_nlp_kernel!(d::Evaluator{N}, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool) where N
+function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool) where {N,T<:RelaxTag}
 
     m = src.m::Model
     num_variables_ = JuMP.num_variables(m)
@@ -420,13 +425,13 @@ function build_nlp_kernel!(d::Evaluator{N}, src::JuMP.NLPEvaluator, x::Optimizer
     d.subexpression_order = src.subexpression_order
     d.subexpression_linearity = src.subexpression_linearity
 
-    d.subexpression_values_set = MC{N}[]
+    d.subexpression_values_set = MC{N,T}[]
     d.subexpression_values_flt = Float64[]
     d.subexpressions = SubexpressionSetStorage{N}[]
     for i in 1:length(src.subexpressions)
         copy_to_subexpr!(d, src.subexpressions[i])
     end
-    d.subexpression_values_set = fill(zero(MC{N}), length(d.subexpressions))
+    d.subexpression_values_set = fill(zero(MC{N,T}), length(d.subexpressions))
     d.subexpression_values_flt = fill(NaN, length(d.subexpressions))
 
     # Add bounds to evaluator
@@ -441,7 +446,7 @@ function build_nlp_kernel!(d::Evaluator{N}, src::JuMP.NLPEvaluator, x::Optimizer
     d.has_reverse = x._cp_evaluation_reverse
     d.subgrad_tighten = x.subgrad_tighten
     d.subgrad_tighten_reverse = x.subgrad_tighten_reverse
-    d.jac_storage = fill(zero(MC{N}), max(num_variables_, nldata.largest_user_input_dimension))
+    d.jac_storage = fill(zero(MC{N,T}), max(num_variables_, nldata.largest_user_input_dimension))
 
     d.constraint_number = length(d.constraints)
     d.subexpression_number = length(d.subexpressions)
@@ -510,10 +515,10 @@ end
 Builds the evaluator used to generate relaxations of the nonlinear equations
 and constraints from a source model.
 """
-function build_nlp_evaluator(N::Int64, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool)
+function build_nlp_evaluator(N::Int64, s::T, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool) where {T<:RelaxTag}
 
     # Creates the empty evaluator
-    d::Evaluator{N} = Evaluator{N}()
+    d::Evaluator{N,T} = Evaluator{N,T}()
     build_nlp_kernel!(d, src, x, bool_flag)
 
     return d
@@ -633,6 +638,7 @@ function presolve_problem!(m::Optimizer)
 
     label_fixed_variables!(m)
     label_nonlinear_variables!(m)
+    label_quadratic_convexity!(m)
     check_disable_fbbt!(m)
     load_relaxed_problem!(m)
 
@@ -682,8 +688,10 @@ function global_solve!(x::Optimizer)
         (x.verbosity >= 3) && print_node!(x)
 
         # Performs prepocessing and times
+        println("preprocessing start time: $(time() - x._start_time)")
         x.log_on && (start_time = time())
         preprocess!(ext_type, x)
+        println("preprocessing end time: $(time() - x._start_time)")
         if x.log_on
             x._last_preprocess_time = time() - start_time
         end
@@ -708,7 +716,9 @@ function global_solve!(x::Optimizer)
                 if ~convergence_check(ext_type, x)
 
                     x.log_on && (start_time = time())
+                    println("upper start time: $(time() - x._start_time)")
                     upper_problem!(ext_type, x)
+                    println("upper end time: $(time() - x._start_time)")
                     if x.log_on
                         x._last_upper_problem_time = time() - start_time
                     end
@@ -761,7 +771,9 @@ function MOI.optimize!(m::Optimizer)
 
     m._start_time = time()
     parse_problem!(m)
+    println("parse time: $(time() - m._start_time)")
     presolve_problem!(m)
+    println("presolve time: $(time() - m._start_time)")
     # Allow for a hook to modify branch and bound routine
     if m.enable_optimize_hook
         optimize_hook!(m.ext_type, m)
@@ -774,6 +786,7 @@ function MOI.optimize!(m::Optimizer)
     elseif m.local_solve_only
         local_solve!(m)
     else
+        println("pre global solve time: $(time() - m._start_time)")
         global_solve!(m)
     end
     return

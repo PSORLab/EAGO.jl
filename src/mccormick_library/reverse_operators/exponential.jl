@@ -4,7 +4,7 @@
 Reverse McCormick operator for `exp`.
 """
 function exp_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(0.0, Inf)
+    y = y ∩ Interval{Float64}(0.0, Inf)
     if (y.Intv.lo > 0.0)
         x = x ∩ log(y)
     end
@@ -17,7 +17,7 @@ end
 Reverse McCormick operator for `exp2`.
 """
 function exp2_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(0.0, Inf)
+    y = y ∩ Interval{Float64}(0.0, Inf)
     if (y.Intv.lo > 0.0)
         x = x ∩ log2(y)
     end
@@ -30,7 +30,7 @@ end
 Reverse McCormick operator for `exp10`.
 """
 function exp10_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(0.0, Inf)
+    y = y ∩ Interval{Float64}(0.0, Inf)
     if (y.Intv.lo > 0.0)
         x = x ∩ log10(y)
     end
@@ -43,7 +43,7 @@ end
 Reverse McCormick operator for `expm1`.
 """
 function expm1_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(-1.0, Inf)
+    y = y ∩ Interval{Float64}(-1.0, Inf)
     if (y.Intv.lo > -1.0)
         x = x ∩ log1p(y)
     end

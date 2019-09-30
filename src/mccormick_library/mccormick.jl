@@ -1,4 +1,4 @@
-@reexport module McCormick
+module McCormick
 
 using DiffRules: diffrule
 using StaticArrays: @SVector, SVector, zeros, ones
@@ -47,8 +47,7 @@ export plus!, mult!, min!, max!, minus!, div!, exp!, exp2!, exp10!, expm1!,
        log!, log2!, log10!, log1p!, sin!, cos!, tan!, asin!, acos!, atan!,
        sinh!, cosh!, tanh!, asinh!, acosh!, atanh!, abs!, sqr!, sqrt!, pow!
 
-export seed_gradient, IntervalType, set_mc_differentiability!, set_multivar_refine!,
-       set_tolerance!, set_iterations!, MC_param
+export seed_gradient, RelaxTag, NS, MV, Diff
 
 # Export reverse operators
 export plus_rev, mul_rev, min_rev, max_rev, minus_rev, div_rev, exp_rev,
@@ -72,45 +71,27 @@ function __init__()
       setrounding(Interval, :accurate)
 end
 
-const IntervalType = Interval{Float64}
+abstract type RelaxTag end
+struct NS <: RelaxTag end
+struct MV <: RelaxTag end
+struct Diff <: RelaxTag end
 
-mutable struct McCormickParamters
-  env_max_int::Int
-  env_tol::Float64
-  mu::Int
-  mu_flt::Float64
-  valid_check::Bool
-  valid_tol::Float64
-  multivar_refine::Bool
-  mv_tol::Float64
-  outer_rnding::Bool
-  outer_param::Float64
-  reference_point::Vector{Float64}
-  reference_domain::Vector{IntervalType}
-  use_reference::Bool
-  McCormickParamters() = new(100,
-                             1E-10,
-                             0,
-                             0.0,
-                             false,
-                             1E-8,
-                             false,
-                             1E-15,
-                             false,
-                             0.0,
-                             Float64[],
-                             IntervalType[],
-                             false)
-end
+const MC_ENV_MAX_INT = 100
+const MC_ENV_TOL = 1E-10
+const MC_DIFF_MU = 1
+const MC_MV_TOL = 1E-8
 
-const MC_param = McCormickParamters()
 const IntervalConstr = interval
 const Half64 = Float64(0.5)
 const Two64 = Float64(2.0)
 const Three64 = Float64(3.0)
 const EqualityTolerance = Float64(1E-12)
 const DegToRadIntv = pi_interval(Float64)/Interval(180.0)
-
+const one_intv = one(Interval{Float64})
+const half_intv = Interval{Float64}(0.5)
+const two_intv = Interval{Float64}(2.0)
+const log2_intv = log(Interval{Float64}(2.0))
+const log10_intv = log(Interval{Float64}(10.0))
 
 ########### number list
 int_list = [Int8,UInt8,Int16,UInt16,
@@ -128,20 +109,14 @@ Template_List = union(CVList,CCList,CCtoCVList,CVtoCCList)
 OtherList = [:sin,:cos,:min,:max,:abs,:step, :sign, :inv, :*, :+, :-, :/,
 :promote_rule, :convert, :one, :zero, :real, :dist, :eps, :fma, :^]
 
-const IntervalType = Interval{Float64}
-
-const one_intv = one(Interval{Float64})
-const half_intv = Interval{Float64}(0.5)
-const two_intv = Interval{Float64}(2.0)
-const log2_intv = log(Interval{Float64}(2.0))
-const log10_intv = log(Interval{Float64}(10.0))
-
 """
-    seed_gradient(T::Type,j::Int,N::Int)
+    seed_gradient(j::Int64, x::Val{N})
 
-Creates a `x::SVector{N,T}` object that is one at `x[j]` and zero everywhere else.
+Creates a `x::SVector{N,Float64}` object that is one at `x[j]` and zero everywhere else.
 """
-seed_gradient(T::Type,j::Int,N::Int) = SVector{N,T}([i == j ? 1.0 : 0.0 for i=1:N])
+function seed_gradient(j::Int64, x::Val{N}) where N
+  return SVector{N,Float64}([i == j ? 1.0 : 0.0 for i = 1:N]...)
+end
 
 """
     mid3(x::T,y::T,z::T)
@@ -161,15 +136,13 @@ Takes the concave relaxation gradient 'cc_grad', the convex relaxation gradient
 'cv_grad', and the index of the midpoint returned 'id' and outputs the appropriate
 gradient according to McCormick relaxation rules.
 """
-function mid_grad(cc_grad::SVector{N,Float64}, cv_grad::SVector{N,Float64}, id::Int) where N
+function mid_grad(cc_grad::SVector{N,Float64}, cv_grad::SVector{N,Float64}, id::Int64) where {N, T <: RelaxTag}
   if (id == 1)
     return cc_grad
   elseif (id == 2)
     return cv_grad
   elseif (id == 3)
     return zeros(SVector{N,Float64})
-  else
-    error("Invalid mid3 position")
   end
 end
 
@@ -189,7 +162,7 @@ defaults to evaluating the derivative of the function if the interval is tight.
         return (yL*(xU - x) + yU*(x - xL))/delta, (yU - yL)/delta
     end
 end
-@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64, n::Int)
+@inline function dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64, n::Int64)
     delta = xU - xL
     if delta == 0.0
         return f(x, n), df(x, n)
@@ -217,7 +190,7 @@ end
 concave gradient, 'cc', the mid index values 'int1,int2', and the derivative of
 the convex and concave envelope functions 'dcv,dcc'.
 """
-function grad_calc(cv::SVector{N,Float64},cc::SVector{N,Float64},int1::Int,int2::Int,dcv::Float64,dcc::Float64) where N
+function grad_calc(cv::SVector{N,Float64},cc::SVector{N,Float64},int1::Int,int2::Int,dcv::Float64,dcc::Float64) where {N, T <: RelaxTag}
   cv_grad::SVector{N,Float64} = dcv*( int1==1 ? cv : ( int1==2 ? cv : zeros(SVector{N,Float64})))
   cc_grad::SVector{N,Float64} = dcc*( int2==1 ? cc : ( int2==2 ? cc : zeros(SVector{N,Float64})))
   return cv_grad, cc_grad
@@ -228,15 +201,15 @@ end
 
 Outer rounds the interval `Intv` by `MC_param.outer_param`.
 """
-outer_rnd(Intv::IntervalType) = Intv.lo-MC_param.outer_param, Intv.hi+MC_param.outer_param
+outer_rnd(Intv::Interval{Float64}) = Intv.lo-MC_param.outer_param, Intv.hi+MC_param.outer_param
 
 """
-    isequal(x::IntervalType,y::IntervalType,atol::Float64,rtol::Float64)
+    isequal(x::Interval{Float64},y::Interval{Float64},atol::Float64,rtol::Float64)
 
 Checks that `x` and `y` are equal to with absolute tolerance `atol` and relative
 tolerance `rtol`.
 """
-isequal(x::IntervalType,y::IntervalType,atol::Float64,rtol::Float64) = (abs(x-y) < (atol + 0.5*abs(x+y)*rtol))
+isequal(x::Interval{Float64},y::Interval{Float64},atol::Float64,rtol::Float64) = (abs(x-y) < (atol + 0.5*abs(x+y)*rtol))
 
 """
     cut
@@ -286,54 +259,59 @@ standard calculations. The fields are:
 * `cv::Float64`: Convex relaxation
 * `cc_grad::SVector{N,Float64}`: (Sub)gradient of concave relaxation
 * `cv_grad::SVector{N,Float64}`: (Sub)gradient of convex relaxation
-* `Intv::IntervalType`: Interval bounds
+* `Intv::Interval{Float64}`: Interval bounds
 * `cnst::Bool`: Flag for whether the bounds are constant
 """
-struct MC{N} <: Real
+struct MC{N, T <: RelaxTag} <: Real
   cv::Float64
   cc::Float64
-  Intv::IntervalType
+  Intv::Interval{Float64}
   cv_grad::SVector{N,Float64}
   cc_grad::SVector{N,Float64}
   cnst::Bool
 
-  function MC{N}(cv1::Float64,cc1::Float64,Intv1::IntervalType,
-                 cv_grad1::SVector{N,Float64},cc_grad1::SVector{N,Float64},cnst1::Bool) where {N}
+  function MC{N,T}(cv1::Float64, cc1::Float64, Intv1::Interval{Float64},
+                 cv_grad1::SVector{N,Float64} ,cc_grad1::SVector{N,Float64},
+                 cnst1::Bool) where {N, T <: RelaxTag}
     new(cv1,cc1,Intv1,cv_grad1,cc_grad1,cnst1)
   end
 end
 
 """
-    MC(y::IntervalType)
+    MC(y::Interval{Float64})
 
 Constructs McCormick relaxation with convex relaxation equal to `y.lo` and
 concave relaxation equal to `y.hi`.
 """
-MC{N}(y::IntervalType) where N = MC{N}(y.lo,y.hi,y,SVector{N,Float64}(zeros(Float64,N)),SVector{N,Float64}(zeros(Float64,N)),true)
-MC{N}(y::Float64) where N = MC{N}(IntervalType(y))
-MC{N}(y::T) where {N,T<:AbstractIrrational} = MC{N}(IntervalType(y))
-MC{N}(cv::Float64, cc::Float64) where N = MC{N}(cv,cc,IntervalType(cv,cc),SVector{N,Float64}(zeros(Float64,N)),SVector{N,Float64}(zeros(Float64,N)),true)
+function MC{N,T}(y::Interval{Float64}) where {N, T <: RelaxTag}
+    MC{N,T}(y.lo, y.hi, y, SVector{N,Float64}(zeros(Float64,N)),
+                           SVector{N,Float64}(zeros(Float64,N)), true)
+end
+MC{N,T}(y::Float64) where {N, T <: RelaxTag} = MC{N,T}(Interval{Float64}(y))
+function MC{N,T}(y::Y) where {N, T <: RelaxTag, Y <: AbstractIrrational}
+    MC{N,T}(Interval{Float64}(y))
+end
+function MC{N,T}(cv::Float64, cc::Float64) where {N, T <: RelaxTag}
+    MC{N,T}(cv, cc, Interval{Float64}(cv,cc),
+          SVector{N,Float64}(zeros(Float64,N)),
+          SVector{N,Float64}(zeros(Float64,N)), true)
+end
+function MC{N,T}(val::Float64, Intv::Interval{Float64}, i::Int64) where {N, T <: RelaxTag}
+    MC{N,T}(val, val, Intv, seed_gradient(i,N), seed_gradient(i,N), false)
+end
+function MC{N,T}(x::MC{N,T}) where {N, T <: RelaxTag}
+    MC{N,T}(x.cv, x.cc, x.Intv, x.cv_grad, x.cc_grad, x.cnst)
+end
+
 
 """
-    MC{N}(val,intv::IntervalType,i::Int)
-
-Constructs McCormick relaxation with convex and concave relaxation equal to
-`val`, interval bounds equal to `intv`, and subgradients are the i^th standard
-unit vector.
-"""
-MC{N}(val,Intv::IntervalType,i::Int) where N = MC{N}(val,val,Intv,seed_gradient(Float64,i,N),seed_gradient(Float64,i,N),false)
-
-MC{N}(x::MC{N}) where N = MC{N}(x.cv,x.cc,x.Intv,x.cv_grad,x.cc_grad,x.cnst)
-
-
-"""
-    grad(x::MC{N},j::Int) where N
+    grad(x::MC{N,T},j::Int) where {N, T <: RelaxTag}
 
 sets convex and concave (sub)gradients of length `n` of `x` to be `1` at index `j`
 """
-function grad(x::MC{N},j::Int) where N
+function grad(x::MC{N,T},j::Int) where {N, T <: RelaxTag}
   sv_grad::SVector{N,Float64} = seed_gradient(T,j,N)
-  return MC{N}(x.cc,x.cv,sv_grad,sv_grad,x.Intv,x.cnst)
+  return MC{N,T}(x.cc,x.cv,sv_grad,sv_grad,x.Intv,x.cnst)
 end
 
 """
@@ -341,9 +319,9 @@ end
 
 sets convex and concave (sub)gradients of length `n` to be zero
 """
-function zgrad(x::MC{N}) where N
+function zgrad(x::MC{N,T}) where {N, T <: RelaxTag}
   grad::SVector{N,Float64} = zeros(SVector{N,Float64})
-  return MC{N}(x.cc,x.cv,grad,grad,x.Intv,x.cnst)
+  return MC{N,T}(x.cc,x.cv,grad,grad,x.Intv,x.cnst)
 end
 
 Intv(x::MC) = x.Intv
@@ -355,80 +333,6 @@ cc_grad(x::MC) = x.cc_grad
 cv_grad(x::MC) = x.cv_grad
 cnst(x::MC) = x.cnst
 length(x::MC) = length(x.cc_grad)
-
-"""
-    set_mc_differentiability!
-Set differentiability of relaxations used.
-"""
-function set_mc_differentiability!(val::Integer)
-  diff_relax = val > 0
-  if (diff_relax > 0)
-    MC_param.mu = val
-  elseif val == 0
-    MC_param.mu = 0
-  else
-    error("Differentiability must be an integer input greater than or equal to zero.")
-  end
-end
-
-"""
-    set_multivar_refine!
-Specifies whether the tigher but more expensive multvivaiate relaxation should be used.
-"""
-function set_multivar_refine!(yn::Bool)
-  @assert tol > 0.0
-  MC_param.multivar_refine = yn
-end
-
-"""
-    set_multivar_refine!
-Specifies number of iterations to be used in envelope root finding routines.
-"""
-function set_iterations!(k::Int)
-  @assert tol > 0
-  MC_param.env_max_int = k
-end
-
-"""
-    set_tolerance!
-Specifies absolute tolerance for in envelope root finding routines.
-"""
-function set_tolerance!(k::Float64)
-  @assert tol > 0.0
-  MC_param.env_tol = k
-end
-
-
-"""
-  set_reference_point!
-Specifices the reference point used to contract interval domains for specific
-algorithms. Should correspond to the point of evalution of a subgradient cut.
-"""
-function set_reference!(x::Vector{Float64}, y::Vector{IntervalType}, flag::Bool)
-  MC_param.reference_point = x
-  MC_param.reference_domain = y
-  MC_param.use_reference = flag
-end
-
-"""
-    affine_intv_contract
-
-
-"""
-function affine_intv_contract(x::MC{N}) where N
-  if MC_param.use_reference
-    temp_cv_aff = x.cv
-    temp_cc_aff = x.cc
-    for i in 1:N
-      temp_cv_aff += x.cv_grad[i]*(MC_param.reference_domain[i] - MC_param.reference_point[i])
-      temp_cc_aff += x.cc_grad[i]*(MC_param.reference_domain[i] - MC_param.reference_point[i])
-    end
-    intv_lo = max(x.Intv.lo, temp_cv_aff.lo)
-    intv_hi = min(x.Intv.hi, temp_cc_aff.hi)
-    return MC{N}(x.cv, x.cc, IntervalType(intv_lo, intv_hi), x.cv_grad, x.cc_grad, x.cnst)
-  end
-  return x
-end
 
 """
     newton(x0::T,xL::T,xU::T,f::Function,df::Function,envp1::T,envp2::T)
@@ -443,9 +347,9 @@ function newton(x0::Float64, xL::Float64, xU::Float64, f::Function, df::Function
   xk::Float64 = max(xL,min(x0,xU))
   fk::Float64 = f(xk,envp1,envp2)
 
-  for i=1:MC_param.env_max_int
+  for i=1:MC_ENV_MAX_INT
     dfk = df(xk, envp1, envp2)
-    if (abs(fk) < MC_param.env_tol)
+    if (abs(fk) < MC_ENV_TOL)
       return (xk,false)
     end
     (dfk == 0.0) && return (0.0,true)
@@ -473,10 +377,10 @@ function secant(x0::Float64, x1::Float64, xL::Float64, xU::Float64, f::Function,
   xk::Float64 = max(xL,min(xU,x1))
   fkm::Float64 = f(xkm,envp1,envp2)
 
-  for i=1:MC_param.env_max_int
+  for i=1:MC_ENV_MAX_INT
     fk = f(xk,envp1,envp2)
     Bk::Float64 = (fk-fkm)/(xk-xkm)
-    if (abs(fk)<MC_param.env_tol)
+    if (abs(fk) < MC_ENV_TOL)
       return (xk,false)
     end
     (Bk == 0.0) && return (0.0, true)
@@ -528,7 +432,7 @@ function golden_section_it(init::Int,a::Float64,fa::Float64,b::Float64,fb::Float
     x = b - (2.0-golden)*(b-a)
   end
   itr::Int = init
-  if (abs(c-a)<MC_param.env_tol*(abs(b)+abs(x))||(itr>MC_param.env_max_int))
+  if (abs(c-a)<MC_ENV_TOL*(abs(b)+abs(x)) || (itr>MC_ENV_MAX_INT))
     return (c+a)/2.0
   end
   itr += 1

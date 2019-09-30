@@ -1,6 +1,6 @@
-empty(x::MC{N}) where N = MC{N}(Inf, -Inf, EAGO.IntervalType(Inf,-Inf),
-                                SVector{N,Float64}(zeros(Float64,N)),
-                                SVector{N,Float64}(zeros(Float64,N)), false)
+empty(x::MC{N,T}) where {N,T <: RelaxTag} = MC{N}(Inf, -Inf, Interval{Float64}(Inf,-Inf),
+                                                  SVector{N,Float64}(zeros(Float64,N)),
+                                                  SVector{N,Float64}(zeros(Float64,N)), false)
 
 include("arithmetic.jl")
 include("exponential.jl")

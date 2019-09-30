@@ -14,7 +14,7 @@ function div_diffcv(x::MC, y::MC)
     end
 end
 
-function div_MV(x::MC, y::MC, z::Interval{Float64})
+function div_MV(x::MC{N,Diff}, y::MC{N,Diff}, z::Interval{Float64}) where N
     if (0.0 < y.Intv.lo)
         cv = div_diffcv(x, y)
         cc = -div_diffcv(-x, y)
@@ -28,19 +28,31 @@ function div_MV(x::MC, y::MC, z::Interval{Float64})
     else
         error("Division (x/y) is unbounded on intervals y containing 0.")
     end
-    return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst && y.cnst)
+    return MC{N,Diff}(cv, cc, z, cv_grad, cc_grad, x.cnst && y.cnst)
 end
 
-function div_kernel(x::MC{N}, y::MC{N}, z::Interval{Float64}) where N
+function div_kernel(x::MC{N,NS}, y::MC{N,NS}, z::Interval{Float64}) where N
+    if (x === y)
+        zMC = one(x)
+    else
+        q = inv(y)
+        zMC = mult_kernel(x, q, z)
+    end
+    return zMC
+end
+function div_kernel(x::MC{N,MV}, y::MC{N,MV}, z::Interval{Float64}) where N
     pos_orth::Bool = (x.Intv.lo >= 0) && (y.Intv.lo >= 0)
+    degen1 = ((x.Intv.hi - x.Intv.lo) == 0.0)
+    degen2 = ((y.Intv.hi - y.Intv.lo) == 0.0)
+    error("To be implemented")
+end
+function div_kernel(x::MC{N,Diff}, y::MC{N,Diff}, z::Interval{Float64}) where {N}
     degen1 = ((x.Intv.hi - x.Intv.lo) == 0.0)
     degen2 = ((y.Intv.hi - y.Intv.lo) == 0.0)
     if (x === y)
         zMC = one(x)
-    elseif  (MC_param.mu >= 1 && ~(degen1||degen2))
+    elseif  ~(degen1||degen2)
         zMC = div_MV(x, y, z)
-    elseif (MC_param.multivar_refine) && (MC_param.mu < 1) && pos_orth
-        # TODO ADD Multivariant Nonsmooth Division
     else
         q = inv(y)
         zMC = mult_kernel(x, q, z)

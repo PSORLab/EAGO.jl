@@ -1,8 +1,8 @@
-mutable struct FunctionSetStorage{N}
+mutable struct FunctionSetStorage{N,T<:RelaxTag}
     nd::Vector{JuMP.NodeData}
     adj::SparseMatrixCSC{Bool,Int64}
     const_values::Vector{Float64}
-    setstorage::Vector{MC{N}}
+    setstorage::Vector{MC{N,T}}
     numberstorage::Vector{Float64}
     numvalued::Vector{Bool}
     tp1storage::Vector{Float64}
@@ -16,17 +16,16 @@ mutable struct FunctionSetStorage{N}
     dependent_subexpressions::Vector{Int64}
 end
 
-FunctionSetStorage(N) = FunctionSetStorage{N}(JuMP.NodeData[],spzeros(Bool,1),
-                                           Float64[],MC{N}[],Float64[], Bool[],
+FunctionSetStorage(N,T) = FunctionSetStorage{N,T}(JuMP.NodeData[],spzeros(Bool,1),
+                                           Float64[],MC{N,T}[],Float64[], Bool[],
                                            Float64[], Float64[], Float64[], Float64[],
-                                           Dict{Int,Tuple{Int,Int,Int,Int}}(), Int[],Int[],Int[],Int[])
-eltype(x::FunctionSetStorage{N}) where N = N
+                                           Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(), Int[],Int[],Int[],Int[])
 
-mutable struct SubexpressionSetStorage{N}
+mutable struct SubexpressionSetStorage{N,T<:RelaxTag}
     nd::Vector{JuMP.NodeData}
     adj::SparseMatrixCSC{Bool,Int64}
     const_values::Vector{Float64}
-    setstorage::Vector{MC{N}}
+    setstorage::Vector{MC{N,T}}
     numberstorage::Vector{Float64}
     numvalued::Vector{Bool}
     tp1storage::Vector{Float64}
@@ -36,12 +35,11 @@ mutable struct SubexpressionSetStorage{N}
     tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
     linearity::JuMP._Derivatives.Linearity
 end
-eltype(x::SubexpressionSetStorage{N}) where N = N
 
-function SubexpressionSetStorage(N::Int, nd::Vector{JuMP.NodeData},
+function SubexpressionSetStorage(N::Int64, s::T, nd::Vector{JuMP.NodeData},
                                  const_values, num_variables,
                                  subexpression_linearity,
-                                 moi_index_to_consecutive_index)
+                                 moi_index_to_consecutive_index) where T<:RelaxTag
 
     nd = JuMP.replace_moi_variables(nd, moi_index_to_consecutive_index)
     len_nd = length(nd)
@@ -75,7 +73,7 @@ function SubexpressionSetStorage(N::Int, nd::Vector{JuMP.NodeData},
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    return SubexpressionSetStorage{N}(nd, adj, const_values, setstorage, numberstorage,
+    return SubexpressionSetStorage{N,T}(nd, adj, const_values, setstorage, numberstorage,
                                       numvalued, tp1storage, tp2storage, tp3storage,
                                       tp4storage, tpdict, linearity[1])
 end
@@ -85,7 +83,7 @@ end
 
 MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
 """
-mutable struct Evaluator{N} <: MOI.AbstractNLPEvaluator
+mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
     user_operators::JuMP._Derivatives.UserOperatorRegistry
     has_user_mv_operator::Bool
     parameter_values::Vector{Float64}
@@ -102,31 +100,31 @@ mutable struct Evaluator{N} <: MOI.AbstractNLPEvaluator
     first_eval_flag::Bool
     cp_reptitions::Int64
     cp_tolerance::Float64
-    objective::FunctionSetStorage{N}
+    objective::FunctionSetStorage{N,T}
     objective_ubd::Float64
-    constraints::Vector{FunctionSetStorage{N}}
+    constraints::Vector{FunctionSetStorage{N,T}}
     constraints_lbd::Vector{Float64}
     constraints_ubd::Vector{Float64}
-    subexpressions::Vector{SubexpressionSetStorage{N}}
+    subexpressions::Vector{SubexpressionSetStorage{N,T}}
     subexpression_isnum::Vector{Bool}
     subexpression_order::Vector{Int64}
     subexpression_values_flt::Vector{Float64}
-    subexpression_values_set::Vector{MC{N}}
+    subexpression_values_set::Vector{MC{N,T}}
     subexpression_linearity::Vector{JuMP._Derivatives.Linearity}
     last_x::Vector{Float64}
     last_node::NodeBB
-    last_obj::MC{N}
-    jac_storage::Vector{MC{N}}
-    user_output_buffer::Vector{MC{N}}
-    function Evaluator{N}() where N
+    last_obj::MC{N,T}
+    jac_storage::Vector{MC{N,T}}
+    user_output_buffer::Vector{MC{N,T}}
+    function Evaluator{N,T}() where {N,T<:RelaxTag}
         d = new()
         d.user_operators = JuMP._Derivatives.UserOperatorRegistry()
         d.first_eval_flag = false
         d.objective_ubd = Inf
-        d.constraints = FunctionSetStorage{N}[]
+        d.constraints = FunctionSetStorage{N,T}[]
         d.constraints_lbd = Float64[]
         d.constraints_ubd = Float64[]
-        d.objective = FunctionSetStorage(N)
+        d.objective = FunctionSetStorage(N,T)
         d.index_to_variable = Tuple{Int64,Int64,Int64}[]
         return d
     end

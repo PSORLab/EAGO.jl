@@ -1,28 +1,34 @@
 """
     relax_convex_kernel
 
-Stores the kernel of the calculation required to relax convex quadratic constraints.
+Stores the kernel of the calculation required to relax convex quadratic
+constraints using the immutable dictionary to label terms.
 """
-function relax_convex_kernel(func::SQF, vi::Vector{VI}, nx::Int64, x0::Vector{Float64})
+function relax_convex_kernel(func::SQF, vi::Vector{VI}, cvx_dict::ImmutableDict{Int64,Int64},
+                             nx::Int64, x0::Vector{Float64})
 
-    _variable_number = x._variable_numer
-    terms_coeff = zeros(_variable_number)
-
+    # initialize storage terms
+    terms_coeff = zeros(nx)
     term_constant = func.constant
+
+    # iterate over quadratic terms to build convex quadratic cut
     for term in func.quadratic_terms
-        @inbounds temp_constant = x0[term.variable_index_1.value]
-        @inbounds temp_constant *= x0[term.variable_index_2.value]
-        term_constant -= term.coefficient*temp_constant
+
+        coeff = term.coefficient
+        indx1 = cvx_dict[term.variable_index_1.value]
+        indx2 = cvx_dict[term.variable_index_2.value]
+        @inbounds temp_constant = x0[indx1]
+        @inbounds temp_constant *= x0[indx2]
+        term_constant -= coeff*temp_constant
+
+        @inbounds terms_coeff[indx1] += 2.0*coeff*x0[indx1]
     end
 
     # Adds affine terms
     for term in func.affine_terms
-        @inbounds terms_coeff[term.variable_index.value] += term.coefficient
-    end
-
-    # Adds quadratic terms
-    for term in func.quadratic_terms
-        @inbounds terms_coeff[term.variable_index_1.value] += 2.0*term.coefficient*x0[term.variable_index_1.value]
+        coeff = term.coefficient
+        indx1 = cvx_dict[term.variable_index.value]
+        @inbounds terms_coeff[indx1] += coeff
     end
 
     saf = SAF(SAT.(terms_coeff, vi), term_constant)
@@ -30,50 +36,55 @@ function relax_convex_kernel(func::SQF, vi::Vector{VI}, nx::Int64, x0::Vector{Fl
     return saf
 end
 
-function relax_nonconvex_kernel(func::SQF, vi::Vector{VI},
-                                x::Optimizer, nx::Int64, x0::Vector{Float64})
-    n = x._current_node
-    quadratic_coefficient = zeros(nx)
+function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
+                                cvx_dict::ImmutableDict{Int64,Int64}, nx::Int64, x0::Vector{Float64})
 
+    terms_coeff = zeros(nx)
+
+    lvb = n.lower_variable_bounds
+    uvb = n.upper_variable_bounds
     quadratic_constant = func.constant
     for term in func.quadratic_terms
         a = term.coefficient
-        NodeIndx1 = term.variable_index_1.value
-        NodeIndx2 = term.variable_index_2.value
-        @inbounds xL1 = n.lower_variable_bounds[NodeIndx1]
-        @inbounds xU1 = n.upper_variable_bounds[NodeIndx1]
-        @inbounds x01 = x0[NodeIndx1]
-        if NodeIndx1 == NodeIndx2               # quadratic terms
+        nidx1 = term.variable_index_1.value
+        nidx2 = term.variable_index_2.value
+        vidx1 = cvx_dict[nidx1]
+        vidx2 = cvx_dict[nidx2]
+        @inbounds xL1 = lvb[nidx1]
+        @inbounds xU1 = uvb[nidx2]
+        @inbounds x01 = x0[nidx1]
+        if nidx1 == nidx2               # quadratic terms
             if (a > 0.0)
-                @inbounds quadratic_coefficient[NodeIndx1] = 2.0*a*x01
+                @inbounds terms_coeff[vidx1] = 2.0*a*x01
                 quadratic_constant -= 2.0*x01*x01
             else
-                @inbounds quadratic_coefficient[NodeIndx1] = a*(xL1 + xU1)
+                @inbounds terms_coeff[vidx1] = a*(xL1 + xU1)
                 quadratic_constant -= a*xL1*xU1
             end
         else
-            @inbounds xL2 = n.lower_variable_bounds[NodeIndx2]
-            @inbounds xU2 = n.upper_variable_bounds[NodeIndx2]
+            @inbounds xL2 = lvb[nidx2]
+            @inbounds xU2 = uvb[nidx2]
+            @inbounds x02 = x0[nidx2]
             if (a > 0.0)
-                @inbounds check_ref = (xU1 - xL1)*x0[NodeIndx2] + (xU2 - xL2)*x0[NodeIndx1]
+                check_ref = (xU1 - xL1)*x02 + (xU2 - xL2)*x01
                 if (check_ref - xU1*xU2 + xL1*xL2) <= 0.0
-                    @inbounds quadratic_coefficient[NodeIndx1] += a*xL2
-                    @inbounds quadratic_coefficient[NodeIndx2] += a*xL1
+                    @inbounds terms_coeff[vidx1] += a*xL2
+                    @inbounds terms_coeff[vidx2] += a*xL1
                     quadratic_constant -= a*xL1*xL2
                 else
-                    @inbounds quadratic_coefficient[NodeIndx1] += a*xU2
-                    @inbounds quadratic_coefficient[NodeIndx2] += a*xU1
+                    @inbounds terms_coeff[vidx1] += a*xU2
+                    @inbounds terms_coeff[vidx2] += a*xU1
                     quadratic_constant -= a*xU1*xU2
                 end
             else
-                @inbounds check_ref = (xU1 - xL1)*x0[NodeIndx2] + (xU2 - xL2)*x0[NodeIndx1]
+                check_ref = (xU1 - xL1)*x02 + (xU2 - xL2)*x01
                 if check_ref <= (xU1*xL2 - xL1*xU2)
-                    @inbounds quadratic_coefficient[NodeIndx1] += a*xL2
-                    @inbounds quadratic_coefficient[NodeIndx2] += a*xU1
+                    @inbounds terms_coeff[vidx1] += a*xL2
+                    @inbounds terms_coeff[vidx2] += a*xU1
                     quadratic_constant -= a*xU1*xL2
                 else
-                    @inbounds quadratic_coefficient[NodeIndx1] += a*xU2
-                    @inbounds quadratic_coefficient[NodeIndx2] += a*xL1
+                    @inbounds terms_coeff[vidx1] += a*xU2
+                    @inbounds terms_coeff[vidx2] += a*xL1
                     quadratic_constant -= a*xL1*xU2
                 end
             end
@@ -81,13 +92,123 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI},
     end
 
     for term in func.affine_terms
-        NodeIndx3 = term.variable_index.value
-        @inbounds quadratic_coefficient[NodeIndx3] += term.coefficient
+        nidx1 = term.variable_index.value
+        vidx1 = cvx_dict[nidx1]
+        @inbounds terms_coeff[vidx1] += term.coefficient
     end
 
-    saf = SAF(SAT.(quadratic_coefficient, vi), quadratic_constant)
+    saf = SAF(SAT.(terms_coeff, vi), quadratic_constant)
 
     return saf
+end
+
+"""
+    relax_quadratic_inner!
+
+Default routine for relaxing nonconvex quadratic constraint `lower` < `func` < `upper`
+on node `n`. Takes affine bounds of convex part at point `x0` and secant line
+bounds on concave parts.
+"""
+function relax_quadratic_inner!(eqflag::Bool, flag1::Bool, flag2::Bool,
+                                func::MOI.ScalarQuadraticFunction{Float64},
+                                x::Optimizer, lower::Float64, upper::Float64,
+                                vi::Vector{VI}, x0::Vector{Float64}, nx::Int,
+                                c1::CI{SAF, LT}, c2::CI{SAF, LT},
+                                n::NodeBB, cvx_dict::ImmutableDict{Int64,Int64})
+
+
+    opt = x.relaxed_optimizer
+    if flag1
+        saf1 = relax_convex_kernel(func, vi, cvx_dict, nx, x0)
+    else
+        saf1 = relax_nonconvex_kernel(func, vi, n, cvx_dict, nx, x0)
+    end
+
+    if eqflag
+
+        for (i, term) in enumerate(saf1.terms)
+            MOI.modify(opt, c1, SCoefC(term.variable_index, term.coefficient))
+        end
+        MOI.set(opt, MOI.ConstraintSet(), c1, LT(upper - saf1.constant))
+
+
+        if flag2
+            saf2 = relax_convex_kernel(func, vi, cvx_dict, nx, x0)
+        else
+            saf2 = relax_nonconvex_kernel(func, vi, n, cvx_dict, nx, x0)
+        end
+
+        for (i, term) in enumerate(saf2.terms)
+            MOI.modify(opt, c2, SCoefC(term.variable_index, -1.0*term.coefficient))
+        end
+        MOI.set(opt, MOI.ConstraintSet(), c2, LT(-lower + saf2.constant))
+
+    elseif (lower != -Inf)
+
+        for (i, term) in enumerate(saf1.terms)
+            MOI.modify(opt, c1, SCoefC(term.variable_index, -1.0*term.coefficient))
+        end
+        MOI.set(opt, MOI.ConstraintSet(), c1, LT(-lower + saf1.constant))
+
+    else
+
+        for (i, term) in enumerate(saf1.terms)
+            MOI.modify(opt, c1, SCoefC(term.variable_index, term.coefficient))
+        end
+        MOI.set(opt, MOI.ConstraintSet(), c1, LT(upper - saf1.constant))
+
+    end
+
+    return
+end
+
+"""
+    relax_quadratic!
+
+Relaxes all quadratic constraints in `x` optimizer.
+"""
+function relax_quadratic!(x::Optimizer, x0::Vector{Float64})
+
+    n = x._current_node
+
+    # Relax Convex Constraint Terms TODO: place all quadratic info into one vector of tuples?
+    for i in 1:length(x._quadratic_leq_constraints)
+        @inbounds func, set, j = x._quadratic_leq_constraints[i]
+        @inbounds cvx_dict = x._quadratic_leq_dict[i]
+        @inbounds vi = x._quadratic_leq_sparsity[i]
+        @inbounds nz = x._quadratic_leq_gradnz[i]
+        @inbounds ci1 = x._quadratic_ci_leq[i]
+        @inbounds flag1 = x._quadratic_leq_convexity[i]
+        relax_quadratic_inner!(false, flag1, false, func, x, -Inf, set.upper, vi, x0,
+                               nz, ci1, ci1,  n, cvx_dict)
+    end
+
+    for i in 1:length(x._quadratic_geq_constraints)
+        @inbounds func, set, j = x._quadratic_geq_constraints[i]
+        @inbounds cvx_dict = x._quadratic_geq_dict[i]
+        @inbounds vi = x._quadratic_geq_sparsity[i]
+        @inbounds nz = x._quadratic_geq_gradnz[i]
+        @inbounds ci1 = x._quadratic_ci_geq[i]
+        @inbounds flag1 = x._quadratic_geq_convexity[i]
+        relax_quadratic_inner!(false, flag1, false, func, x, set.lower, Inf, vi, x0,
+                               nz, ci1, ci1,  n, cvx_dict)
+    end
+
+    for i in 1:length(x._quadratic_eq_constraints)
+        @inbounds func, set, j = x._quadratic_eq_constraints[i]
+        @inbounds x._quadratic_eq_convexity_1[i] = is_convex_quadratic(func, 1.0)
+        @inbounds x._quadratic_eq_convexity_2[i] = is_convex_quadratic(func, -1.0)
+        @inbounds cvx_dict = x._quadratic_eq_dict[i]
+        @inbounds vi = x._quadratic_eq_sparsity[i]
+        @inbounds nz = x._quadratic_eq_gradnz[i]
+        @inbounds ci1, ci2 = x._quadratic_ci_eq[i]
+        @inbounds flag1 = x._quadratic_eq_convexity_1[i]
+        @inbounds flag2 = x._quadratic_eq_convexity_2[i]
+        relax_quadratic_inner!(true, flag1, flag2, func, x, set.value, set.value, vi, x0,
+                               nz, ci1, ci2, n, cvx_dict)
+    end
+
+    return
 end
 
 """
@@ -153,85 +274,6 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
     return
 end
 
-"""
-    relax_quadratic_inner!
-
-Default routine for relaxing nonconvex quadratic constraint `lower` < `func` < `upper`
-on node `n`. Takes affine bounds of convex part at point `x0` and secant line
-bounds on concave parts.
-"""
-function relax_quadratic_inner!(flag::Bool, func::MOI.ScalarQuadraticFunction{Float64},
-                                x::Optimizer, lower::Float64, upper::Float64,
-                                vi::Vector{VI}, x0::Vector{Float64}, nx::Int,
-                                c1::CI{SAF, LT},
-                                c2::CI{SAF, LT})
-
-
-    opt = x.relaxed_optimizer
-    if flag
-        saf = relax_convex_kernel(func, vi, nx, x0)
-    else
-        saf = relax_nonconvex_kernel(func, vi, x, nx, x0)
-    end
-
-    if (lower == upper)
-
-        for (i, term) in enumerate(saf.terms)
-            MOI.modify(opt, c1, MOI.SCC(term.variable_index, term.coefficent))
-        end
-        MOI.set(opt, MOI.ConstraintSet(), c1, LT(upper - saf.constant))
-
-        saf1 = copy(saf)
-        for (i, term) in enumerate(saf1.terms)
-            MOI.modify(opt, c2, MOI.SCC(term.variable_index, -1.0*term.coefficent))
-        end
-        MOI.set(opt, MOI.ConstraintSet(), c2, LT(-lower + saf1.constant))
-
-    elseif (lower != -Inf)
-
-        for (i, term) in enumerate(saf.terms)
-            MOI.modify(opt, c1, MOI.SCC(term.variable_index, -1.0*term.coefficent))
-        end
-        MOI.set(opt, MOI.ConstraintSet(), c1, LT(-lower + saf.constant))
-
-    else
-
-        for (i, term) in enumerate(saf.terms)
-            MOI.modify(opt, c1, MOI.SCC(term.variable_index, term.coefficent))
-        end
-        MOI.set(opt, MOI.ConstraintSet(), c1, LT(upper - saf.constant))
-
-    end
-
-    return
-end
-
-"""
-    relax_quadratic!
-
-Relaxes all quadratic constraints in `x` optimizer.
-"""
-function relax_quadratic!(x::Optimizer, x0::Vector{Float64})
-
-    nx = x._variable_number
-    vi = x._lower_variable_index
-
-    # Relax Convex Constraint Terms
-    for (func, set, ci1, ci2, i) in x._quadratic_leq_constraints
-        flag = x._constraint_convexity[i]
-        relax_quadratic_inner!(flag, func, x, -Inf, set.upper, n, x0, ci1, ci2)
-    end
-    for (func, set, ci1, ci2, i) in x._quadratic_geq_constraints
-        flag = x._constraint_convexity[i]
-        relax_quadratic_inner!(flag, func, x, set.lower, Inf, vi, x0, nx, ci1, ci2)
-    end
-    for (func, set, ci1, ci2, i) in x._quadratic_eq_constraints
-        flag =  x._constraint_convexity[i]
-        relax_quadratic_inner!(flag, func, x, set.value, set.valu, vi, x0, nx, ci1, ci2)
-    end
-    return
-end
-
 function relax_nlp!(x::Optimizer, v::Vector{Float64})
 
     evaluator = x._relaxed_evaluator
@@ -261,7 +303,9 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64})
                 g_cc = zeros(leng)
                 dg_cc = zeros(leng, nx)
 
+                println("first eval constraint: $(time()-x._start_time)")
                 MOI.eval_constraint(evaluator, g, v)
+                println("last eval constraint: $(time()-x._start_time)")
                 MOI.eval_constraint_jacobian(evaluator, dg, v)
 
                 eval_constraint_cc(evaluator, g_cc, v)
@@ -319,7 +363,9 @@ function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64})
     evaluator = x._relaxed_evaluator
     set_current_node!(evaluator, x._current_node)
     relax_quadratic!(x, v)
+    println("pre relax nlp: $(time() - x._start_time)")
     relax_nlp!(x,v)
+    println("post relax nlp: $(time() - x._start_time)")
 
     return
 end

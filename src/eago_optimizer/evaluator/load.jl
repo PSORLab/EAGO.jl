@@ -1,6 +1,6 @@
-function copy_to_function!(d::Evaluator{N}, i::Int64, x::JuMP._FunctionStorage) where N
+function copy_to_function!(d::Evaluator{N,T}, i::Int64, x::JuMP._FunctionStorage) where {N,T<:RelaxTag}
     lenx = length(x.nd)
-    temp_set = fill(MC{N}(Interval(-Inf, Inf)), (lenx,))
+    temp_set = fill(MC{N,T}(Interval(-Inf, Inf)), (lenx,))
     temp_flt = Array{Float64}(undef, lenx)
     temp_bool = Array{Bool}(undef, lenx)
 
@@ -28,7 +28,7 @@ function copy_to_function!(d::Evaluator{N}, i::Int64, x::JuMP._FunctionStorage) 
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    sto = FunctionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+    sto = FunctionSetStorage{N,T}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
                                 temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
                                 x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
     if i == 1
@@ -38,9 +38,9 @@ function copy_to_function!(d::Evaluator{N}, i::Int64, x::JuMP._FunctionStorage) 
     end
     return
 end
-function copy_to_subexpr!(d::Evaluator{N}, x::JuMP._SubexpressionStorage) where N
+function copy_to_subexpr!(d::Evaluator{N,T}, x::JuMP._SubexpressionStorage) where {N,T<:RelaxTag}
     lenx = length(x.nd)
-    temp_set = fill(MC{N}(Interval(-Inf, Inf)), (lenx,))
+    temp_set = fill(MC{N,T}(Interval(-Inf, Inf)), (lenx,))
     temp_flt = Array{Float64}(undef, lenx)
     temp_bool = Array{Bool}(undef, lenx)
 
@@ -68,7 +68,7 @@ function copy_to_subexpr!(d::Evaluator{N}, x::JuMP._SubexpressionStorage) where 
     tp3storage = zeros(tp3_count)
     tp4storage = zeros(tp4_count)
 
-    sto = SubexpressionSetStorage{N}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
+    sto = SubexpressionSetStorage{N,T}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
                                      temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
                                      x.linearity)
     push!(d.constraints, sto)

@@ -1,5 +1,5 @@
-function mc_dense_newton_gs!(z_mc::Vector{MC{N}}, x_mc, YdH_mc::VecOrMat{MC{N}},
-                             YH_mc::Vector{MC{N}}, nx::Int) where N
+function mc_dense_newton_gs!(z_mc::Vector{MC{N,T}}, x_mc, YdH_mc::VecOrMat{MC{N,T}},
+                             YH_mc::Vector{MC{N,T}}, nx::Int64) where {N, T<:RelaxTag}
 
 
     #println("z_mc: $z_mc")
@@ -7,12 +7,12 @@ function mc_dense_newton_gs!(z_mc::Vector{MC{N}}, x_mc, YdH_mc::VecOrMat{MC{N}},
     #println("YdH_mc: $YdH_mc")
     #println("YH_mc: $YH_mc")
 
-    S1::MC{N} = zero(x_mc[1])
-    x_mc_int::MC{N} = zero(x_mc[1])
+    S1::MC{N,T} = zero(x_mc[1])
+    x_mc_int::MC{N,T} = zero(x_mc[1])
 
     for i=1:nx
       S1 = zero(x_mc[1])
-      x_mc_int =  MC{N}(x_mc[i])
+      x_mc_int =  MC{N,T}(x_mc[i])
       for j=1:nx
         if (i<j)
           S1 = S1 + YdH_mc[i,j]*(x_mc[j] - z_mc[j])
@@ -33,15 +33,16 @@ function mc_dense_newton_gs!(z_mc::Vector{MC{N}}, x_mc, YdH_mc::VecOrMat{MC{N}},
 
 end
 
-function mc_dense_krawczyk_cw!(z_mc::Vector{MC{N}}, x_mc,
-                               YdH_mc::VecOrMat{MC{N}}, YH_mc::Vector{MC{N}}, nx::Int) where N
+function mc_dense_krawczyk_cw!(z_mc::Vector{MC{N,T}}, x_mc,
+                               YdH_mc::VecOrMat{MC{N,T}}, YH_mc::Vector{MC{N,T}},
+                               nx::Int64) where {N,T<:RelaxTag}
 
-  S1::MC{N} = zero(x_mc[1])
-  x_mc_int::MC{N} = zero(x_mc[1])
+  S1::MC{N,T} = zero(x_mc[1])
+  x_mc_int::MC{N,T} = zero(x_mc[1])
 
   for i=1:nx
     S1 = zero(x_mc[1])
-    x_mc_int = MC{N}(x_mc[i])
+    x_mc_int = MC{N,T}(x_mc[i])
     for j=1:nx
       if (i<j)
         S1 = S1 - (YdH_mc[i,j])*(x_mc[j] - z_mc[j])

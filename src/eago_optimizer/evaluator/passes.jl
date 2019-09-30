@@ -4,7 +4,7 @@
 Post process set_value operator. By default, performs the affine interval cut on
 a MC structure.
 """
-function set_value_post(x_values::Vector{Float64}, val::MC{N}, node::NodeBB, flag::Bool) where N
+function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, node::NodeBB, flag::Bool) where {N, T<:RelaxTag}
     if flag
         lower = val.cv
         upper = val.cc
@@ -24,16 +24,18 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N}, node::NodeBB, fla
         end
         lower = max(lower, val.Intv.lo)
         upper = min(upper, val.Intv.hi)
-        return MC{N}(val.cv, val.cc, Interval(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
+        return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
     else
         return val
     end
 end
 
-function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N}}, first_eval_flag) where N
+function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
+                       numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                       first_eval_flag::Bool) where {N, T<:RelaxTag}
     tmp_num = 0.0
-    tmp_mc = zero(MC{N})
-    tmp_mc0 = zero(MC{N})
+    tmp_mc = zero(MC{N,T})
+    tmp_mc0 = zero(MC{N,T})
     tmp_intv = Interval{Float64}(0.0)
     isnum = true
     chdset = true
@@ -63,12 +65,12 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
 end
 
 function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::Int64, numvalued::Vector{Bool},
-                        numberstorage::Vector{Float64}, setstorage::Vector{MC{N}},
-                        current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where N
+                        numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                        current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
     tmp_num_1 = 0.0
     tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N})
-    tmp_mc_2 = zero(MC{N})
+    tmp_mc_1 = zero(MC{N,T})
+    tmp_mc_2 = zero(MC{N,T})
     @inbounds chdset1 = numvalued[ix1]
     @inbounds chdset2 = numvalued[ix2]
     isnum = chdset1
@@ -97,10 +99,11 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
     return
 end
 
-function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N}},
-                           current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where N
+function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
+                           numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                           current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
     tmp_num_1 = 1.0
-    tmp_mc_1 = one(MC{N})
+    tmp_mc_1 = one(MC{N,T})
     isnum = true
     chdset = true
     for c_idx in children_idx
@@ -127,12 +130,14 @@ function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::Un
     return
 end
 
-function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N}},
-                           current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where N
+function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
+                        children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
+                        setstorage::Vector{MC{N,T}}, current_node::NodeBB, subgrad_tighten::Bool,
+                        first_eval_flag::Bool) where {N, T<:RelaxTag}
     tmp_num_1 = 0.0
     tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N})
-    tmp_mc_2= zero(MC{N})
+    tmp_mc_1 = zero(MC{N,T})
+    tmp_mc_2= zero(MC{N,T})
     idx1 = first(children_idx)
     idx2 = last(children_idx)
     @inbounds ix1 = children_arr[idx1]
@@ -183,12 +188,14 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
     return
 end
 
-function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N}},
-                         current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where N
+function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
+                         children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
+                         setstorage::Vector{MC{N,T}},
+                         current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N,T<:RelaxTag}
     tmp_num_1 = 0.0
     tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N})
-    tmp_mc_2= zero(MC{N})
+    tmp_mc_1 = zero(MC{N,T})
+    tmp_mc_2= zero(MC{N,T})
     idx1 = first(children_idx)
     idx2 = last(children_idx)
     @inbounds ix1 = children_arr[idx1]
@@ -233,34 +240,34 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
 end
 
 id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
-function forward_eval(setstorage::Vector{MC{N}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
+function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
                       nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64},
                       current_node::NodeBB, x_values::Vector{Float64},
-                      subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N}},
-                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N}}, subgrad_tighten::Bool,
+                      subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N,T}},
+                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, subgrad_tighten::Bool,
                       tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
                       tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
-                      first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry) where N
+                      first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry) where {N,T<:RelaxTag}
 
     @assert length(numberstorage) >= length(nd)
     @assert length(setstorage) >= length(nd)
     @assert length(numvalued) >= length(nd)
 
-    set_value_sto = zero(MC{N})
+    set_value_sto = zero(MC{N,T})
     children_arr = rowvals(adj)
     n = length(x_values)
 
     tmp_num_1 = 0.0
     tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N})
-    tmp_mc_2 = zero(MC{N})
+    tmp_mc_1 = zero(MC{N,T})
+    tmp_mc_2 = zero(MC{N,T})
     for k in length(nd):-1:1
         @inbounds nod = nd[k]
         op = nod.index
         if nod.nodetype == JuMP._Derivatives.VARIABLE
-            seed = seed_gradient(Float64, op, N)
-            xMC = MC{N}(x_values[op], x_values[op],
-                        IntervalType(current_node.lower_variable_bounds[op],
+            seed = seed_gradient(op, Val(N))
+            xMC = MC{N,T}(x_values[op], x_values[op],
+                        Interval{Float64}(current_node.lower_variable_bounds[op],
                                      current_node.upper_variable_bounds[op]),
                                      seed, seed, false)
             if first_eval_flag
@@ -827,7 +834,7 @@ function reverse_eval_all(d::Evaluator, x::Vector{Float64})
     if d.has_nlobj
         # Cut Objective at upper bound
         ex = d.objective
-        ex.setstorage[1] = ex.setstorage[1] ∩ IntervalType(-Inf, d.objective_ubd)
+        ex.setstorage[1] = ex.setstorage[1] ∩ Interval{Float64}(-Inf, d.objective_ubd)
         feas &= reverse_eval(ex.setstorage, ex.numberstorage, ex.numvalued, subexpr_isnum,
                               subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
     end
@@ -835,7 +842,7 @@ function reverse_eval_all(d::Evaluator, x::Vector{Float64})
         # Cut constraints on constraint bounds & reverse
         if feas
             ex = d.constraints[i]
-            ex.setstorage[1] = ex.setstorage[1] ∩ IntervalType(d.constraints_lbd[i], d.constraints_ubd[i])
+            ex.setstorage[1] = ex.setstorage[1] ∩ Interval{Float64}(d.constraints_lbd[i], d.constraints_ubd[i])
             feas &= reverse_eval(ex.setstorage, ex.numberstorage, ex.numvalued, subexpr_isnum,
                                   subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
         else
