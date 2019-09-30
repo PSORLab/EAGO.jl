@@ -16,7 +16,6 @@ module EAGO
     using LinearAlgebra: eigmin
 
     import Base: ImmutableDict, isless
-    import Reexport.@reexport
 
     import IntervalArithmetic: +, -, *, /, convert, in, isempty, one, zero,
                                real, eps, max, min, abs, exp,
