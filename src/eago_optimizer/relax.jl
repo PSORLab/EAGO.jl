@@ -388,25 +388,18 @@ function objective_cut_linear!(x::Optimizer)
                 ci_saf = MOI.add_constraint(x.relaxed_optimizer, saf, set)
                 x._objective_cut_ci_saf = ci_saf
             end
+            x._objective_cut_set = true
         else
             if ~x._objective_is_sv
-
                 ci_saf = x._objective_cut_ci_saf
                 saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                x_val = x._current_xref
-
-                f_grad = zeros(x._variable_number)
-                MOI.eval_objective_gradient(x._relaxed_evaluator, f_grad, x_val)
-
-                c_term = 0.0
                 for term in saf.terms
                     term_coeff = term.coefficient
                     term_indx = term.variable_index
-                    MOI.modify(x.relaxed_optimizer, ci_saf, MOI.SCC(term_indx, term_coeff))
-                    @inbounds c_term += x_val[term_indx]*f_grad[term_indx]
+                    MOI.modify(x.relaxed_optimizer, ci_saf, SCoefC(term_indx, term_coeff))
                 end
-                fstar = MOI.eval_objective(x._relaxed_evaluator, x_val)
-                set = LT(x._global_upper_bound - fstar + cterm)
+                #MOI.modify(x.relaxed_optimizer, ci_saf, SConsC(0.0))
+                set = LT(x._global_upper_bound - saf.constant)
                 MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
             else
                 ci_sv = x._objective_cut_ci_sv
@@ -420,3 +413,87 @@ end
 
 relax_problem!(x::Optimizer, v::Vector{Float64}) = relax_problem!(x.ext_type, x, v)
 relax_objective!(x::Optimizer, v::Vector{Float64}) = relax_objective!(x.ext_type, x, v)
+
+function cut_nlp(x::Optimizer, v::Vector{Float64})
+
+    if ~isempty(x.branch_variable)
+        if ~MOI.supports(x.relaxed_optimizer, MOI.NLPBlock())
+
+            constraint_bounds = x._relaxed_constraint_bounds
+            leng = length(constraint_bounds)
+            if leng > 0
+
+                nx = x._variable_number
+                vi = x._lower_variable_index
+
+                g = zeros(leng)
+                dg = zeros(leng, nx)
+
+                g_cc = zeros(leng)
+                dg_cc = zeros(leng, nx)
+
+                evaluator = x._relaxed_evaluator
+
+                MOI.eval_constraint(evaluator, g, v)
+                MOI.eval_constraint_jacobian(evaluator, dg, v)
+
+                eval_constraint_cc(evaluator, g_cc, v)
+                eval_constraint_cc_grad(evaluator, dg_cc, v)
+
+                lower_nlp_sparsity = x._lower_nlp_sparsity
+                lower_nlp_affine = x._lower_nlp_affine
+                lower_nlp_affine_indx = x._lower_nlp_affine_indx
+                for i in 1:length(lower_nlp_affine_indx)
+                    @inbounds g_indx = lower_nlp_affine_indx[i]
+                    @inbounds nzidx = lower_nlp_sparsity[i]
+                    @inbounds nzvar = vi[nzidx]
+                    @inbounds constant = g[g_indx]
+                    @inbounds dg_cv_val = dg[i,nzidx]
+                    dg_cv_val = 0.0
+                    for j in nzidx
+                        @inbounds dg_cv_val = dg[i,nzidx]
+                        @inbounds vindx = vi[i]
+                        @inbounds constant -= v[i]*dg_cv_val
+                        MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cv_val))
+                    end
+                    saf = SAF(SAT.(dg_cv_val, nzvar), 0.0)
+                    set = LT(bns.upper - constant)
+                    ci = MOI.add_constraint(x.relaxed_optimizer, saf, set)
+                    push!(x._new_cut_indx, ci)
+                end
+
+                upper_nlp_sparsity = x._upper_nlp_sparsity
+                upper_nlp_affine = x._upper_nlp_affine
+                upper_nlp_affine_indx = x._upper_nlp_affine_indx
+                for i in 1:length(upper_nlp_affine_indx)
+                    @inbounds g_indx = upper_nlp_affine_indx[i]
+                    @inbounds aff_ci = upper_nlp_affine[i]
+                    @inbounds nzidx = upper_nlp_sparsity[i]
+                    @inbounds nzvar = vi[nzidx]
+                    @inbounds constant = g_cc[g_indx]
+                    dg_cc_val = 0.0
+                    for j in nzidx
+                        @inbounds dg_cc_val = dg[i,j]
+                        @inbounds vindx = vi[i]
+                        @inbounds constant -= v[i]*dg_cc_val
+                        MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cc_val))
+                    end
+                    @inbounds bns = constraint_bounds[i]
+                    set = LT(constant - bns.lower)
+                    MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
+                end
+            end
+        end
+    end
+end
+
+
+function cut_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64})
+
+    evaluator = x._relaxed_evaluator
+    set_current_node!(evaluator, x._current_node)
+    cut_quadratic!(x, v)
+    cut_nlp!(x,v)
+
+    return
+end

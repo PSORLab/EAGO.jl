@@ -3,16 +3,16 @@ using JuMP, EAGO
 m = Model(with_optimizer(EAGO.Optimizer,
                              lp_depth = -1,
                              quad_uni_depth = -1,
-                             obbt_depth = -1,
+                             obbt_depth = 3,
                              cp_depth = -1,
                              iteration_limit = 1000000,
                              verbosity = 1,
-                             output_iterations = 1,
+                             output_iterations = 1000,
                              header_iterations = 200000,
                              relative_tolernace = 1E-6,
                              absolute_tolerance = 1E-6,
                              dbbt_depth = 100000000,
-                             subgrad_tighten = false,
+                             subgrad_tighten = true,
                              objective_cut_on = true))
 
 # ----- Variables ----- #

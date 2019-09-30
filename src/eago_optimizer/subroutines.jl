@@ -587,46 +587,52 @@ end
 
 Branch-and-cut feature currently under development. Currently, returns false.
 """
-cut_condition(t::ExtensionType, x::Optimizer) = x._cut_add_flag & (x._cut_iterations < x.cut_max_iterations)
-
+function cut_condition(t::ExtensionType, x::Optimizer)
+    x._cut_add_flag & (x._cut_iterations < x.cut_max_iterations)
+end
 """
     add_cut!
 
 Branch-and-Cut under development.
 """
 function add_cut!(t::ExtensionType, x::Optimizer)
-    #=
     y = x._current_node
-    xpnt = min(x._lower_solution, upper_bound(y) - x.cut_offset)
-    xpnt = max(xpnt, lower_bound(y) + x.cut_offset)
-    relax_problem!(t, x, y, xpnt)
-    MOI.optimize!(x._relaxed_optimizer)
+    if ~x._obbt_performed_flag
+        x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
+        update_relaxed_problem_box!(x, y)
+        relax_problem!(x, x._current_xref)
+    end
 
-    # Process output info and save to CurrentUpperInfo object
-    termination_status = MOI.get(x._relaxed_optimizer, MOI.TerminationStatus())
-    result_status_code = MOI.get(x._relaxed_optimizer, MOI.PrimalStatus())
-    valid_flag, feasible_flag = is_globally_optimal(termination_status, result_status_code)
-    last_obj = x._lower_objective_value
+    relax_objective!(x, x._current_xref)
+    if (x.objective_cut_on)
+        objective_cut_linear!(x)
+    end
+
+    # Optimizes the object
+    opt = x.relaxed_optimizer
+    MOI.optimize!(opt)
+
+    x._cut_termination_status = MOI.get(opt, MOI.TerminationStatus())
+    x._cut_result_status = MOI.get(opt, MOI.PrimalStatus())
+    valid_flag, feas_flag = is_globally_optimal(x._cut_termination_status, x._cut_result_status)
 
     if valid_flag
-        if feasible_flag
-            x._lower_feasibility = true
-            objval = MOI.get(x._relaxed_optimizer, MOI.ObjectiveValue())
-            x._lower_objective_value = objval
-            x.cut_add_flag = ~isapprox(last_obj, objval, atol = x.absolute_tolerance/2.0)
-            x._lower_solution[:] = MOI.get(x._relaxed_optimizer, MOI.VariablePrimal(), x._lower_variables)
+        if feas_flag
+            x._cut_feasibility = true
+            x._cut_objective_value = MOI.get(opt, MOI.ObjectiveValue())
+            @inbounds x._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
+            x._cut_add_flag = x._lower_feasibility
             set_dual!(x)
         else
             x._cut_add_flag = false
-            x._lower_feasibility = false
+            x._lower_feasibility  = false
             x._lower_objective_value = -Inf
         end
     else
         x._cut_add_flag = false
     end
     x._cut_iterations += 1
-    =#
-    x._cut_iterations += 1
+    return
 end
 
 # is root node? is at iteration number? did last bound improve? did last bound
