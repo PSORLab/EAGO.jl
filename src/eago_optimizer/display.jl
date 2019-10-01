@@ -25,7 +25,7 @@ Prints node information for the B&B problem. Node id, bound, and interval box.
 """
 function print_node!(y::Optimizer)
     x = y._current_node
-    bound = (x._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
+    bound = (y._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
     println("Node ID: $(x.id), Lower Bound: $(bound), Lower Variable Bounds:
              $(x.lower_variable_bounds), Upper Variable Bounds: $(x.upper_variable_bounds)")
     return

@@ -252,7 +252,7 @@ function convert_to_min!(x::Optimizer)
                                                                   getfield.(x._objective_sqf.quadratic_terms, :variable_index_2))
             x._objective_sqf.constant *= -1.0
         else
-            nd = x._nlp_data.evaluator.m.nlp_data.nlobj
+            nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
             pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
             for i in 2:length(nd)
                 @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)

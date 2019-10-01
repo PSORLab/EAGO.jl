@@ -1,25 +1,21 @@
 using JuMP, EAGO
 
 opt = with_optimizer(EAGO.Optimizer,
-                     cp_depth = 5,
-                     cp_interval_reptitions = 2,
-                     obbt_depth = 0,
-                     absolute_tolerance = 1E-3,
-                     relative_tolerance = 1E-3,
-                     subgrad_tighten = true,
-                     obbt_aggressive_on = false,
-                     dbbt_depth = 1000,
-                     reform_epigraph_flag = false,
-                     reform_cse_flag = false,
-                     reform_flatten_flag = false,
-                     poor_man_lp_depth = 0,
-                     poor_man_lp_reptitions = 10,
-                     verbosity = 4,
-                     header_iterations = 10,
-                     output_iterations = 1,
-                     cut_max_iterations = 3,
-                     upper_bounding_interval = 2,
-                     iteration_limit = 2)
+                             lp_depth = 100000000,
+                             lp_reptitions = 3,
+                             quad_uni_depth = -1,
+                             obbt_depth = 3,
+                             cp_depth = -1,
+                             iteration_limit = 1000000,
+                             verbosity = 1,
+                             output_iterations = 2000,
+                             header_iterations = 20000,
+                             relative_tolerance = 1E-3,
+                             absolute_tolerance = 1E-3,
+                             dbbt_depth = 100000000,
+                             subgrad_tighten = true,
+                             objective_cut_on = true,
+                             max_cut_iterations = 3))
 
 m = Model(opt)
 

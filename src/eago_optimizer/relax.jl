@@ -366,7 +366,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         vindices = vi[nzidx]
                         for j in nzidx
                             @inbounds dg_cv_val = dg[i,j]
-                            @inbounds coeff[j] = dg_cc_val
+                            @inbounds coeff[j] = dg_cv_val
                             @inbounds constant -= v[j]*dg_cv_val
                         end
                         saf =

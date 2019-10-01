@@ -1,22 +1,21 @@
 using JuMP, EAGO
 
-opt = with_optimizer(EAGO.Optimizer, cp_depth = 0, cp_reptitions = 0,
-                                     obbt_depth = 4,
-                                     absolute_tolerance = 1E-3,
-                                     relative_tolerance = 1E-3,
-                                     subgrad_tighten = true,
-                                     obbt_aggressive_on = false,
-                                     dbbt_depth = 1000,
-                                     reform_epigraph_flag = false,
-                                     reform_cse_flag = false,
-                                     reform_flatten_flag = false,
-                                     poor_man_lp_depth = 0,
-                                     poor_man_lp_reptitions = 10,
-                                     verbosity = 0,
-                                     header_iterations = 1000,
-                                     output_iterations = 200,
-                                     cut_max_iterations = 3,
-                                     upper_bounding_interval = 2)
+opt = with_optimizer(EAGO.Optimizer,
+                             lp_depth = 100000000,
+                             lp_reptitions = 3,
+                             quad_uni_depth = -1,
+                             obbt_depth = 3,
+                             cp_depth = -1,
+                             iteration_limit = 1000000,
+                             verbosity = 1,
+                             output_iterations = 2000,
+                             header_iterations = 20000,
+                             relative_tolerance = 1E-3,
+                             absolute_tolerance = 1E-3,
+                             dbbt_depth = 100000000,
+                             subgrad_tighten = true,
+                             objective_cut_on = true,
+                             max_cut_iterations = 3)
 
 m = Model(opt)
 
@@ -69,11 +68,11 @@ JuMP.set_upper_bound(x[14], 10.0)
 # ----- Constraints ----- #
 
 @NLconstraint(m, e2, -1.42857142857143*x[4]*x[6] + 10000*x[8] == 0.0)                      # multiplication
-#@NLconstraint(m, e3, 10*x[7]*x[9] - 0.00968946189201592*(x[1]^4 - x[2]^4)*x[3] == 0.0)     # multiplication, ^4 (Ill conditioned)
-#@NLconstraint(m, e4, 143.3076*x[10]*x[4] - 10000*x[7] == 0.0)                              # multiplication
-#@NLconstraint(m, e5, 3.1415927*(0.001*x[9])^3*x[6] - 6e-6*x[3]*x[4]*x[13] == 0.0)          # multiplication, ^3
-#@NLconstraint(m, e6, 101000*x[12]*x[13] - 1.57079635*x[6]*x[14] == 0.0)                    # multiplication
-#@NLconstraint(m, e7, log10(0.8 + 8.112*x[3]) - 10964781961.4318*x[11]^(-3.55) == 0.0)      # multiplication, log10, ^(float)
+@NLconstraint(m, e3, 10*x[7]*x[9] - 0.00968946189201592*(x[1]^4 - x[2]^4)*x[3] == 0.0)     # multiplication, ^4 (Ill conditioned)
+@NLconstraint(m, e4, 143.3076*x[10]*x[4] - 10000*x[7] == 0.0)                              # multiplication
+@NLconstraint(m, e5, 3.1415927*(0.001*x[9])^3*x[6] - 6e-6*x[3]*x[4]*x[13] == 0.0)          # multiplication, ^3
+@NLconstraint(m, e6, 101000*x[12]*x[13] - 1.57079635*x[6]*x[14] == 0.0)                    # multiplication
+@NLconstraint(m, e7, log10(0.8 + 8.112*x[3]) - 10964781961.4318*x[11]^(-3.55) == 0.0)      # multiplication, log10, ^(float)
 @constraint(m, e8, -0.5*x[10] + x[11] == 560.0)                                            # linear
 @constraint(m, e9, x[1] - x[2] >= 0.0)                                                     # linear
 @NLconstraint(m, e10, 0.0307*(x[4])^2 - 0.3864*(0.0062831854*x[1]*x[9])^2*x[6] <= 0.0)     # multiplication, ^2
@@ -94,11 +93,6 @@ psol = JuMP.value.(x)
 println("Alg. terminated with a status of $TermStatus and a result code of $PrimStatus")
 println("The optimal value is f*=$fval, the solution found is p*=$psol.")
 
-history = backend(m).optimizer.model.optimizer.history
-optimizer = backend(m).optimizer.model.optimizer
-evaluator_obj = optimizer.working_evaluator_block.evaluator.objective
-evaluator_constraints = optimizer.working_evaluator_block.evaluator.constraints
-evaluator_constraints_local = optimizer.nlp_data.evaluator.constraints
 
 
 #runtime = history.lower_time[11] + history.upper_time[11] + history.preprocess_time[11] + history.postprocess_time[11]
