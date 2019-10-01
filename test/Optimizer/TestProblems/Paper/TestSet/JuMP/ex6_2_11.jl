@@ -1,7 +1,8 @@
 using JuMP, EAGO
 
 m = Model(with_optimizer(EAGO.Optimizer,
-                             lp_depth = -1,
+                             lp_depth = 100000000,
+                             lp_reptitions = 3,
                              quad_uni_depth = -1,
                              obbt_depth = 3,
                              cp_depth = -1,
@@ -9,11 +10,12 @@ m = Model(with_optimizer(EAGO.Optimizer,
                              verbosity = 1,
                              output_iterations = 1000,
                              header_iterations = 200000,
-                             relative_tolernace = 1E-6,
+                             relative_tolerance = 1E-6,
                              absolute_tolerance = 1E-6,
                              dbbt_depth = 100000000,
                              subgrad_tighten = true,
-                             objective_cut_on = true))
+                             objective_cut_on = true,
+                             max_cut_iterations = 3))
 
 # ----- Variables ----- #
 x_Idx = Any[2, 3, 4]

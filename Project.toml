@@ -27,7 +27,7 @@ IntervalArithmetic = "≥ 0.15"
 IntervalContractors = "≥ 0.3"
 Ipopt = "≥ 0.6"
 JuMP = "≥ 0.19.2"
-MathOptInterface = "~ 0.8.1"
+MathOptInterface = "≥ 0.8.1"
 StaticArrays = "≥ 0.8.0"
 julia = "≥ 1.0.0"
 

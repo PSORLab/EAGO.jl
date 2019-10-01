@@ -13,7 +13,7 @@ module EAGO
     using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse
     using StaticArrays: SVector
-    using LinearAlgebra: eigmin
+    using LinearAlgebra: eigmin, norm
 
     import Base: ImmutableDict, isless
 

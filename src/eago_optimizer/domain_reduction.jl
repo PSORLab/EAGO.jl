@@ -218,9 +218,9 @@ function obbt(x::Optimizer)
 
     # solve initial problem to feasibility
     update_relaxed_problem_box!(x, y)
-    relax_problem!(x, ymid)
+    relax_problem!(x, ymid, 1)
     relax_objective!(x, ymid)
-    objective_cut_linear!(x)
+    objective_cut_linear!(x, 1)
     MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(x.relaxed_optimizer)
 
@@ -277,6 +277,7 @@ function obbt(x::Optimizer)
 
             @inbounds x._obbt_working_lower_index[lower_indx] = false
             @inbounds var = x._lower_variable[lower_indx]
+            # SHOULD UPDATE BOX HERE TOO
             MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
             MOI.set(x.relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
             MOI.optimize!(x.relaxed_optimizer)
