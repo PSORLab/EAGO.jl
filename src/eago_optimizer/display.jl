@@ -7,7 +7,7 @@ solution, and time spent solving subproblems.
 function print_solution!(x::Optimizer)
     if x.verbosity > 0
         println("First Solution Found at Node $(x._first_solution_node)")
-        println("UBD = $(x._objective_value)")
+        println("UBD = $(MOI.get(x, MOI.ObjectiveValue()))")
         println("Solution is :")
         if (x._feasible_solution_found)
             for i=1:x._variable_number
@@ -25,7 +25,8 @@ Prints node information for the B&B problem. Node id, bound, and interval box.
 """
 function print_node!(y::Optimizer)
     x = y._current_node
-    println("Node ID: $(x.id), Lower Bound: $(x.lower_bound), Lower Variable Bounds:
+    bound = (x._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
+    println("Node ID: $(x.id), Lower Bound: $(bound), Lower Variable Bounds:
              $(x.lower_variable_bounds), Upper Variable Bounds: $(x.upper_variable_bounds)")
     return
 end
@@ -63,11 +64,18 @@ function print_iteration!(x::Optimizer)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 11
-            temp_str = string(round(x._global_lower_bound, sigdigits = 5))
+            if (x._optimization_sense === MOI.MIN_SENSE)
+                lower = x._global_lower_bound
+                upper = x._global_upper_bound
+            else
+                lower = -x._global_upper_bound
+                upper = -x._global_lower_bound
+            end
+            temp_str = string(round(lower, sigdigits = 5))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            temp_str = string(round(x._global_upper_bound, sigdigits = 5))
+            temp_str = string(round(upper, sigdigits = 5))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
@@ -106,10 +114,20 @@ Prints the results of a single bounding problem.
 function print_results!(x::Optimizer, flag::Bool)
     if x.verbosity > 1
         if flag
-            print("Lower Bound (First Iteration): $(x._lower_objective_value),")
+            obj_val = x._lower_objective_value
+            if (x._optimization_sense === MOI.MIN_SENSE)
+                print("Lower Bound (First Iteration): $(obj_val),")
+            else
+                print("Upper Bound (First Iteration): $(-obj_val),")
+            end
             print(" Solution: $(x._lower_solution), Feasibility: $(x._lower_feasibility)\n")
         else
-            print("Upper Bound: $(x._upper_objective_value), ")
+            obj_val = x._upper_objective_value
+            if (x._optimization_sense === MOI.MIN_SENSE)
+                print("Upper Bound: $(obj_val), ")
+            else
+                print("Lower Bound: $(-obj_val), ")
+            end
             print(" Solution: $(x._upper_solution), Feasibility: $(x._upper_feasibility)\n")
         end
     end
@@ -123,7 +141,11 @@ Prints the results after performing various cuts.
 """
 function print_results_post_cut!(x::Optimizer)
     if x.verbosity > 1
-        print("Lower Bound (Last Iteration): $(x._lower_objective_value)")
+        if (x._optimization_sense === MOI.MIN_SENSE)
+            print("Lower Bound (Last Iteration): $(x._lower_objective_value)")
+        else
+            print("Upper Bound (Last Iteration): $(-x._lower_objective_value)")
+        end
         print(", Solution: $(x._lower_solution), Feasibility: $(x._lower_feasibility)\n")
     end
     return

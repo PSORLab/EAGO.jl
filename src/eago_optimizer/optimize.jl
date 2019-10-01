@@ -211,21 +211,21 @@ max(f) = - min(-f).
 """
 function convert_to_min!(x::Optimizer)
     if x._optimization_sense === MOI.MAX_SENSE
-        if isa(x._objective, SV)
-            x._objective = SAF(SAT[SAT(-1.0, x._objective.variable)], 0.0)
-        elseif isa(x._objective, SAF)
-            @inbounds x._objective.terms[:] = SAT.(-getfield.(x._objective.terms, :coefficient),
-                                                    getfield.(x._objective.terms, :variable_index))
+        if x._objective_is_sv
+            x._objective_sv = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
+        elseif x._objective_is_saf
+            @inbounds x._objective_saf.terms[:] = SAT.(-getfield.(x._objective_saf.terms, :coefficient),
+                                                        getfield.(x._objective_saf.terms, :variable_index))
             x._objective.constant *= -1.0
-        elseif isa(x._objective, SQF)
-            @inbounds x._objective.affine_terms[:] = SAT.(-getfield.(x._objective.affine_terms, :coefficient),
-                                                               getfield.(x._objective.affine_terms, :variable_index))
-            @inbounds x._objective.quadratic_terms[:] = SQT.(-getfield.(x._objective.quadratic_terms, :coefficient),
-                                                              getfield.(x._objective.quadratic_terms, :variable_index_1),
-                                                              getfield.(x._objective.quadratic_terms, :variable_index_2))
-            x._objective.constant *= -1.0
+        elseif x._objective_is_sqf
+            @inbounds x._objective_sqf.affine_terms[:] = SAT.(-getfield.(x._objective_sqf.affine_terms, :coefficient),
+                                                               getfield.(x._objective_sqf.affine_terms, :variable_index))
+            @inbounds x._objective_sqf.quadratic_terms[:] = SQT.(-getfield.(x._objective_sqf.quadratic_terms, :coefficient),
+                                                                  getfield.(x._objective_sqf.quadratic_terms, :variable_index_1),
+                                                                  getfield.(x._objective_sqf.quadratic_terms, :variable_index_2))
+            x._objective_sqf.constant *= -1.0
         else
-            nd = x._nlp_data.nlobj.nd
+            nd = x._nlp_data.evaluator.m.nlp_data.nlobj
             pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
             for i in 2:length(nd)
                 @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
@@ -389,9 +389,6 @@ function local_solve!(x::Optimizer)
         x._first_solution_node = x._maximum_node_id
         x._termination_status_code = MOI.LOCALLY_INFEASIBLE
         x._result_status_code = MOI.INFEASIBLE_POINT
-    end
-    if m.log_on
-        m._log[:total_time] = time() - m._start_time
     end
     return
 end

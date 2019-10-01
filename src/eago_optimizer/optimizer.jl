@@ -754,10 +754,23 @@ function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     return mult*m._objective_value
 end
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._variable_number
-MOI.get(m::Optimizer, ::MOI.ObjectiveBound) = m._global_upper_bound
+function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
+    if m._optimization_sense === MOI.MAX_SENSE
+        bound = -m._global_lower_bound
+    else
+        bound = m._global_upper_bound
+    end
+    return bound
+end
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
+    LBD = m._global_lower_bound
     UBD = m._global_upper_bound
-    return abs(UBD - m._global_lower_bound)/abs(UBD)
+    if m._optimization_sense === MOI.MAX_SENSE
+        gap = abs(UBD - LBD)/abs(LBD)
+    else
+        gap = abs(UBD - LBD)/abs(UBD)
+    end
+    return gap
 end
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
@@ -1052,16 +1065,6 @@ end
 
 
 """
-    initialize_log!
-
-Creates the required storage variables for logging data at various iterations.
-"""
-function initialize_log!(m::Optimizer)
-    m.log = Log()
-    return
-end
-
-"""
     log_iteration!
 
 If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
@@ -1073,12 +1076,17 @@ function log_iteration!(x::Optimizer)
 
     if x.log_on
 
-        log = x.log
+        log = x._log
         if (mod(x._iteration_count, x.log_interval) == 0 || x._iteration_count == 1)
 
             if x.log_subproblem_info
-                push!(log.current_lower_bound, x._lower_objective_value)
-                push!(log.current_upper_bound, x._upper_objective_value)
+                if x._optimization_sense === MOI.MIN_SENSE
+                    push!(log.current_lower_bound, x._lower_objective_value)
+                    push!(log.current_upper_bound, x._upper_objective_value)
+                else
+                    push!(log.current_lower_bound, -x._upper_objective_value)
+                    push!(log.current_upper_bound, -x._lower_objective_value)
+                end
 
                 push!(log.preprocessing_time, x._last_preprocess_time)
                 push!(log.lower_problem_time, x._last_lower_problem_time)
@@ -1091,8 +1099,13 @@ function log_iteration!(x::Optimizer)
                 push!(log.postprocess_feasibility, x._postprocess_feasibility)
             end
 
-            push!(log.global_lower_bound, x._global_lower_bound)
-            push!(log.global_upper_bound, x._global_upper_bound)
+            if x._optimization_sense === MOI.MIN_SENSE
+                push!(log.global_lower_bound, x._global_lower_bound)
+                push!(log.global_upper_bound, x._global_upper_bound)
+            else
+                push!(log.global_lower_bound, -x._global_upper_bound)
+                push!(log.global_upper_bound, -x._global_lower_bound)
+            end
             push!(log.run_time, x._run_time)
             push!(log.node_count, x._node_count)
 
