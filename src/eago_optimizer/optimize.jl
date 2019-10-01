@@ -28,6 +28,7 @@ function gen_quadratic_storage!(x::Optimizer)
     opt = x.relaxed_optimizer
     variable_index = x._lower_variable_index
 
+    temp_leq_ci = CI{SAF,LT}[]
     for (func, set, ind) in x._quadratic_leq_constraints
 
         v = gen_quad_sparsity(func)
@@ -44,9 +45,13 @@ function gen_quadratic_storage!(x::Optimizer)
 
         func = SAF(SAT.(zeros(nv), nzvar), 0.0)
         ci = MOI.add_constraint(opt, func, LT(0.0))
-        push!(x._quadratic_ci_leq, ci)
+        push!(temp_leq_ci, ci)
+    end
+    for i in 1:x.cut_max_iterations
+        push!(x._quadratic_ci_leq, temp_leq_ci)
     end
 
+    temp_geq_ci = CI{SAF,LT}[]
     for (func, set, ind) in x._quadratic_geq_constraints
 
         v = gen_quad_sparsity(func)
@@ -63,9 +68,13 @@ function gen_quadratic_storage!(x::Optimizer)
 
         func = SAF(SAT.(zeros(nv), nzvar), 0.0)
         ci = MOI.add_constraint(opt, func, LT(0.0))
-        push!(x._quadratic_ci_geq, ci)
+        push!(temp_geq_ci, ci)
+    end
+    for i in 1:x.cut_max_iterations
+        push!(x._quadratic_ci_geq, temp_geq_ci)
     end
 
+    temp_eq_ci = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
     for (func, set, ind) in x._quadratic_eq_constraints
 
         v = gen_quad_sparsity(func)
@@ -83,7 +92,10 @@ function gen_quadratic_storage!(x::Optimizer)
         func = SAF(SAT.(zeros(nv), nzvar), 0.0)
         c1 = MOI.add_constraint(opt, func, LT(0.0))
         c2 = MOI.add_constraint(opt, func, LT(0.0))
-        push!(x._quadratic_ci_eq, (c1, c2))
+        push!(temp_eq_ci, (c1, c2))
+    end
+    for i in 1:x.cut_max_iterations
+        push!(x._quadratic_ci_eq, temp_eq_ci)
     end
     return
 end
@@ -154,24 +166,39 @@ function load_relaxed_problem!(x::Optimizer)
     # add a linear constraint for each nonlinear constraint
     evaluator = x._relaxed_evaluator
     constraint_bounds = x._relaxed_constraint_bounds
+    temp_la = CI{SAF,LT}[]
+    temp_ua = CI{SAF,LT}[]
     for (j, bns) in enumerate(constraint_bounds)
         sparsity = grad_sparsity(evaluator, j+1)
         @inbounds nzvar = x._lower_variable_index[sparsity]
         func = SAF(SAT.(zeros(length(sparsity)), nzvar), 0.0)
         if !(bns.upper == Inf)
             ci = MOI.add_constraint(opt, func, LT(0.0))
-            push!(x._lower_nlp_affine, ci)
+            push!(temp_la, ci)
             push!(x._lower_nlp_affine_indx, j)
             push!(x._lower_nlp_sparsity, sparsity)
         elseif !(bns.lower == Inf)
             ci = MOI.add_constraint(opt, func, LT(0.0))
-            push!(x._upper_nlp_affine, ci)
+            push!(temp_ua, ci)
             push!(x._upper_nlp_affine_indx, j)
             push!(x._upper_nlp_sparsity, sparsity)
         end
     end
 
+    len_la = length(temp_la)
+    len_ua = length(temp_ua)
+    push!(x._lower_nlp_affine, temp_la)
+    push!(x._upper_nlp_affine, temp_ua)
+    for i in 2:x.cut_max_iterations
+        push!(x._lower_nlp_affine, fill(CI{SAF,LT}(-1), (len_la,)))
+        push!(x._upper_nlp_affine, fill(CI{SAF,LT}(-1), (len_ua,)))
+    end
+
     # add an empty objective
+    for i in 1:x.cut_max_iterations
+        push!(x._objective_cut_ci_sv, CI{SV,LT}(-1))
+        push!(x._objective_cut_ci_saf, CI{SAF,LT}(-1))
+    end
     MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     return
@@ -534,6 +561,7 @@ function parse_problem!(m::Optimizer)
 
     ########### Set Correct Size for Problem Storage #########
     m._current_xref = fill(0.0, _variable_len)
+    m._cut_solution = fill(0.0, _variable_len)
     m._lower_solution = fill(0.0, _variable_len)
     m._upper_solution = fill(0.0, _variable_len)
     m._lower_lvd = fill(0.0, _variable_len)
@@ -578,6 +606,9 @@ function check_disable_fbbt!(m::Optimizer)
     if length(m._nlp_data.constraint_bounds) > 0
         no_constraints &= false
     end
+    if no_constraints
+        m.cp_depth = -1
+    end
 
     no_quad_constraints = true
     if length(m._quadratic_leq_constraints) > 0
@@ -593,30 +624,27 @@ function check_disable_fbbt!(m::Optimizer)
         no_quad_constraints &= false
     end
     if no_quad_constraints
-        m.quad_uni_depth = 0
-        m.quad_bi_depth = 0
+        m.quad_uni_depth = -1
+        m.quad_bi_depth = -1
     end
 
+    only_lin_constraints = no_constraints
     no_lin_constraints = true
     if length(m._linear_leq_constraints) > 0
-        no_constraints &= false
         no_lin_constraints &= false
     end
     if length(m._linear_geq_constraints) > 0
-        no_constraints &= false
         no_lin_constraints &= false
     end
     if length(m._linear_eq_constraints) > 0
-        no_constraints &= false
         no_lin_constraints &= false
     end
     if no_lin_constraints
-        m.lp_depth = 0
+        m.lp_depth = -1
     end
 
-    if no_constraints
-        m.obbt_depth = 0
-        m.cp_depth = 0
+    if only_lin_constraints
+        m.obbt_depth = -1
     end
 
     return
@@ -705,7 +733,7 @@ function global_solve!(x::Optimizer)
 
             # solves & times lower bounding problem
             x.log_on && (start_time = time())
-            x._cut_iterations = 0
+            x._cut_iterations = 1
             lower_problem!(x)
             while cut_condition(x)
                 add_cut!(x)

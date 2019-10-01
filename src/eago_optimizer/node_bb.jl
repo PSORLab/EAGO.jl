@@ -32,6 +32,13 @@ depth(x::NodeBB) = x.depth
 last_branch(x::NodeBB) = x.last_branch
 branch_direction(x::NodeBB) = x.branch_direction
 
+function diam(x::NodeBB)
+    return x.upper_variable_bounds - x.lower_variable_bounds
+end
+function mid(x::NodeBB)
+    return 0.5*(x.upper_variable_bounds + x.lower_variable_bounds)
+end
+
 length(x::NodeBB) = length(x.lower_variable_bounds)
 function isempty(x::NodeBB)
     bool = false

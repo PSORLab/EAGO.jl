@@ -546,12 +546,12 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
     if ~x._obbt_performed_flag
         x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
         update_relaxed_problem_box!(x, y)
-        relax_problem!(x, x._current_xref)
+        relax_problem!(x, x._current_xref, 1)
     end
 
     relax_objective!(x, x._current_xref)
     if (x.objective_cut_on)
-        objective_cut_linear!(x)
+        objective_cut_linear!(x, 1)
     end
 
     # Optimizes the object
@@ -581,6 +581,27 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
     return
 end
 
+function cut_update(x::Optimizer)
+    x._cut_feasibility = true
+
+    opt = x.relaxed_optimizer
+    obj_val = MOI.get(opt, MOI.ObjectiveValue())
+    prior_obj_val = (x._cut_iterations == 0) ? x._lower_objective_value : x._cut_objective_value
+
+    if prior_obj_val > obj_val
+        x._cut_objective_value = obj_val
+        x._lower_objective_value = obj_val
+        x._lower_termination_status = x._cut_termination_status
+        x._lower_result_status = x._cut_result_status
+        @inbounds x._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
+        copy_to!(x._lower_solution, x._cut_solution)
+        set_dual!(x)
+        x._cut_add_flag = true
+    else
+        x._cut_add_flag = false
+    end
+    return
+end
 
 """
     cut_condition
@@ -588,7 +609,80 @@ end
 Branch-and-cut feature currently under development. Currently, returns false.
 """
 function cut_condition(t::ExtensionType, x::Optimizer)
-    x._cut_add_flag & (x._cut_iterations < x.cut_max_iterations)
+
+    flag = x._cut_add_flag
+    flag &= (x._cut_iterations < x.cut_max_iterations)
+
+    y = x._current_node
+    xprior = x._current_xref
+    xsol = (x._cut_iterations > 1) ? x._cut_solution : x._lower_solution
+    xnew = (1.0 - x.cut_cvx)*mid(y) + x.cut_cvx*xsol
+    if norm((xprior - xnew)./diam(y), 1) > x.cut_tolerance
+        x._current_xref = xnew
+        flag &= true
+    else
+        flag &= false
+    end
+
+    if ~flag
+        # if not further cuts then empty the added cuts
+        for i in 2:x._cut_iterations
+            for ci in x._quadratic_ci_leq[i]
+                MOI.delete(x.relaxed_optimizer, ci)
+            end
+            for ci in x._quadratic_ci_geq[i]
+                MOI.delete(x.relaxed_optimizer, ci)
+            end
+            for (ci1,ci2) in x._quadratic_ci_eq[i]
+                MOI.delete(x.relaxed_optimizer, ci1)
+                MOI.delete(x.relaxed_optimizer, ci2)
+            end
+            for ci in x._lower_nlp_affine[i]
+                MOI.delete(x.relaxed_optimizer, ci)
+            end
+            for ci in x._upper_nlp_affine[i]
+                MOI.delete(x.relaxed_optimizer, ci)
+            end
+        end
+        if x._objective_cut_set !== -1
+            if x._objective_is_sv
+                for i in 2:x._cut_iterations
+                    ci = x._objective_cut_ci_sv[i]
+                    MOI.delete(x.relaxed_optimizer, ci)
+                end
+            else
+                for i in 2:x._cut_iterations
+                    ci = x._objective_cut_ci_saf[i]
+                    MOI.delete(x.relaxed_optimizer, ci)
+                end
+            end
+        end
+
+        # check to see if interval bound is preferable
+        if x._lower_feasibility
+            if x._objective_is_nlp
+                intv_lo = eval_objective_lo(x._relaxed_evaluator)
+            else
+                if x._objective_is_sv
+                    obj_indx = x._objective_sv.variable_index
+                    @inbounds intv_lo = y.lower_variable_bounds[obj_indx]
+                elseif x._objective_is_saf
+                    intv_lo = interval_bound(x._objective_saf, y, true)
+                elseif x._objective_is_sqf
+                    intv_lo = interval_bound(x._objective_sqf, y, true)
+                end
+            end
+            if (intv_lo > x._lower_objective_value)
+                x._lower_objective_value = intv_lo
+                fill!(x._lower_lvd, 0.0)
+                fill!(x._lower_uvd, 0.0)
+            end
+        end
+    end
+
+    x._cut_iterations += 1
+
+    return flag
 end
 """
     add_cut!
@@ -596,16 +690,11 @@ end
 Branch-and-Cut under development.
 """
 function add_cut!(t::ExtensionType, x::Optimizer)
-    y = x._current_node
-    if ~x._obbt_performed_flag
-        x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
-        update_relaxed_problem_box!(x, y)
-        relax_problem!(x, x._current_xref)
-    end
 
+    relax_problem!(x, x._current_xref, x._cut_iterations)
     relax_objective!(x, x._current_xref)
-    if (x.objective_cut_on)
-        objective_cut_linear!(x)
+    if x.objective_cut_on
+        objective_cut_linear!(x, x._cut_iterations)
     end
 
     # Optimizes the object
@@ -618,11 +707,7 @@ function add_cut!(t::ExtensionType, x::Optimizer)
 
     if valid_flag
         if feas_flag
-            x._cut_feasibility = true
-            x._cut_objective_value = MOI.get(opt, MOI.ObjectiveValue())
-            @inbounds x._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
-            x._cut_add_flag = x._lower_feasibility
-            set_dual!(x)
+            cut_update(x)
         else
             x._cut_add_flag = false
             x._lower_feasibility  = false
@@ -631,7 +716,6 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     else
         x._cut_add_flag = false
     end
-    x._cut_iterations += 1
     return
 end
 

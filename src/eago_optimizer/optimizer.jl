@@ -106,7 +106,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
     # Tolerance to add cuts and max number of cuts
     cut_max_iterations::Int64
-    cut_offset::Float64
+    cut_cvx::Float64
     cut_tolerance::Float64
 
     # Upper bounding options
@@ -199,6 +199,12 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _lower_lvd::Vector{Float64}
     _lower_uvd::Vector{Float64}
 
+    _cut_result_status::MOI.ResultStatusCode
+    _cut_termination_status::MOI.TerminationStatusCode
+    _cut_solution::Vector{Float64}
+    _cut_objective_value::Float64
+    _cut_feasibility::Bool
+
     _upper_result_status::MOI.ResultStatusCode
     _upper_termination_status::MOI.TerminationStatusCode
     _upper_feasibility::Bool
@@ -227,9 +233,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
     _objective_convexity::Bool
 
-    _objective_cut_set::Bool
-    _objective_cut_ci_sv::CI{SV,LT}
-    _objective_cut_ci_saf::CI{SAF,LT}
+    _objective_cut_set::Int
+    _objective_cut_ci_sv::Vector{CI{SV,LT}}
+    _objective_cut_ci_saf::Vector{CI{SAF,LT}}
 
     _linear_leq_constraints::Vector{Tuple{SAF, LT, Int64}}
     _linear_geq_constraints::Vector{Tuple{SAF, GT, Int64}}
@@ -243,9 +249,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _quadratic_geq_dict::Vector{ImmutableDict{Int64,Int64}}
     _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}}
 
-    _quadratic_ci_leq::Vector{CI{SAF,LT}}
-    _quadratic_ci_geq::Vector{CI{SAF,LT}}
-    _quadratic_ci_eq::Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}
+    _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}}
+    _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}}
+    _quadratic_ci_eq::Vector{Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}}
 
     _quadratic_leq_sparsity::Vector{Vector{VI}}
     _quadratic_geq_sparsity::Vector{Vector{VI}}
@@ -260,8 +266,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _quadratic_eq_convexity_1::Vector{Bool}
     _quadratic_eq_convexity_2::Vector{Bool}
 
-    _lower_nlp_affine::Vector{CI{SAF,LT}}
-    _upper_nlp_affine::Vector{CI{SAF,LT}}
+    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}}
+    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}}
 
     _lower_nlp_affine_indx::Vector{Int64}
     _upper_nlp_affine_indx::Vector{Int64}
@@ -356,7 +362,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Options for linear bound tightening
         default_opt_dict[:lp_depth] = 0
-        default_opt_dict[:lp_reptitions] = 1
+        default_opt_dict[:lp_reptitions] = 3
 
         # Options for quadratic bound tightening
         default_opt_dict[:quad_uni_depth] = 0
@@ -370,9 +376,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Tolerance to add cuts and max number of cuts
         default_opt_dict[:objective_cut_on] = true
-        default_opt_dict[:cut_max_iterations] = 0
-        default_opt_dict[:cut_offset] = 0.1
-        default_opt_dict[:cut_tolerance] = 0.1
+        default_opt_dict[:cut_max_iterations] = 2
+        default_opt_dict[:cut_cvx] = 0.9
+        default_opt_dict[:cut_tolerance] = 0.05
 
         # Upper bounding options
         default_opt_dict[:upper_bounding_depth] = 10
@@ -394,7 +400,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         # Termination limits
         default_opt_dict[:node_limit] = 10^6
         default_opt_dict[:time_limit] = 3600.0
-        default_opt_dict[:iteration_limit] = 3
+        default_opt_dict[:iteration_limit] = 3000000
         default_opt_dict[:absolute_tolerance] = 1E-3
         default_opt_dict[:relative_tolerance] = 1E-3
         default_opt_dict[:local_solve_only] = false
@@ -477,6 +483,12 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._lower_lvd = Float64[]
         m._lower_uvd = Float64[]
 
+        m._cut_result_status = MOI.OTHER_RESULT_STATUS
+        m._cut_termination_status = MOI.OPTIMIZE_NOT_CALLED
+        m._cut_solution = Float64[]
+        m._cut_objective_value = -Inf
+        m._cut_feasibility = false
+
         m._upper_result_status = MOI.OTHER_RESULT_STATUS
         m._upper_termination_status = MOI.OPTIMIZE_NOT_CALLED
         m._upper_feasibility = false
@@ -502,9 +514,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._objective_is_saf = false
         m._objective_is_sqf = false
         m._objective_is_nlp = false
-        m._objective_cut_set = false
-        m._objective_cut_ci_sv = CI{SV,LT}(1)
-        m._objective_cut_ci_saf = CI{SAF,LT}(1)
+        m._objective_cut_set = -1
+        m._objective_cut_ci_sv = CI{SV,LT}[]
+        m._objective_cut_ci_saf = CI{SAF,LT}[]
 
         m._objective_convexity = false
 
@@ -538,9 +550,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._quadratic_eq_convexity_2 = Bool[]
 
 
-        m._lower_nlp_affine = CI{SAF,LT}[]
-        m._upper_nlp_affine = CI{SAF,LT}[]
-
+        m._lower_nlp_affine = Vector{CI{SAF,LT}}[]
+        m._upper_nlp_affine = Vector{CI{SAF,LT}}[]
 
         m._lower_nlp_affine_indx = Int64[]
         m._upper_nlp_affine_indx = Int64[]
