@@ -612,7 +612,11 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         return m
     end
 end
-Optimizer(;options...) = Optimizer{GLPK.Optimizer, Ipopt.Optimizer}(;options...)
+function Optimizer(;options...)
+    rtype = haskey(options, :relaxed_optimizer) ? typeof(options[:relaxed_optimizer]) : GLPK.Optimizer
+    utype = haskey(options, :upper_optimizer) ? typeof(options[:upper_optimizer]) : Ipopt.Optimizer
+    Optimizer{rtype, utype}(;options...)
+end
 
 function MOI.empty!(m::Optimizer)
     m = Optimizer()

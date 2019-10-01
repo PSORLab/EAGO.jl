@@ -1,25 +1,22 @@
-using JuMP, EAGO
+using JuMP, EAGO, Cbc
 
-opt = with_optimizer(EAGO.Optimizer, cp_depth = 0, cp_reptitions = 0,
-                                     obbt_depth = 50,
-                                     absolute_tolerance = 1E-3,
-                                     relative_tolerance = 1E-3,
-                                     subgrad_tighten = false,
-                                     obbt_aggressive_on = false,
-                                     dbbt_depth = 1000,
-                                     reform_epigraph_flag = false,
-                                     reform_cse_flag = false,
-                                     reform_flatten_flag = false,
-                                     poor_man_lp_depth = 0,
-                                     poor_man_lp_reptitions = 10,
-                                     verbosity = 1,
-                                     header_iterations = 20,
-                                     output_iterations = 1,
-                                     cut_max_iterations = 4,
-                                     upper_bounding_interval = 2)
-
-m = Model(opt)
-
+m = Model(with_optimizer(EAGO.Optimizer,
+                             lp_depth = 100000000,
+                             lp_reptitions = 3,
+                             quad_uni_depth = -1,
+                             obbt_depth = 3,
+                             cp_depth = -1,
+                             iteration_limit = 1000000,
+                             verbosity = 1,
+                             output_iterations = 1000,
+                             header_iterations = 200000,
+                             relative_tolerance = 1E-6,
+                             absolute_tolerance = 1E-6,
+                             dbbt_depth = 100000000,
+                             subgrad_tighten = true,
+                             objective_cut_on = true,
+                             max_cut_iterations = 3,
+                             relaxed_optimizer = Cbc.Optimizer()))
 # ----- Variables ----- #
 x_Idx = Any[2, 3, 4, 5, 6, 7]
 @variable(m, x[x_Idx])
