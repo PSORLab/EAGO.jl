@@ -82,6 +82,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
     # Options for optimality-based bound tightening
     relaxed_optimizer::S
+    relaxed_inplace_mod::Bool
     obbt_depth::Int64
     obbt_reptitions::Int64
     obbt_aggressive_on::Bool
@@ -233,8 +234,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
     _objective_convexity::Bool
 
-    _objective_cut_set::Int
-    _objective_cut_ci_sv::Vector{CI{SV,LT}}
+    _objective_cut_set::Int64
+    _objective_cut_ci_sv::CI{SV,LT}
     _objective_cut_ci_saf::Vector{CI{SAF,LT}}
 
     _linear_leq_constraints::Vector{Tuple{SAF, LT, Int64}}
@@ -422,13 +423,21 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:ext_type] = DefaultExt()
 
         default_opt_dict[:relaxed_optimizer] = GLPK.Optimizer()
+        default_opt_dict[:relaxed_inplace_mod] = true
         default_opt_dict[:upper_optimizer] = Ipopt.Optimizer()
         #=
         fac = with_optimizer(Ipopt.Optimizer, max_iter = 1000, acceptable_tol = 1E30,
                              acceptable_iter = 100, constr_viol_tol = 0.00001,
                              acceptable_constr_viol_tol = 1E-6, print_level = 0)
         =#
-        fac = with_optimizer(Ipopt.Optimizer, print_level = 0)
+        fac = with_optimizer(Ipopt.Optimizer, print_level = 0,
+                             acceptable_tol = 1E30,
+                             max_iter = 1000,
+                             acceptable_iter = 50,
+                             constr_viol_tol = 0.0001,
+                             acceptable_constr_viol_tol = 0.0001,
+                             acceptable_dual_inf_tol = 1.0,
+                             acceptable_compl_inf_tol = 0.0001)
         default_opt_dict[:upper_factory] = fac
 
         for i in keys(default_opt_dict)
@@ -515,7 +524,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._objective_is_sqf = false
         m._objective_is_nlp = false
         m._objective_cut_set = -1
-        m._objective_cut_ci_sv = CI{SV,LT}[]
+        m._objective_cut_ci_sv = CI{SV,LT}(-1.0)
         m._objective_cut_ci_saf = CI{SAF,LT}[]
 
         m._objective_convexity = false

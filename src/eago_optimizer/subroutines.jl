@@ -257,6 +257,15 @@ function is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusC
     (t == MOI.OPTIMAL) && (termination_flag = true)
     (t == MOI.LOCALLY_SOLVED) && (termination_flag = true)
 
+    # This is default solver specific... the acceptable constraint tolerances
+    # are set to the same values as the basic tolerance. As a result, an
+    # acceptably solved solution is feasible but non necessarily optimal
+    # so it should be treated as a feasible point
+    if (t == MOI.ALMOST_LOCALLY_SOLVED) && (r == MOI.NEARLY_FEASIBLE_POINT)
+        termination_flag = true
+        result_flag = true
+    end
+
     (r == MOI.FEASIBLE_POINT) && (result_flag = true)
 
     return (termination_flag && result_flag)
@@ -473,7 +482,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
         end
     else
         if x._objective_is_sv
-            obj_indx = x._objective_sv.variable_index
+            obj_indx = x._objective_sv.variable.value
             @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
         elseif x._objective_is_saf
             objective_lo = interval_bound(x._objective_saf, y, true)
@@ -484,40 +493,40 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
 
     for (func, set, i) in x._linear_leq_constraints
         (~feas) && break
-        if interval_bound(set, y, true) > set.upper
+        if interval_bound(func, y, true) > set.upper
             feas = false
         end
     end
     for (func, set, i) in x._linear_geq_constraints
         (~feas) && break
-        if interval_bound(set, y, false) < set.lower
+        if interval_bound(func, y, false) < set.lower
             feas = false
         end
     end
     for (func, set, i) in x._linear_eq_constraints
         (~feas) && break
-        if (interval_bound(set, y, true) > set.value) ||
-           (interval_bound(set, y, false) < set.value)
+        if (interval_bound(func, y, true) > set.value) ||
+           (interval_bound(func, y, false) < set.value)
             feas = false
         end
     end
 
     for (func, set, i) in x._quadratic_leq_constraints
         (~feas) && break
-        if interval_bound(set, y, true) > set.upper
+        if interval_bound(func, y, true) > set.upper
             feas = false
         end
     end
     for (func, set, i) in x._quadratic_geq_constraints
         (~feas) && break
-        if interval_bound(set, y, false) < set.lower
+        if interval_bound(func, y, false) < set.lower
             feas = false
         end
     end
     for (func, set, i) in x._quadratic_eq_constraints
         (~feas) && break
-        if (interval_bound(set, y, true) > set.value) ||
-           (interval_bound(set, y, false) < set.value)
+        if (interval_bound(func, y, true) > set.value) ||
+           (interval_bound(func, y, false) < set.value)
             feas = false
         end
     end
@@ -645,12 +654,7 @@ function cut_condition(t::ExtensionType, x::Optimizer)
             end
         end
         if x._objective_cut_set !== -1
-            if x._objective_is_sv
-                for i in 2:x._cut_iterations
-                    ci = x._objective_cut_ci_sv[i]
-                    MOI.delete(x.relaxed_optimizer, ci)
-                end
-            else
+            if ~x._objective_is_sv
                 for i in 2:x._cut_iterations
                     ci = x._objective_cut_ci_saf[i]
                     MOI.delete(x.relaxed_optimizer, ci)
@@ -664,7 +668,7 @@ function cut_condition(t::ExtensionType, x::Optimizer)
                 intv_lo = eval_objective_lo(x._relaxed_evaluator)
             else
                 if x._objective_is_sv
-                    obj_indx = x._objective_sv.variable_index
+                    obj_indx = x._objective_sv.variable.value
                     @inbounds intv_lo = y.lower_variable_bounds[obj_indx]
                 elseif x._objective_is_saf
                     intv_lo = interval_bound(x._objective_saf, y, true)
@@ -795,6 +799,7 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
 
         # Add nonlinear evaluation block
         MOI.set(upper_optimizer, MOI.NLPBlock(), x._nlp_data)
+        #println("x._nlp_data: $(x._nlp_data)")
 
         MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
         if x._objective_is_sv

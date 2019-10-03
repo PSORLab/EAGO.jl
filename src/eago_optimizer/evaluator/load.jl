@@ -1,4 +1,5 @@
-function copy_to_function!(d::Evaluator{N,T}, i::Int64, x::JuMP._FunctionStorage) where {N,T<:RelaxTag}
+function copy_to_function!(d::Evaluator{N,T}, i::Int64, y::JuMP._FunctionStorage) where {N,T<:RelaxTag}
+    x = deepcopy(y)
     lenx = length(x.nd)
     temp_set = fill(MC{N,T}(Interval(-Inf, Inf)), (lenx,))
     temp_flt = Array{Float64}(undef, lenx)
@@ -38,7 +39,8 @@ function copy_to_function!(d::Evaluator{N,T}, i::Int64, x::JuMP._FunctionStorage
     end
     return
 end
-function copy_to_subexpr!(d::Evaluator{N,T}, x::JuMP._SubexpressionStorage) where {N,T<:RelaxTag}
+function copy_to_subexpr!(d::Evaluator{N,T}, y::JuMP._SubexpressionStorage) where {N,T<:RelaxTag}
+    x = deepcopy(y)
     lenx = length(x.nd)
     temp_set = fill(MC{N,T}(Interval(-Inf, Inf)), (lenx,))
     temp_flt = Array{Float64}(undef, lenx)

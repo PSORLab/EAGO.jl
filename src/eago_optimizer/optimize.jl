@@ -3,16 +3,16 @@
 
 Generate the list of variables (1,...,n) that are included in the func.
 """
-function gen_quad_sparsity(func::SQF)
+function gen_quad_vals(func::SQF)
     list = Int64[]
     for term in func.affine_terms
         val = term.variable_index.value
         push!(list, val)
     end
     for term in func.quadratic_terms
-        val = term.variable_index_1.value
-        valn = term.variable_index_1.value
-        push!(list, val, valn)
+        val1 = term.variable_index_1.value
+        val2 = term.variable_index_2.value
+        push!(list, val1, val2)
     end
     sort!(list); unique!(list)
     return list
@@ -31,7 +31,7 @@ function gen_quadratic_storage!(x::Optimizer)
     temp_leq_ci = CI{SAF,LT}[]
     for (func, set, ind) in x._quadratic_leq_constraints
 
-        v = gen_quad_sparsity(func)
+        v = gen_quad_vals(func)
         nv = length(v)
         @inbounds nzvar = variable_index[v]
         push!(x._quadratic_leq_sparsity, nzvar)
@@ -54,7 +54,7 @@ function gen_quadratic_storage!(x::Optimizer)
     temp_geq_ci = CI{SAF,LT}[]
     for (func, set, ind) in x._quadratic_geq_constraints
 
-        v = gen_quad_sparsity(func)
+        v = gen_quad_vals(func)
         nv = length(v)
         @inbounds nzvar = variable_index[v]
         push!(x._quadratic_geq_sparsity, nzvar)
@@ -77,7 +77,7 @@ function gen_quadratic_storage!(x::Optimizer)
     temp_eq_ci = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
     for (func, set, ind) in x._quadratic_eq_constraints
 
-        v = gen_quad_sparsity(func)
+        v = gen_quad_vals(func)
         nv = length(v)
         @inbounds nzvar = variable_index[v]
         push!(x._quadratic_eq_sparsity, nzvar)
@@ -194,9 +194,19 @@ function load_relaxed_problem!(x::Optimizer)
         push!(x._upper_nlp_affine, fill(CI{SAF,LT}(-1), (len_ua,)))
     end
 
-    # add an empty objective
+    # only solves box constrained problems (+ other constraints) so single
+    # variable objective implies that a bound has already been set and it
+    # is not fixed
+    if x._objective_is_sv
+        for (i, z) in enumerate(x._lower_variable_lt)
+            if x._objective_sv.variable.value == x._lower_variable_lt_indx[i]
+                x._objective_cut_ci_sv = z
+                break
+            end
+        end
+    end
+
     for i in 1:x.cut_max_iterations
-        push!(x._objective_cut_ci_sv, CI{SV,LT}(-1))
         push!(x._objective_cut_ci_saf, CI{SAF,LT}(-1))
     end
     MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
@@ -254,7 +264,8 @@ function convert_to_min!(x::Optimizer)
         else
             nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
             pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-            for i in 2:length(nd)
+            nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+            for i in 3:length(nd)
                 @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
             end
         end
@@ -262,9 +273,11 @@ function convert_to_min!(x::Optimizer)
     return
 end
 
-# TODO
-
-has_evaluator(x::MOI.NLPBlockData) = ~isnothing(x.evaluator)
+function has_evaluator(x::MOI.NLPBlockData)
+    flag = ~isnothing(x.evaluator)
+    flag &= ~isa(x.evaluator, EmptyNLPEvaluator)
+    return flag
+end
 
 function initialize_scrub!(m::Optimizer, y::JuMP.NLPEvaluator)
     m.presolve_scrubber_flag && Script.scrub!(y.m.nlp_data)
@@ -278,6 +291,9 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
 
     nlp_data = m._nlp_data
 
+    has_eval = has_evaluator(nlp_data)
+    println("has_eval: $(has_eval)")
+    println("has_eval: $(has_eval)")
     if has_evaluator(nlp_data)
 
         # Build the JuMP NLP evaluator
@@ -354,13 +370,18 @@ function is_convex_quadratic(func::SQF, mult::Float64)
         end
     end
     Q = sparse(row, column, value)
-    if length(Q.nzval) > 1
-        eigval = eigmin(Array(Q))
-        if (eigval) > 0.0
-            flag = true
+    s1, s2 = size(Q)
+    if s1 == s2
+        if length(Q.nzval) > 1
+            eigval = eigmin(Array(Q))
+            if (eigval) > 0.0
+                flag = true
+            end
+        elseif Q.nzval[1] > 0.0
+            flag =  true
         end
-    elseif Q.nzval[1] > 0.0
-        flag =  true
+    else
+        flag = false
     end
     return flag
 end
@@ -377,18 +398,18 @@ function label_quadratic_convexity!(x::Optimizer)
 
     for i in 1:length(x._quadratic_leq_constraints)
         @inbounds func, set, ind = x._quadratic_leq_constraints[i]
-        @inbounds x._quadratic_leq_convexity[i] = is_convex_quadratic(func, 1.0)
+        push!(x._quadratic_leq_convexity, is_convex_quadratic(func, 1.0))
     end
 
     for i in 1:length(x._quadratic_geq_constraints)
         @inbounds func, set, ind = x._quadratic_geq_constraints[i]
-        @inbounds x._quadratic_geq_convexity[i] = is_convex_quadratic(func, -1.0)
+        push!(x._quadratic_geq_convexity, is_convex_quadratic(func, -1.0))
     end
 
     for i in 1:length(x._quadratic_eq_constraints)
         @inbounds func, set, ind = x._quadratic_geq_constraints[i]
-        @inbounds x._quadratic_eq_convexity_1[i] = is_convex_quadratic(func, 1.0)
-        @inbounds x._quadratic_eq_convexity_2[i] = is_convex_quadratic(func, -1.0)
+        push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0))
+        push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0))
     end
 
     return

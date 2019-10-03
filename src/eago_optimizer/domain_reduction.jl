@@ -74,7 +74,12 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
     return
 end
 
+"""
+    bool_indx_diff
 
+Utility function used to set vector of booleans z to x & ~y. Avoids the
+generation of conversion of the BitArray created by broadcasting logical operators.
+"""
 function bool_indx_diff(z::Vector{Bool},x::Vector{Bool}, y::Vector{Bool})
     for i = 1:length(z)
         @inbounds z[i] = (x[i] & ~y[i])
@@ -201,12 +206,21 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
     copyto!(x._obbt_working_upper_index, x._new_upp_index)
     return true
 end
+
+"""
+    aggressive_obbt_on_heurestic
+
+Routine that determines if aggressive filtering should be used. Currently,
+a user-specified option.
+"""
 aggressive_obbt_on_heurestic(x::Optimizer) = x.obbt_aggressive_on
 
 """
     obbt
 
-Performs OBBT with filtering and greedy ordering
+Performs OBBT with filtering and greedy ordering as detailed in:
+Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731.
+https://doi.org/10.1007/s10898-016-0450-4
 """
 function obbt(x::Optimizer)
 

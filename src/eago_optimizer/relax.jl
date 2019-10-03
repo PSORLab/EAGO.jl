@@ -121,40 +121,49 @@ function relax_quadratic_gen_saf(func::SQF, vi::Vector{VI}, n::NodeBB,
 end
 function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
                              lower::Float64, i::Int64, q::Int64)
-    if q == 1
-        opt = x.relaxed_optimizer
+    opt = x.relaxed_optimizer
+    if false #(q == 1) & x.relaxed_inplace_mod
         for (i, term) in enumerate(saf.terms)
             MOI.modify(opt, ci, SCoefC(term.variable_index, -1.0*term.coefficient))
         end
         MOI.set(opt, MOI.ConstraintSet(), ci, LT(-lower + saf.constant))
     else
-        x._quadratic_ci_geq[q][i] = MOI.add_constraint(opt, saf, LT(-lower + saf.constant))
+        c = saf.constant
+        saf.constant = 0.0
+        x._quadratic_ci_geq[q][i] = MOI.add_constraint(opt, saf, LT(-lower + c))
     end
     return
 end
 function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
                             upper::Float64, i::Int64, q::Int64)
-    if q == 1
+    opt = x.relaxed_optimizer
+    if false #(q == 1) & x.relaxed_inplace_mod
         opt = x.relaxed_optimizer
         for (i, term) in enumerate(saf.terms)
             MOI.modify(opt, ci, SCoefC(term.variable_index, term.coefficient))
         end
         MOI.set(opt, MOI.ConstraintSet(), ci, LT(upper - saf.constant))
     else
-        x._quadratic_ci_leq[q][i] = MOI.add_constraint(opt, saf, LT(upper - saf.constant))
+        c = saf.constant
+        saf.constant = 0.0
+        x._quadratic_ci_leq[q][i] = MOI.add_constraint(opt, saf, LT(upper - c))
     end
     return
 end
 function store_eq_quadratic!(x::Optimizer, ci1::CI{SAF,LT}, ci2::CI{SAF,LT},
                             saf1::SAF, saf2::SAF, value::Float64, i::Int64,
                             q::Int64)
-    if q == 1
+    opt = x.relaxed_optimizer
+    if false #(q == 1) & x.relaxed_inplace_mod
         store_ge_quadratic!(x, ci1, saf1, value, q)
         store_le_quadratic!(x, ci2, saf2, value, q)
     else
-        opt = x.relaxed_optimizer
-        c1 = MOI.add_constraint(opt, saf1, LT(value - saf1.constant))
-        c2 = MOI.add_constraint(opt, saf2, LT(-value + saf2.constant))
+        c1 = saf1.constant
+        c2 = saf2.constant
+        saf1.constant = 0.0
+        saf2.constant = 0.0
+        c1 = MOI.add_constraint(opt, saf1, LT(value - c1))
+        c2 = MOI.add_constraint(opt, saf2, LT(-value + c2))
         x._quadratic_ci_eq[q][i] = (c1,c2)
     end
     return
@@ -171,31 +180,48 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
 
     # Relax Convex Constraint Terms TODO: place all quadratic info into one vector of tuples?
     for i in 1:length(x._quadratic_leq_constraints)
+        #=
         @inbounds func, set, j = x._quadratic_leq_constraints[i]
         @inbounds cvx_dict = x._quadratic_leq_dict[i]
         @inbounds vi = x._quadratic_leq_sparsity[i]
         @inbounds nz = x._quadratic_leq_gradnz[i]
         @inbounds ci1 = x._quadratic_ci_leq[q][i]
         @inbounds flag1 = x._quadratic_leq_convexity[i]
-        saf = relax_quadratic_gen_saf(func, vi, nz, x0, cvx_dict, flag1)
-        store_le_quadratic!(x, ci1, saf, set.greater, i, q)
+        =#
+        func, set, j = x._quadratic_leq_constraints[i]
+        cvx_dict = x._quadratic_leq_dict[i]
+        vi = x._quadratic_leq_sparsity[i]
+        nz = x._quadratic_leq_gradnz[i]
+        ci1 = x._quadratic_ci_leq[q][i]
+        flag1 = x._quadratic_leq_convexity[i]
+        saf = relax_quadratic_gen_saf(func, vi, n, nz, x0, cvx_dict, flag1)
+        store_le_quadratic!(x, ci1, saf, set.upper, i, q)
     end
 
     for i in 1:length(x._quadratic_geq_constraints)
+        #=
         @inbounds func, set, j = x._quadratic_geq_constraints[i]
         @inbounds cvx_dict = x._quadratic_geq_dict[i]
         @inbounds vi = x._quadratic_geq_sparsity[i]
         @inbounds nz = x._quadratic_geq_gradnz[i]
         @inbounds ci1 = x._quadratic_ci_geq[q][i]
         @inbounds flag1 = x._quadratic_geq_convexity[i]
+        =#
+        func, set, j = x._quadratic_geq_constraints[i]
+        cvx_dict = x._quadratic_geq_dict[i]
+        vi = x._quadratic_geq_sparsity[i]
+        nz = x._quadratic_geq_gradnz[i]
+        ci1 = x._quadratic_ci_geq[q][i]
+        flag1 = x._quadratic_geq_convexity[i]
         vec_sat = SAT[SAT(-t.coefficient, t.variable_index) for t in func.affine_terms]
         vec_sqt = SQT[SQT(-t.coefficient, t.variable_index_1, t.variable_index_2) for t in func.quadratic_terms]
         func_minus = SQF(vec_sat, vec_sqt, -func.constant)
-        saf = relax_quadratic_gen_saf(func_minus, vi, nz, x0, cvx_dict, flag1)
+        saf = relax_quadratic_gen_saf(func_minus, vi, n, nz, x0, cvx_dict, flag1)
         store_ge_quadratic!(x, ci1, saf, set.lower, i, q)
     end
 
     for i in 1:length(x._quadratic_eq_constraints)
+        #=
         @inbounds func, set, j = x._quadratic_eq_constraints[i]
         @inbounds cvx_dict = x._quadratic_eq_dict[i]
         @inbounds vi = x._quadratic_eq_sparsity[i]
@@ -203,11 +229,19 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
         @inbounds ci1, ci2 = x._quadratic_ci_eq[q][i]
         @inbounds flag1 = x._quadratic_eq_convexity_1[i]
         @inbounds flag2 = x._quadratic_eq_convexity_2[i]
-        saf1 = relax_quadratic_gen_saf(func, vi, nz, x0, cvx_dict, flag1)
+        =#
+        func, set, j = x._quadratic_eq_constraints[i]
+        cvx_dict = x._quadratic_eq_dict[i]
+        vi = x._quadratic_eq_sparsity[i]
+        nz = x._quadratic_eq_gradnz[i]
+        ci1, ci2 = x._quadratic_ci_eq[q][i]
+        flag1 = x._quadratic_eq_convexity_1[i]
+        flag2 = x._quadratic_eq_convexity_2[i]
+        saf1 = relax_quadratic_gen_saf(func, vi, n, nz, x0, cvx_dict, flag1)
         vec_sat = SAT[SAT(-t.coefficient, t.variable_index) for t in func.affine_terms]
         vec_sqt = SQT[SQT(-t.coefficient, t.variable_index_1, t.variable_index_2) for t in func.quadratic_terms]
         func_minus = SQF(vec_sat, vec_sqt, -func.constant)
-        saf2 = relax_quadratic_gen_saf(func_minus, vi, nz, x0, cvx_dict, flag2)
+        saf2 = relax_quadratic_gen_saf(func_minus, vi, n, nz, x0, cvx_dict, flag2)
         store_eq_quadratic!(x, ci1, ci2, saf1, saf2, set.value, i, q)
     end
 
@@ -319,7 +353,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                 upper_nlp_sparsity = x._upper_nlp_sparsity
                 lower_nlp_affine_indx = x._lower_nlp_affine_indx
                 upper_nlp_affine_indx = x._upper_nlp_affine_indx
-                if q == 1
+                if (q == 1) & x.relaxed_inplace_mod
                     for i in 1:length(lower_nlp_affine_indx)
                         @inbounds g_indx = lower_nlp_affine_indx[i]
                         @inbounds aff_ci = lower_nlp_affine[i]
@@ -363,17 +397,18 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         @inbounds constant = g[g_indx]
                         dg_cv_val = 0.0
                         coeff = zeros(Float64,length(nzidx))
-                        vindices = vi[nzidx]
-                        for j in nzidx
-                            @inbounds dg_cv_val = dg[i,j]
+                        @inbounds vindices = vi[nzidx]
+                        for j in 1:length(nzidx)
+                            @inbounds indx = nzidx[j]
+                            @inbounds dg_cv_val = dg[i,indx]
                             @inbounds coeff[j] = dg_cv_val
-                            @inbounds constant -= v[j]*dg_cv_val
+                            @inbounds constant -= v[indx]*dg_cv_val
                         end
-                        saf =
+                        saf = SAF(SAT.(coeff,vindices), 0.0)
                         @inbounds bns = constraint_bounds[i]
                         set = LT(bns.upper-constant)
                         saf = SAF(SAT.(coeff,vindices), 0.0)
-                        x._lower_nlp_affine[q][i] = add_constraint(x.relaxed_optimizer,
+                        x._lower_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
                                                                    saf, set)
                     end
                     for i in 1:length(upper_nlp_affine_indx)
@@ -384,16 +419,17 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         @inbounds constant = g_cc[g_indx]
                         dg_cc_val = 0.0
                         coeff = zeros(Float64,length(nzidx))
-                        vindices = vi[nzidx]
-                        for (j, nvz) in enumerate(nzidx)
-                            @inbounds dg_cc_val = dg[i,j]
+                        @inbounds vindices = vi[nzidx]
+                        for j in 1:length(nzidx)
+                            @inbounds indx = nzidx[j]
+                            @inbounds dg_cc_val = dg[i,indx]
                             @inbounds coeff[j] = dg_cc_val
-                            @inbounds constant -= v[j]*dg_cc_val
+                            @inbounds constant -= v[indx]*dg_cc_val
                         end
                         @inbounds bns = constraint_bounds[i]
                         set = LT(constant - bns.lower)
                         saf = SAF(SAT.(coeff,vindices), 0.0)
-                        x._upper_nlp_affine[q][i] = add_constraint(x.relaxed_optimizer,
+                        x._upper_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
                                                                    saf, set)
                     end
                 end
@@ -422,12 +458,12 @@ Adds linear objective cut constraint to `trg` optimizer.
 """
 function objective_cut_linear!(x::Optimizer, q::Int64)
     if x._global_upper_bound < Inf
-        if (x._objective_cut_set == -1) || (q > 1)
+        if (x._objective_cut_set == -1) || (q > 1) ||  ~x.relaxed_inplace_mod
             z = (x._objective_cut_set == -1) ? 1 : q
             set = LT(x._global_upper_bound)
             if x._objective_is_sv
-                ci_sv = MOI.add_constraint(x_relaxed_optimizer, x._objective_sv, set)
-                x._objective_cut_ci_sv[z] = ci
+                ci_sv = x._objective_cut_ci_sv
+                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
             elseif x._objective_is_saf
                 ci_saf = MOI.add_constraint(x.relaxed_optimizer, x._objective_saf, set)
                 x._objective_cut_ci_saf[z] = ci_saf
@@ -452,7 +488,7 @@ function objective_cut_linear!(x::Optimizer, q::Int64)
                 set = LT(x._global_upper_bound - saf.constant)
                 MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
             else
-                ci_sv = x._objective_cut_ci_sv[1]
+                ci_sv = x._objective_cut_ci_sv
                 set = LT(x._global_upper_bound)
                 MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
             end
