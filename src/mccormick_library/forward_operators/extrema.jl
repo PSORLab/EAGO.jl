@@ -19,7 +19,7 @@ end
     gcv2,gdcv2 = cv_max(x.cc, x.Intv.lo, x.Intv.hi, c)
     cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
     cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
-    return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
+    return MC{N,Diff}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
 @inline function max_kernel(x::MC{N, NS}, c::Float64, z::Interval{Float64}) where N
     midcv, cv_id = mid3(x.cc, x.cv, x.Intv.lo)
@@ -29,7 +29,7 @@ end
     cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
     cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
     cv, cc, cv_grad, cc_grad = cut(z.lo, z.hi, cv, cc, cv_grad, cc_grad)
-    return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
+    return MC{N,NS}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
 @inline max(x::MC, c::Float64) = max_kernel(x, c, max(x.Intv, c))
 @inline min_kernel(x::MC, c::Float64, z::Interval{Float64}) = -max(-x,-c)

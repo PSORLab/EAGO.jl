@@ -297,7 +297,7 @@ function MC{N,T}(cv::Float64, cc::Float64) where {N, T <: RelaxTag}
           SVector{N,Float64}(zeros(Float64,N)), true)
 end
 function MC{N,T}(val::Float64, Intv::Interval{Float64}, i::Int64) where {N, T <: RelaxTag}
-    MC{N,T}(val, val, Intv, seed_gradient(i,N), seed_gradient(i,N), false)
+    MC{N,T}(val, val, Intv, seed_gradient(i,Val(N)), seed_gradient(i,Val(N)), false)
 end
 function MC{N,T}(x::MC{N,T}) where {N, T <: RelaxTag}
     MC{N,T}(x.cv, x.cc, x.Intv, x.cv_grad, x.cc_grad, x.cnst)

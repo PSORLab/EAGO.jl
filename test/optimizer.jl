@@ -181,6 +181,7 @@ end
     @test MOI.is_empty(model)
 end
 
+#=
 function test_forward_evaluator(m::JuMP.Model, expr::Expr, xpnt::Vector{Float64},
                                 xL::Vector{Float64}, xU::Vector{Float64},
                                 tfunc::Function; atol = 0.0)
@@ -317,6 +318,7 @@ end
         midx = (xL + xU)/2.0
         @test test_forward_evaluator(m, expr, midx, xL, xU, test_func, atol = 1E-8)
 end
+=#
 
 @testset "LP Problems" begin
     m = Model(with_optimizer(EAGO.Optimizer,
@@ -419,6 +421,7 @@ end
     @test JuMP.primal_status(m) == MOI.INFEASIBILITY_CERTIFICATE
 end
 
+#=
 @testset "NLP Problems" begin
     m = Model(with_optimizer(EAGO.Optimizer,
                              udf_scrubber_flag = false,
@@ -490,3 +493,4 @@ end
 
 #include("Optimizer/quadratic_relaxation.jl")
 #include("implicit_optimizer.jl")
+=#

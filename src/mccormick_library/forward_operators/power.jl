@@ -254,7 +254,7 @@ function pow_kernel(x::MC, c::Z, y::Interval{Float64}) where {Z<:Integer}
 						else
         	  		z = neg_powneg_even(x, c, y)
 						end
-        elseif (Intv.lo > 0.0)
+        elseif (x.Intv.lo > 0.0)
 					  z = npp_or_pow4(x, c, y)
 				else
 					error("Envelope not defined.")

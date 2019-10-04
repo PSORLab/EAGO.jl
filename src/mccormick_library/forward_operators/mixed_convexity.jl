@@ -481,7 +481,7 @@ end
   cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
   cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
   cv, cc, cv_grad, cc_grad = cut(xLc, xUc, cv, cc, cv_grad, cc_grad)
-  return MC{N}(cv, cc, yintv, cv_grad, cc_grad, x.cnst)
+  return MC{N,NS}(cv, cc, yintv, cv_grad, cc_grad, x.cnst)
 end
 @inline function cosh_kernel(x::MC{N,Diff}, yintv::Interval{Float64}) where N
   if (yintv.lo == -Inf) || (yintv.hi == Inf)
@@ -507,7 +507,7 @@ end
   gcv2,gdcv2 = cv_cosh(x.cc, x.Intv.lo, x.Intv.hi)
   cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
   cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
-  return MC{N}(cv, cc, yintv, cv_grad, cc_grad, x.cnst)
+  return MC{N,Diff}(cv, cc, yintv, cv_grad, cc_grad, x.cnst)
 end
 @inline cosh(x::MC) = cosh_kernel(x, cosh(x.Intv))
 

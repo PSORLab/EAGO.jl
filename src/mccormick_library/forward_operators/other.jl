@@ -31,7 +31,7 @@ end
 	cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
 	cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
 	cv, cc, cv_grad, cc_grad = cut(xLc, xUc, cv, cc, cv_grad, cc_grad)
-	return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
+	return MC{N,NS}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
 @inline function step_kernel(x::MC{N, Diff}, z::Interval{Float64}) where N
 	 xL = x.Intv.lo
@@ -48,7 +48,7 @@ end
 	 cv2, gdcv2 = cv_step(x.cc, x.Intv.lo, x.Intv.hi)
 	 cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
 	 cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
-	 return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
+	 return MC{N,Diff}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
 @inline step(x::MC) = step_kernel(x, step(x.Intv))
 
@@ -85,7 +85,7 @@ end
 	cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
 	cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
 	cv, cc, cv_grad, cc_grad = cut(xLc,xUc,cv,cc,cv_grad,cc_grad)
-	return MC{N}(cv, cc, z, cv_grad, cc_grad, x.cnst)
+	return MC{N,NS}(cv, cc, z, cv_grad, cc_grad, x.cnst)
 end
 @inline function abs_kernel(x::MC{N, Diff}, z::Interval{Float64}) where N
   xL = x.Intv.lo
@@ -136,7 +136,7 @@ end
 @inline function intersect(x::MC{N, Diff}, y::MC{N, Diff}) where N
     max_MC = x - max(x - y, 0.0)   # used for convex
     min_MC = y - max(y - x, 0.0)   # used for concave
-    return MC{N}(max_MC.cv, min_MC.cc, intersect(x.Intv,y.Intv), max_MC.cv_grad, min_MC.cc_grad, (x.cnst && y.cnst))
+    return MC{N,Diff}(max_MC.cv, min_MC.cc, intersect(x.Intv,y.Intv), max_MC.cv_grad, min_MC.cc_grad, (x.cnst && y.cnst))
 end
 
 @inline function intersect(x::MC{N, NS}, y::Interval{Float64}) where N
