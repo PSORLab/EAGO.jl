@@ -355,7 +355,7 @@ end
 
 Returns true if `func` < 0  based on eigenvalue tests, false otherwise.
 """
-function is_convex_quadratic(func::SQF, mult::Float64)
+function is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{Int64,Int64})
     # Riguous Convexity Test
     flag = false
     row = Int64[]
@@ -364,24 +364,28 @@ function is_convex_quadratic(func::SQF, mult::Float64)
     for term in func.quadratic_terms
         coeff = term.coefficient
         if coeff != 0.0
-            push!(row, term.variable_index_1.value)
-            push!(column, term.variable_index_2.value)
-            push!(value, mult*coeff)
+            value1 = cvx_dict[term.variable_index_1.value]
+            value2 = cvx_dict[term.variable_index_2.value]
+            mcoeff = mult*coeff
+            push!(row, value1)
+            push!(column, value2)
+            push!(value, mcoeff)
+            push!(row, value2)
+            push!(column, value1)
+            push!(value, mcoeff)
         end
     end
     Q = sparse(row, column, value)
+    println("Q: $Q")
+    println("size(Q): $(size(Q))")
     s1, s2 = size(Q)
-    if s1 == s2
-        if length(Q.nzval) > 1
-            eigval = eigmin(Array(Q))
-            if (eigval) > 0.0
-                flag = true
-            end
-        elseif Q.nzval[1] > 0.0
-            flag =  true
+    if length(Q.nzval) > 1
+        eigval = eigmin(Array(Q))
+        if (eigval) > 0.0
+            flag = true
         end
-    else
-        flag = false
+    elseif Q.nzval[1] > 0.0
+        flag =  true
     end
     return flag
 end
@@ -398,18 +402,21 @@ function label_quadratic_convexity!(x::Optimizer)
 
     for i in 1:length(x._quadratic_leq_constraints)
         @inbounds func, set, ind = x._quadratic_leq_constraints[i]
-        push!(x._quadratic_leq_convexity, is_convex_quadratic(func, 1.0))
+        @inbounds cvx_dict = x._quadratic_leq_dict[i]
+        push!(x._quadratic_leq_convexity, is_convex_quadratic(func, 1.0, cvx_dict))
     end
 
     for i in 1:length(x._quadratic_geq_constraints)
         @inbounds func, set, ind = x._quadratic_geq_constraints[i]
-        push!(x._quadratic_geq_convexity, is_convex_quadratic(func, -1.0))
+        @inbounds cvx_dict = x._quadratic_geq_dict[i]
+        push!(x._quadratic_geq_convexity, is_convex_quadratic(func, -1.0, cvx_dict))
     end
 
     for i in 1:length(x._quadratic_eq_constraints)
         @inbounds func, set, ind = x._quadratic_geq_constraints[i]
-        push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0))
-        push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0))
+        @inbounds cvx_dict = x._quadratic_eq_dict[i]
+        push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0, cvx_dict))
+        push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0, cvx_dict))
     end
 
     return
@@ -678,9 +685,9 @@ function presolve_problem!(m::Optimizer)
     create_initial_node!(m)                        # Create initial node and add it to the stack
     label_fixed_variables!(m)
     label_nonlinear_variables!(m)
-    label_quadratic_convexity!(m)
     check_disable_fbbt!(m)
     load_relaxed_problem!(m)
+    label_quadratic_convexity!(m)
 
     m._presolve_time = time() - m._parse_time
 

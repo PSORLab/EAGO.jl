@@ -622,64 +622,66 @@ function cut_condition(t::ExtensionType, x::Optimizer)
     flag = x._cut_add_flag
     flag &= (x._cut_iterations < x.cut_max_iterations)
 
-    y = x._current_node
-    xprior = x._current_xref
-    xsol = (x._cut_iterations > 1) ? x._cut_solution : x._lower_solution
-    xnew = (1.0 - x.cut_cvx)*mid(y) + x.cut_cvx*xsol
-    if norm((xprior - xnew)./diam(y), 1) > x.cut_tolerance
-        x._current_xref = xnew
-        flag &= true
-    else
-        flag &= false
-    end
-
-    if ~flag
-        # if not further cuts then empty the added cuts
-        for i in 2:x._cut_iterations
-            for ci in x._quadratic_ci_leq[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-            for ci in x._quadratic_ci_geq[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-            for (ci1,ci2) in x._quadratic_ci_eq[i]
-                MOI.delete(x.relaxed_optimizer, ci1)
-                MOI.delete(x.relaxed_optimizer, ci2)
-            end
-            for ci in x._lower_nlp_affine[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-            for ci in x._upper_nlp_affine[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
+    if flag
+        y = x._current_node
+        xprior = x._current_xref
+        xsol = (x._cut_iterations > 1) ? x._cut_solution : x._lower_solution
+        xnew = (1.0 - x.cut_cvx)*mid(y) + x.cut_cvx*xsol
+        if norm((xprior - xnew)./diam(y), 1) > x.cut_tolerance
+            x._current_xref = xnew
+            flag &= true
+        else
+            flag &= false
         end
-        if x._objective_cut_set !== -1
-            if ~x._objective_is_sv
-                for i in 2:x._cut_iterations
-                    ci = x._objective_cut_ci_saf[i]
+
+        if ~flag
+            # if not further cuts then empty the added cuts
+            for i in 2:x._cut_iterations
+                for ci in x._quadratic_ci_leq[i]
+                    MOI.delete(x.relaxed_optimizer, ci)
+                end
+                for ci in x._quadratic_ci_geq[i]
+                    MOI.delete(x.relaxed_optimizer, ci)
+                end
+                for (ci1,ci2) in x._quadratic_ci_eq[i]
+                    MOI.delete(x.relaxed_optimizer, ci1)
+                    MOI.delete(x.relaxed_optimizer, ci2)
+                end
+                for ci in x._lower_nlp_affine[i]
+                    MOI.delete(x.relaxed_optimizer, ci)
+                end
+                for ci in x._upper_nlp_affine[i]
                     MOI.delete(x.relaxed_optimizer, ci)
                 end
             end
-        end
-
-        # check to see if interval bound is preferable
-        if x._lower_feasibility
-            if x._objective_is_nlp
-                intv_lo = eval_objective_lo(x._relaxed_evaluator)
-            else
-                if x._objective_is_sv
-                    obj_indx = x._objective_sv.variable.value
-                    @inbounds intv_lo = y.lower_variable_bounds[obj_indx]
-                elseif x._objective_is_saf
-                    intv_lo = interval_bound(x._objective_saf, y, true)
-                elseif x._objective_is_sqf
-                    intv_lo = interval_bound(x._objective_sqf, y, true)
+            if x._objective_cut_set !== -1
+                if ~x._objective_is_sv
+                    for i in 2:x._cut_iterations
+                        ci = x._objective_cut_ci_saf[i]
+                        MOI.delete(x.relaxed_optimizer, ci)
+                    end
                 end
             end
-            if (intv_lo > x._lower_objective_value)
-                x._lower_objective_value = intv_lo
-                fill!(x._lower_lvd, 0.0)
-                fill!(x._lower_uvd, 0.0)
+
+            # check to see if interval bound is preferable
+            if x._lower_feasibility
+                if x._objective_is_nlp
+                    intv_lo = eval_objective_lo(x._relaxed_evaluator)
+                else
+                    if x._objective_is_sv
+                        obj_indx = x._objective_sv.variable.value
+                        @inbounds intv_lo = y.lower_variable_bounds[obj_indx]
+                    elseif x._objective_is_saf
+                        intv_lo = interval_bound(x._objective_saf, y, true)
+                    elseif x._objective_is_sqf
+                        intv_lo = interval_bound(x._objective_sqf, y, true)
+                    end
+                end
+                if (intv_lo > x._lower_objective_value)
+                    x._lower_objective_value = intv_lo
+                    fill!(x._lower_lvd, 0.0)
+                    fill!(x._lower_uvd, 0.0)
+                end
             end
         end
     end

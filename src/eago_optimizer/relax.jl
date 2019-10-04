@@ -51,12 +51,12 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
         vidx1 = cvx_dict[nidx1]
         vidx2 = cvx_dict[nidx2]
         @inbounds xL1 = lvb[nidx1]
-        @inbounds xU1 = uvb[nidx2]
+        @inbounds xU1 = uvb[nidx1]
         @inbounds x01 = x0[nidx1]
         if nidx1 == nidx2               # quadratic terms
             if (a > 0.0)
                 @inbounds terms_coeff[vidx1] = 2.0*a*x01
-                quadratic_constant -= 2.0*x01*x01
+                quadratic_constant -= x01*x01
             else
                 @inbounds terms_coeff[vidx1] = a*(xL1 + xU1)
                 quadratic_constant -= a*xL1*xU1
@@ -77,7 +77,7 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
                     quadratic_constant -= a*xU1*xU2
                 end
             else
-                check_ref = (xU1 - xL1)*x02 + (xU2 - xL2)*x01
+                check_ref = (xU1 - xL1)*x02 - (xU2 - xL2)*x01
                 if check_ref <= (xU1*xL2 - xL1*xU2)
                     @inbounds terms_coeff[vidx1] += a*xL2
                     @inbounds terms_coeff[vidx2] += a*xU1
@@ -404,9 +404,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                             @inbounds coeff[j] = dg_cv_val
                             @inbounds constant -= v[indx]*dg_cv_val
                         end
-                        saf = SAF(SAT.(coeff,vindices), 0.0)
-                        @inbounds bns = constraint_bounds[i]
-                        set = LT(bns.upper-constant)
+                        set = LT(-constant)
                         saf = SAF(SAT.(coeff,vindices), 0.0)
                         x._lower_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
                                                                    saf, set)

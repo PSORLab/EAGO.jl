@@ -574,7 +574,7 @@ end
 Checks to see if constraint is a bivariant quadratic term
 ```
 function check_bivariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
-    vIndx = Int[]
+    vIndx = Int64[]
     (length(f.quadratic_terms) > 3) && (return false)
     (length(f.affine_terms) > 2) && (return false)
     for i in f.affine_terms push!(vIndx,i.variable_index.value) end
