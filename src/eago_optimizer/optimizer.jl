@@ -336,6 +336,16 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         m = new()
 
+        # checks that all keywords supplied to the optimizers are field names
+        # throws error otherwise
+        allowed_kwargs = fieldnames(Optimizer{S,T})
+        disallowed_kwargs = setdiff(collect(keys(options)), allowed_kwargs)
+        if ~isempty(disallowed_kwargs)
+            error("The following keyword arguments are not recognized by the
+                   EAGO optimizer: $(disallowed_kwargs). Please consult
+                   the documentation for allowed arguments.")
+        end
+
         default_opt_dict = Dict{Symbol,Any}()
 
         # Presolving options
