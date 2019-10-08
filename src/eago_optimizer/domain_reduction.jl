@@ -688,6 +688,12 @@ function classify_quadratics!(m::Optimizer)
     return
 end
 
+"""
+    univariate_kernel
+
+Kernel of the bound tightening operation on univariant qudaratic functions.
+Called for each univariate function.
+"""
 function univariate_kernel(n::NodeBB,a::Float64,b::Float64,c::Float64,vi::Int)
         flag = true
         term1 = c + (b^2)/(4.0*a)
@@ -715,6 +721,11 @@ function univariate_kernel(n::NodeBB,a::Float64,b::Float64,c::Float64,vi::Int)
         return flag
 end
 
+"""
+    univariate_quadratic
+
+Performs bound tightening on all univariate quadratic functions.
+"""
 function univariate_quadratic(m::Optimizer)
     feas = true
     # fathom ax^2 + bx + c > l quadratics
@@ -745,11 +756,22 @@ function univariate_quadratic(m::Optimizer)
      return feas
 end
 
+"""
+    bivariate_kernel
+
+Kernel of the bound tightening operation on bivariate qudaratic functions.
+Called for each bivariate function.
+"""
 function bivariate_kernel(m::Optimizer,n::NodeBB,ax::Float64,ay::Float64,axy::Float64,
                          bx::Float64,by::Float64,vi1::Int,vi2)
         # Case distinction from Vigerske disseration (TO DO)
 end
 
+"""
+    bivariate_quadratic
+
+Performs bound tightening on all bivariate quadratic functions.
+"""
 function bivariate_quadratic(m::Optimizer,n::NodeBB)
     feas = true
     # fathom ax^2 + bx + c > l quadratics

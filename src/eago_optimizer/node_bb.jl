@@ -6,9 +6,8 @@ Stores information associated with each node in Branch & Bound tree.
 - `upper_variable_bounds::Vector{Float64}`: Upper bounds of variable box.
 - `lower_bound::Float64`: Lower bound of problem solution on nodeBB
 - `upper_bound::Float64`: Upper bound of problem solution on nodeBB
-- `depth::Int`: Depth of node in B&B tree.
-- `last_branch::Int`: Last dimension branched on.
-- `branch_direction::Bool`: For future use with branching heurestics (false if nlp solve not in box, true otherwise).
+- `depth::Int64`: Depth of node in B&B tree.
+- `id::Int64`: Unique id for each node.
 """
 struct NodeBB
     lower_variable_bounds::Vector{Float64}
@@ -60,6 +59,7 @@ function copy(x::NodeBB)
     return NodeBB(x.lower_variable_bounds, x.upper_variable_bounds,
                   x.lower_bound, x.upper_bound, x.depth, x.id)
 end
+
 """
     same_box
 

@@ -76,10 +76,11 @@ function branch_node!(t::ExtensionType, x::Optimizer)
 
     return
 end
+
 """
     single_storage!
 
-Stores the one nodes to the stack.
+Stores the current node to the stack after updating lower/upper bounds.
 """
 function single_storage!(t::ExtensionType, x::Optimizer)
     y = x._current_node
@@ -200,8 +201,8 @@ end
 """
     convergence_check
 
-Checks for termination of algorithm due to satisfying absolute or relative
-tolerance, infeasibility, or a specified limit.
+Checks for convergence of algorithm with respect to absolute and/or relative
+tolerances.
 """
 function convergence_check(t::ExtensionType, x::Optimizer)
 
@@ -247,7 +248,8 @@ end
     is_feasible_solution
 
 Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `true`
-if this corresponds to a solution that is proven feasible. Returns `false` otherwise.
+if this corresponds to a solution that is proven to be feasible.
+Returns `false` otherwise.
 """
 function is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
 
@@ -304,8 +306,9 @@ end
 """
     preprocess!
 
-Runs interval, linear, and quadratic contractor methods up to tolerances
-specified in `EAGO.Optimizer` object.
+Runs interval, linear, quadratic contractor methods followed by obbt and a
+constraint programming walk up to tolerances specified in
+`EAGO.Optimizer` object.
 """
 function preprocess!(t::ExtensionType, x::Optimizer)
 
@@ -352,6 +355,13 @@ function preprocess!(t::ExtensionType, x::Optimizer)
     return
 end
 
+"""
+    update_relaxed_problem_box!
+
+Updates the relaxed constraint by setting the constraint set of v == x* ,
+xL_i <= x_i , and x_i <= xU_i for each such constraint added to the relaxed
+    optimizer.
+"""
 function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
 
     opt = x.relaxed_optimizer
@@ -551,6 +561,14 @@ and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, x::Optimizer)
 
+    println("--------------")
+    println("--------------")
+    println("ran lower problem at iteration = $(x._iteration_count)...")
+    println("ran lower problem at iteration = $(x._iteration_count)...")
+    println("ran lower problem at iteration = $(x._iteration_count)...")
+    println("--------------")
+    println("--------------")
+
     y = x._current_node
     if ~x._obbt_performed_flag
         x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
@@ -587,9 +605,23 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
         interval_lower_bound!(x, y)
         x._cut_add_flag = false
     end
+
+    println("--------------")
+    println("--------------")
+    println("ran lower problem end at iteration = $(x._iteration_count)...")
+    println("ran lower problem end at iteration = $(x._iteration_count)...")
+    println("ran lower problem end at iteration = $(x._iteration_count)...")
+    println("--------------")
+    println("--------------")
+
     return
 end
 
+"""
+    cut_update
+
+Updates the internal storage in the optimizer after a valid feasible cut is added.
+"""
 function cut_update(x::Optimizer)
     x._cut_feasibility = true
 
@@ -615,7 +647,10 @@ end
 """
     cut_condition
 
-Branch-and-cut feature currently under development. Currently, returns false.
+Checks if a cut should be added and computes a new reference point to add the
+cut at. If no cut should be added the constraints not modified in place are
+deleted from the relaxed optimizer and the solution is compared with the
+interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, x::Optimizer)
 
@@ -690,12 +725,21 @@ function cut_condition(t::ExtensionType, x::Optimizer)
 
     return flag
 end
+
 """
     add_cut!
 
-Branch-and-Cut under development.
+Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, x::Optimizer)
+
+    println("--------------")
+    println("--------------")
+    println("ran add cut at iteration = $(x._iteration_count)...")
+    println("ran add cut at iteration = $(x._iteration_count)...")
+    println("ran add cut at iteration = $(x._iteration_count)...")
+    println("--------------")
+    println("--------------")
 
     relax_problem!(x, x._current_xref, x._cut_iterations)
     relax_objective!(x, x._current_xref)
@@ -722,11 +766,26 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     else
         x._cut_add_flag = false
     end
+
+    println("--------------")
+    println("--------------")
+    println("ran add cut end at iteration = $(x._iteration_count)...")
+    println("ran add cut end at iteration = $(x._iteration_count)...")
+    println("ran add cut end at iteration = $(x._iteration_count)...")
+    println("--------------")
+    println("--------------")
+
     return
 end
 
-# is root node? is at iteration number? did last bound improve? did last bound
-# land in current domain? can omit is_integer_feasible(x) since still an NLP solver
+"""
+    default_nlp_heurestic
+
+Default check to see if the upper bounding problem should be run. By default,
+The upper bounding problem is run on every node up to depth `upper_bounding_depth`
+and is triggered with a probability of `0.5^(depth - upper_bounding_depth)`
+afterwards.
+"""
 function default_nlp_heurestic(x::Optimizer, y::NodeBB)
     bool = false
     bool |= (y.depth <= x.upper_bounding_depth)
@@ -737,8 +796,8 @@ end
 """
     solve_local_nlp!
 
-Constructs and solves the problem locally on on node `y` and saves upper
-bounding info to `x.current_upper_info`.
+Constructs and solves the problem locally on on node `y` updated the upper
+solution informaton in the optimizer.
 """
 function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, T <: MOI.AbstractOptimizer}
 
@@ -829,7 +888,7 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
             sol = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
             #println("obj: $obj")
             #println("sol: $sol")
-            x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
+            x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue()) + 1000
             x._upper_solution[1:end] = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else
             x._upper_feasibility = false
@@ -841,8 +900,11 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
     end
     return
 end
+
 """
-    postprocess!
+    upper_problem!
+
+Default upper bounding problem which simply calls `solve_local_nlp!`.
 """
 function upper_problem!(t::ExtensionType, x::Optimizer)
     solve_local_nlp!(x)
