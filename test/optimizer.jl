@@ -1,14 +1,14 @@
 @testset "Set Objective" begin
-    model = EAGO.Optimizer()
+    model = @inferred EAGO.Optimizer()
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    @test model.optimization_sense == MOI.MIN_SENSE
+    @inferred MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    @test model._optimization_sense == MOI.MIN_SENSE
 
     MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-    @test model.optimization_sense == MOI.MAX_SENSE
+    @test model._optimization_sense == MOI.MAX_SENSE
 
     MOI.set(model, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
-    @test model.optimization_sense == MOI.FEASIBILITY_SENSE
+    @test model._optimization_sense == MOI.FEASIBILITY_SENSE
 end
 
 @testset "Get Termination Code " begin
@@ -16,12 +16,12 @@ end
     model = EAGO.Optimizer()
 
     # Termination Status Code Checks
-    model.termination_status_code = MOI.OPTIMAL
-    status = MOI.get(model, MOI.TerminationStatus())
+    model._termination_status_code = MOI.OPTIMAL
+    status = @inferred MOI.get(model, MOI.TerminationStatus())
     @test status == MOI.OPTIMAL
 
-    model.termination_status_code = MOI.ITERATION_LIMIT
-    status = MOI.get(model, MOI.TerminationStatus())
+    model._termination_status_code = MOI.ITERATION_LIMIT
+    status = @inferred MOI.get(model, MOI.TerminationStatus())
     @test status == MOI.ITERATION_LIMIT
 end
 
@@ -30,22 +30,22 @@ end
     model = EAGO.Optimizer()
 
     # Add variable
-    MOI.add_variable(model)
-    nVar = MOI.get(model, MOI.NumberOfVariables())
+    @inferred MOI.add_variable(model)
+    nVar = @inferred MOI.get(model, MOI.NumberOfVariables())
     @test nVar == 1
 
     # Add second variable
     MOI.add_variables(model,3)
-    nVar = MOI.get(model, MOI.NumberOfVariables())
+    nVar = @inferred MOI.get(model, MOI.NumberOfVariables())
     @test nVar == 4
 
     # Get variable indices
-    indx = MOI.get(model, MOI.ListOfVariableIndices())
-    @test indx ==  MOI.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2),
+    indx = @inferred MOI.get(model, MOI.ListOfVariableIndices())
+    @test indx == @inferred MOI.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2),
                                     MOI.VariableIndex(3), MOI.VariableIndex(4)]
 
-    @test_nowarn EAGO.check_inbounds(model, MOI.VariableIndex(1))
-    @test_throws ErrorException EAGO.check_inbounds(model,MOI.VariableIndex(6))
+    @test_nowarn @inferred EAGO.check_inbounds(model, MOI.VariableIndex(1))
+    @test_throws ErrorException @inferred EAGO.check_inbounds(model,MOI.VariableIndex(6))
 end
 
 @testset "Add Variable Bounds" begin
@@ -54,38 +54,30 @@ end
     x = MOI.add_variables(model,3)
     z = MOI.add_variable(model)
 
-    MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-1.0))
-    MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-1.0))
-    MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(2.0))
-    MOI.add_constraint(model, MOI.SingleVariable(z), MOI.ZeroOne())
+    @inferred MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-1.0))
+    @inferred MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-1.0))
+    @inferred MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(2.0))
 
-    @test model.variable_info[1].is_integer == false
-    @test model.variable_info[1].lower_bound == -1.0
-    @test model.variable_info[1].has_lower_bound == true
-    @test model.variable_info[1].upper_bound == Inf
-    @test model.variable_info[1].has_upper_bound == false
-    @test model.variable_info[1].is_fixed == false
+    @test model._variable_info[1].is_integer == false
+    @test model._variable_info[1].lower_bound == -1.0
+    @test model._variable_info[1].has_lower_bound == true
+    @test model._variable_info[1].upper_bound == Inf
+    @test model._variable_info[1].has_upper_bound == false
+    @test model._variable_info[1].is_fixed == false
 
-    @test model.variable_info[2].is_integer == false
-    @test model.variable_info[2].lower_bound == -Inf
-    @test model.variable_info[2].has_lower_bound == false
-    @test model.variable_info[2].upper_bound == -1.0
-    @test model.variable_info[2].has_upper_bound == true
-    @test model.variable_info[2].is_fixed == false
+    @test model._variable_info[2].is_integer == false
+    @test model._variable_info[2].lower_bound == -Inf
+    @test model._variable_info[2].has_lower_bound == false
+    @test model._variable_info[2].upper_bound == -1.0
+    @test model._variable_info[2].has_upper_bound == true
+    @test model._variable_info[2].is_fixed == false
 
-    @test model.variable_info[3].is_integer == false
-    @test model.variable_info[3].lower_bound == 2.0
-    @test model.variable_info[3].has_lower_bound == true
-    @test model.variable_info[3].upper_bound == 2.0
-    @test model.variable_info[3].has_upper_bound == true
-    @test model.variable_info[3].is_fixed == true
-
-    @test model.variable_info[4].is_integer == true
-    @test model.variable_info[4].lower_bound == 0.0
-    @test model.variable_info[4].has_lower_bound == true
-    @test model.variable_info[4].upper_bound == 1.0
-    @test model.variable_info[4].has_upper_bound == true
-    @test model.variable_info[4].is_fixed == false
+    @test model._variable_info[3].is_integer == false
+    @test model._variable_info[3].lower_bound == 2.0
+    @test model._variable_info[3].has_lower_bound == true
+    @test model._variable_info[3].upper_bound == 2.0
+    @test model._variable_info[3].has_upper_bound == true
+    @test model._variable_info[3].is_fixed == true
 end
 
 @testset "Add Linear Constraint " begin
@@ -94,39 +86,39 @@ end
 
     x = MOI.add_variables(model,3)
 
-    func1 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.([5.0,-2.3],[x[1],x[2]]),2.0)
-    func2 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.([4.0,-2.2],[x[2],x[3]]),2.1)
-    func3 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.([3.0,-3.3],[x[1],x[3]]),2.2)
+    func1 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[5.0,-2.3],[x[1],x[2]]),2.0)
+    func2 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[4.0,-2.2],[x[2],x[3]]),2.1)
+    func3 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[3.0,-3.3],[x[1],x[3]]),2.2)
 
     set1 = MOI.LessThan{Float64}(1.0)
     set2 = MOI.GreaterThan{Float64}(2.0)
     set3 = MOI.EqualTo{Float64}(3.0)
 
-    MOI.add_constraint(model, func1, set1)
-    MOI.add_constraint(model, func2, set2)
-    MOI.add_constraint(model, func3, set3)
+    @inferred MOI.add_constraint(model, func1, set1)
+    @inferred MOI.add_constraint(model, func2, set2)
+    @inferred MOI.add_constraint(model, func3, set3)
 
-    @test model.linear_leq_constraints[1][1].constant == 2.0
-    @test model.linear_geq_constraints[1][1].constant == 2.1
-    @test model.linear_eq_constraints[1][1].constant == 2.2
-    @test model.linear_leq_constraints[1][1].terms[1].coefficient == 5.0
-    @test model.linear_geq_constraints[1][1].terms[1].coefficient == 4.0
-    @test model.linear_eq_constraints[1][1].terms[1].coefficient == 3.0
-    @test model.linear_leq_constraints[1][1].terms[2].coefficient == -2.3
-    @test model.linear_geq_constraints[1][1].terms[2].coefficient == -2.2
-    @test model.linear_eq_constraints[1][1].terms[2].coefficient == -3.3
-    @test model.linear_leq_constraints[1][1].terms[1].variable_index.value == 1
-    @test model.linear_geq_constraints[1][1].terms[1].variable_index.value == 2
-    @test model.linear_eq_constraints[1][1].terms[1].variable_index.value == 1
-    @test model.linear_leq_constraints[1][1].terms[2].variable_index.value == 2
-    @test model.linear_geq_constraints[1][1].terms[2].variable_index.value == 3
-    @test model.linear_eq_constraints[1][1].terms[2].variable_index.value == 3
-    @test MOI.LessThan{Float64}(1.0) == model.linear_leq_constraints[1][2]
-    @test MOI.GreaterThan{Float64}(2.0) == model.linear_geq_constraints[1][2]
-    @test MOI.EqualTo{Float64}(3.0) == model.linear_eq_constraints[1][2]
-    @test model.linear_leq_constraints[1][3] == 2
-    @test model.linear_geq_constraints[1][3] == 2
-    @test model.linear_eq_constraints[1][3] == 2
+    @test model._linear_leq_constraints[1][1].constant == 2.0
+    @test model._linear_geq_constraints[1][1].constant == 2.1
+    @test model._linear_eq_constraints[1][1].constant == 2.2
+    @test model._linear_leq_constraints[1][1].terms[1].coefficient == 5.0
+    @test model._linear_geq_constraints[1][1].terms[1].coefficient == 4.0
+    @test model._linear_eq_constraints[1][1].terms[1].coefficient == 3.0
+    @test model._linear_leq_constraints[1][1].terms[2].coefficient == -2.3
+    @test model._linear_geq_constraints[1][1].terms[2].coefficient == -2.2
+    @test model._linear_eq_constraints[1][1].terms[2].coefficient == -3.3
+    @test model._linear_leq_constraints[1][1].terms[1].variable_index.value == 1
+    @test model._linear_geq_constraints[1][1].terms[1].variable_index.value == 2
+    @test model._linear_eq_constraints[1][1].terms[1].variable_index.value == 1
+    @test model._linear_leq_constraints[1][1].terms[2].variable_index.value == 2
+    @test model._linear_geq_constraints[1][1].terms[2].variable_index.value == 3
+    @test model._linear_eq_constraints[1][1].terms[2].variable_index.value == 3
+    @test MOI.LessThan{Float64}(1.0) == model._linear_leq_constraints[1][2]
+    @test MOI.GreaterThan{Float64}(2.0) == model._linear_geq_constraints[1][2]
+    @test MOI.EqualTo{Float64}(3.0) == model._linear_eq_constraints[1][2]
+    @test model._linear_leq_constraints[1][3] == 2
+    @test model._linear_geq_constraints[1][3] == 2
+    @test model._linear_eq_constraints[1][3] == 2
 end
 
 @testset "Add Quadratic Constraint " begin
@@ -146,40 +138,108 @@ end
     set2 = MOI.GreaterThan{Float64}(2.0)
     set3 = MOI.EqualTo{Float64}(3.0)
 
-    MOI.add_constraint(model, func1, set1)
-    MOI.add_constraint(model, func2, set2)
-    MOI.add_constraint(model, func3, set3)
+    @inferred MOI.add_constraint(model, func1, set1)
+    @inferred MOI.add_constraint(model, func2, set2)
+    @inferred MOI.add_constraint(model, func3, set3)
 
-    @test model.quadratic_leq_constraints[1][1].constant == 2.0
-    @test model.quadratic_geq_constraints[1][1].constant == 2.1
-    @test model.quadratic_eq_constraints[1][1].constant == 2.2
-    @test model.quadratic_leq_constraints[1][1].quadratic_terms[1].coefficient == 2.5
-    @test model.quadratic_geq_constraints[1][1].quadratic_terms[1].coefficient == 2.2
-    @test model.quadratic_eq_constraints[1][1].quadratic_terms[1].coefficient == 2.1
-    @test model.quadratic_leq_constraints[1][1].affine_terms[1].coefficient == 5.0
-    @test model.quadratic_geq_constraints[1][1].affine_terms[1].coefficient == 4.0
-    @test model.quadratic_eq_constraints[1][1].affine_terms[1].coefficient == 3.0
-    @test model.quadratic_leq_constraints[1][1].quadratic_terms[1].variable_index_1.value == 2
-    @test model.quadratic_geq_constraints[1][1].quadratic_terms[1].variable_index_1.value == 1
-    @test model.quadratic_eq_constraints[1][1].quadratic_terms[1].variable_index_1.value == 1
-    @test model.quadratic_leq_constraints[1][1].quadratic_terms[1].variable_index_2.value == 2
-    @test model.quadratic_geq_constraints[1][1].quadratic_terms[1].variable_index_2.value == 2
-    @test model.quadratic_eq_constraints[1][1].quadratic_terms[1].variable_index_2.value == 1
-    @test model.quadratic_leq_constraints[1][1].affine_terms[1].variable_index.value == 1
-    @test model.quadratic_geq_constraints[1][1].affine_terms[1].variable_index.value == 2
-    @test model.quadratic_eq_constraints[1][1].affine_terms[1].variable_index.value == 3
-    @test MOI.LessThan{Float64}(1.0) == model.quadratic_leq_constraints[1][2]
-    @test MOI.GreaterThan{Float64}(2.0) == model.quadratic_geq_constraints[1][2]
-    @test MOI.EqualTo{Float64}(3.0) == model.quadratic_eq_constraints[1][2]
-    @test model.quadratic_leq_constraints[1][3] == 1
-    @test model.quadratic_geq_constraints[1][3] == 1
-    @test model.quadratic_eq_constraints[1][3] == 1
+    @test model._quadratic_leq_constraints[1][1].constant == 2.0
+    @test model._quadratic_geq_constraints[1][1].constant == 2.1
+    @test model._quadratic_eq_constraints[1][1].constant == 2.2
+    @test model._quadratic_leq_constraints[1][1].quadratic_terms[1].coefficient == 2.5
+    @test model._quadratic_geq_constraints[1][1].quadratic_terms[1].coefficient == 2.2
+    @test model._quadratic_eq_constraints[1][1].quadratic_terms[1].coefficient == 2.1
+    @test model._quadratic_leq_constraints[1][1].affine_terms[1].coefficient == 5.0
+    @test model._quadratic_geq_constraints[1][1].affine_terms[1].coefficient == 4.0
+    @test model._quadratic_eq_constraints[1][1].affine_terms[1].coefficient == 3.0
+    @test model._quadratic_leq_constraints[1][1].quadratic_terms[1].variable_index_1.value == 2
+    @test model._quadratic_geq_constraints[1][1].quadratic_terms[1].variable_index_1.value == 1
+    @test model._quadratic_eq_constraints[1][1].quadratic_terms[1].variable_index_1.value == 1
+    @test model._quadratic_leq_constraints[1][1].quadratic_terms[1].variable_index_2.value == 2
+    @test model._quadratic_geq_constraints[1][1].quadratic_terms[1].variable_index_2.value == 2
+    @test model._quadratic_eq_constraints[1][1].quadratic_terms[1].variable_index_2.value == 1
+    @test model._quadratic_leq_constraints[1][1].affine_terms[1].variable_index.value == 1
+    @test model._quadratic_geq_constraints[1][1].affine_terms[1].variable_index.value == 2
+    @test model._quadratic_eq_constraints[1][1].affine_terms[1].variable_index.value == 3
+    @test MOI.LessThan{Float64}(1.0) == model._quadratic_leq_constraints[1][2]
+    @test MOI.GreaterThan{Float64}(2.0) == model._quadratic_geq_constraints[1][2]
+    @test MOI.EqualTo{Float64}(3.0) == model._quadratic_eq_constraints[1][2]
+    @test model._quadratic_leq_constraints[1][3] == 1
+    @test model._quadratic_geq_constraints[1][3] == 1
+    @test model._quadratic_eq_constraints[1][3] == 1
 end
 
 @testset "Empty/Isempty, EAGO Model " begin
     model = EAGO.Optimizer()
-    @test MOI.is_empty(model)
+    @test @inferred MOI.is_empty(model)
 end
+
+@testset "Quadratic Constraint Utilities" begin
+    #gen_quad_vals(func::SQF)
+    #gen_quadratic_storage!(x::Optimizer)
+    #is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{Int64,Int64})
+    #label_quadratic_convexity!(x::Optimizer)
+end
+
+
+@testset "Fallback Interval Bounds" begin
+
+    # test linear expression interval fallback
+    X = Interval(1.0, 2.0)
+    Y = Interval(-4.0, 6.0)
+    Z = Interval(-6.0,-5.0)
+
+    ylower = Float64[X.lo; Y.lo; Z.lo]
+    yupper = Float64[X.hi; Y.hi; Z.hi]
+
+    n = EAGO.NodeBB(ylower, yupper, -Inf, Inf, 3, 2)
+
+    coeff = Float64[3.0; 4.0; -7.0]
+    cons = 3.2
+    fintv_saf = coeff[1]*X + coeff[2]*Y + coeff[3]*Z + cons
+    x = MOI.VariableIndex.(Int64[1;2;3])
+    saf = MOI.ScalarAffineFunction(MOI.ScalarAffineTerm.(coeff, x), cons)
+    saf_lo = @inferred EAGO.interval_bound(saf, n, true)
+    saf_hi = @inferred EAGO.interval_bound(saf, n, false)
+    @test isapprox(saf_lo, fintv_saf.lo, atol = 1E-7)
+    @test isapprox(saf_hi, fintv_saf.hi, atol = 1E-7)
+
+    # test quadratic expression interval fallback
+    vi1 = [MOI.VariableIndex(1); MOI.VariableIndex(2); MOI.VariableIndex(3);
+           MOI.VariableIndex(1); MOI.VariableIndex(2)];
+    vi2 = [MOI.VariableIndex(1); MOI.VariableIndex(2); MOI.VariableIndex(3);
+           MOI.VariableIndex(2); MOI.VariableIndex(3)];
+    coef1 = Float64[1.0; 4.0; 1.0; 3.0; -5.5]
+    sat_arr = MOI.ScalarAffineTerm{Float64}[MOI.ScalarAffineTerm{Float64}(4.0,MOI.VariableIndex(2))]
+    sqf =  MOI.ScalarQuadraticFunction(sat_arr,
+                                       MOI.ScalarQuadraticTerm.(coef1, vi1, vi2),
+                                       cons)
+    fintv_sqf = X^2 + 4.0*Y^2 + Z^2 + 3.0*X*Y - 5.5*Y*Z + 4.0*Y + 3.2
+    sqf_lo = @inferred EAGO.interval_bound(sqf, n, true)
+    sqf_hi = @inferred EAGO.interval_bound(sqf, n, false)
+    @test isapprox(sqf_lo, fintv_sqf.lo, atol = 1E-7)
+    @test isapprox(sqf_hi, fintv_sqf.hi, atol = 1E-7)
+end
+
+
+#=
+load_relaxed_problem!(x::Optimizer)
+convert_to_min!(x::Optimizer)
+has_evaluator(x::MOI.NLPBlockData)
+initialize_scrub!(m::Optimizer, y::JuMP.NLPEvaluator)
+initialize_evaluators!(m::Optimizer, flag::Bool)
+label_fixed_variables!(m::Optimizer)
+local_solve!(x::Optimizer)
+build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool)
+build_nlp_evaluator(N::Int64, s::T, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool)
+parse_problem!(m::Optimizer)
+check_disable_fbbt!(m::Optimizer)
+presolve_problem!(m::Optimizer)
+store_candidate_solution!(x::Optimizer)
+global_solve!(x::Optimizer)
+throw_optimize_hook!(m::Optimizer)
+MOI.optimize!(m::Optimizer)
+=#
+
 
 #=
 function test_forward_evaluator(m::JuMP.Model, expr::Expr, xpnt::Vector{Float64},
@@ -322,18 +382,18 @@ end
 
 @testset "LP Problems" begin
     m = Model(with_optimizer(EAGO.Optimizer,
-                             udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false,
+                             presolve_scrubber_flag = false,
+                             presolve_to_JuMP_flag = false,
                              verbosity = 0))
 
     @variable(m, 1 <= x <= 3)
     @variable(m, 1 <= y <= 3)
 
-    @NLobjective(m, Min, x + y)
+    @objective(m, Min, x + y)
 
-    @NLconstraint(m, x + y <= 10)
-    @NLconstraint(m, x - y <= 10)
-    @NLconstraint(m, y >= 0)
+    @constraint(m, x + y <= 10)
+    @constraint(m, x - y <= 10)
+    @constraint(m, y >= 0)
 
     JuMP.optimize!(m)
 
@@ -344,19 +404,19 @@ end
     @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
     m = Model(with_optimizer(EAGO.Optimizer,
-                             udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false,
+                             presolve_scrubber_flag = false,
+                             presolve_to_JuMP_flag = false,
                              verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
     @variable(m, -2 <= y <= 2)
     @variable(m, 1 <= z <= 3)
 
-    @NLobjective(m, Min, x - y + 2z)
+    @objective(m, Min, x - y + 2z)
 
-    @NLconstraint(m, x + 2y >= -10)
-    @NLconstraint(m, z - 2y <= 2)
-    @NLconstraint(m, y >= 0)
+    @constraint(m, x + 2y >= -10)
+    @constraint(m, z - 2y <= 2)
+    @constraint(m, y >= 0)
 
     JuMP.optimize!(m)
 
@@ -368,8 +428,8 @@ end
     @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
     m = Model(with_optimizer(EAGO.Optimizer,
-                             udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false,
+                             presolve_scrubber_flag = false,
+                             presolve_to_JuMP_flag = false,
                              verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
@@ -377,12 +437,12 @@ end
     @variable(m, 1 <= z <= 3)
     @variable(m, -10 <= q <= 9)
 
-    @NLobjective(m, Min, 2x - 3y + 2z)
+    @objective(m, Min, 2x - 3y + 2z)
 
-    @NLconstraint(m, x + 2y >= -10)
-    @NLconstraint(m, z - 2y <= 2)
-    @NLconstraint(m, y >= 0)
-    @NLconstraint(m, q-3*z-y >= 0)
+    @constraint(m, x + 2y >= -10)
+    @constraint(m, z - 2y <= 2)
+    @constraint(m, y >= 0)
+    @constraint(m, q-3*z-y >= 0)
 
     JuMP.optimize!(m)
 
@@ -394,8 +454,8 @@ end
     @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 
     m = Model(with_optimizer(EAGO.Optimizer,
-                             udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false,
+                             presolve_scrubber_flag = false,
+                             presolve_to_JuMP_flag = false,
                              verbosity = 0))
 
     @variable(m, -3 <= x <= -1)
@@ -405,10 +465,10 @@ end
 
     @NLobjective(m, Min, 2x - 3y + 2z)
 
-    @NLconstraint(m, x + 2y >= -10)
-    @NLconstraint(m, z - 2y <= 2)
-    @NLconstraint(m, y >= 4)
-    @NLconstraint(m, q-3*z-y >= 0)
+    @constraint(m, x + 2y >= -10)
+    @constraint(m, z - 2y <= 2)
+    @constraint(m, y >= 4)
+    @constraint(m, q-3*z-y >= 0)
 
     JuMP.optimize!(m)
 

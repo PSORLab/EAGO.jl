@@ -47,6 +47,8 @@
     @inferred EAGO.node_selection!(x.ext_type, x)
     @inferred EAGO.set_global_lower_bound!(x)
     @inferred EAGO.fathom!(x)
+
+    #create_initial_node!(x)
 end
 
 @testset "Test B&B Checks" begin
@@ -89,6 +91,27 @@ end
 
     @inferred EAGO.repeat_check(x)
     @inferred EAGO.termination_check(x)
+
+    @test @inferred EAGO.is_feasible_solution(MOI.OPTIMAL, MOI.FEASIBLE_POINT)
+    @test EAGO.is_feasible_solution(MOI.LOCALLY_SOLVED, MOI.FEASIBLE_POINT)
+    @test EAGO.is_feasible_solution(MOI.ALMOST_LOCALLY_SOLVED, MOI.NEARLY_FEASIBLE_POINT)
+    @test ~EAGO.is_feasible_solution(MOI.INFEASIBLE, MOI.FEASIBLE_POINT)
+
+    valid, feas = @inferred EAGO.is_globally_optimal(MOI.INFEASIBLE, MOI.INFEASIBILITY_CERTIFICATE)
+    @test (valid & ~feas)
+    valid, feas = EAGO.is_globally_optimal(MOI.INFEASIBLE, MOI.INFEASIBILITY_CERTIFICATE)
+    @test (valid & ~feas)
+    valid, feas = EAGO.is_globally_optimal(MOI.INFEASIBLE, MOI.NO_SOLUTION)
+    @test (valid & ~feas)
+    valid, feas = EAGO.is_globally_optimal(MOI.INFEASIBLE, MOI.UNKNOWN_RESULT_STATUS)
+    @test (valid & ~feas)
+    valid, feas = EAGO.is_globally_optimal(MOI.OPTIMAL, MOI.FEASIBLE_POINT)
+    @test (valid & feas)
+    valid, feas = EAGO.is_globally_optimal(MOI.INFEASIBLE_OR_UNBOUNDED, MOI.NO_SOLUTION)
+    @test (valid & ~feas)
+    valid, feas = EAGO.is_globally_optimal(MOI.SLOW_PROGRESS, MOI.REDUCTION_CERTIFICATE)
+    @test ~valid
+
 end
 
 @testset "Node Access Functions" begin

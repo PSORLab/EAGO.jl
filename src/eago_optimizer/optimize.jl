@@ -47,6 +47,7 @@ function gen_quadratic_storage!(x::Optimizer)
         ci = MOI.add_constraint(opt, func, LT(0.0))
         push!(temp_leq_ci, ci)
     end
+    push!(x._quadratic_ci_leq, temp_leq_ci)
     for i in 1:x.cut_max_iterations
         push!(x._quadratic_ci_leq, temp_leq_ci)
     end
@@ -70,6 +71,7 @@ function gen_quadratic_storage!(x::Optimizer)
         ci = MOI.add_constraint(opt, func, LT(0.0))
         push!(temp_geq_ci, ci)
     end
+    push!(x._quadratic_ci_geq, temp_geq_ci)
     for i in 1:x.cut_max_iterations
         push!(x._quadratic_ci_geq, temp_geq_ci)
     end
@@ -94,6 +96,7 @@ function gen_quadratic_storage!(x::Optimizer)
         c2 = MOI.add_constraint(opt, func, LT(0.0))
         push!(temp_eq_ci, (c1, c2))
     end
+    push!(x._quadratic_ci_eq, temp_eq_ci)
     for i in 1:x.cut_max_iterations
         push!(x._quadratic_ci_eq, temp_eq_ci)
     end
@@ -292,8 +295,6 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     nlp_data = m._nlp_data
 
     has_eval = has_evaluator(nlp_data)
-    println("has_eval: $(has_eval)")
-    println("has_eval: $(has_eval)")
     if has_evaluator(nlp_data)
 
         # Build the JuMP NLP evaluator
@@ -376,8 +377,6 @@ function is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{I
         end
     end
     Q = sparse(row, column, value)
-    println("Q: $Q")
-    println("size(Q): $(size(Q))")
     s1, s2 = size(Q)
     if length(Q.nzval) > 1
         eigval = eigmin(Array(Q))

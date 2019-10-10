@@ -1,24 +1,23 @@
 @testset "Duality-Based Bound Tightening" begin
 
-    ylower = [1.0, 1.0, 1.0, 1.0]
-    yupper = [4.0, 4.0, 4.0, 4.0]
-    ymult_lo = [50, 1.0, 2.0, 3.0]
-    ymult_hi = [0, 1.0, 2.0, 3.0]
-    yLBD = 1.0
-    yUBD = 3.0
-    n = EAGO.NodeBB(ylower,yupper,yLBD,yUBD,3,2,false)
+    ylower = Float64[1.0, 1.0, 1.0, 1.0]
+    yupper = Float64[4.0, 4.0, 4.0, 4.0]
+    ymult_lo = Float64[50.0, 0.0, 1.0, 0.0]
+    ymult_hi = Float64[0.0, 0.0, 0.8, 3.0]
 
-    EAGO.variable_duality_based_tightening!(n,ymult_lo,ymult_hi,yLBD,yUBD)
-    @test 3.95999-1E-4 <= n.lower_variable_bounds[1] <= 3.95999+1E-4
-    @test 4.0-1E-4 <= n.upper_variable_bounds[1] <= 4.0+1E-4
-    @test 2.0-1E-4 <= n.lower_variable_bounds[2] <= 2.0+1E-4
-    @test 4.0-1E-4 <= n.upper_variable_bounds[2] <= 4.0+1E-4
-    @test 3.0-1E-4 <= n.lower_variable_bounds[3] <= 3.0+1E-4
-    @test 4.0-1E-4 <= n.upper_variable_bounds[3] <= 4.0+1E-4
-    @test 3.33333-1E-4 <= n.lower_variable_bounds[4] <= 3.33333+1E-4
-    @test 4.0-1E-4 <= n.upper_variable_bounds[4] <= 4.0+1E-4
+    n = EAGO.NodeBB(ylower, yupper, -Inf, Inf, 3, 2)
+    @inferred EAGO.variable_dbbt!(n, ymult_lo, ymult_hi, 1.0, 3.0, 4)
+    lvb = n.lower_variable_bounds
+    uvb = n.upper_variable_bounds
+
+    @test lvb[1] == 1.0; @test uvb[1] == 1.04
+    @test lvb[2] == 1.0; @test uvb[2] == 4.0
+    @test lvb[3] == 1.0; @test uvb[3] == 3.0
+    # lvb[3] doesn't tighten since dbbt assumes variables aren't fixed...
+    @test isapprox(lvb[4], 3.33333333, atol= 1E-5); @test uvb[4] == 4.0
 end
 
+#=
 @testset "Poor Man's LP" begin
     # Puranik 2017 example
     opt1 = EAGO.Optimizer(udf_scrubber_flag = false,
@@ -257,3 +256,4 @@ end
     @test isapprox(n.lower_variable_bounds[2], 0.6492446803515586, atol = 1E-6)
     @test isapprox(n.upper_variable_bounds[2], 3.7936678946831783, atol = 1E-6)
 end
+=#

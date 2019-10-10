@@ -345,6 +345,7 @@ function preprocess!(t::ExtensionType, x::Optimizer)
     end
 
     if ((x.cp_depth >= x._iteration_count) & feas)
+        println("attempted cpwalk!!!")
         feas = cpwalk(x)
     end
 
@@ -406,24 +407,23 @@ ScalarQuadaraticFunction on a node y. Returns the lower bound if flag
 is true and the upper bound if flag is false.
 """
 function interval_bound(s::SAF, y::NodeBB, flag::Bool)
-    val_lo = flag ? s.constant : -1.0*s.constant
+    val_lo = s.constant
     lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
-    if flag
-        for term in s.terms
-            vi = term.variable_index.value
-            if (term.coefficient > 0.0)
-                if flag
-                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
-                else
-                    @inbounds val_lo += term.coefficient*up_bnds[vi]
-                end
+    for term in s.terms
+        vi = term.variable_index.value
+        coeff = term.coefficient
+        if (coeff > 0.0)
+            if flag
+                @inbounds val_lo += coeff*lo_bnds[vi]
             else
-                if flag
-                    @inbounds val_lo += term.coefficient*up_bnds[vi]
-                else
-                    @inbounds val_lo += term.coefficient*lo_bnds[vi]
-                end
+                @inbounds val_lo += coeff*up_bnds[vi]
+            end
+        else
+            if flag
+                @inbounds val_lo += coeff*up_bnds[vi]
+            else
+                @inbounds val_lo += coeff*lo_bnds[vi]
             end
         end
     end
@@ -433,26 +433,31 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
     lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
     val_intv = Interval(s.constant)
-    if flag
-        for term in s.affine_terms
-            coeff = term.coefficient
-            vi = term.variable_index.value
-            @inbounds il1b = lo_bnds[vi]
-            @inbounds iu1b = up_bnds[vi]
-            val_intv += coeff*Interval(il1b, iu1b)
-        end
-        for term in s.quadratic_terms
-            coeff = term.coefficient
-            vi1 = term.variable_index_1.value
-            vi2 = term.variable_index_2.value
-            @inbounds il1b = lo_bnds[vi1]
+    for term in s.affine_terms
+        coeff = term.coefficient
+        vi = term.variable_index.value
+        @inbounds il1b = lo_bnds[vi]
+        @inbounds iu1b = up_bnds[vi]
+        val_intv += coeff*Interval(il1b, iu1b)
+    end
+    for term in s.quadratic_terms
+        coeff = term.coefficient
+        vi1 = term.variable_index_1.value
+        vi2 = term.variable_index_2.value
+        @inbounds il1b = lo_bnds[vi1]
+        @inbounds iu1b = up_bnds[vi1]
+        if vi1 == vi2
+            val_intv += coeff*Interval(il1b, iu1b)^2
+        else
             @inbounds il2b = lo_bnds[vi2]
-            @inbounds iu1b = up_bnds[vi1]
             @inbounds iu2b = up_bnds[vi2]
             val_intv += coeff*Interval(il1b, iu1b)*Interval(il2b, iu2b)
         end
     end
-    return (flag ? val_intv.lo : val_intv.hi)
+    if flag
+        return val_intv.lo
+    end
+    return val_intv.hi
 end
 
 """
@@ -482,8 +487,8 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
         constrains_bnd_hi = d.constraints_ubd
 
         for i in 1:d.constraint_number
-            @inbounds constaints_intv_li = constraints_bnd_lo[i]
-            @inbounds constaints_intv_hi = constraints_bnd_hi[i]
+            @inbounds constraints_intv_li = constraints_bnd_lo[i]
+            @inbounds constraints_intv_hi = constraints_bnd_hi[i]
             if (constaints_intv_li > constaints_intv_hi) ||
                (constaints_intv_hi < constaints_intv_li)
                 feas = false
@@ -541,6 +546,8 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
         end
     end
 
+    println("interval bound feasibility...")
+
     x._lower_feasibility = feas
     if feas
         if objective_lo > x._lower_objective_value
@@ -561,14 +568,6 @@ and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, x::Optimizer)
 
-    println("--------------")
-    println("--------------")
-    println("ran lower problem at iteration = $(x._iteration_count)...")
-    println("ran lower problem at iteration = $(x._iteration_count)...")
-    println("ran lower problem at iteration = $(x._iteration_count)...")
-    println("--------------")
-    println("--------------")
-
     y = x._current_node
     if ~x._obbt_performed_flag
         x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
@@ -586,13 +585,18 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
     MOI.optimize!(opt)
 
     x._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
+    println("lower termination status: $(x._lower_termination_status)")
     x._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
+    println("lower result status: $(x._lower_result_status)")
     valid_flag, feas_flag = is_globally_optimal(x._lower_termination_status, x._lower_result_status)
+    println("valid_flag: $(valid_flag)")
+    println("feas_flag: $(feas_flag)")
 
     if valid_flag
         if feas_flag
             x._lower_feasibility = true
             x._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
+            println("lower_objective_value: $(x._lower_objective_value)")
             @inbounds x._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
             x._cut_add_flag = x._lower_feasibility
             set_dual!(x)
@@ -602,17 +606,12 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
             x._lower_objective_value = -Inf
         end
     else
+        #println("thrown to interval lower bound")
         interval_lower_bound!(x, y)
+        #println("lower feasibility: $(x._lower_feasibility)")
+        #println("lower objective: $(x._lower_objective_value)")
         x._cut_add_flag = false
     end
-
-    println("--------------")
-    println("--------------")
-    println("ran lower problem end at iteration = $(x._iteration_count)...")
-    println("ran lower problem end at iteration = $(x._iteration_count)...")
-    println("ran lower problem end at iteration = $(x._iteration_count)...")
-    println("--------------")
-    println("--------------")
 
     return
 end
@@ -733,14 +732,8 @@ Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, x::Optimizer)
 
-    println("--------------")
-    println("--------------")
-    println("ran add cut at iteration = $(x._iteration_count)...")
-    println("ran add cut at iteration = $(x._iteration_count)...")
-    println("ran add cut at iteration = $(x._iteration_count)...")
-    println("--------------")
-    println("--------------")
-
+    println("x._current_xref: $(x._current_xref)")
+    println("x._cut_iterations: $(x._cut_iterations)")
     relax_problem!(x, x._current_xref, x._cut_iterations)
     relax_objective!(x, x._current_xref)
     if x.objective_cut_on
@@ -755,6 +748,9 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     x._cut_result_status = MOI.get(opt, MOI.PrimalStatus())
     valid_flag, feas_flag = is_globally_optimal(x._cut_termination_status, x._cut_result_status)
 
+    println("x._cut_termination_status: $(x._cut_termination_status)")
+    println("x._cut_result_status: $(x._cut_result_status)")
+
     if valid_flag
         if feas_flag
             cut_update(x)
@@ -766,14 +762,6 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     else
         x._cut_add_flag = false
     end
-
-    println("--------------")
-    println("--------------")
-    println("ran add cut end at iteration = $(x._iteration_count)...")
-    println("ran add cut end at iteration = $(x._iteration_count)...")
-    println("ran add cut end at iteration = $(x._iteration_count)...")
-    println("--------------")
-    println("--------------")
 
     return
 end
@@ -888,7 +876,7 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
             sol = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
             #println("obj: $obj")
             #println("sol: $sol")
-            x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue()) + 1000
+            x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
             x._upper_solution[1:end] = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else
             x._upper_feasibility = false

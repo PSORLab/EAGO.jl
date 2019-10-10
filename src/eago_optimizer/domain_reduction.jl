@@ -7,28 +7,40 @@ and the duality information obtained from the relaxation.
 function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Float64},
                         LBD::Float64, UBD::Float64, nx::Int64)
 
+    sempty = isempty(x)
+    oldx = deepcopy(x)
     cut = 0.0
     vb = 0.0
+    lvbs = x.lower_variable_bounds
+    uvbs = x.upper_variable_bounds
     if LBD <= UBD
         for i = 1:nx
-            @inbounds mult_lo = mult_lo[i]
-            @inbounds mult_hi = mult_hi[i]
-            if mult_lo > 0.0
-                @inbounds cut = x.upper_variable_bounds[i] - (UBD - LBD)/mult_lo
-                @inbounds vb = x.lower_variable_bounds[i]
-                if cut > vb
-                    @inbounds x.lower_variable_bounds[i] = cut
+            @inbounds ml = mult_lo[i]
+            @inbounds mh = mult_hi[i]
+            if ml > 0.0
+                @inbounds cut = lvbs[i] + (UBD - LBD)/ml
+                @inbounds vb = uvbs[i]
+                if cut < vb
+                    @inbounds uvbs[i] = cut
                 end
-             elseif mult_hi > 0.0
-                 @inbounds cut = x.lower_variable_bounds[i] + (UBD - LBD)/mult_hi
-                 @inbounds vb = x.upper_variable_bounds[i]
-                 if cut < vb
-                     @inbounds x.upper_variable_bounds[i] = cut
+            elseif mh > 0.0
+                 @inbounds cut = uvbs[i] - (UBD - LBD)/mh
+                 @inbounds vb = lvbs[i]
+                 if cut > vb
+                     @inbounds lvbs[i] = cut
                  end
-             end
+            end
          end
     end
-
+    if (isempty(x) & ~sempty)
+        println("DBBT FATHOMED!!!!!")
+        println("mult_lo: $mult_lo")
+        println("mult_hi: $mult_hi")
+        println("LBD: $LBD")
+        println("UBD: $UBD")
+        println("oldx: $oldx")
+        println("new x: $x")
+    end
     return
 end
 
