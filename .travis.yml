@@ -22,7 +22,5 @@ addons:
   apt_packages:
     - gfortran
 
-script:
-    - julia --color=yes -e 'using Pkg; Pkg.add(pwd()); Pkg.build("EAGO"); Pkg.test("EAGO"; coverage=true)';
 after_success:
     - julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
