@@ -245,7 +245,8 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                       subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, subgrad_tighten::Bool,
                       tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
                       tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
-                      first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry) where {N,T<:RelaxTag}
+                      first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry,
+                      seeds::Vector{SVector{N,Float64}}) where {N,T<:RelaxTag}
 
     @assert length(numberstorage) >= length(nd)
     @assert length(setstorage) >= length(nd)
@@ -265,7 +266,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
         if nod.nodetype == JuMP._Derivatives.VALUE
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
-            seed = seed_gradient(op, Val(N))
+            seed = seeds[op]
             xMC = MC{N,T}(x_values[op], x_values[op],
                         Interval{Float64}(current_node.lower_variable_bounds[op],
                                      current_node.upper_variable_bounds[op]),
@@ -480,13 +481,14 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
     user_input_buffer = d.jac_storage
     subgrad_tighten = d.subgrad_tighten
 
+    seeds = d.seeds
     for (ind, k) in enumerate(reverse(d.subexpression_order))
         ex = d.subexpressions[k]
         temp = forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
                                          ex.nd, ex.adj, d.current_node,
                                          x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
                                          user_input_buffer, subgrad_tighten, #ex.tpdict,
-                                         user_operators)
+                                         user_operators,seeds)
         d.subexpression_isnum[ind] = ex.numvalued[1]
         if d.subexpression_isnum[ind]
             d.subexpression_values_flt[k] = temp
@@ -501,7 +503,7 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
                      ex.nd, ex.adj, d.current_node,
                      x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
                      user_input_buffer, subgrad_tighten, #ex.tpdict,
-                     user_operators)
+                     user_operators,seeds)
     end
 end
 
@@ -513,6 +515,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
     user_input_buffer = d.jac_storage
     subgrad_tighten = d.subgrad_tighten
     first_eval_flag = d.first_eval_flag
+    seeds = d.seeds
 
     for (ind, k) in enumerate(reverse(d.subexpression_order))
         subex = d.subexpressions[k]
@@ -521,7 +524,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
                     x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
                     user_input_buffer, subgrad_tighten, subex.tpdict,
                     subex.tp1storage, subex.tp2storage, subex.tp3storage,
-                    subex.tp4storage, first_eval_flag, user_operators)
+                    subex.tp4storage, first_eval_flag, user_operators, seeds)
 
         d.subexpression_isnum[ind] = subex.numvalued[1]
         if d.subexpression_isnum[ind]
@@ -538,7 +541,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
                      x, subexpr_values_flt, subexpr_values_set,
                      d.subexpression_isnum, user_input_buffer, subgrad_tighten, ex.tpdict,
                      ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
-                     first_eval_flag, user_operators)
+                     first_eval_flag, user_operators, seeds)
     end
 
     for (ind,ex) in enumerate(d.constraints)
@@ -547,7 +550,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
                      x, subexpr_values_flt, subexpr_values_set,
                      d.subexpression_isnum, user_input_buffer, subgrad_tighten, ex.tpdict,
                      ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
-                     first_eval_flag, user_operators)
+                     first_eval_flag, user_operators, seeds)
     end
 
     return
@@ -867,7 +870,6 @@ by a reverse pass if `d.has_reverse` as long as the node between passes differs
 by more that `d.fw_atol` at each iteration.
 """
 function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
-    start_time = time()
     flag = true
     #if ~same_box(d.current_node, d.last_node, 0.0)
     #   d.last_node = d.current_node
@@ -877,7 +879,6 @@ function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
                     d.first_eval_flag = (i == 1)
                     if flag
                         forward_eval_all(d,x)
-                        next_time = time() - start_time
                         flag = reverse_eval_all(d,x)
                         ~flag && break
                         same_box(d.current_node, get_node(d), d.cp_tolerance) && break

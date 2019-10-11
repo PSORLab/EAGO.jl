@@ -116,6 +116,7 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
     last_obj::MC{N,T}
     jac_storage::Vector{MC{N,T}}
     user_output_buffer::Vector{MC{N,T}}
+    seeds::Vector{SVector{N,Float64}}
     function Evaluator{N,T}() where {N,T<:RelaxTag}
         d = new()
         d.user_operators = JuMP._Derivatives.UserOperatorRegistry()
@@ -126,6 +127,10 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
         d.constraints_ubd = Float64[]
         d.objective = FunctionSetStorage(N,T)
         d.index_to_variable = Tuple{Int64,Int64,Int64}[]
+        d.seeds = SVector{N,Float64}[]
+        for i in 1:N
+            push!(d.seeds, seed_gradient(i, N))
+        end
         return d
     end
 end
