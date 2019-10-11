@@ -9,7 +9,7 @@ import Base: +, -, *, /, convert, in, isempty, one, zero, real, eps, max, min,
              sqrt, sin, cos, tan, min, max, sec, csc, cot, ^, step, sign, intersect,
              promote_rule, asinh, atanh, tanh, atan, asin, cosh, acos,
              sind, cosd, tand, asind, acosd, atand,
-             secd, cscd, cotd, asecd, acscd, acotd
+             secd, cscd, cotd, asecd, acscd, acotd, isone
 
 import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            one, zero, real, eps, max, min, abs, exp,
@@ -40,7 +40,7 @@ export MC, cc, cv, Intv, lo, hi,  cc_grad, cv_grad, cnst, +, -, *, /, convert,
        sind, cosd, tand, asind, acosd, atand,
        sinhd, coshd, tanhd, asinhd, acoshd, atanhd,
        secd, cscd, cotd, asecd, acscd, acotd,
-       secdh, cschd, cothd, asechd, acschd, acothd
+       secdh, cschd, cothd, asechd, acschd, acothd, isone
 
 # Export inplace operators
 export plus!, mult!, min!, max!, minus!, div!, exp!, exp2!, exp10!, expm1!,
@@ -333,6 +333,15 @@ cc_grad(x::MC) = x.cc_grad
 cv_grad(x::MC) = x.cv_grad
 cnst(x::MC) = x.cnst
 length(x::MC) = length(x.cc_grad)
+
+
+function isone(x::MC)
+  flag = true
+  flag &= (x.Intv.lo == 1.0)
+  flag &= (x.Intv.hi == 1.0)
+  flag &= x.cnst
+  return flag
+end
 
 """
     newton(x0::T,xL::T,xU::T,f::Function,df::Function,envp1::T,envp2::T)

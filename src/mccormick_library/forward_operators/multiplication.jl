@@ -1037,6 +1037,11 @@ function STD_NS_ALT_kernel(x::MC{N,T}, y::MC{N,NS}, z::Interval{Float64}) where 
 end
 
 function mult_kernel(x1::MC{N,NS}, x2::MC{N,NS}, y::Interval{Float64}) where N
+	if isone(x1)
+		return x2
+	elseif isone(x2)
+		return x1
+	end
 	if (x1.Intv.lo >= 0.0)
 		return multiply_STD_NS(x1, x2, y)
 	elseif (x1.Intv.hi <= 0.0)

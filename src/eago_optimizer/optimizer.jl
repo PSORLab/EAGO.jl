@@ -445,9 +445,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
                              max_iter = 1000,
                              acceptable_iter = 50,
                              constr_viol_tol = 0.0001,
-                             acceptable_constr_viol_tol = 0.0001,
+                             acceptable_constr_viol_tol = 0.00001,
                              acceptable_dual_inf_tol = 1.0,
-                             acceptable_compl_inf_tol = 0.0001)
+                             acceptable_compl_inf_tol = 0.00001)
         default_opt_dict[:upper_factory] = fac
 
         for i in keys(default_opt_dict)

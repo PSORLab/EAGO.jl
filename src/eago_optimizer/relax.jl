@@ -147,8 +147,11 @@ function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
     else
         c = saf.constant
         saf.constant = 0.0
+        #println("c: $c")
         new_set = LT(upper - c)
-        x._quadratic_ci_leq[q][i] = MOI.add_constraint(opt, saf, new_set)
+        #println("c: $c")
+        cindxo = MOI.add_constraint(opt, saf, new_set)
+        x._quadratic_ci_leq[q][i] = cindxo
     end
     return
 end
@@ -179,8 +182,6 @@ Relaxes all quadratic constraints in `x` optimizer.
 function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
 
     n = x._current_node
-    #println("current node $n")
-    #println("x0: $x0")
 
     # Relax Convex Constraint Terms TODO: place all quadratic info into one vector of tuples?
     for i in 1:length(x._quadratic_leq_constraints)
@@ -376,12 +377,11 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         @inbounds constant = g[g_indx]
                         dg_cv_val = 0.0
                         coeff = zeros(Float64,length(nzidx))
-                        @inbounds vindices = vi[nzidx]
+                        vindices = vi[nzidx]
                         for j in 1:length(nzidx)
                             @inbounds indx = nzidx[j]
-                            @inbounds dg_cv_val = dg[i,indx]
-                            @inbounds coeff[j] = dg_cv_val
-                            @inbounds constant -= v[indx]*dg_cv_val
+                            @inbounds coeff[j] = dg[i,indx]
+                            @inbounds constant -= v[indx]*coeff[j]
                         end
                         set = LT(-constant)
                         saf = SAF(SAT.(coeff,vindices), 0.0)

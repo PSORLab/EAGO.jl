@@ -47,9 +47,11 @@ function gen_quadratic_storage!(x::Optimizer)
         ci = MOI.add_constraint(opt, func, LT(0.0))
         push!(temp_leq_ci, ci)
     end
+
+    len_leq_ci = length(temp_leq_ci)
     push!(x._quadratic_ci_leq, temp_leq_ci)
-    for i in 1:x.cut_max_iterations
-        push!(x._quadratic_ci_leq, temp_leq_ci)
+    for i in 2:x.cut_max_iterations
+        push!(x._quadratic_ci_leq, fill(CI{SAF,LT}(-1), (len_leq_ci,)))
     end
 
     temp_geq_ci = CI{SAF,LT}[]
@@ -71,9 +73,11 @@ function gen_quadratic_storage!(x::Optimizer)
         ci = MOI.add_constraint(opt, func, LT(0.0))
         push!(temp_geq_ci, ci)
     end
+
+    len_geq_ci = length(temp_geq_ci)
     push!(x._quadratic_ci_geq, temp_geq_ci)
-    for i in 1:x.cut_max_iterations
-        push!(x._quadratic_ci_geq, temp_geq_ci)
+    for i in 2:x.cut_max_iterations
+        push!(x._quadratic_ci_geq, fill(CI{SAF,LT}(-1), (len_geq_ci,)))
     end
 
     temp_eq_ci = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
@@ -96,10 +100,13 @@ function gen_quadratic_storage!(x::Optimizer)
         c2 = MOI.add_constraint(opt, func, LT(0.0))
         push!(temp_eq_ci, (c1, c2))
     end
+
+    len_eq_ci = length(temp_eq_ci)
     push!(x._quadratic_ci_eq, temp_eq_ci)
-    for i in 1:x.cut_max_iterations
-        push!(x._quadratic_ci_eq, temp_eq_ci)
+    for i in 2:x.cut_max_iterations
+        push!(x._quadratic_ci_eq, fill((CI{SAF,LT}(-1), CI{SAF,LT}(-1)), (len_eq_ci,)))
     end
+
     return
 end
 
