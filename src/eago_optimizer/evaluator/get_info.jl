@@ -59,7 +59,7 @@ function eval_constraint_lo!(d::Evaluator, g::Vector{Float64})
         if d.constraints[i].numvalued[1]
             g[i] = d.constraints[i].numberstorage[1]
         else
-            g[i] = d.constraints[i].setstorage[1].lo
+            g[i] = d.constraints[i].setstorage[1].Intv.lo
         end
     end
     return
@@ -70,7 +70,7 @@ function eval_constraint_hi!(d::Evaluator, g::Vector{Float64})
         if d.constraints[i].numvalued[1]
             g[i] = d.constraints[i].numberstorage[1]
         else
-            g[i] = d.constraints[i].setstorage[1].hi
+            g[i] = d.constraints[i].setstorage[1].Intv.hi
         end
     end
     return

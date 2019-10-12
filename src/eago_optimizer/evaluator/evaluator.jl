@@ -129,7 +129,7 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
         d.index_to_variable = Tuple{Int64,Int64,Int64}[]
         d.seeds = SVector{N,Float64}[]
         for i in 1:N
-            push!(d.seeds, seed_gradient(i, N))
+            push!(d.seeds, seed_gradient(i, Val(N)))
         end
         return d
     end

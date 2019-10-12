@@ -35,27 +35,57 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
                        first_eval_flag::Bool) where {N, T<:RelaxTag}
     tmp_num = 0.0
     tmp_mc = zero(MC{N,T})
-    tmp_mc0 = zero(MC{N,T})
-    tmp_intv = Interval{Float64}(0.0)
     isnum = true
     chdset = true
-    for c_idx in children_idx
-        @inbounds ix = children_arr[c_idx]
-        @inbounds chdset = numvalued[ix]
-        if chdset
-            @inbounds tmp_num += numberstorage[ix]
-        else
-            @inbounds tmp_mc0 = setstorage[ix]
-            @inbounds tmp_intv = setstorage[k].Intv
-            if first_eval_flag
-                @inbounds tmp_mc += tmp_mc0
+    n = length(children_idx)
+    if n == 2
+        @inbounds c_idx_1 = children_idx[1]
+        @inbounds c_idx_2 = children_idx[2]
+        @inbounds ix1 = children_arr[c_idx_1]
+        @inbounds ix2 = children_arr[c_idx_2]
+        @inbounds chdset1 = numvalued[ix1]
+        @inbounds chdset2 = numvalued[ix2]
+        if first_eval_flag
+            if chdset1
+                tmp_num += numberstorage[ix1]
             else
-                tmp_mc += McCormick.plus_kernel(tmp_mc, tmp_mc0, tmp_intv)
+                tmp_mc += setstorage[ix1]
+            end
+            if chdset2
+                tmp_num += numberstorage[ix2]
+            else
+                tmp_mc += setstorage[ix2]
+            end
+            isnum = (chdset1 & chdset2)
+            @inbounds numvalued[k] = isnum
+        else
+            @inbounds isnum = numvalued[k]
+            if ~isnum
+                @inbounds ix1 = children_arr[c_idx_1]
+                @inbounds ix2 = children_arr[c_idx_2]
+                @inbounds chdset1 = numvalued[ix1]
+                @inbounds chdset2 = numvalued[ix2]
+                if (~chdset1 & ~chdset2)
+                    tmp_mc = McCormick.plus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k])
+                elseif chdset1
+                    tmp_mc = McCormick.plus_kernel(numberstorage[ix1], setstorage[ix2], setstorage[k])
+                elseif chdset2
+                    tmp_mc = McCormick.plus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k])
+                end
             end
         end
-        isnum &= chdset
+    else
+        for c_idx in children_idx
+            @inbounds ix = children_arr[c_idx]
+            @inbounds chdset = numvalued[ix]
+            if chdset
+                @inbounds tmp_num += numberstorage[ix]
+            else
+                @inbounds tmp_mc += setstorage[ix]
+            end
+            isnum &= chdset
+        end
     end
-    @inbounds numvalued[k] = isnum
     if isnum
         @inbounds numberstorage[k] = tmp_num
     else
@@ -76,6 +106,7 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
     if first_eval_flag
         if isnum
             @inbounds tmp_num_1 = numberstorage[ix1] - numberstorage[ix2]
+            @inbounds numberstorage[k] = tmp_num_1
         elseif ~chdset1 && chdset2
             @inbounds tmp_mc_1 = setstorage[ix1] - numberstorage[ix2]
         elseif chdset1 && ~chdset2
@@ -83,15 +114,17 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
         else
             @inbounds tmp_mc_1 = setstorage[ix1] - setstorage[ix2]
         end
+        @inbounds numvalued[k] = isnum
     else
-        if ~isnum
-            @inbounds tmp_mc_1 = McCormick.minus_kernel(tmp_mc_1, setstorage[ix2], setstorage[k].Intv)
+        if ~chdset1 && chdset2
+            @inbounds tmp_mc_1 = McCormick.minus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k].Intv)
+        elseif chdset1 && ~chdset2
+            @inbounds tmp_mc_1 = McCormick.minus_kernel(numberstorage[ix1], setstorage[ix2], setstorage[k].Intv)
+        else
+            @inbounds tmp_mc_1 = McCormick.minus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k].Intv)
         end
     end
-    @inbounds numvalued[k] = isnum
-    if isnum
-        @inbounds numberstorage[k] = tmp_num_1
-    else
+    if ~isnum
         @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
     end
     return
