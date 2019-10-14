@@ -459,7 +459,8 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
     m = src.m::Model
     num_variables_ = JuMP.num_variables(m)
     d.variable_number = num_variables_
-    nldata = m.nlp_data::JuMP._NLPData
+    #nldata = m.nlp_data::JuMP._NLPData
+    nldata = deepcopy(m.nlp_data)
     parameter_values = nldata.nlparamvalues
 
     # Copy state of user-defined multivariable functions
@@ -520,6 +521,7 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
             if (current_value == unvisited_tuple)
                 d.index_to_variable[op] = (indx, 1, 1)
             end
+            @inbounds d.objective.numvalued[indx] = false
         elseif ntype == JuMP._Derivatives.VALUE
             @inbounds d.objective.numberstorage[indx] = d.objective.const_values[op]
             @inbounds d.objective.numvalued[indx] = true
@@ -536,6 +538,7 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
                 if (current_value == unvisited_tuple)
                     d.index_to_variable[op] = (indx, cindx, 2)
                 end
+                @inbounds constraint.numvalued[indx] = false
             elseif node.nodetype == JuMP._Derivatives.VALUE
                 @inbounds constraint.numberstorage[indx] = constraint.const_values[op]
                 @inbounds constraint.numvalued[indx] = true
@@ -553,6 +556,7 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
                 if (current_value == unvisited_tuple)
                     d.index_to_variable[op] = (indx, cindx, 3)
                 end
+                @inbounds subexpress.numvalued[indx] = false
             elseif node.nodetype == JuMP._Derivatives.VALUE
                 @inbounds subexpress.numberstorage[indx] = subexpress.const_values[op]
                 @inbounds subexpress.numvalued[indx] = true
@@ -717,7 +721,9 @@ function set_global_lower_bound!(x::Optimizer)
     if ~isempty(x._stack)
         min_node = minimum(x._stack)
         lower_bound = min_node.lower_bound
-        x._global_lower_bound = lower_bound
+        if x._global_lower_bound < lower_bound
+            x._global_lower_bound = lower_bound
+        end
     end
     return
 end
@@ -807,6 +813,8 @@ function global_solve!(x::Optimizer)
                             branch_node!(x)
                         end
                     end
+                else
+                    x._global_lower_bound = x._lower_objective_value
                 end
             end
             fathom!(x)

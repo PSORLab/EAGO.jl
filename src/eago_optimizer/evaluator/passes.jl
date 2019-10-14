@@ -58,20 +58,16 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
             end
             isnum = (chdset1 & chdset2)
             @inbounds numvalued[k] = isnum
+            #println("isnum: $isnum")
         else
-            @inbounds isnum = numvalued[k]
-            if ~isnum
-                @inbounds ix1 = children_arr[c_idx_1]
-                @inbounds ix2 = children_arr[c_idx_2]
-                @inbounds chdset1 = numvalued[ix1]
-                @inbounds chdset2 = numvalued[ix2]
-                if (~chdset1 & ~chdset2)
-                    tmp_mc = McCormick.plus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k])
-                elseif chdset1
-                    tmp_mc = McCormick.plus_kernel(numberstorage[ix1], setstorage[ix2], setstorage[k])
-                elseif chdset2
-                    tmp_mc = McCormick.plus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k])
-                end
+            if (~chdset1 & ~chdset2)
+                tmp_mc = McCormick.plus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k])
+            elseif chdset1 & ~chdset2
+                tmp_mc = McCormick.plus_kernel(numberstorage[ix1], setstorage[ix2], setstorage[k])
+            elseif chdset2 & ~chdset1
+                tmp_mc = McCormick.plus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k])
+            else
+                @inbounds tmp_num = numberstorage[k]
             end
         end
     else
@@ -85,12 +81,16 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
             end
             isnum &= chdset
         end
+        @inbounds numvalued[k] = isnum
     end
     if isnum
         @inbounds numberstorage[k] = tmp_num
     else
         @inbounds setstorage[k] = tmp_num + tmp_mc
     end
+
+    #println("k = $k, numvalued[$k] = $(numvalued[k])")
+
     return
 end
 
@@ -114,7 +114,6 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
         else
             @inbounds tmp_mc_1 = setstorage[ix1] - setstorage[ix2]
         end
-        @inbounds numvalued[k] = isnum
     else
         if ~chdset1 && chdset2
             @inbounds tmp_mc_1 = McCormick.minus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k].Intv)
@@ -124,6 +123,7 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
             @inbounds tmp_mc_1 = McCormick.minus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k].Intv)
         end
     end
+    @inbounds numvalued[k] = isnum
     if ~isnum
         @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
     end
@@ -196,26 +196,26 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
             @inbounds numberstorage[k] = tmp_num_1^tmp_num_2
         else
             if first_eval_flag
-                if (~chdset1 && chdset2)
+                if (~chdset1 & chdset2)
                     tmp_mc_1 = pow(tmp_mc_1, tmp_num_2)
-                elseif (chdset1 && ~chdset2)
+                elseif (chdset1 & ~chdset2)
                     tmp_mc_1 = pow(tmp_num_1, tmp_mc_2)
-                elseif (~chdset1 && ~chdset2)
+                elseif (~chdset1 & ~chdset2)
                     tmp_mc_1 = pow(tmp_mc_1, tmp_mc_2)
                 end
             else
-                if (~chdset1 && chdset2)
+                if (~chdset1 & chdset2)
                     @inbounds tmp_mc_1 = ^(tmp_mc_1, tmp_num_2, setstorage[k].Intv)
-                elseif (chdset1 && ~chdset2)
+                elseif (chdset1 & ~chdset2)
                     @inbounds tmp_mc_1 = ^(tmp_num_1, tmp_mc_2, setstorage[k].Intv)
-                elseif (~chdset1 && ~chdset2)
+                elseif (~chdset1 & ~chdset2)
                     @inbounds tmp_mc_1 = ^(tmp_mc_1, tmp_mc_2, setstorage[k].Intv)
                 end
             end
             @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
         end
     end
-    @inbounds numvalued[k] = (chdset1 && chdset2)
+    @inbounds numvalued[k] = (chdset1 & chdset2)
     return
 end
 
@@ -297,7 +297,9 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
         @inbounds nod = nd[k]
         op = nod.index
         if nod.nodetype == JuMP._Derivatives.VALUE
+            numvalued[k] = true
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
+            numvalued[k] = true
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             seed = seeds[op]
             xMC = MC{N,T}(x_values[op], x_values[op],
@@ -637,12 +639,12 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                 if false #lenx == 2
                     @inbounds child1 = first(children_idx)
                     @inbounds child2 = last(children_idx)
-                    println("child1: $child1")
-                    println("child2: $child2")
+                    #println("child1: $child1")
+                    #println("child2: $child2")
                     @inbounds ix1 = children_arr[child1]
                     @inbounds ix2 = children_arr[child2]
-                    println("ix1: $ix1")
-                    println("ix2: $ix2")
+                    #println("ix1: $ix1")
+                    #println("ix2: $ix2")
                     @inbounds chdset1 = numvalued[ix1]
                     @inbounds chdset2 = numvalued[ix2]
                     @inbounds nsto1 = numberstorage[ix1]

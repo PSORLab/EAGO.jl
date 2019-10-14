@@ -127,7 +127,7 @@ Checks to see if current node should be reprocessed.
 """
 repeat_check(t::ExtensionType, x::Optimizer) = false
 
-relative_gap(L::Float64, U::Float64) = abs(U - L)/(min(abs(L),abs(U)))
+relative_gap(L::Float64, U::Float64) = abs(U - L)/(max(abs(L),abs(U)))
 function relative_tolerance(L::Float64, U::Float64, tol::Float64)
     return (relative_gap(L, U)  > tol) || ~(L > -Inf)
 end

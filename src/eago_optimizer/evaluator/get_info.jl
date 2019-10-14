@@ -19,7 +19,7 @@ function eval_objective_lo(d::Evaluator)
         if d.objective.numvalued[1]
             val = d.objective.numberstorage[1]
         else
-            val = d.objective.setstorage[1].cv
+            val = d.objective.setstorage[1].Intv.lo
         end
     else
         error("No nonlinear objective.")

@@ -349,8 +349,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict = Dict{Symbol,Any}()
 
         # Presolving options
-        default_opt_dict[:presolve_scrubber_flag] = true
-        default_opt_dict[:presolve_to_JuMP_flag] = true
+        default_opt_dict[:presolve_scrubber_flag] = false
+        default_opt_dict[:presolve_to_JuMP_flag] = false
         default_opt_dict[:presolve_epigraph_flag] = false
         default_opt_dict[:presolve_cse_flag] = false
         default_opt_dict[:presolve_flatten_flag] = false
@@ -392,7 +392,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:cut_tolerance] = 0.05
 
         # Upper bounding options
-        default_opt_dict[:upper_bounding_depth] = 10
+        default_opt_dict[:upper_bounding_depth] = 4
 
         # Duality-based bound tightening (DBBT) options
         default_opt_dict[:dbbt_depth] = 10^6
@@ -442,12 +442,12 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         =#
         fac = with_optimizer(Ipopt.Optimizer, print_level = 0,
                              acceptable_tol = 1E30,
-                             max_iter = 1000,
-                             acceptable_iter = 50,
+                             max_iter = 1000000,
+                             acceptable_iter = 50000,
                              constr_viol_tol = 0.0001,
-                             acceptable_constr_viol_tol = 0.00001,
+                             acceptable_constr_viol_tol = 0.0000001,
                              acceptable_dual_inf_tol = 1.0,
-                             acceptable_compl_inf_tol = 0.00001)
+                             acceptable_compl_inf_tol = 0.0000001)
         default_opt_dict[:upper_factory] = fac
 
         for i in keys(default_opt_dict)

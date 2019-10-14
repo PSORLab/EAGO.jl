@@ -359,10 +359,10 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         @inbounds constant = g_cc[g_indx]
                         dg_cc_val = 0.0
                         for j in nzidx
-                            @inbounds dg_cc_val = dg[i,j]
+                            @inbounds dg_cc_val = -dg_cc[i,j]
                             @inbounds vindx = vi[j]
                             @inbounds constant -= v[j]*dg_cc_val
-                            MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cc_val))
+                            MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, -dg_cc_val))
                         end
                         @inbounds bns = constraint_bounds[i]
                         set = LT(constant - bns.lower)
@@ -393,15 +393,15 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         @inbounds aff_ci = upper_nlp_affine[i]
                         @inbounds nzidx = upper_nlp_sparsity[i]
                         @inbounds nzvar = vi[nzidx]
-                        @inbounds constant = g_cc[g_indx]
+                        @inbounds constant = -g_cc[g_indx]
                         dg_cc_val = 0.0
                         coeff = zeros(Float64,length(nzidx))
                         @inbounds vindices = vi[nzidx]
                         for j in 1:length(nzidx)
                             @inbounds indx = nzidx[j]
-                            @inbounds dg_cc_val = dg[i,indx]
+                            @inbounds dg_cc_val = dg_cc[i,indx]
                             @inbounds coeff[j] = dg_cc_val
-                            @inbounds constant -= v[indx]*dg_cc_val
+                            @inbounds constant += v[indx]*dg_cc_val
                         end
                         @inbounds bns = constraint_bounds[i]
                         set = LT(constant - bns.lower)
