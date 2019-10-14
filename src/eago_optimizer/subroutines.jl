@@ -127,7 +127,13 @@ Checks to see if current node should be reprocessed.
 """
 repeat_check(t::ExtensionType, x::Optimizer) = false
 
-relative_gap(L::Float64, U::Float64) = abs(U - L)/(max(abs(L),abs(U)))
+function relative_gap(L::Float64, U::Float64)
+    gap = Inf
+    if (L > -Inf) & (U < Inf)
+        gap = abs(U - L)/(max(abs(L),abs(U)))
+    end
+    return gap
+end
 function relative_tolerance(L::Float64, U::Float64, tol::Float64)
     return (relative_gap(L, U)  > tol) || ~(L > -Inf)
 end
@@ -146,19 +152,19 @@ function termination_check(t::ExtensionType, x::Optimizer)
 
     if isempty(x._stack)
 
-        if (x._first_solution_node > 0)
+        #if (x._first_solution_node > 0)
 
-            x._termination_status_code = MOI.OPTIMAL
-            x._result_status_code = MOI.FEASIBLE_POINT
-            (x.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
+        #    x._termination_status_code = MOI.OPTIMAL
+        #    x._result_status_code = MOI.FEASIBLE_POINT
+        #    (x.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
 
-        else
+        #else
 
-            x._termination_status_code = MOI.INFEASIBLE
-            x._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
-            (x.verbosity >= 3) && println("Empty Stack: Infeasible")
+        x._termination_status_code = MOI.INFEASIBLE
+        x._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
+        (x.verbosity >= 3) && println("Empty Stack: Infeasible")
 
-        end
+        #end
     elseif length(x._stack) >= x.node_limit
 
         x._termination_status_code = MOI.NODE_LIMIT
@@ -206,10 +212,14 @@ tolerances.
 """
 function convergence_check(t::ExtensionType, x::Optimizer)
 
+  #println("ran convergence check...")
   L = x._lower_objective_value
   U = x._global_upper_bound
   t = (U - L) <= x.absolute_tolerance
-  t |= (abs(U - L)/(max(abs(L),abs(U))) <= x.relative_tolerance)
+  if (U < Inf) & (L > Inf)
+      t |= (abs(U - L)/(max(abs(L),abs(U))) <= x.relative_tolerance)
+  end
+ # println("algorithm converged... $t")
   return t
 end
 

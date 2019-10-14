@@ -4,6 +4,8 @@ module EAGO
 
     import MathOptInterface
 
+    using NumericIO
+
     using JuMP
     import JuMP._Derivatives: operators, NodeData
     using JuMP._Derivatives: univariate_operators,

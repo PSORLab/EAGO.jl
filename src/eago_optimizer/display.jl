@@ -31,6 +31,9 @@ function print_node!(y::Optimizer)
     return
 end
 
+const PRINTING_IOFORMAT = :SCI
+const PRINTING_CHARSET = :ASCII
+
 """
     print_iteration!
 
@@ -43,9 +46,9 @@ function print_iteration!(x::Optimizer)
 
         # prints header line every B.hdr_intv times
         if (mod(x._iteration_count, x.header_iterations) == 0 || x._iteration_count == 1)
-            println("--------------------------------------------------------------------------------------------------------")
-            println("|  Iteration #  |   Nodes  | Lower Bound | Upper Bound  |     Gap     |   Ratio   |  Time  | Time Left |")
-            println("--------------------------------------------------------------------------------------------------------")
+            println("-------------------------------------------------------------------------------------------------------")
+            println("|  Iteration #  |   Nodes  | Lower Bound | Upper Bound  |    Gap    |   Ratio   |  Time   | Time Left |")
+            println("-------------------------------------------------------------------------------------------------------")
         end
 
         # prints iteration summary every B.itr_intv times
@@ -71,31 +74,39 @@ function print_iteration!(x::Optimizer)
                 lower = -x._global_upper_bound
                 upper = -x._global_lower_bound
             end
-            temp_str = string(round(lower, sigdigits = 5))
+            #temp_str = string(round(lower, sigdigits = 5))
+            #temp_str = string(lower, sigdigits = 3))
+            temp_str = formatted(lower, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            temp_str = string(round(upper, sigdigits = 5))
+            #temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            #temp_str = string(upper, sigdigits = 3))
+            temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
             max_len = 9
-            temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
+            #temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
+            temp_str = formatted(abs(x._global_upper_bound - x._global_lower_bound), PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" | "
+            print_str *= (" "^(max_len - len_str))*temp_str*"  | "
 
             max_len = 9
-            temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
+            #temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
+            temp_str = formatted(relative_gap(x._global_lower_bound, x._global_upper_bound), PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 7
-            temp_str = string(round(x._run_time, sigdigits = 3))
+            #temp_str = string(round(x._run_time, sigdigits = 3))
+            temp_str = formatted(x._run_time, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" | "
+            print_str *= (" "^(max_len - len_str))*temp_str*" |  "
 
             max_len = 7
-            temp_str = string(round(x._time_left, sigdigits = 4))
+            #temp_str = string(round(x._time_left, sigdigits = 4))
+            temp_str = formatted(x._time_left, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
