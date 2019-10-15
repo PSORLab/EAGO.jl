@@ -187,7 +187,8 @@ function load_relaxed_problem!(x::Optimizer)
             push!(temp_la, ci)
             push!(x._lower_nlp_affine_indx, j)
             push!(x._lower_nlp_sparsity, sparsity)
-        elseif !(bns.lower == Inf)
+        end
+        if !(bns.lower == -Inf)
             ci = MOI.add_constraint(opt, func, LT(0.0))
             push!(temp_ua, ci)
             push!(x._upper_nlp_affine_indx, j)
@@ -814,7 +815,7 @@ function global_solve!(x::Optimizer)
                         end
                     end
                 else
-                    x._global_lower_bound = x._lower_objective_value
+                    #x._global_lower_bound = x._lower_objective_value
                 end
             end
             fathom!(x)

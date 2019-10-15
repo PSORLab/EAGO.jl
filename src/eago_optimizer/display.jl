@@ -98,13 +98,13 @@ function print_iteration!(x::Optimizer)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 7
+            max_len = 8
             #temp_str = string(round(x._run_time, sigdigits = 3))
             temp_str = formatted(x._run_time, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |  "
 
-            max_len = 7
+            max_len = 8
             #temp_str = string(round(x._time_left, sigdigits = 4))
             temp_str = formatted(x._time_left, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
