@@ -569,6 +569,8 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
     end
 
     d.subexpression_isnum = fill(true, (d.subexpression_number,))
+
+    d.user_operators = nldata.user_operators
     return
 end
 
@@ -689,8 +691,8 @@ end
 function presolve_problem!(m::Optimizer)
 
     m.presolve_epigraph_flag && reform_epigraph!(m)  # perform epigraph rearrangement
-    #m.presolve_cse_flag && dag_cse_simplify!(m)      #
-    #m.presolve_flatten_flag && dag_flattening!(m)
+    m.presolve_cse_flag && dag_cse_simplify!(m)      #
+    m.presolve_flatten_flag && dag_flattening!(m)
 
     #m = user_reformed_optimizer(m)
     create_initial_node!(m)                        # Create initial node and add it to the stack

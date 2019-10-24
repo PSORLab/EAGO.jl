@@ -68,7 +68,7 @@ module EAGO
     include("eago_script/script.jl")
 
     # Routines for solving SIPs
-    #export SIP_Options, SIP_Result, explicit_sip_solve, implicit_sip_solve
+    export SIP_Options, SIP_Result, explicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
 
     # precomile in package....

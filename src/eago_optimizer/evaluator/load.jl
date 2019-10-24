@@ -73,6 +73,6 @@ function copy_to_subexpr!(d::Evaluator{N,T}, y::JuMP._SubexpressionStorage) wher
     sto = SubexpressionSetStorage{N,T}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
                                      temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
                                      x.linearity)
-    push!(d.constraints, sto)
+    push!(d.subexpressions, sto)
 end
 get_node(d::Evaluator) = d.current_node

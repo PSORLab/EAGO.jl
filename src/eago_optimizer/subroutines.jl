@@ -1,3 +1,57 @@
+function contains_optimum!(x::NodeBB, s::String)
+#=
+    true_opt = -5.508013271485620
+    opt = [2.329520197651560, 3.178493073834060]
+    flag = true
+    for i in 1:length(x)
+        if ((x.lower_variable_bounds[i] > opt[i]) ||
+           (x.upper_variable_bounds[i] < opt[i]))
+           flag = false
+           break
+        end
+    end
+    if flag
+        println("THIS NODE $(x.id) CONTAINS THE SOLUTION POINT")
+        println(s)
+    else
+        println("THIS NODE $(x.id) DOES NOT CONTAIN THE SOLUTION POINT")
+        println(s)
+    end
+    =#
+    return
+end
+
+function contains_optimum!(x::Optimizer, s::String, L::Float64, U::Float64)
+    #=
+    true_opt = -5.508013271485620
+    cnode = x._current_node
+    opt = [2.329520197651560, 3.178493073834060]
+    flag = true
+    for i in 1:length(cnode)
+        if ((cnode.lower_variable_bounds[i] > opt[i]) ||
+           (cnode.upper_variable_bounds[i] < opt[i]))
+           flag = false
+           break
+        end
+    end
+    if flag
+        println("THIS NODE $(cnode.id) CONTAINS THE SOLUTION POINT")
+        if ~(L < true_opt)
+            println("THIS NODE DOESN'T BOUND PROPERLY")
+            for i in 1:length(cnode)
+                Li = cnode.lower_variable_bounds[i]
+                Ui = cnode.upper_variable_bounds[i]
+                println("X[$i] = [$Li, $Ui]")
+            end
+            println("$L < $true_opt")
+            println("iteration #: $(x._iteration_count)")
+        end
+    end
+    =#
+    return
+end
+
+
 """
     node_selection
 
@@ -6,6 +60,7 @@ Selects node with the lowest lower bound in stack.
 function node_selection!(t::ExtensionType, x::Optimizer)
     x._node_count -= 1
     x._current_node = popmin!(x._stack)
+    #println("NODE SELECTION.... Current Node: $(x._current_node)")
     return
 end
 
@@ -15,6 +70,8 @@ end
 Stores the two nodes to the stack.
 """
 function branch_node!(t::ExtensionType, x::Optimizer)
+
+    #println("PERFORMED BRANCH")
 
     y = x._current_node
     nvar = x._variable_number
@@ -68,6 +125,9 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
     x._maximum_node_id += 1
     X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
+    #contains_optimum!(X1, "Node X1")
+    #contains_optimum!(X2, "Node X2")
+
     push!(x._stack, X1)
     push!(x._stack, X2)
 
@@ -152,19 +212,16 @@ function termination_check(t::ExtensionType, x::Optimizer)
 
     if isempty(x._stack)
 
-        #if (x._first_solution_node > 0)
+        if (x._first_solution_node > 0)
 
-        #    x._termination_status_code = MOI.OPTIMAL
-        #    x._result_status_code = MOI.FEASIBLE_POINT
-        #    (x.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
-
-        #else
-
-        x._termination_status_code = MOI.INFEASIBLE
-        x._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
-        (x.verbosity >= 3) && println("Empty Stack: Infeasible")
-
-        #end
+            x._termination_status_code = MOI.OPTIMAL
+            x._result_status_code = MOI.FEASIBLE_POINT
+            (x.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
+        else
+            x._termination_status_code = MOI.INFEASIBLE
+            x._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
+            (x.verbosity >= 3) && println("Empty Stack: Infeasible")
+        end
     elseif length(x._stack) >= x.node_limit
 
         x._termination_status_code = MOI.NODE_LIMIT
@@ -184,7 +241,6 @@ function termination_check(t::ExtensionType, x::Optimizer)
         (x.verbosity >= 3) && println("Relative Tolerance Achieved")
 
     elseif (U - L) < x.absolute_tolerance
-
         x._termination_status_code = MOI.OPTIMAL
         x._result_status_code = MOI.FEASIBLE_POINT
         (x.verbosity >= 3) && println("Absolute Tolerance Achieved")
@@ -577,6 +633,12 @@ and optimizer on node `y`.
 function lower_problem!(t::ExtensionType, x::Optimizer)
 
     y = x._current_node
+
+    #println("    ")
+    #println("    ")
+    #println("    ")
+    contains_optimum!(y, "Lower Problem Start")
+
     if ~x._obbt_performed_flag
         x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
         update_relaxed_problem_box!(x, y)
@@ -617,7 +679,7 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
         #println("lower objective: $(x._lower_objective_value)")
         x._cut_add_flag = false
     end
-
+    contains_optimum!(y, "Lower Problem End")
     return
 end
 
@@ -627,6 +689,8 @@ end
 Updates the internal storage in the optimizer after a valid feasible cut is added.
 """
 function cut_update(x::Optimizer)
+
+    contains_optimum!(x._current_node, "Cut Update Start")
     x._cut_feasibility = true
 
     opt = x.relaxed_optimizer
@@ -645,6 +709,7 @@ function cut_update(x::Optimizer)
     else
         x._cut_add_flag = false
     end
+    contains_optimum!(x._current_node, "Cut Update End")
 
     return
 end
@@ -728,7 +793,7 @@ function cut_condition(t::ExtensionType, x::Optimizer)
             fill!(x._lower_uvd, 0.0)
         end
     end
-
+    contains_optimum!(x._current_node, "Cut Condition End")
     x._cut_iterations += 1
 
     return flag
@@ -768,6 +833,7 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     else
         x._cut_add_flag = false
     end
+    #contains_optimum!(y, "Add Cut End")
 
     return
 end
@@ -873,9 +939,7 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
 
         if is_feasible_solution(x._upper_termination_status, x._upper_result_status)
             x._upper_feasibility = true
-            obj = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-            sol = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
-            x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
+            x._upper_objective_value = MOI.get(upper_optimizer, MOI.ObjectiveValue())  + 1.0E-7
             x._upper_solution[1:end] = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else
             x._upper_feasibility = false

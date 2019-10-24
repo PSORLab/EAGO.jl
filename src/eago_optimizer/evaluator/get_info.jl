@@ -10,6 +10,7 @@ function MOI.eval_objective(d::Evaluator, x::Vector{Float64})
     else
         error("No nonlinear objective.")
     end
+    #println("val: $val")
     return val
 end
 
@@ -33,6 +34,7 @@ get_node_upper(d::FunctionSetStorage, i::Int64) = d.setstorage[i].Intv.hi
 function MOI.eval_constraint(d::Evaluator, g::Vector{Float64}, x::Vector{Float64})
     forward_reverse_pass(d,x)
     for i in 1:length(d.constraints)
+        #println("i = $i, setstorage = $(d.constraints[i].setstorage[1])")
         if d.constraints[i].numvalued[1]
             g[i] = d.constraints[i].numberstorage[1]
         else
