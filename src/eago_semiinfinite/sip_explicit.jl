@@ -1,11 +1,35 @@
 function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
                     problem::SIPProblem, cb::SIPCallback, indx::Int64)
 
+  println("xbar: $xbar")
+
   pL = problem.p_l
   pU = problem.p_u
   np = problem.np
 
-  model_llp1 = deepcopy(problem.model)
+  model_llp1 = Model(with_optimizer(EAGO.Optimizer,
+                               lp_depth = 100000,
+                               lp_reptitions = 0,
+                               quad_uni_depth = -1,
+                               obbt_depth = 0,
+                               cp_depth = -1,
+                               iteration_limit = 100000000,
+                               verbosity = 0,
+                               output_iterations = 1,
+                               header_iterations = 400000,
+                               relative_tolerance = 1E-4,
+                               absolute_tolerance = 1E-4,
+                               dbbt_depth = 100000000,
+                               subgrad_tighten = true, #true,
+                               objective_cut_on = true,
+                               cut_max_iterations = 3,
+                               upper_bounding_depth = 4,
+                               time_limit = 1000.0,
+                               presolve_epigraph_flag = false,
+                               presolve_cse_flag = false,
+                               presolve_flatten_flag = false,
+                               relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
+  #model_llp1 = deepcopy(problem.model)
   @variable(model_llp1, pL[i] <= p1[i=1:np] <= pU[i])
   if np == 1
     g(p...) = cb.gSIP[indx](xbar, p)
@@ -41,8 +65,31 @@ function sipRes_llp2(xbar::Vector{Float64}, result::SIPResult,
   pU = problem.p_u
   np = problem.np
 
+  println("xbar: $xbar")
 
-  model_llp2 = deepcopy(problem.model)
+  model_llp2 = Model(with_optimizer(EAGO.Optimizer,
+                               lp_depth = 100000,
+                               lp_reptitions = 0,
+                               quad_uni_depth = -1,
+                               obbt_depth = 0,
+                               cp_depth = -1,
+                               iteration_limit = 100000000,
+                               verbosity = 0,
+                               output_iterations = 1,
+                               header_iterations = 400000,
+                               relative_tolerance = 1E-4,
+                               absolute_tolerance = 1E-4,
+                               dbbt_depth = 100000000,
+                               subgrad_tighten = true, #true,
+                               objective_cut_on = true,
+                               cut_max_iterations = 3,
+                               upper_bounding_depth = 4,
+                               time_limit = 1000.0,
+                               presolve_epigraph_flag = false,
+                               presolve_cse_flag = false,
+                               presolve_flatten_flag = false,
+                               relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
+  #model_llp2 = deepcopy(problem.model)
   @variable(model_llp2, pL[i] <= p2[i=1:np] <= pU[i])
   if np == 1
     g(p) = cb.gSIP[indx](xbar, p)
@@ -81,13 +128,37 @@ function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}}
   xU = problem_storage.x_u
 
   # create JuMP model
-  model_bnd = deepcopy(problem_storage.model)
+  model_bnd = Model(with_optimizer(EAGO.Optimizer,
+                               lp_depth = 100000,
+                               lp_reptitions = 0,
+                               quad_uni_depth = -1,
+                               obbt_depth = 0,
+                               cp_depth = -1,
+                               iteration_limit = 100000000,
+                               verbosity = 0,
+                               output_iterations = 1,
+                               header_iterations = 400000,
+                               relative_tolerance = 1E-4,
+                               absolute_tolerance = 1E-4,
+                               dbbt_depth = 100000000,
+                               subgrad_tighten = true, #true,
+                               objective_cut_on = true,
+                               cut_max_iterations = 3,
+                               upper_bounding_depth = 4,
+                               time_limit = 1000.0,
+                               presolve_epigraph_flag = false,
+                               presolve_cse_flag = false,
+                               presolve_flatten_flag = false,
+                               relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
+  #model_bnd = deepcopy(problem_storage.model)
   @variable(model_bnd, xL[i] <= x[i=1:nx] <= xU[i])
   initialize_extras(model_bnd, x)
+  println("length(disc_set): $(length(disc_set))")
+  println("problem_storage.nSIP: $(problem_storage.nSIP)")
   for i in 1:problem_storage.nSIP
     for j in 1:length(disc_set)
         gi = Symbol("g$i$j")
-        g(x...) = cb.gSIP[i](x, disc_set[i][j])
+        g(x...) = cb.gSIP[i](x, disc_set[j][i])
         register(model_bnd, gi, nx, g, autodiff=true)
         func_call = Expr(:call)
         args = []
@@ -169,6 +240,7 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
   nx = prob.nx
   np = prob.np
   nSIP = prob.nSIP
+  tolerance = 1E-6
 
   eps_g =  prob.initial_eps_g
   r = prob.initial_r
@@ -180,6 +252,9 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
 
   # checks for convergence
   for k = 1:prob.iteration_limit
+
+    println("lower_disc: $(lower_disc)")
+    println("upper_disc: $(upper_disc)")
 
     # check for termination
     check_convergence(LBD, UBD, abs_tolerance, verbosity) && (break)
@@ -205,7 +280,7 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
     for i in 1:nSIP
       llp_out = sipRes_llp1(xsol, result, prob, cb, i)
       print_summary!(verbosity, llp_out[1], llp_out[2], llp_out[3], "LLP$i")
-      if (llp_out[1] > 0.0)
+      if (llp_out[1] + tolerance > 0.0)
         non_positive_flag = false
       end
       push!(temp_lower_disc, llp_out[2])
@@ -231,10 +306,11 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
       for i in 1:nSIP
         llp2_out = sipRes_llp2(xsol, result, prob, cb, i)
         print_summary!(verbosity, llp2_out[1], llp2_out[2], llp2_out[3], "LLP$i")
-        if (llp2_out[1] > 0.0)
+        if (llp2_out[1] + tolerance > 0.0)
           non_positive_flag = false
         end
-        push!(temp_upper_disc, pbar)
+        println("pbar: $pbar")
+        push!(temp_upper_disc, llp2_out[2])
       end
       if non_positive_flag
           if (val <= UBD)
@@ -243,12 +319,15 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
               xstar[:] = xsol[:]
           end
           eps_g = eps_g/r
+          println("UPDATED eps_g 1: $eps_g")
       else
           push!(upper_disc, temp_upper_disc)
+          println("UPDATED upper_disc")
       end
       println("---- LOWER LEVEL PROBLEM END 2 ----")
     else
       eps_g = eps_g/r
+      println("UPDATED eps_g 2: $eps_g")
     end
     print_summary!(verbosity, result.upper_bound, result.xsol, feas, "UBD")
 

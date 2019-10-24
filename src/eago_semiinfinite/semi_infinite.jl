@@ -47,10 +47,10 @@ mutable struct SIPProblem
       np = length(p_l)
       nx = length(x_l)
 
-      absolute_tolerance = haskey(kwargs, :absolute_tolerance) ? kwargs[:return_hist] : 1E-1
-      iteration_limit = haskey(kwargs, :iteration_limit) ? kwargs[:return_hist] : 1000
-      initial_eps_g = haskey(kwargs, :initial_eps_g) ? kwargs[:return_hist] : 0.9
-      initial_r = haskey(kwargs, :initial_r) ? kwargs[:return_hist] : 1.5
+      absolute_tolerance = haskey(kwargs, :absolute_tolerance) ? kwargs[:return_hist] : 1E-3
+      iteration_limit = haskey(kwargs, :iteration_limit) ? kwargs[:return_hist] : 100
+      initial_eps_g = haskey(kwargs, :initial_eps_g) ? kwargs[:return_hist] : 1.0
+      initial_r = haskey(kwargs, :initial_r) ? kwargs[:return_hist] : 2.0
 
       return_hist = haskey(kwargs, :return_hist) ? kwargs[:return_hist] : false
       header_interval = haskey(kwargs, :header_interval) ? kwargs[:header_interval] : 20
@@ -85,32 +85,37 @@ mutable struct SIPProblem
 
         print_str = "| "
 
-        max_len = 9
+        max_len = 15
         temp_str = string(k_int)
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-        max_len = 11
+        max_len = 15
         temp_str = string(round(lbd, digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-        max_len = 11
+        max_len = 15
         temp_str = string(round(ubd, digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-        max_len = 7
+        max_len = 15
         temp_str = string(round(eps, digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-        max_len = 5
+        max_len =15
+        temp_str = string(round(r, digits = 5))
+        len_str = length(temp_str)
+        print_str *= (" "^(max_len - len_str))*temp_str*" | "
+
+        max_len = 15
         temp_str = string(round((ubd-lbd), digits = 5))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-        max_len = 7
+        max_len = 15
         temp_str = string(round((ubd-lbd)/abs(ubd), digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" |"

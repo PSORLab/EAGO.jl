@@ -444,7 +444,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
                              acceptable_tol = 1E30,
                              max_iter = 1000000,
                              acceptable_iter = 50000,
-                             constr_viol_tol = 0.0001,
+                             constr_viol_tol = 0.0000001,
                              acceptable_constr_viol_tol = 0.0000001,
                              acceptable_dual_inf_tol = 1.0,
                              acceptable_compl_inf_tol = 0.0000001)
