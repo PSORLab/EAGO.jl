@@ -83,6 +83,7 @@ end
       arg1 = (cos(xL1) <= cos(xU1)) ? xL : xU
       arg2 = -2.0*pi*kL
     end
+    return arg1,arg2
   end
   if (xU1 <= pi)
     arg1 = xU
@@ -102,7 +103,7 @@ end
   xU = x.Intv.hi
   xLc = y.lo
   xUc = y.hi
-  eps_max, eps_min = cos_arg(x.Intv.lo, x.Intv.hi)
+  eps_min, eps_max = cos_arg(x.Intv.lo, x.Intv.hi)
   midcc,cc_id = mid3(x.cc, x.cv, eps_max)
   midcv,cv_id = mid3(x.cc, x.cv, eps_min)
   cc, dcc, cc_tp1, cc_tp2 = cc_cos(midcc, x.Intv.lo, x.Intv.hi, cc_tp1, cc_tp2)
@@ -121,7 +122,7 @@ end
   xU = x.Intv.hi
   xLc = y.lo
   xUc = y.hi
-  eps_max, eps_min = cos_arg(x.Intv.lo, x.Intv.hi)
+  eps_min, eps_max = cos_arg(x.Intv.lo, x.Intv.hi)
   midcc,cc_id = mid3(x.cc, x.cv, eps_max)
   midcv,cv_id = mid3(x.cc, x.cv, eps_min)
   cc, dcc, cc_tp1, cc_tp2 = cc_cos(midcc, x.Intv.lo, x.Intv.hi, cc_tp1, cc_tp2)

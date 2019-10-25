@@ -10,7 +10,7 @@ module EAGO
     import JuMP._Derivatives: operators, NodeData
     using JuMP._Derivatives: univariate_operators,
                              univariate_operator_to_id
-    using Ipopt, GLPK, Gurobi, Printf
+    using Ipopt, GLPK
 
     using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse

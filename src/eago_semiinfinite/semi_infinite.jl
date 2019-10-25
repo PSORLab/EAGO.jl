@@ -29,6 +29,7 @@ mutable struct SIPProblem
     init_upper_disc::Vector{Vector{Vector{Float64}}}
 
     absolute_tolerance::Float64
+    constraint_tolerance::Float64
     iteration_limit::Int64
     initial_eps_g::Float64
     initial_r::Float64
@@ -38,40 +39,51 @@ mutable struct SIPProblem
     print_interval::Int64
     verbosity::Int64
 
-    model
+    optimizer
+    kwargs
   end
   function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
                       p_l::Vector{Float64}, p_u::Vector{Float64},
-                      gSIP, model, kwargs)
+                      gSIP, optimizer, kwargs)
 
       np = length(p_l)
       nx = length(x_l)
 
-      absolute_tolerance = haskey(kwargs, :absolute_tolerance) ? kwargs[:return_hist] : 1E-3
-      iteration_limit = haskey(kwargs, :iteration_limit) ? kwargs[:return_hist] : 100
-      initial_eps_g = haskey(kwargs, :initial_eps_g) ? kwargs[:return_hist] : 1.0
-      initial_r = haskey(kwargs, :initial_r) ? kwargs[:return_hist] : 2.0
+      absolute_tolerance = haskey(kwargs, :sip_absolute_tolerance) ? kwargs[:sip_absolute_tolerance] : 1E-3
+      constraint_tolerance = haskey(kwargs, :sip_constraint_tolerance) ? kwargs[:sip_constraint_tolerance] : 1E-3
+      iteration_limit = haskey(kwargs, :sip_iteration_limit) ? kwargs[:sip_iteration_limit] : 100
+      initial_eps_g = haskey(kwargs, :sip_initial_eps_g) ? kwargs[:sip_initial_eps_g] : 1.0
+      initial_r = haskey(kwargs, :sip_initial_r) ? kwargs[:sip_initial_r] : 2.0
 
-      return_hist = haskey(kwargs, :return_hist) ? kwargs[:return_hist] : false
-      header_interval = haskey(kwargs, :header_interval) ? kwargs[:header_interval] : 20
-      print_interval = haskey(kwargs, :print_interval) ? kwargs[:print_interval] : 1
-      verbosity = haskey(kwargs, :verbosity) ? kwargs[:verbosity] : 1
+      return_hist = haskey(kwargs, :sip_return_hist) ? kwargs[:sip_return_hist] : false
+      header_interval = haskey(kwargs, :sip_header_interval) ? kwargs[:sip_header_interval] : 20
+      print_interval = haskey(kwargs, :sip_print_interval) ? kwargs[:sip_print_interval] : 1
+      verbosity = haskey(kwargs, :sip_verbosity) ? kwargs[:sip_verbosity] : 1
 
-      sense = haskey(kwargs, :sense) ? kwargs[:sense] : :min
-      init_lower_disc = haskey(kwargs, :init_lower_disc) ? kwargs[:init_lower_disc] : Vector{Vector{Float64}}[]
-      init_upper_disc = haskey(kwargs, :init_upper_disc) ? kwargs[:init_upper_disc] : Vector{Vector{Float64}}[]
+      sense = haskey(kwargs, :sip_sense) ? kwargs[:sip_sense] : :min
+      init_lower_disc = haskey(kwargs, :sip_init_lower_disc) ? kwargs[:sip_init_lower_disc] : Vector{Vector{Float64}}[]
+      init_upper_disc = haskey(kwargs, :sip_init_upper_disc) ? kwargs[:sip_init_upper_disc] : Vector{Vector{Float64}}[]
+
+      opt_dict = Dict{Symbol,Any}()
+      for key in keys(kwargs)
+        string_key = String(key)
+        if string_key[1:3] !== "sip"
+          opt_dict[key] = kwargs[key]
+        end
+      end
 
       nSIP = length(gSIP)
 
       SIPProblem(x_l, x_u, p_l, p_u, np, nSIP, nx, sense, init_lower_disc,
-                 init_upper_disc, absolute_tolerance, iteration_limit,
+                 init_upper_disc, absolute_tolerance, constraint_tolerance,
+                 iteration_limit,
                  initial_eps_g, initial_r, return_hist, header_interval,
-                 print_interval, verbosity, model)
+                 print_interval, verbosity, optimizer, opt_dict)
   end
 
   function print_int!(verbosity::Int64, hdr_intv::Int64, prt_intv::Int64,
                       k_int::Int64, lbd::Float64, ubd::Float64,
-                      eps::Float64, r::Float64)
+                      eps::Float64, r::Float64, ismin::Bool)
 
     if (verbosity == 1 || verbosity == 2)
 
@@ -91,12 +103,14 @@ mutable struct SIPProblem
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
         max_len = 15
-        temp_str = string(round(lbd, digits = 6))
+        lower_adj = ismin ? lbd : ubd
+        temp_str = string(round(lower_adj, digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
         max_len = 15
-        temp_str = string(round(ubd, digits = 6))
+        upper_adj = ismin ? ubd : lbd
+        temp_str = string(round(upper_adj, digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 

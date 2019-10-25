@@ -82,6 +82,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
     # Options for optimality-based bound tightening
     relaxed_optimizer::S
+    relaxed_optimizer_kwargs::Base.Iterators.Pairs
     relaxed_inplace_mod::Bool
     obbt_depth::Int64
     obbt_reptitions::Int64
@@ -211,6 +212,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _upper_feasibility::Bool
     _upper_objective_value::Float64
     _upper_solution::Vector{Float64}
+
+    _best_upper_value::Float64
 
     _postprocess_feasibility::Bool
 
@@ -409,7 +412,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:rounding_mode] = :accurate
 
         # Termination limits
-        default_opt_dict[:node_limit] = 10^6
+        default_opt_dict[:node_limit] = 10^7
         default_opt_dict[:time_limit] = 3600.0
         default_opt_dict[:iteration_limit] = 3000000
         default_opt_dict[:absolute_tolerance] = 1E-3
@@ -433,6 +436,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:ext_type] = DefaultExt()
 
         default_opt_dict[:relaxed_optimizer] = GLPK.Optimizer()
+        default_opt_dict[:relaxed_optimizer_kwargs] = Base.Iterators.Pairs(NamedTuple(),())
         default_opt_dict[:relaxed_inplace_mod] = true
         default_opt_dict[:upper_optimizer] = Ipopt.Optimizer()
         #=
@@ -513,6 +517,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._upper_feasibility = false
         m._upper_objective_value = Inf
         m._upper_solution = Float64[]
+
+        m._best_upper_value = Inf
 
         m._postprocess_feasibility = false
 
@@ -633,8 +639,16 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 end
 function Optimizer(;options...)
     rtype = haskey(options, :relaxed_optimizer) ? typeof(options[:relaxed_optimizer]) : GLPK.Optimizer
+    ropts = haskey(options, :relaxed_optimizer_kwargs) ? haskey(options, :relaxed_optimizer_kwargs) : Base.Iterators.Pairs(NamedTuple(),())
     utype = haskey(options, :upper_optimizer) ? typeof(options[:upper_optimizer]) : Ipopt.Optimizer
-    Optimizer{rtype, utype}(;options...)
+
+    opt = Optimizer{rtype, utype}(;options...)
+    relax_fact = with_optimizer(rtype; ropts...)
+    opt.relaxed_optimizer = relax_fact()
+    if MOI.supports(opt.relaxed_optimizer, MOI.Silent())
+        MOI.set(opt.relaxed_optimizer, MOI.Silent(), true)
+    end
+    return opt
 end
 
 function MOI.empty!(m::Optimizer)
