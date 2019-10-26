@@ -140,21 +140,6 @@ function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}}
   return objective_value, xsol, is_feasible
 end
 
-const DEFINED_KWARGS_SIPRES = Symbol[:initialize_extras, :initialize_bnd_prob,
-                                     :sense, :algo, :m]
-function allowed_options_check!(kwargs::Base.Iterators.Pairs)
-  flag = true
-  for (k,v) in kwargs
-    if ~in(k, DEFINED_KWARGS_SIPRES)
-        flag = false
-        println("Allowed keyword arguements are $DEFINED_KWARGS_SIPRES and any additional
-                 SIP constraints of the form gSIPX...X.")
-        break
-    end
-  end
-  flag
-end
-
 function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
 
 
@@ -268,7 +253,6 @@ function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
 
   @assert length(p_l) == length(p_u)
   @assert length(x_l) == length(x_u)
-  ~isempty(kwargs) && allowed_options_check!(kwargs)
 
   # collects all keyword arguments of the form :gSIP1, gSIP24234, :gSIPHello
   init_bnd = haskey(kwargs, :sip_init_bnd) ? kwargs[:sip_init_bnd] : no_init_bnd
