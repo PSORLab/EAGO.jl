@@ -37,7 +37,7 @@ Either these original relaxations, differentiable McCormick relaxations<sup>2</s
 
 EAGO makes use of the JuMP modeling language to. Consider the familiar "process" problem instance<sup>5</sup>:
 
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/ProcessFormulation.svg" width="75%" height="75%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/ProcessFormulation.svg" width="50%" height="50%">
 
 
 This model can be formulated using JuMP code as
