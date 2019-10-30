@@ -17,7 +17,6 @@ EAGO is a deterministic global optimizer designed to address a wide variety of o
 
 <p align="center"> 
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="30%" height="30%">
-<\p>
   
 ## EAGO's Relaxations
 
@@ -32,7 +31,6 @@ For each nonlinear term EAGO makes use of factorable representation to construct
 
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/McCormick/Figure_1.png" width="60%" height="60%">
-<\p>
 
 Either these original relaxations, differentiable McCormick relaxations<sup>2</sup>, or affine relaxations thereof can be used to construct relaxations of optimization problems useful in branch and bound routines for global optimization. Utilities are included to combine these with algorithms for relaxing implicit functions<sup>3</sup> and forward-reverse propagation of McCormick arithmetic<sup>4</sup>.
 
@@ -42,7 +40,6 @@ EAGO makes use of the JuMP modeling language to. Consider the familiar "process"
 
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/ProcessFormulation.svg" width="60%" height="60%">
-<\p>
 
 
 This model can be formulated using JuMP code as
