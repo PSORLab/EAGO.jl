@@ -16,7 +16,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern AD packages (e.g. **+**, **sin**, **cosh**) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have aprior variable bounds defined and have differentiable constraints. That is problems should be specified in the generic form below:
 
 
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="75%" height="75%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="50%" height="50%">
 
 ## EAGO's Relaxations
 
