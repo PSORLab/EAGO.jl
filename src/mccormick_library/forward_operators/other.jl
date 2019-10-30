@@ -1,3 +1,10 @@
+
+function interval_MC(x::MC{S,T}) where {S,T<:RelaxTag}
+	MC{S,T}(x.Intv)
+end
+
+@inline isnan(x::MC) = isnan(x.cc) || isnan(x.cv)
+
 ########### Defines differentiable step relaxations
 @inline function cv_step(x::Float64, xL::Float64, xU::Float64)
 	  (xU <= 0.0) && (return 0.0, 0.0)
@@ -115,10 +122,6 @@ end
     else
       cv = y.cv
       cv_grad = y.cv_grad
-	  if (x.cc < y.cv)
-	   	 cc = y.cv
-		 cc_grad = zero(SVector{N,Float64})
-	   end
     end
     if (x.cc <= y.cc)
       cc = x.cc
@@ -126,11 +129,8 @@ end
     else
       cc = y.cc
       cc_grad = y.cc_grad
-	  if (x.cv > y.cc)
-	  	 cv = y.cc
-		 cv_grad = zero(SVector{N,Float64})
-	  end
     end
+	# ADD NAN CHECK HERE
     return MC{N, NS}(cv, cc, intersect(x.Intv,y.Intv), cv_grad, cc_grad, (x.cnst && y.cnst))
 end
 @inline function intersect(x::MC{N, Diff}, y::MC{N, Diff}) where N
@@ -140,30 +140,29 @@ end
 end
 
 @inline function intersect(x::MC{N, NS}, y::Interval{Float64}) where N
-    	if (x.cv >= y.lo)
-      		cv = x.cv
-      		cv_grad = x.cv_grad
-    	else
-      		cv = y.lo
-	  		cc = x.cc
-      		cv_grad = zero(SVector{N,Float64})
-	  		if (cc < y.lo)
-		  		cc = y.lo
-		  		cc_grad = zero(SVector{N,Float64})
-	  		end
-    	end
-    	if (x.cc <= y.hi)
-      		cc = x.cc
-      		cc_grad = x.cc_grad
-    	else
-	  		cv = x.cv
-      		cc = y.hi
-      		cc_grad = zero(SVector{N,Float64})
-	  		if (y.hi < cv)
-		  		cv = y.hi
-		  		cv_grad = zero(SVector{N,Float64})
-	  		end
-    	end
+
+	if (x.cv >= y.lo)
+  		cv = x.cv
+  		cv_grad = x.cv_grad
+	else
+  		cv = y.lo
+  		cv_grad = zero(SVector{N,Float64})
+	end
+	if (x.cc <= y.hi)
+  		cc = x.cc
+  		cc_grad = x.cc_grad
+	else
+  		cc = y.hi
+  		cc_grad = zero(SVector{N,Float64})
+	end
+	if (cc < y.lo)
+		cv = NaN
+		cc = NaN
+	end
+	if (y.hi < cv)
+		cv = NaN
+		cc = NaN
+	end
     return MC{N, NS}(cv, cc, intersect(x.Intv,y), cv_grad, cc_grad, (x.cnst && y.cnst))
 end
 @inline function intersect(x::MC{N, Diff}, y::Interval{Float64}) where N

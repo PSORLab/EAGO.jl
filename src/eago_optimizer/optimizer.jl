@@ -75,10 +75,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     # Options for constraint propagation
     cp_depth::Int64
     cp_improvement::Float64
-    cp_interval_reptitions::Int64
-    cp_interval_tolerance::Float64
-    cp_mccormick_reptitions::Int64
-    cp_mccormick_tolerance::Float64
+    cp_reptitions::Int64
+    cp_tolerance::Float64
+    cp_interval_only::Bool
 
     # Options for optimality-based bound tightening
     relaxed_optimizer::S
@@ -359,14 +358,13 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:presolve_flatten_flag] = false
 
         # Options for constraint propagation
-        default_opt_dict[:cp_depth] = 0
-        default_opt_dict[:cp_interval_reptitions] = 0
-        default_opt_dict[:cp_interval_tolerance] = 0.99
-        default_opt_dict[:cp_mccormick_reptitions] = 0
-        default_opt_dict[:cp_mccormick_tolerance] = 0.99
+        default_opt_dict[:cp_depth] = 1000
+        default_opt_dict[:cp_reptitions] = 3
+        default_opt_dict[:cp_tolerance] = 0.99
+        default_opt_dict[:cp_interval_only] = false
 
         # Options for optimality-based bound tightening
-        default_opt_dict[:obbt_depth] = 0
+        default_opt_dict[:obbt_depth] = 6
         default_opt_dict[:obbt_reptitions] = 20
         default_opt_dict[:obbt_aggressive_on] = false
         default_opt_dict[:obbt_aggressive_max_iteration] = 2
@@ -375,13 +373,13 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:obbt_variable_values] = Bool[]
 
         # Options for linear bound tightening
-        default_opt_dict[:lp_depth] = 0
+        default_opt_dict[:lp_depth] = 100000
         default_opt_dict[:lp_reptitions] = 3
 
         # Options for quadratic bound tightening
-        default_opt_dict[:quad_uni_depth] = 0
+        default_opt_dict[:quad_uni_depth] = -1
         default_opt_dict[:quad_uni_reptitions] = 2
-        default_opt_dict[:quad_bi_depth] = 1000
+        default_opt_dict[:quad_bi_depth] = -1
         default_opt_dict[:quad_bi_reptitions] = 2
 
         # Subgradient tightening flags for evaluation
@@ -390,7 +388,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Tolerance to add cuts and max number of cuts
         default_opt_dict[:objective_cut_on] = true
-        default_opt_dict[:cut_max_iterations] = 2
+        default_opt_dict[:cut_max_iterations] = 3
         default_opt_dict[:cut_cvx] = 0.9
         default_opt_dict[:cut_tolerance] = 0.05
 
@@ -398,7 +396,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:upper_bounding_depth] = 4
 
         # Duality-based bound tightening (DBBT) options
-        default_opt_dict[:dbbt_depth] = 10^6
+        default_opt_dict[:dbbt_depth] = 10^10
         default_opt_dict[:dbbt_tolerance] = 1E-8
 
         # Node branching options
@@ -413,7 +411,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Termination limits
         default_opt_dict[:node_limit] = 10^7
-        default_opt_dict[:time_limit] = 3600.0
+        default_opt_dict[:time_limit] = 1000.0
         default_opt_dict[:iteration_limit] = 3000000
         default_opt_dict[:absolute_tolerance] = 1E-3
         default_opt_dict[:relative_tolerance] = 1E-3

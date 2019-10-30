@@ -501,8 +501,8 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
     end
 
     # USER OUTPUT BUFFERS??????
-    d.cp_tolerance = x.cp_interval_tolerance
-    d.cp_reptitions = x.cp_interval_reptitions
+    d.cp_tolerance = x.cp_tolerance
+    d.cp_reptitions = x.cp_reptitions
     d.has_reverse = x._cp_evaluation_reverse
     d.subgrad_tighten = x.subgrad_tighten
     d.subgrad_tighten_reverse = x.subgrad_tighten_reverse

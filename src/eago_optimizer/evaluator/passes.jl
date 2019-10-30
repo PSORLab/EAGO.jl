@@ -33,6 +33,8 @@ end
 function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                        first_eval_flag::Bool) where {N, T<:RelaxTag}
+
+    #println("k = $k, numvalued[$k] = $(numvalued[k])")
     tmp_num = 0.0
     tmp_mc = zero(MC{N,T})
     isnum = true
@@ -86,7 +88,11 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
     if isnum
         @inbounds numberstorage[k] = tmp_num
     else
-        @inbounds setstorage[k] = tmp_num + tmp_mc
+        if first_eval_flag
+            @inbounds setstorage[k] = tmp_num + tmp_mc
+        else
+            @inbounds setstorage[k] = (tmp_num + tmp_mc) ∩ setstorage[k]
+        end
     end
 
     #println("k = $k, numvalued[$k] = $(numvalued[k])")
@@ -125,7 +131,11 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
     end
     @inbounds numvalued[k] = isnum
     if ~isnum
-        @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+        if first_eval_flag
+            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+        else
+            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
+        end
     end
     return
 end
@@ -155,7 +165,11 @@ function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::Un
         numberstorage[k] = tmp_num_1
     else
         tmp_mc_1 *= tmp_num_1
-        setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+        if first_eval_flag
+            setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+        else
+            setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
+        end
     end
     numvalued[k] = isnum
     return
@@ -212,7 +226,11 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
                     @inbounds tmp_mc_1 = ^(tmp_mc_1, tmp_mc_2, setstorage[k].Intv)
                 end
             end
-            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+            if first_eval_flag
+                @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+            else
+                @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
+            end
         end
     end
     @inbounds numvalued[k] = (chdset1 & chdset2)
@@ -264,7 +282,11 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
                 tmp_mc_1 = McCormick.div_kernel(tmp_mc_1, tmp_mc_2, intv_k)
             end
         end
-        @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+        if first_eval_flag
+            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
+        else
+            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
+        end
     end
     @inbounds numvalued[k] = chdset1 & chdset2
     return
@@ -317,7 +339,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
             if isnum
                 @inbounds numberstorage[k] = subexpr_values_flt[op]
             else
-                @inbounds setstorage[k] = subexpr_values_set[op]
+                @inbounds setstorage[k] = subexpr_values_set[op] #∩ setstorage[k]
             end
             numvalued[k] = isnum
         elseif nod.nodetype == JuMP._Derivatives.CALL
@@ -387,7 +409,11 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 if isnum
                     numberstorage[k] = fval
                 else
-                    setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
+                    if first_eval_flag
+                        setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
+                    else
+                        setstorage[k] = set_value_post(x_values, fval ∩ setstorage[k], current_node, subgrad_tighten)
+                    end
                 end
                 numvalued[k] = isnum                  # DONE
             else
@@ -409,7 +435,11 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                     @inbounds numberstorage[k] = fval_num
                 else
                     fval_mc = f(child_val_mc)
-                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                    if first_eval_flag
+                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                    else
+                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
+                    end
                 end
             elseif single_tp(op) && chdset
                 @inbounds tpdict_tuple = tpdict[k]
@@ -420,7 +450,11 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 fval_mc, tp1, tp2 = single_tp_set(op, child_val_mc, setstorage[k], tp1, tp2, first_eval_flag)
                 @inbounds tp1storage[tindx] = tp1
                 @inbounds tp1storage[tindx] = tp2
-                @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                if first_eval_flag
+                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                else
+                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
+                end
             elseif double_tp(op) && chdset
                 @inbounds tpdict_tuple = tpdict[k]
                 tindx1 = tpdict_tuple[1]
@@ -436,14 +470,22 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @inbounds tp2storage[tindx2] = tp2
                 @inbounds tp3storage[tindx1] = tp3
                 @inbounds tp4storage[tindx2] = tp4
-                @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                if first_eval_flag
+                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                else
+                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
+                end
             else
                 if chdset
                     fval_num = eval_univariate_set(op, child_val_num)
                     @inbounds numberstorage[k] = fval_num
                 else
                     fval_mc = eval_univariate_set(op, child_val_mc)
-                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                    if first_eval_flag
+                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
+                    else
+                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
+                    end
                 end
             end
             numvalued[k] = chdset
@@ -620,10 +662,12 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
             @inbounds current_node.lower_variable_bounds[op] = setstorage[k].Intv.lo
             @inbounds current_node.upper_variable_bounds[op] = setstorage[k].Intv.hi               # DONE
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
+            #=
             @inbounds isnum = subexpression_isnum[nod.index]
             if ~isnum
                 @inbounds subexpr_values_set[nod.index] = setstorage[k]
             end          # DONE
+            =#
         elseif numvalued[k]
             continue                                             # DONE
         elseif (nod.nodetype == JuMP._Derivatives.CALL)
@@ -633,88 +677,50 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
             @inbounds parent_value = setstorage[k]
             n_children = length(children_idx)
             if (op >= JuMP._Derivatives.USER_OPERATOR_ID_START)
+                # SKIPS USER DEFINE OPERATORS NOT BRIDGED INTO JuMP Tree
+                # Representation
                 continue
             elseif (op == 1) # :+
                 lenx = length(children_idx)
-                if false #lenx == 2
-                    @inbounds child1 = first(children_idx)
-                    @inbounds child2 = last(children_idx)
-                    #println("child1: $child1")
-                    #println("child2: $child2")
-                    @inbounds ix1 = children_arr[child1]
-                    @inbounds ix2 = children_arr[child2]
-                    #println("ix1: $ix1")
-                    #println("ix2: $ix2")
-                    @inbounds chdset1 = numvalued[ix1]
-                    @inbounds chdset2 = numvalued[ix2]
-                    @inbounds nsto1 = numberstorage[ix1]
-                    @inbounds nsto2 = numberstorage[ix2]
-                    @inbounds ssto1 = setstorage[ix1]
-                    @inbounds ssto2 = setstorage[ix2]
-                    if (chdset1 && ~chdset2)
-                        pnew, xhold, xsum = plus_rev(parent_value, nsto1, ssto2)
-                        continue_flag &= ~isempty(xsum)
-                        if continue_flag
-                            @inbounds setstorage[ix2] = xsum
-                        end
-                    elseif (~chdset1 && chdset2)
-                        pnew, xhold, xsum = plus_rev(parent_value, ssto1, nsto2)
-                        continue_flag &= ~isempty(xhold)
-                        if continue_flag
-                            @inbounds setstorage[ix1] = xhold
-                        end
-                    elseif (~chdset1 && ~chdset2)
-                        pnew, xhold, xsum = plus_rev(parent_value, ssto1, ssto2)
-                        continue_flag &= ~isempty(xhold)
-                        continue_flag &= ~isempty(xsum)
-                        if continue_flag
-                            @inbounds setstorage[ix1] = xhold
-                            @inbounds setstorage[ix2] = xsum
-                        end
-                    end
-                    continue_flag &= ~isempty(pnew)
-                    if continue_flag
-                        @inbounds setstorage[k] = pnew
-                    else
-                        println("infeasible +")
-                        break
-                    end
-
-                else
-                    count = 0
-                    child_arr_indx = children_arr[children_idx]
-                    for c_idx in child_arr_indx
-                        tmp_sum = 0.0
-                        @inbounds inner_chdset = numvalued[c_idx]
-                        if ~inner_chdset
-                            if (count < MAX_ASSOCIATIVE_REVERSE)
-                                for cin_idx in child_arr_indx
-                                    if (cin_idx != c_idx)
-                                        @inbounds nchdset = numvalued[cin_idx]
-                                        if (nchdset)
-                                            @inbounds tmp_sum += numberstorage[cin_idx]
-                                        else
-                                            @inbounds tmp_sum += setstorage[cin_idx]
-                                        end
+                count = 0
+                child_arr_indx = children_arr[children_idx]
+                for c_idx in child_arr_indx
+                    tmp_sum = 0.0
+                    @inbounds inner_chdset = numvalued[c_idx]
+                    if ~inner_chdset
+                        if (count < MAX_ASSOCIATIVE_REVERSE)
+                            for cin_idx in child_arr_indx
+                                if (cin_idx != c_idx)
+                                    @inbounds nchdset = numvalued[cin_idx]
+                                    if (nchdset)
+                                        @inbounds tmp_sum += numberstorage[cin_idx]
+                                    else
+                                        @inbounds tmp_sum += setstorage[cin_idx]
                                     end
                                 end
-                                @inbounds tmp_hold = setstorage[c_idx]
-                                pnew, xhold, xsum = plus_rev(parent_value, tmp_hold, tmp_sum)
-                                if (isempty(pnew) || isempty(xhold) || isempty(xsum))
-                                    continue_flag = false
-                                    break
-                                end
-                                setstorage[k] = set_value_post(x_values, pnew, current_node, subgrad_tighten)
-                                setstorage[c_idx] = set_value_post(x_values, xhold, current_node, subgrad_tighten)
-                            else
+                            end
+                            @inbounds tmp_hold = setstorage[c_idx]
+                            pnew, xhold, xsum = plus_rev(parent_value, tmp_hold, tmp_sum)
+                            if (isempty(pnew) || isempty(xhold) || isempty(xsum))
+                                continue_flag = false
                                 break
                             end
+                            if isnan(pnew)
+                                pnew = interval_MC(pnew)
+                            end
+                            if isnan(xhold)
+                                pnew = interval_MC(xhold)
+                            end
+                            setstorage[k] = set_value_post(x_values, pnew, current_node, subgrad_tighten)
+                            setstorage[c_idx] = set_value_post(x_values, xhold, current_node, subgrad_tighten)
+                        else
+                            break
                         end
-                        count += 1
                     end
-                    if ~continue_flag
-                        break
-                    end
+                    count += 1
+                end
+                if ~continue_flag
+                    break
                 end
             elseif (op == 2) # :-
                 child1 = first(children_idx)
@@ -739,42 +745,57 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                         continue_flag = false
                         break
                     end
+                    if isnan(pnew)
+                        pnew = interval_MC(pnew)
+                    end
                     setstorage[k] = pnew
                     if ~chdset1
+                        if isnan(xnew)
+                            xnew = interval_MC(xnew)
+                        end
                         setstorage[ix1] = set_value_post(x_values, xnew, current_node, subgrad_tighten)
                     end
                     if  ~chdset2
+                        if isnan(ynew)
+                            ynew = interval_MC(ynew)
+                        end
                         setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
                     end
                 end
             elseif (op == 3) # :*
-                tmp_sum = 1.0
+                tmp_mlt = 1.0
                 chdset = true
                 count = 0
                 child_arr_indx = children_arr[children_idx]
                 for c_idx in child_arr_indx
                     if (count < MAX_ASSOCIATIVE_REVERSE)
                         if ~numvalued[c_idx]
-                            tmp_sum = 1.0
+                            tmp_mlt = 1.0
                             for cin_idx in child_arr_indx
                                 if (cin_idx != c_idx)
                                     @inbounds chdset = numvalued[cin_idx]
                                     if (chdset)
-                                        @inbounds tmp_sum *= numberstorage[cin_idx]
+                                        @inbounds tmp_mlt *= numberstorage[cin_idx]
                                     else
-                                        @inbounds tmp_sum *= setstorage[cin_idx]
+                                        @inbounds tmp_mlt *= setstorage[cin_idx]
                                     end
                                 end
                             end
                             @inbounds chdset = numvalued[c_idx]
                             if (chdset)
-                                @inbounds pnew, xhold, xsum = mul_rev(parent_value, numberstorage[c_idx], tmp_sum)
+                                @inbounds pnew, xhold, xprd = mul_rev(parent_value, numberstorage[c_idx], tmp_mlt)
                             else
-                                @inbounds pnew, xhold, xsum = mul_rev(parent_value, setstorage[c_idx], tmp_sum)
+                                @inbounds pnew, xhold, xprd = mul_rev(parent_value, setstorage[c_idx], tmp_mlt)
                             end
-                            if (isempty(pnew) || isempty(xhold) || isempty(xsum))
+                            if (isempty(pnew) || isempty(xhold) || isempty(xprd))
                                 continue_flag = false
                                 break
+                            end
+                            if isnan(pnew)
+                                pnew = interval_MC(pnew)
+                            end
+                            if isnan(xhold)
+                                xhold = interval_MC(xhold)
                             end
                             setstorage[k] = set_value_post(x_values,  pnew, current_node, subgrad_tighten)
                             setstorage[c_idx] = set_value_post(x_values, xhold, current_node, subgrad_tighten)
@@ -803,11 +824,20 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                     continue_flag = false
                     break
                 end
+                if isnan(pnew)
+                    pnew = interval_MC(pnew)
+                end
                 setstorage[k] = pnew
                 if ~chdset1
+                    if isnan(xnew)
+                        xnew = interval_MC(xnew)
+                    end
                     setstorage[ix1] = set_value_post(x_values, xnew, current_node, subgrad_tighten)
                 end
                 if ~chdset2
+                    if isnan(ynew)
+                        ynew = interval_MC(ynew)
+                    end
                     setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
                 end
             elseif (op == 5) # :/
@@ -830,10 +860,19 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                     break
                 end
                 setstorage[parent_index] = pnew
+                if isnan(pnew)
+                    pnew = interval_MC(pnew)
+                end
                 if ~chdset1
+                    if isnan(xnew)
+                        xnew = interval_MC(xnew)
+                    end
                     setstorage[ix1] = set_value_post(x_values, xnew, current_node, subgrad_tighten)
                 end
                 if ~chdset2
+                    if isnan(ynew)
+                        ynew = interval_MC(ynew)
+                    end
                     setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
                 end
             elseif (op == 6) # ifelse
@@ -849,8 +888,14 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                 continue_flag = false
                 break
             end
-            @inbounds setstorage[k] = set_value_post(x_values, cnew, current_node, subgrad_tighten)
-            @inbounds setstorage[nod.parent] = set_value_post(x_values, pnew, current_node, subgrad_tighten)
+            if isnan(pnew)
+                pnew = interval_MC(pnew)
+            end
+            if isnan(cnew)
+                cnew = interval_MC(cnew)
+            end
+            @inbounds setstorage[child_idx] = set_value_post(x_values, cnew, current_node, subgrad_tighten)
+            @inbounds setstorage[k] = set_value_post(x_values, pnew, current_node, subgrad_tighten)
         end
         ~continue_flag && break
     end
@@ -867,17 +912,25 @@ function reverse_eval_all(d::Evaluator, x::Vector{Float64})
     if d.has_nlobj
         # Cut Objective at upper bound
         ex = d.objective
-        ex.setstorage[1] = ex.setstorage[1] ∩ Interval{Float64}(-Inf, d.objective_ubd)
+        reverse_updated_mc = ex.setstorage[1] ∩ Interval{Float64}(-Inf, d.objective_ubd)
+        if isnan(reverse_updated_mc)
+            reverse_updated_mc = interval_MC(reverse_updated_mc)
+        end
+        ex.setstorage[1] = reverse_updated_mc
         feas &= reverse_eval(ex.setstorage, ex.numberstorage, ex.numvalued, subexpr_isnum,
-                              subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
+                             subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
     end
     for i in 1:length(d.constraints)
         # Cut constraints on constraint bounds & reverse
         if feas
             ex = d.constraints[i]
-            ex.setstorage[1] = ex.setstorage[1] ∩ Interval{Float64}(d.constraints_lbd[i], d.constraints_ubd[i])
+            reverse_updated_mc = ex.setstorage[1] ∩ Interval{Float64}(d.constraints_lbd[i], d.constraints_ubd[i])
+            if isnan(reverse_updated_mc)
+                reverse_updated_mc = interval_MC(reverse_updated_mc)
+            end
+            ex.setstorage[1] = reverse_updated_mc
             feas &= reverse_eval(ex.setstorage, ex.numberstorage, ex.numvalued, subexpr_isnum,
-                                  subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
+                                subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
         else
             break
         end
@@ -906,6 +959,7 @@ by more that `d.fw_atol` at each iteration.
 """
 function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
     flag = true
+    converged_flag = false
     #if ~same_box(d.current_node, d.last_node, 0.0)
     #   d.last_node = d.current_node
         if (d.last_x != x)
@@ -916,14 +970,20 @@ function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
                         forward_eval_all(d,x)
                         flag = reverse_eval_all(d,x)
                         ~flag && break
-                        same_box(d.current_node, get_node(d), d.cp_tolerance) && break
+                        converged_flag = same_box(d.current_node, get_node(d), d.cp_tolerance)
+                        converged_flag && break
                     end
+                end
+                if flag
+                    forward_eval_all(d,x)
                 end
             else
                 d.first_eval_flag = true
                 forward_eval_all(d,x)
             end
         end
+        d.last_x = x
      #end
+
      return flag
 end

@@ -9,7 +9,7 @@ import Base: +, -, *, /, convert, in, isempty, one, zero, real, eps, max, min,
              sqrt, sin, cos, tan, min, max, sec, csc, cot, ^, step, sign, intersect,
              promote_rule, asinh, atanh, tanh, atan, asin, cosh, acos,
              sind, cosd, tand, asind, acosd, atand,
-             secd, cscd, cotd, asecd, acscd, acotd, isone
+             secd, cscd, cotd, asecd, acscd, acotd, isone, isnan
 
 import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            one, zero, real, eps, max, min, abs, exp,
@@ -40,7 +40,7 @@ export MC, cc, cv, Intv, lo, hi,  cc_grad, cv_grad, cnst, +, -, *, /, convert,
        sind, cosd, tand, asind, acosd, atand,
        sinhd, coshd, tanhd, asinhd, acoshd, atanhd,
        secd, cscd, cotd, asecd, acscd, acotd,
-       secdh, cschd, cothd, asechd, acschd, acothd, isone
+       secdh, cschd, cothd, asechd, acschd, acothd, isone, isnan, interval_MC
 
 # Export inplace operators
 export plus!, mult!, min!, max!, minus!, div!, exp!, exp2!, exp10!, expm1!,

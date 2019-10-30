@@ -29,6 +29,8 @@
 - J. K. Scott, M. D. Stuber, and P. I. Barton. Generalized McCormick relaxations. *Journal of Global Optimization*, 51(4):569–606, 2011.
 - Stuber, M.D., Scott, J.K., Barton, P.I.: Convex and concave relaxations of implicit functions. *Optim. Methods Softw.* 30(3), 424–460 (2015)
 - A. Tsoukalas and A. Mitsos. Multivariate McCormick Relaxations. *Journal of Global Optimization*, 59:633–662, 2014.
+- K.A. Khan, HAJ Watson, P.I. Barton. Differentiable McCormick relaxations. *Journal of Global Optimization*, 67(4):687-729 (2017).
+- A., Wechsung JK Scott, HAJ Watson, and PI Barton. Reverse propagation of McCormick relaxations. *Journal of Global Optimization* 63(1):1-36 (2015).
 
 ## *Semi-Infinite Programming*
 - A. Mitsos. Global optimization of semi-infinite programs via restriction of the right-hand side. *Optimization*, 60(10-11):1291-1308, 2009.

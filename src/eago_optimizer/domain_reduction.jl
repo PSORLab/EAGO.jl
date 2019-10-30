@@ -32,15 +32,6 @@ function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
             end
          end
     end
-    if (isempty(x) & ~sempty)
-        println("DBBT FATHOMED!!!!!")
-        println("mult_lo: $mult_lo")
-        println("mult_hi: $mult_hi")
-        println("LBD: $LBD")
-        println("UBD: $UBD")
-        println("oldx: $oldx")
-        println("new x: $x")
-    end
     return
 end
 
@@ -582,9 +573,9 @@ function get_univariate_coeff(func::MOI.ScalarQuadraticFunction{Float64}, set::T
     a,b,c,vi
 end
 
-```
+"""
 Checks to see if constraint is a bivariant quadratic term
-```
+"""
 function check_bivariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
     vIndx = Int64[]
     (length(f.quadratic_terms) > 3) && (return false)
@@ -814,24 +805,14 @@ function cpwalk(x::Optimizer)
     prior_sg_tighten = evaluator.subgrad_tighten
 
     evaluator.subgrad_tighten = false
-    evaluator.cp_reptitions = x.cp_interval_reptitions
-    evaluator.cp_tolerance = x.cp_interval_tolerance
+    evaluator.cp_reptitions = x.cp_reptitions
+    evaluator.cp_tolerance = x.cp_tolerance
 
     # Run forward-reverse pass and retreive node for interval forward-reverse pass
+    evaluator.subgrad_tighten = ~x.cp_interval_only
     feas = forward_reverse_pass(evaluator, midx)
     @inbounds n.lower_variable_bounds[:] = evaluator.current_node.lower_variable_bounds
     @inbounds n.upper_variable_bounds[:] = evaluator.current_node.upper_variable_bounds
-
-    # Run forward-reverse pass and retreive node for mccormick forward-reverse pass
-    if feas
-        evaluator.subgrad_tighten = true
-        evaluator.cp_reptitions = x.cp_mccormick_reptitions
-        evaluator.cp_tolerance = x.cp_mccormick_tolerance
-
-        feas = forward_reverse_pass(evaluator, midx)
-        @inbounds n.lower_variable_bounds[:] = evaluator.current_node.lower_variable_bounds
-        @inbounds n.upper_variable_bounds[:] = evaluator.current_node.upper_variable_bounds
-    end
 
     # resets forward reverse scheme for lower bounding problem
     evaluator.has_reverse = false

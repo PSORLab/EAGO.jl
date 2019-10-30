@@ -411,14 +411,12 @@ function preprocess!(t::ExtensionType, x::Optimizer)
     end
 
     if ((x.cp_depth >= x._iteration_count) & feas)
-        println("attempted cpwalk!!!")
         feas = cpwalk(x)
     end
 
     x._final_volume = prod(upper_variable_bounds(x._current_node) -
                            lower_variable_bounds(x._current_node))
     x._preprocess_feasibility = feas
-
     return
 end
 
@@ -634,9 +632,6 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
 
     y = x._current_node
 
-    #println("    ")
-    #println("    ")
-    #println("    ")
     contains_optimum!(y, "Lower Problem Start")
 
     if ~x._obbt_performed_flag
@@ -805,7 +800,6 @@ end
 Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, x::Optimizer)
-
 
     #println("x._cut_iterations: $(x._cut_iterations)")
     relax_problem!(x, x._current_xref, x._cut_iterations)
