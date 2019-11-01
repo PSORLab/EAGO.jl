@@ -104,8 +104,8 @@ end
         cc_grad = ccMC.cc_grad
     end
     cv = max(x.cv,y.cv)
-    cv_grad = (x.cv > y.cv) ? (x.cnst ? zeros(SVector{N,Float64}) : x.cv_grad) :
-                              (y.cnst ? zeros(SVector{N,Float64}) : y.cv_grad)
+    cv_grad = (x.cv > y.cv) ? (x.cnst ? zero(SVector{N,Float64}) : x.cv_grad) :
+                              (y.cnst ? zero(SVector{N,Float64}) : y.cv_grad)
     cv, cc, cv_grad, cc_grad = cut(maxxL, maxxU, cv,cc,cv_grad,cc_grad)
     return MC{N, NS}(cv, cc, z, cv_grad, cc_grad, y.cnst ? x.cnst : (x.cnst ? y.cnst : (x.cnst || y.cnst) ))
 end

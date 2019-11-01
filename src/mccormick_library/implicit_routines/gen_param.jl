@@ -114,7 +114,7 @@ function gen_expansion_params!(h!::Function, hj!::Function, pref_mc::Vector{MC{N
   z_mc[:] = lambda*xa_mc[:] + (1.0 - lambda)*xA_mc[:]
   sto_out[:,1:1] .= x_mc
 
-  subgrad_cntr && set_reference!(cv.(pref_mc),P,subgrad_cntr)
+  #subgrad_cntr && set_reference!(cv.(pref_mc),P,subgrad_cntr)
   for k=1:(kmax-1)
     pmc_kernel!(h!, hj!, H, J, Y, z_mc, aff_mc, pref_mc, x_mc, xa_mc, xA_mc,
                 cntr, nx, xp_mc, flt_param, precond)
@@ -122,6 +122,6 @@ function gen_expansion_params!(h!::Function, hj!::Function, pref_mc::Vector{MC{N
     correct_exp!(xa_mc, xA_mc, z_mc, x_mc, X, nx, aff_eps)
     sto_out[:,(k+1):(k+1)] .= x_mc
   end
-  subgrad_cntr && set_reference!(cv.(pref_mc), P, false)
+  #subgrad_cntr && set_reference!(cv.(pref_mc), P, false)
   return
 end

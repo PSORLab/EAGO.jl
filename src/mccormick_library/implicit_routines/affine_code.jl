@@ -76,11 +76,11 @@ function correct_exp!(xa_mc::Vector{MC{N,T}}, xA_mc::Vector{MC{N,T}},
       @inbounds x_mc[i] = MC{N,T}(X_lo, X_hi, X_term, zero_grad, zero_grad,true)
     end
     if (z_mc_lo - epsv < X_lo)
-      @inbounds x_mc[i] = MC{N,T}(X_lo, x_mc[i].cc, IntervalType(X_lo, x_mc[i].Intv.hi),
+      @inbounds x_mc[i] = MC{N,T}(X_lo, x_mc[i].cc, Interval(X_lo, x_mc[i].Intv.hi),
                                   zero_grad, x_mc[i].cc_grad, x_mc[i].cnst)
     end
     if (z_mc_hi + epsv > X_hi)
-      @inbounds x_mc[i] = MC{N,T}(x_mc[i].cv, X_hi,IntervalType(x_mc[i].Intv.lo, X_hi),
+      @inbounds x_mc[i] = MC{N,T}(x_mc[i].cv, X_hi,Interval(x_mc[i].Intv.lo, X_hi),
                                   x_mc[i].cv_grad, zero_grad, x_mc[i].cnst)
     end
   end

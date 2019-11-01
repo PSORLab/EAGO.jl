@@ -890,14 +890,14 @@ function multiply_MV_NS(x1::MC{N,MV},x2::MC{N,MV},ngrad::Int64,cnst::Bool) where
 	sigma_cv1 = x2.Intv.lo + myalph*diam(x2.Intv)
 	sigma_cv2 = x1.Intv.lo + myalph*diam(x1.Intv)
 	if (x1.cnst)
-		term1 = @SVector zeros(Float64,N)
+		term1 = zero(SVector{Float64,N})
 	elseif (sigma_cv1>=0.0)
 		term1 = x1.cv_grad
 	else
 		term1 = x1.cc_grad
 	end
 	if (x2.cnst)
-		term2 = @SVector zeros(Float64,N)
+		term2 = zero(SVector{Float64,N})
 	elseif (sigma_cv1 >= 0.0)
 		term2 = x2.cv_grad
 	else
@@ -962,14 +962,14 @@ function multiply_MV_NS(x1::MC{N,MV},x2::MC{N,MV},ngrad::Int64,cnst::Bool) where
 	sigma_cc1 = x2.Intv.lo + myalph*diam(x2.Intv)
 	sigma_cc2 = x1.Intv.hi - myalph*diam(x1.Intv)
 	if (x1.cnst)
-		term1 = @SVector zeros(Float64,N)
+		term1 = zero(SVector{Float64,N})
 	elseif (sigma_cc1>=0.0)
 		term1 = x1.cc_grad
 	else
 		term1 = x1.cv_grad
 	end
 	if (x2.cnst)
-		term2 =  @SVector zeros(Float64,N)
+		term2 = zero(SVector{Float64,N})
 	elseif (sigma_cc1>= 0.0)
 		term2 = x2.cc_grad
 	else

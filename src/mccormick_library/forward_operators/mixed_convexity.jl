@@ -407,10 +407,10 @@ for expri in (:sinh, :tanh, :asinh, :atanh, :tan, :acos, :asin, :atan)
         cc, dcc, cc_p = $(expri_cc)(midcc, xL, xU, cc_p)
         (cv_id == 1) && (cv_grad = x.cc_grad*dcv)
         (cv_id == 2) && (cv_grad = x.cv_grad*dcv)
-        (cv_id == 3) && (cv_grad = zeros(SVector{N,Float64}))
+        (cv_id == 3) && (cv_grad = zero(SVector{N,Float64}))
         (cc_id == 1) && (cc_grad = x.cc_grad*dcc)
         (cc_id == 2) && (cc_grad = x.cv_grad*dcc)
-        (cc_id == 3) && (cc_grad = zeros(SVector{N,Float64}))
+        (cc_id == 3) && (cc_grad = zero(SVector{N,Float64}))
         cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
         return MC{N, NS}(cv, cc, y, cv_grad, cc_grad, x.cnst), cv_p, cc_p
     end

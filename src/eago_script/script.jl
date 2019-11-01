@@ -10,7 +10,7 @@ module Script
                               SUBEXPRESSION, PARAMETER, NodeType, NodeData,
                               USER_OPERATOR_ID_START, USER_UNIVAR_OPERATOR_ID_START,
                               UserOperatorRegistry, adjmat
-    import Cassette: @context, Cassette.overdub
+    import Cassette: @context, Cassette.overdub, Cassette.prehook
     #import CodeTransformation: addmethod! TODO: add this later
     import ForwardDiff: derivative
 

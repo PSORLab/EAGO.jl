@@ -55,13 +55,13 @@ function implicit_relax_h!(h::Function, hj::Function, p_mc::Vector{MC{N,T}}, pre
     z_mc[:] = lambda*xa_mc[:] + (1.0 - lambda)*xA_mc[:]
 
     # Begins loop to generate parameters
-    subgrad_cntr && set_reference!(cv.(pref_mc),P,subgrad_cntr)
+    #subgrad_cntr && set_reference!(cv.(pref_mc),P,subgrad_cntr)
     for k=1:(kmax)
       affine_exp!(param[:,k], p_mc, pref_mc, xa_mc, xA_mc, z_mc, nx, lambda)
       pmc_kernel!(h, hj, H, J, Y, z_mc, aff_mc, p_mc, x_mc, xa_mc, xA_mc,
                  cntr, nx, xp_mc, flt_param, precond)
     end
-    subgrad_cntr && set_reference!(cv.(pref_mc), P, false)
+    #subgrad_cntr && set_reference!(cv.(pref_mc), P, false)
 end
 
 """
