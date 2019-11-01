@@ -15,9 +15,9 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern AD packages (e.g. **+**, **sin**, **cosh**) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have aprior variable bounds defined and have differentiable constraints. That is problems should be specified in the generic form below:
 
-
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="75%" height="75%">
-
+<p align="center"> 
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="30%" height="30%">
+  
 ## EAGO's Relaxations
 
 For each nonlinear term EAGO makes use of factorable representation to construct bounds and relaxations. In the case of F = y(y-1)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
@@ -29,7 +29,8 @@ For each nonlinear term EAGO makes use of factorable representation to construct
 - *v*<sub>5</sub> = *v*<sub>4</sub>*v*<sub>3</sub>
 - F = *v*<sub>5</sub>
 
-<img src="https://psorlab.github.io/EAGO.jl/stable/McCormick/Usage.html" width="75%" height="75%">
+<p align="center">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/McCormick/Figure_1.png" width="60%" height="60%">
 
 Either these original relaxations, differentiable McCormick relaxations<sup>2</sup>, or affine relaxations thereof can be used to construct relaxations of optimization problems useful in branch and bound routines for global optimization. Utilities are included to combine these with algorithms for relaxing implicit functions<sup>3</sup> and forward-reverse propagation of McCormick arithmetic<sup>4</sup>.
 
@@ -37,7 +38,8 @@ Either these original relaxations, differentiable McCormick relaxations<sup>2</s
 
 EAGO makes use of the JuMP modeling language to. Consider the familiar "process" problem instance<sup>5</sup>:
 
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/ProcessFormulation.svg" width="75%" height="75%">
+<p align="center">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/ProcessFormulation.svg" width="60%" height="60%">
 
 
 This model can be formulated using JuMP code as
