@@ -172,7 +172,7 @@ via keyword arguments in the JuMP/MOI model:
                   to subproblems (default = false).
 - `log_subproblem_info::Bool`: Turns on logging of times and feasibility of
                                subproblems (default = false).
-- `log_interval::Bool`: Log data every `log_interval` iterations (default = 1).
+- `log_interval::Int64`: Log data every `log_interval` iterations (default = 1).
 - `verbosity::Int64`: The amount of information that should be printed to console
                       while solving values range from 0 - 4: 0 is silent, 1 shows
                       iteration summary statistics only, 2-4 show varying degrees
@@ -270,7 +270,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     # Iteration logging options
     log_on::Bool
     log_subproblem_info::Bool
-    log_interval::Bool
+    log_interval::Int64
 
     # Optimizer display options
     verbosity::Int64
