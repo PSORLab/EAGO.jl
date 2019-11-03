@@ -14,6 +14,11 @@ function MOI.eval_objective(d::Evaluator, x::Vector{Float64})
     return val
 end
 
+"""
+    eval_objective_lo
+
+Retrieves the lower bound of the objective.
+"""
 function eval_objective_lo(d::Evaluator)
     val = 0.0
     if d.has_nlobj
@@ -28,7 +33,18 @@ function eval_objective_lo(d::Evaluator)
     return val
 end
 
+"""
+    get_node_lower(d::FunctionSetStorage, i::Int64)
+
+Retreives the lower bound of ith term in the tape of `d`.
+"""
 get_node_lower(d::FunctionSetStorage, i::Int64) = d.setstorage[i].Intv.lo
+
+"""
+    get_node_upper(d::FunctionSetStorage, i::Int64)
+
+Retreives the upper bound of ith term in the tape of `d`.
+"""
 get_node_upper(d::FunctionSetStorage, i::Int64) = d.setstorage[i].Intv.hi
 
 function MOI.eval_constraint(d::Evaluator, g::Vector{Float64}, x::Vector{Float64})
@@ -44,6 +60,12 @@ function MOI.eval_constraint(d::Evaluator, g::Vector{Float64}, x::Vector{Float64
     return
 end
 
+"""
+    eval_constraint_cc(d::Evaluator, g::Vector{Float64}, y::Vector{Float64})
+
+Populates `g` with the concave relaxations of the constraints of `d` evaluated
+at `y`.
+"""
 function eval_constraint_cc(d::Evaluator, g::Vector{Float64}, y::Vector{Float64})
     forward_reverse_pass(d,y)
     for i in 1:length(d.constraints)
@@ -56,6 +78,11 @@ function eval_constraint_cc(d::Evaluator, g::Vector{Float64}, y::Vector{Float64}
     return
 end
 
+"""
+    eval_constraint_lo!(d::Evaluator, g::Vector{Float64})
+
+Populates `g` with the lower bounds of the constraints of `d`.
+"""
 function eval_constraint_lo!(d::Evaluator, g::Vector{Float64})
     for i in 1:length(d.constraints)
         if d.constraints[i].numvalued[1]
@@ -67,6 +94,11 @@ function eval_constraint_lo!(d::Evaluator, g::Vector{Float64})
     return
 end
 
+"""
+    eval_constraint_hi!(d::Evaluator, g::Vector{Float64})
+
+Populates `g` with the upper bounds of the constraints of `d`.
+"""
 function eval_constraint_hi!(d::Evaluator, g::Vector{Float64})
     for i in 1:length(d.constraints)
         if d.constraints[i].numvalued[1]
@@ -123,11 +155,13 @@ function MOI.eval_constraint_jacobian(d::Evaluator,g,x)
     return
 end
 
+"""
+    eval_constraint_cc_grad(d::Evaluator, g, y)
+
+Populates `g` with the subgradients of the constraints of `d` evaluated at `y`.
+"""
 function eval_constraint_cc_grad(d::Evaluator, g, y)
-    #d.eval_constraint_jacobian_timer += @elapsed begin
         forward_reverse_pass(d,y)
-        #t = typeof(d.constraints[1].setstorage[1])
-        #g = zero.(g)
         for i in 1:length(d.constraints)
             if ~d.constraints[i].numvalued[1]
                 for j in 1:d.variable_number
@@ -139,7 +173,6 @@ function eval_constraint_cc_grad(d::Evaluator, g, y)
                 end
             end
         end
-    #end
     return
 end
 
@@ -166,7 +199,6 @@ end
 function MOI.eval_constraint_jacobian_transpose_product(d::Evaluator, y, x, w)
     if (!d.disable_1storder)
         forward_reverse_pass(d,x)
-        #t = typeof(d.constraints[1].setstorage[1])
         y = zeros(Float64,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
         for i in 1:length(d.constraints)
             if ~d.constraints[i].numvalued[1]

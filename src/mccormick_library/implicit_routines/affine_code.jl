@@ -1,20 +1,19 @@
 """
-    affine_exp!(x,p::Vector{MC{N}},p_ref::Vector{MC{N}},
-               xa::Vector{MC{N}},xA::Vector{MC{N}},z::Vector{MC{N}},
-               opt::Array{Any})
+    affine_exp!
 
 Computates the affine relaxations of the state variable. Inputs are:
-* `x::Vector{MC{N,T}}`: State variable relaxation
-* `p::Vector{MC{N,T}}`: Decision variable relaxation
-* `p_ref::Vector{MC{N,T}}`: Reference variable relaxation
-* `xa::Vector{MC{N,T}}`: Lower affine relaxation of the state variable
-* `xA::Vector{MC{N,T}}`: Upper affine relaxation of the state variable
-* `z::Vector{MC{N,T}}`: Affine function in `X`
-* `opt::Array{Any,1}`: `[np,nx,lambda]` values for relaxation
-Returns the tuple `(xa,xA,z)`:
-* `xa::Vector{MC{N,T}}`: Lower affine relaxation of the state variable
-* `xA::Vector{MC{N,T}}`: Upper affine relaxation of the state variable
-* `z::Vector{MC{N,T}}`: Affine function in X
+- `x`: State variable relaxation
+- `p::Vector{MC{N,T}}`: Decision variable relaxation
+- `p_ref::Vector{MC{N,T}}`: Reference variable relaxation
+- `xa::Vector{MC{N,T}}`: Lower affine relaxation of the state variable
+- `xA::Vector{MC{N,T}}`: Upper affine relaxation of the state variable
+- `z::Vector{MC{N,T}}`: Affine function in `X`
+- `nx`: Number of state variables
+- `lambda`: Convex coefficient used to define z as a function of `xa`, `xA`
+Populats the following vectors with results `(xa,xA,z)`:
+- `xa::Vector{MC{N,T}}`: Lower affine relaxation of the state variable
+- `xA::Vector{MC{N,T}}`: Upper affine relaxation of the state variable
+- `z::Vector{MC{N,T}}`: Affine function in X
 --------------------------------------------------------------------------------
 """
 function affine_exp!(x, p::Vector{MC{N,T}},
@@ -48,9 +47,7 @@ function affine_exp!(x, p::Vector{MC{N,T}},
 end
 
 """
-    correct_exp!(z_mc::Vector{MC{N}},x_mc::Vector{MC{N}},
-                 X::Vector{IntervalType},nx::Int,np::Int,
-                 epsv::Float64) where N
+    correct_exp!
 
 Corrects the relaxation of the state variable `x_mc` if the affine relaxation,
 'z_mc', exceeds the interval bounds `xL` or `xU`.
@@ -58,7 +55,6 @@ Corrects the relaxation of the state variable `x_mc` if the affine relaxation,
 * `x_mc::Vector{MC{N}}`: Relaxation of state variable
 * `X::Vector{IntervalType}`: Lower bound on state vector
 * `nx::Int64`: Size of the state vector
-* `np::Int64`: Size of the decision vector
 * `epsv::Float64`: Tolerance for checking that subgradient exceeds bound
 """
 function correct_exp!(xa_mc::Vector{MC{N,T}}, xA_mc::Vector{MC{N,T}},

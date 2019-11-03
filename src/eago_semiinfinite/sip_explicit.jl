@@ -247,6 +247,13 @@ end
 
 no_init_bnd(m::JuMP.Model, x::Vector{JuMP.VariableRef}) = ()
 
+"""
+  explicit_sip_solve
+
+Solve an SIP with decision variable bounds `x_l` to `x_u`, uncertain variable
+bounds `p_l` to `p_u`, an objective function of `f`, and `gSIP` seminfiniite
+constraint(s).
+"""
 function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
                             p_l::Vector{Float64}, p_u::Vector{Float64},
                             f::Function, gSIP; kwargs...)

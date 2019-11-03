@@ -76,12 +76,6 @@ function mc_denseband_precondition!(h!::Function, hj!::Function, z_mc, aff_mc, p
   end
 end
 
-"""
-    smooth_cut
-
-An operator that cuts the `x_mc` object using the `x_mc_int bounds` in a
-differentiable fashion.
-"""
 function smooth_cut(x_mc::MC{N,T},x_mc_int::MC{N,T}) where {N,T <: RelaxTag}
   t_cv::MC{N,T} = x_mc + max(0.0, x_mc_int-x_mc)
   t_cc::MC{N,T} = x_mc + min(0.0, x_mc-x_mc_int)
@@ -93,7 +87,8 @@ end
     final_cut
 
 An operator that cuts the `x_mc` object using the `x_mc_int bounds` in a
-differentiable or nonsmooth fashion as specified by the `MC_param.mu flag`.
+differentiable or nonsmooth fashion to achieve a composite relaxation within
+`x_mc_int`.
 """
 function final_cut(x_mc::MC{N,NS},x_mc_int::MC{N,NS}) where {N}
     Intv = x_mc.Intv ∩ x_mc_int.Intv

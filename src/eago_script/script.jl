@@ -13,6 +13,7 @@ module Script
     import Cassette: @context, Cassette.overdub, Cassette.prehook
     #import CodeTransformation: addmethod! TODO: add this later
     import ForwardDiff: derivative
+    export dag_flattening!
 
     include("codetransformation.jl") # TODO: delete this later
     include("scrubber.jl")

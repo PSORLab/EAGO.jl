@@ -1,3 +1,9 @@
+"""
+    mc_dense_newton_gs!
+
+Performs a single step of the dense-newton gauss-siedel parametric method after
+the inputs have been preconditioned.
+"""
 function mc_dense_newton_gs!(z_mc::Vector{MC{N,T}}, x_mc, YdH_mc::VecOrMat{MC{N,T}},
                              YH_mc::Vector{MC{N,T}}, nx::Int64) where {N, T<:RelaxTag}
 
@@ -19,6 +25,12 @@ function mc_dense_newton_gs!(z_mc::Vector{MC{N,T}}, x_mc, YdH_mc::VecOrMat{MC{N,
     end
 end
 
+"""
+    mc_dense_krawczyk_cw!
+
+Performs a single step of the dense-krawczyk componentwise parametric method after
+the inputs have been preconditioned.
+"""
 function mc_dense_krawczyk_cw!(z_mc::Vector{MC{N,T}}, x_mc,
                                YdH_mc::VecOrMat{MC{N,T}}, YH_mc::Vector{MC{N,T}},
                                nx::Int64) where {N,T<:RelaxTag}

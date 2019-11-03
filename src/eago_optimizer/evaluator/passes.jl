@@ -960,30 +960,27 @@ by more that `d.fw_atol` at each iteration.
 function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
     flag = true
     converged_flag = false
-    #if ~same_box(d.current_node, d.last_node, 0.0)
-    #   d.last_node = d.current_node
-        if (d.last_x != x)
-            if d.has_reverse
-                for i in 1:d.cp_reptitions
-                    d.first_eval_flag = (i == 1)
-                    if flag
-                        forward_eval_all(d,x)
-                        flag = reverse_eval_all(d,x)
-                        ~flag && break
-                        converged_flag = same_box(d.current_node, get_node(d), d.cp_tolerance)
-                        converged_flag && break
-                    end
-                end
+    if (d.last_x != x)
+        if d.has_reverse
+            for i in 1:d.cp_repetitions
+                d.first_eval_flag = (i == 1)
                 if flag
                     forward_eval_all(d,x)
+                    flag = reverse_eval_all(d,x)
+                    ~flag && break
+                    converged_flag = same_box(d.current_node, get_node(d), d.cp_tolerance)
+                    converged_flag && break
                 end
-            else
-                d.first_eval_flag = true
+            end
+            if flag
                 forward_eval_all(d,x)
             end
+        else
+            d.first_eval_flag = true
+            forward_eval_all(d,x)
         end
-        d.last_x = x
-     #end
+    end
+    d.last_x = x
 
      return flag
 end

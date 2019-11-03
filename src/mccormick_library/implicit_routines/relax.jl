@@ -1,11 +1,3 @@
-"""
-    implicit_relax_h
-
-Relaxes the implicit function determined by `h(x,p)` with `x` in `X` and `p` in
-`P`. The reference point for the affine relaxations is `pmid`. The parameters
-generated from the relaxation at `pmid` are `param` and the basic parameters of the
-fixed point method are `mc_opt`.
-"""
 function implicit_relax_h(h::Function, hj::Function, p::Vector{MC{N,T}}, pmid::Vector{Float64},
                      X::Vector{Interval{Float64}}, P::Vector{Interval{Float64}},
                      mc_opts::mc_opts, param::Vector{Vector{MC{N,T}}}) where {N, T<:RelaxTag}
@@ -35,6 +27,14 @@ function implicit_relax_h(h::Function, hj::Function, p::Vector{MC{N,T}}, pmid::V
     return x_mc
 end
 
+"""
+    implicit_relax_h!
+
+Relaxes the implicit function determined by `h(x,p)` with `x` in `X` and `p` in
+`P`. The reference point for the affine relaxations is `pmid`. The parameters
+generated from the relaxation at `pmid` are `param` and the basic parameters of the
+fixed point method are `mc_opt`.
+"""
 function implicit_relax_h!(h::Function, hj::Function, p_mc::Vector{MC{N,T}}, pref_mc::Vector{MC{N,T}},
                      xp_mc::Vector{MC{N,T}}, x_mc, xa_mc::Vector{MC{N,T}}, xA_mc::Vector{MC{N,T}}, z_mc::Vector{MC{N,T}}, aff_mc::Vector{MC{N,T}},
                      X::Vector{Interval{Float64}}, P::Vector{Interval{Float64}}, mc_opts::mc_opts, param,

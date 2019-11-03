@@ -1,3 +1,8 @@
+"""
+      SIPResult
+
+Structure storing the results of the SIPres algorithm.
+"""
   mutable struct SIPResult
       iteration_number::Int64
       upper_bound::Float64
@@ -9,11 +14,11 @@
   end
   SIPResult() = SIPResult(1, Inf, -Inf, true, Float64[], Float64[], 0.0)
 
-  """
-      SIP_Problem_Storage
+"""
+      SIPProblem
 
-  Storage to pass problem information and solution routine options.
-  """
+Structure storing problem information for the solution routine.
+"""
 mutable struct SIPProblem
     x_l::Vector{Float64}
     x_u::Vector{Float64}
@@ -185,4 +190,3 @@ mutable struct SIPProblem
   end
 
   include("sip_explicit.jl")
-  #include("sip_implicit.jl")

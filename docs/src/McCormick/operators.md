@@ -1,7 +1,8 @@
 # **Currently supported operators**
 
 The operators currently supported are listed below. The operators with a check box
-have been subject to a large degree of scrutiny and are near optimal implementations.
+have been subject to a large degree of scrutiny and have been implemented for
+both forward and reverse McCormick relaxations.
 
 ### **Univariate McCormick Operators**
 
@@ -23,7 +24,7 @@ Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported:
 
 ### **Bivariate Operators: McCormick & McCormick**
 
-The following bivariant operators are supported for two **SMCg** objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
+The following bivariant operators are supported for two **MC** objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
 
 - [x] **multiplication** (\*)
 - [x] **division** (/)

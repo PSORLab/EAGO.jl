@@ -1,4 +1,4 @@
-# Solving simple artificial neural network to optimality in EAGO
+# Solving simple example: an artificial neural network with EAGO
 
 [Matthew Wilhelm](https://psor.uconn.edu/person/matthew-wilhelm/)  
 Department of Chemical and Biomolecular Engineering, University of Connecticut

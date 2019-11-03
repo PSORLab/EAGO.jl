@@ -328,15 +328,36 @@ end
 ^(b::Float64, x::MC) = pow(b, x) # DONE (no kernel)
 
 ########### Defines inverse
+function cc_inv1(x::Float64, xL::Float64, xU::Float64)
+	t = (xL*xU)
+	cc = (xU + xL - x)/t
+	dcc = -1.0/t
+	cc, dcc
+end
+function cv_inv1(x::Float64, xL::Float64, xU::Float64)
+	cv = 1.0/x
+	dcv = -1.0/(x*x)
+	cv, dcv
+end
+function inv1(x::MC{N,NS}, y::Interval{Float64}) where N
+  midcc, cc_id = mid3(x.cc, x.cv, x.Intv.lo)
+  midcv, cv_id = mid3(x.cc, x.cv, x.Intv.hi)
+  cc, dcc = cc_inv1(midcc, x.Intv.lo, x.Intv.hi)
+  cv, dcv = cv_inv1(midcv, x.Intv.lo, x.Intv.hi)
+  cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
+  cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
+  cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
+  return MC{N,NS}(cv, cc, y, cv_grad, cc_grad, x.cnst)
+end
 function inv_kernel(x::MC, y::Interval{Float64})
     if (x.Intv.lo <= 0.0 <= x.Intv.hi)
 		    error("Function unbounded on domain: $(x.Intv)")
-		end
-		if (x.Intv.hi < 0.0)
-		    x = neg_powneg_odd(x, -1, y)
+	end
+	if (x.Intv.hi < 0.0)
+	    x = neg_powneg_odd(x, -1, y)
   	elseif (x.Intv.lo > 0.0)
-				x = npp_or_pow4(x, -1, y)
-		end
-		return x
+		x = inv1(x, y)
+	end
+	return x
 end
 inv(x::MC) = inv_kernel(x, (x.Intv)^(-1))

@@ -4,9 +4,13 @@
 * Update CI testing.
 * Specialized algorithms for relaxing ODE constrained problems and solving
 global and robust optimization problems.
-* Development of dedicated linear algebra libraries for McCormick operators.
+* Extensions for nonconvex dynamic global & robust optimization.
+* Provide support for mixed-integer problems.
+* Update EAGO to support nonsmooth problems (requires: a nonsmooth local nlp optimizer or lexiographic AD, support for relaxations is already included).
+* Performance assessment of nonlinear (differentiable) relaxations and incorporation into main EAGO routine.
+* Evaluation and incorporation of implicit relaxation routines in basic solver.
 
-## Other things on the wishlist (Not actively being worked on but certainly desirable):
+## Other things on the wishlist (but not actively being worked on):
 * Implement the interval constraint propagation scheme presented in Vu 2008. For
 improved convergences.
 * A parametric bisection routine will be updated that can divide the `(X,P)`

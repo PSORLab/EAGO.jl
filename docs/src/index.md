@@ -26,18 +26,16 @@ pkg> add EAGO
 Currently, EAGO is tied to a 0.19 or greater version of JuMP. This allows a replication
 of some of the internal features shared by EAGO and JuMP's AD scheme aka
 generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
-As such, you need to install a specific version of JuMP to use EAGO using the following
-command:
 
 ```julia
-pkg> add JuMP#7c115a2dcc8d92bdb6422dc4ed0919b7842e30fb
+pkg> add JuMP
 ```
 
-Once JuMP 0.19 is registered EAGO will be updated to eliminate the need for this.
+Once JuMP 0.19+ is registered EAGO will be updated to eliminate the need for this.
 
 ## Examples
-A few limited examples are provided in the documentation website. More involved
-examples are provided at in the form of Jupyter Notebooks at and can be run using
+A few examples are provided in the documentation website. More involved
+examples are provided at in the form of Jupyter Notebooks at [**EAGO-notebooks**](https://github.com/PSORLab/EAGO-notebooks) and can be run using
 IJulia. To add IJulia
 
 ```julia

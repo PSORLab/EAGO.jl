@@ -1,28 +1,6 @@
 # High-Performance Configuration
 
-### Solver Parameters
-
-EAGO defaults to using reasonable estimates of performant solver parameters. Parameter considerations for explicit optimization:
-- **Validation**: The validated interval arithmetic option comes with a
-                  significant performance decrease but can be useful for some
-                  problems.
-- **OBBT**: Selecting an arbitrary high depth for range reduction for constrained problems may significantly improve performance on some problems and dramatically reduce solution times of others.
-- **DBBT**: Recommend selecting an arbitrary high depth for duality-based tightening.
-- **Constraint Propagation**: Recommended using for problems with highly nonlinear and complex constraints.
-
-Parameter considerations specifically for implicit optimization:
-- **Interval Contractor**: Run roughly 5-10 interval iterations per McCormick contractor iteration. Recommend starting with 10.
-- **McCormick Contractor**: Limit iterations to three or fewer.
-
-### Lower Bounding Problem
-
-Currently, two (McCormick-based) lower bounding problems are available: one generates
-an affine relaxation of the McCormick relaxation while the other provides the relaxation
-directly to the solver for use. In general, the affine relaxation can be solved using
-an LP and may solve quickly as a result. If the McCormick relaxation is used, then
-either a nonsmooth local nlp solver should be used or local
-
-### LP Solver Selection
+## LP Solver Selection
 
 By default, EAGO uses GLPK for solving linear subproblems introduced. Using a
 commercial linear solver is highly recommended such as Gurobi, CPLEX, or XPRESS
@@ -30,25 +8,28 @@ is highly recommended. Both Gurobi and CPLEX are free for academics and
 installation information can be found through http://www.gurobi.com/academia/academia-center and
 https://www.ibm.com/developerworks/community/blogs/jfp/entry/CPLEX_Is_Free_For_Students?lang=en, respectively.  
 
-A non-default LP solver can then be selected by the user via a series of keyword argument inputs as illustrated in the code snippet below. The `initial_relaxed_optimizer` contains an optimizer with valid relaxations that are made at the root node. This object can be copied to the `working_relaxed_optimizer` which contains all valid relaxations of the current node and will solve the lower subproblem. If the Optimizer does not support resolving then a new structure is built using the `lower_factory` each time. The `lower_optimizer_options` contain keyword arguments for options that are passed to the linear optimizer when constructed using the factory option.
+A non-default LP solver can then be selected by the user via a series of keyword argument inputs as illustrated in the code snippet below. The `relaxed_optimizer` contains an instance optimizer with valid relaxations that are made at the root node and is updated with affine relaxations in place. Options can be passed to this optimizer using keyword arguments when initializing EAGO using the with_optimizer syntax in JuMP by
+defining an `Iterators.Pairs` structure assigning it to the `relaxed_optimizer_kwargs` keyword argument.
+MOI.
 
 ```julia
 
-# Create opt EAGO Optimizer with CPLEX
-opt = EAGO.Optimizer(initial_relaxed_optimizer = CPLEX.Optimizer(), working_relaxed_optimizer = CPLEX.Optimizer(), lower_factory = JuMP.with_optimizer(CPLEX.Optimizer), linear_optimizer = CPLEX.Optimizer(), lower_optimizer_options = Dict{Symbol,Any}())
+# Create opt EAGO Optimizer with CPLEX for use with MOI routines
+opt = EAGO.Optimizer(relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0))
 
 # Create the same model m using an options dictionary in JuMP
-opt_dict = Dict{Symbol, Any}()
-opt_dict[:initial_relaxed_optimizer] = CPLEX.Optimizer()
-opt_dict[:working_relaxed_optimizer] = CPLEX.Optimizer()
-opt_dict[:lower_factory] = JuMP.with_optimizer(CPLEX.Optimizer)
-opt_dict[:linear_optimizer] = CPLEX.Optimizer()
-opt_dict[:lower_optimizer_options] = Dict{Symbol,Any}()
+relaxed_optimizer_kwargs = Dict{Symbol, Any}()
+opt_dict[:relaxed_optimizer] = Gurobi.Optimizer()
+opt_dict[:relaxed_optimizer_kwargs] = Iterators.Pairs([:OutputFlag], [0])
 
 m = JuMP.Model(with_optimizer(EAGO.Optimizer; opt_dict...))
+
+# Create the same model m is keyword arguments in JuMP
+m = JuMP.Model(with_optimizer(EAGO.Optimizer; relaxed_optimizer = Gurobi.Optimizer(),
+                                              relaxed_optimizer_kwargs = Iterators.Pairs([:OutputFlag], [0])))
 ```
 
-### Ipopt Build
+## Ipopt Build
 
 Ipopt is the recommended solver for upper bounding problems. Ipopt's performance is highly
 dependent on the linear algebra package used (up to 30x). By default MUMPS is used.
@@ -66,9 +47,3 @@ MKL version is recommended). For information on this, see the below links:
       - Windows: https://github.com/JuliaOpt/Ipopt.jl/issues/83
 - HSL Website: http://www.hsl.rl.ac.uk/ipopt/
 - Pardiso Website: https://pardiso-project.org/
-
-### Implicit Relaxation Notes
-When the implicit routines are used, it's recommended that the user make use of the
-provided midpoint Newton Gauss-Siedel bound provided. Selectively branching only on
-the $p$ variables but solving the problem in the full $y$ space can prevent the
-upper bound from ever converging to the solution for some nlp solvers.

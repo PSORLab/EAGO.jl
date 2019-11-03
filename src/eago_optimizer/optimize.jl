@@ -118,7 +118,6 @@ quadratic cut.
 """
 function load_relaxed_problem!(x::Optimizer)
     opt = x.relaxed_optimizer
-    #opt = GLPK.Optimizer()
 
     # add variables and indices
     variable_number = x._variable_number
@@ -502,7 +501,7 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
 
     # USER OUTPUT BUFFERS??????
     d.cp_tolerance = x.cp_tolerance
-    d.cp_reptitions = x.cp_reptitions
+    d.cp_repetitions = x.cp_repetitions
     d.has_reverse = x._cp_evaluation_reverse
     d.subgrad_tighten = x.subgrad_tighten
     d.subgrad_tighten_reverse = x.subgrad_tighten_reverse
@@ -608,6 +607,7 @@ function parse_problem!(m::Optimizer)
     # Get various other sizes
     m._continuous_solution = zeros(Float64, _variable_len)
 
+    m.presolve_flatten_flag && Script.dag_flattening!(m)
     convert_to_min!(m)
     initialize_evaluators!(m, false)               # initializes the EAGO and JuMP NLP evaluators
 
@@ -692,7 +692,6 @@ function presolve_problem!(m::Optimizer)
 
     m.presolve_epigraph_flag && reform_epigraph!(m)  # perform epigraph rearrangement
     m.presolve_cse_flag && dag_cse_simplify!(m)      #
-    m.presolve_flatten_flag && dag_flattening!(m)
 
     #m = user_reformed_optimizer(m)
     create_initial_node!(m)                        # Create initial node and add it to the stack

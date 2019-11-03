@@ -3,6 +3,13 @@
 
 A structure used to store information related to the bounds assigned to each
 variable.
+- `is_integer::Bool`:      Is the variable integer valued?
+- `lower_bound::Float64`:  May be -Inf even if has_lower_bound == true
+- `has_lower_bound::Bool`: Implies lower_bound == Inf
+- `upper_bound::Float64`:  May be Inf even if has_upper_bound == true
+- `has_upper_bound::Bool`: Implies upper_bound == Inf
+- `is_fixed::Bool`:        Implies lower_bound == upper_bound and
+                           !has_lower_bound and !has_upper_bound.
 """
 mutable struct VariableInfo
     is_integer::Bool
@@ -62,6 +69,127 @@ export Optimizer
 The main optimizer object used by EAGO to solve problems during the optimization
 routine. The following commonly used options are described below and can be set
 via keyword arguments in the JuMP/MOI model:
+- `presolve_scrubber_flag::Bool`: Replace code in user-defined functions which
+                                  may prevent method overloading on Real subtypes
+                                  (default = false).
+- `presolve_to_JuMP_flag::Bool`: Create and use DAG representations of user-defined
+                                 function (default = false).
+- `presolve_epigraph_flag::Bool`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
+                                  Apply the epigraph reformulation to the problem
+                                  (default = false).
+- `presolve_cse_flag::Bool`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Enable
+                             common subexpression elimination for DAG (default = false).
+- `presolve_flatten_flag::Bool`: Rerranges the DAG using registered transformations
+                                 (default = false)
+- `cp_depth::Int64`: Depth in B&B tree above which constraint propagation should
+                     be disabled (default = 1000).
+- `cp_repetitions::Int64`: Number of repetitions of forward-reverse passes to perform in
+                          constraint propagation (default = 3).
+- `cp_tolerance::Float64`: Disable constraint propagation if the ratio of new node
+                           volume to beginning node volume exceeds this number
+                           (default = 0.99).
+- `cp_interval_only::Bool`: Use only valid interval bounds during constraint
+                            propagation (default = false).
+- `relaxed_optimizer::S`: An instance of the optimizer used to solve the relaxed
+                          subproblems (default = GLPK.Optimizer()).
+- `relaxed_optimizer_kwargs::Base.Iterators.Pairs`: Keyword arguments for the
+                                                    relaxed optimizer.
+- `obbt_depth::Int64`: Depth in B&B tree above which OBBT should
+                     be disabled (default = 1000).
+- `obbt_repetitions::Int64`: Number of repetitions of OBBT to perform in
+                            preprocessing (default = 3).
+- `obbt_aggressive_on::Bool`: Turn aggresive OBBT on (default = false).
+- `obbt_aggressive_max_iteration::Int64`: Maximum iteration to perform aggresive
+                                          OBBT (default = 2)
+- `obbt_aggressive_min_dimension::Int64`: Minimum dimension to perform aggresive
+                                          OBBT (default = 2)
+- `obbt_tolerance::Float64`: Tolerance to consider bounds equal (default = 1E-9).
+- `obbt_variable_values::Vector{Bool}`: Variables to perform OBBT on
+                                        (default: all variables in nonlinear expressions).
+- `lp_depth::Int64`: Depth in B&B tree above which linear FBBT should
+                     be disabled (default = 1000).
+- `lp_repetitions::Int64`: Number of repetitions of linear FBBT to perform in
+                            preprocessing (default = 3).
+- `quad_uni_depth::Int64`: Depth in B&B tree above which univariate quadratic
+                           FBBT should be disabled (default = -1).
+- `quad_uni_repetitions::Int64`: Number of repetitions of univariate quadratic FBBT
+                                 to perform in preprocessing (default = 2).
+- `quad_bi_depth::Int64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in
+                          B&B tree above which bivariate quadratic FBBT should
+                          be disabled (default = -1).
+- `quad_bi_repetitions::Int64`: Number of repetitions of bivariate quadratic FBBT
+                                 to perform in preprocessing (default = 2).
+- `subgrad_tighten::Bool`: Perform tightening of interval bounds using subgradients
+                           at each factor in each nonlinear tape during a forward-reverse
+                           pass (default = true).
+- `subgrad_tighten_reverse::Bool`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Used to
+                                   enable/disable subgradient tightening of interval
+                                   bounds on the reverse pass (default = true).
+- `cut_max_iterations::Int64`
+- `cut_cvx::Float64`: Convex coefficient used to select point for new added cuts.
+                      Branch point is given by `(1-cut_cvx)*xmid + cut_cvx*xsol`
+                      (default = 0.9).
+- `cut_tolerance::Float64`: Add cut if the L1 distance from the prior cutting point
+                            to the new cutting point normalized by the box volume
+                            is greater than the tolerance (default = 0.05).
+- `objective_cut_on::Bool`: Adds an objective cut to the relaxed problem (default = true).
+- `upper_optimizer::T`: Optimizer used to solve upper bounding problem (default = Ipopt.Optimizer())
+- `upper_factory::JuMP.OptimizerFactory`: OptimizerFactory used to build optimizer that
+                                          solves the upper bounding problem
+                                          (default = with_optimizer(Ipopt.Optimizer, kwargs),
+                                          check Optimizer constructor for kwargs used).
+- `upper_bounding_depth::Int64`: Solve upper problem for every node with depth
+                                 less than `upper_bounding_depth` and with a probability
+                                 of (1/2)^(depth-upper_bounding_depth) otherwise
+                                 (default = 4).
+- `dbbt_depth::Int64`: Depth in B&B tree above which duality-based bound tightening
+                       should be disabled (default = 1E10).
+- `dbbt_tolerance::Float64`: New bound is considered equal to the prior bound
+                             if within dbbt_tolerance (default = 1E-9).
+- `branch_cvx_factor::Float64`: Convex coefficient used to select branch point.
+                                Branch point is given by
+                                `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol`
+                                (default = 0.25)
+- `branch_offset::Float64`: Minimum distance from bound to have branch point
+                            normalized by width of dimension to branch on
+                            (default = 0.15)
+- `branch_variable::Vector{Bool}`: Variables to branch on (default is all nonlinear).
+- `branch_max_repetitions::Int64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
+                                   Number of times repeat node processing prior
+                                   to branching (default = 4).
+- `branch_repetition_tol::Float64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
+                                    Volume ratio tolerance required to repeat
+                                    processing the current node (default = 0.9).
+- `rounding_mode::Symbol`: Interval rounding mode to use (default = :accurate)
+- `node_limit::Int64`: Node limit  (default = 10^7).
+- `time_limit::Float64`: Time limit in seconds (default = 3600).
+- `iteration_limit::Int64`: Iteration limit (default = 3000000).
+- `absolute_tolerance::Float64`: Absolute tolerance for terminatin (default = 1E-3).
+- `relative_tolerance::Float64`: Relative tolerance for terminatin (default = 1E-3).
+- `local_solve_only::Bool`: Perform only a local solve of the problem (default = false).
+- `log_on::Bool`: Turns logging on records global bounds, node count and run time.
+                  Additional options are available for recording information specific
+                  to subproblems (default = false).
+- `log_subproblem_info::Bool`: Turns on logging of times and feasibility of
+                               subproblems (default = false).
+- `log_interval::Bool`: Log data every `log_interval` iterations (default = 1).
+- `verbosity::Int64`: The amount of information that should be printed to console
+                      while solving values range from 0 - 4: 0 is silent, 1 shows
+                      iteration summary statistics only, 2-4 show varying degrees
+                      of details about calculations within each iteration
+                      (default = 1).
+- `output_iterations::Int64`: Display summary of iteration to console every
+                             `output_iterations` (default = 10).
+- `header_iterations::Int64`: Display header for summary to console every
+                             `output_iterations` (default = 100).
+- `enable_optimize_hook::Bool`: Specifies that the optimize_hook! function should
+                                be called rather than throw the problem to the
+                                standard B&B routine (default = false).
+- `ext::Dict{Symbol, Any}`: Holds additional storage needed for constructing
+                            extensions to EAGO (default = Dict{Symbol,Any}).
+- `ext_type::ExtensionType`: Holds an instance of a subtype of `EAGO.ExtensionType`
+                             used to define new custom subroutines
+                             (default = DefaultExt()).
 """
 mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
 
@@ -75,7 +203,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     # Options for constraint propagation
     cp_depth::Int64
     cp_improvement::Float64
-    cp_reptitions::Int64
+    cp_repetitions::Int64
     cp_tolerance::Float64
     cp_interval_only::Bool
 
@@ -84,7 +212,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     relaxed_optimizer_kwargs::Base.Iterators.Pairs
     relaxed_inplace_mod::Bool
     obbt_depth::Int64
-    obbt_reptitions::Int64
+    obbt_repetitions::Int64
     obbt_aggressive_on::Bool
     obbt_aggressive_max_iteration::Int64
     obbt_aggressive_min_dimension::Int64
@@ -93,13 +221,13 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
     # Options for linear bound tightening
     lp_depth::Int64
-    lp_reptitions::Int64
+    lp_repetitions::Int64
 
     # Options for quadratic bound tightening
     quad_uni_depth::Int64
-    quad_uni_reptitions::Int64
+    quad_uni_repetitions::Int64
     quad_bi_depth::Int64
-    quad_bi_reptitions::Int64
+    quad_bi_repetitions::Int64
 
     # Subgradient tightening flag
     subgrad_tighten::Bool
@@ -109,8 +237,10 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     cut_max_iterations::Int64
     cut_cvx::Float64
     cut_tolerance::Float64
+    objective_cut_on::Bool
 
     # Upper bounding options
+    upper_optimizer::T
     upper_factory::JuMP.OptimizerFactory
     upper_bounding_depth::Int64
 
@@ -141,16 +271,11 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     log_on::Bool
     log_subproblem_info::Bool
     log_interval::Bool
-    time_eago_kernel::Bool
 
     # Optimizer display options
     verbosity::Int64
     output_iterations::Int64
     header_iterations::Int64
-
-    upper_optimizer::T
-
-    objective_cut_on::Bool
 
     # Debug
     enable_optimize_hook::Bool
@@ -359,13 +484,13 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Options for constraint propagation
         default_opt_dict[:cp_depth] = 1000
-        default_opt_dict[:cp_reptitions] = 3
+        default_opt_dict[:cp_repetitions] = 3
         default_opt_dict[:cp_tolerance] = 0.99
         default_opt_dict[:cp_interval_only] = false
 
         # Options for optimality-based bound tightening
         default_opt_dict[:obbt_depth] = 6
-        default_opt_dict[:obbt_reptitions] = 20
+        default_opt_dict[:obbt_repetitions] = 20
         default_opt_dict[:obbt_aggressive_on] = false
         default_opt_dict[:obbt_aggressive_max_iteration] = 2
         default_opt_dict[:obbt_aggressive_min_dimension] = 2
@@ -374,13 +499,13 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Options for linear bound tightening
         default_opt_dict[:lp_depth] = 100000
-        default_opt_dict[:lp_reptitions] = 3
+        default_opt_dict[:lp_repetitions] = 3
 
         # Options for quadratic bound tightening
         default_opt_dict[:quad_uni_depth] = -1
-        default_opt_dict[:quad_uni_reptitions] = 2
+        default_opt_dict[:quad_uni_repetitions] = 2
         default_opt_dict[:quad_bi_depth] = -1
-        default_opt_dict[:quad_bi_reptitions] = 2
+        default_opt_dict[:quad_bi_repetitions] = 2
 
         # Subgradient tightening flags for evaluation
         default_opt_dict[:subgrad_tighten] = true
@@ -421,7 +546,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         # Iteration logging options
         default_opt_dict[:log_on] = false
         default_opt_dict[:log_subproblem_info] = false
-        default_opt_dict[:log_interval] = false
+        default_opt_dict[:log_interval] = 1
 
         # Optimizer display options
         default_opt_dict[:verbosity] = 1
@@ -1111,7 +1236,7 @@ end
 
 
 """
-    log_iteration!
+    log_iteration!(x::Optimizer)
 
 If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
 'run_time', and 'node_count' are stored every 'log_interval'. If

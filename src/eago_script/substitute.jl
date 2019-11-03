@@ -1,9 +1,24 @@
+"""
+    Template_Node
+
+A structure which holds a symbol indicating whether the node is an operator,
+a number, or an expression `type`, a value which identifies the function or
+symbol `value`, potentially a numeric value `num_value`, and a check that can
+be run to verify the node is correct `check`.
+"""
 struct Template_Node <: Any
     type::Symbol # op, num, expr
     value::Symbol
     num_value::Float64
     check::Function
 end
+
+"""
+    Template_Graph
+
+Holds a list of Template_Nodes, set of directed edges, lengths, an adjacency
+matrix and the number of children.
+"""
 struct Template_Graph <: Any
     nd::Vector{Template_Node}
     dag::Vector{Pair{Int,Int}}
@@ -47,6 +62,16 @@ conventions for substition, the expression to be checked always appears at key 1
 in the Template_Graph and operations are ordered from low value to high value left to right
 so if 1 is a -, and 4 => 1, 3 => 1 then the expression is 4 - 3
 =#
+"""
+    register_substitution!
+
+Specifies that the `src::Template_Graph` should be subsituted out for the
+`trg::Template_Graph`.
+
+Conventions for substition, the expression to be checked always appears at key 1
+in the Template_Graph and operations are ordered from low value to high value left to right
+so if 1 is a -, and 4 => 1, 3 => 1 then the expression is 4 - 3
+"""
 function register_substitution!(src::Template_Graph, trg::Template_Graph)
     push!(DAG_PATTERNS, src)
     push!(DAG_SUBSTITUTIONS, trg)
@@ -286,6 +311,12 @@ function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{N
 end
 
 # searchs through expression breadth first search that short-cirucits
+"""
+    flatten_expression!
+
+Flattens (usually) the dag by making all registered substitutions for the
+expression `expr::_NonlinearExprData`.
+"""
 function flatten_expression!(expr::_NonlinearExprData, parameter_values::Vector{Float64})
     nd = expr.nd
     adj = adjmat(nd)
@@ -329,4 +360,25 @@ function flatten_expression!(expr::_NonlinearExprData, parameter_values::Vector{
         end
     end
     expr.nd = new_nds
+end
+
+"""
+    dag_flattening!
+
+Flattens (usually) the dag by making all registered substitutions for every
+nonlinear term in the Optimizer.
+"""
+function dag_flattening!(x::T) where T <: AbstractOptimizer
+    nlp_data = x._nlp_data.evaluator.m.nlp_data
+    params = nlp_data.nlparamvalues
+    if ~isnothing(nlp_data.nlobj)
+        flatten_expression!(nlp_data.nlobj, params)
+    end
+    for i in 1:length(nlp_data.nlconstr)
+        flatten_expression!(nlp_data.nlconstr[i].terms, params)
+    end
+    for i in 1:length(nlp_data.nlexpr)
+        flatten_expression!(nlp_data.nlexpr[i], params)
+    end
+    return
 end

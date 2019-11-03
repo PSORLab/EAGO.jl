@@ -61,7 +61,7 @@ function copy(x::NodeBB)
 end
 
 """
-    same_box
+    same_box(x::NodeBB,y::NodeBB, atol::Float64)
 
 Checks that node `x` and `y` have equal domains withing a tolerance of `atol`.
 """

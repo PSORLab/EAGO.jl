@@ -41,6 +41,13 @@ function generated_scrubbed_method(f::Function, n::Int, inplace = false)
 end
 
 # scrub each udf expression (works for n = 1 )
+"""
+    scrub(f::Function, n::Int, inplace = false)
+
+Replaces storage objects and circumvents assertions that present a UDF from
+being overloaded with subtype Real objects by creating a function which
+overdubs `f` in `ScrubCtx`.
+"""
 function scrub(f::Function, n::Int, inplace = false)
     if inplace
         if hasmethod(f, Tuple{Array{Float64,1}})
@@ -60,6 +67,11 @@ function scrub(f::Function, n::Int, inplace = false)
 end
 
 # scrub the model
+"""
+    scrub!(d::_NLPData)
+
+Applies scrub to every user-defined function in the a `_NLPData` structure.
+"""
 function scrub!(d::_NLPData)
     # scrub multivariant
     user_ops = d.user_operators

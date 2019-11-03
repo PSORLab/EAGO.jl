@@ -36,6 +36,12 @@ function relax_convex_kernel(func::SQF, vi::Vector{VI}, cvx_dict::ImmutableDict{
     return saf
 end
 
+"""
+    relax_nonconvex_kernel
+
+Stores the kernel of the calculation required to relax nonconvex quadratic
+constraints using the immutable dictionary to label terms.
+"""
 function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
                                 cvx_dict::ImmutableDict{Int64,Int64}, nx::Int64, x0::Vector{Float64})
 
@@ -103,7 +109,7 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
 end
 
 """
-    relax_quadratic_inner!
+    relax_quadratic_gen_saf
 
 Default routine for relaxing nonconvex quadratic constraint `lower` < `func` < `upper`
 on node `n`. Takes affine bounds of convex part at point `x0` and secant line
@@ -231,7 +237,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
 end
 
 """
-    relax_objective!
+    relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
 
 A rountine that only relaxes the objective.
 """
@@ -299,6 +305,12 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
     return
 end
 
+"""
+    relax_nlp!
+
+A rountine that relaxes all nonlinear constraints excluding
+constraints specified as quadratic.
+"""
 function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
 
     evaluator = x._relaxed_evaluator
@@ -418,6 +430,12 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
     return
 end
 
+"""
+    relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::Int64)
+
+A rountine that updates the current node for the `Evaluator` and relaxes all
+nonlinear constraints and quadratic constraints.
+"""
 function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::Int64)
 
     evaluator = x._relaxed_evaluator
@@ -433,7 +451,7 @@ end
 """
     objective_cut_linear!
 
-Adds linear objective cut constraint to `trg` optimizer.
+Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
 function objective_cut_linear!(x::Optimizer, q::Int64)
     if x._global_upper_bound < Inf

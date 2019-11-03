@@ -1,77 +1,26 @@
-function contains_optimum!(x::NodeBB, s::String)
-#=
-    true_opt = -5.508013271485620
-    opt = [2.329520197651560, 3.178493073834060]
-    flag = true
-    for i in 1:length(x)
-        if ((x.lower_variable_bounds[i] > opt[i]) ||
-           (x.upper_variable_bounds[i] < opt[i]))
-           flag = false
-           break
-        end
-    end
-    if flag
-        println("THIS NODE $(x.id) CONTAINS THE SOLUTION POINT")
-        println(s)
-    else
-        println("THIS NODE $(x.id) DOES NOT CONTAIN THE SOLUTION POINT")
-        println(s)
-    end
-    =#
-    return
-end
-
-function contains_optimum!(x::Optimizer, s::String, L::Float64, U::Float64)
-    #=
-    true_opt = -5.508013271485620
-    cnode = x._current_node
-    opt = [2.329520197651560, 3.178493073834060]
-    flag = true
-    for i in 1:length(cnode)
-        if ((cnode.lower_variable_bounds[i] > opt[i]) ||
-           (cnode.upper_variable_bounds[i] < opt[i]))
-           flag = false
-           break
-        end
-    end
-    if flag
-        println("THIS NODE $(cnode.id) CONTAINS THE SOLUTION POINT")
-        if ~(L < true_opt)
-            println("THIS NODE DOESN'T BOUND PROPERLY")
-            for i in 1:length(cnode)
-                Li = cnode.lower_variable_bounds[i]
-                Ui = cnode.upper_variable_bounds[i]
-                println("X[$i] = [$Li, $Ui]")
-            end
-            println("$L < $true_opt")
-            println("iteration #: $(x._iteration_count)")
-        end
-    end
-    =#
-    return
-end
-
-
 """
-    node_selection
+    node_selection!(t::ExtensionType, x::Optimizer)
 
 Selects node with the lowest lower bound in stack.
 """
 function node_selection!(t::ExtensionType, x::Optimizer)
     x._node_count -= 1
     x._current_node = popmin!(x._stack)
-    #println("NODE SELECTION.... Current Node: $(x._current_node)")
     return
 end
 
 """
-    branch_node!
+    branch_node!(t::ExtensionType, x::Optimizer)
 
-Stores the two nodes to the stack.
+Creates two nodes from current_node using information available the `x`
+and stores them to the stack. By default, relative width bisection is perfomed
+at a point `branch_pnt` which is a convex combination
+(parameter: branch_cvx_factor) of the solution to the relaxation and
+the midpoint of the node. If this solution lies within `branch_offset/width` of
+a bound then the branch point is moved to a distance of `branch_offset/width`
+from the bound.
 """
 function branch_node!(t::ExtensionType, x::Optimizer)
-
-    #println("PERFORMED BRANCH")
 
     y = x._current_node
     nvar = x._variable_number
@@ -125,8 +74,6 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
     x._maximum_node_id += 1
     X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
-    #contains_optimum!(X1, "Node X1")
-    #contains_optimum!(X2, "Node X2")
 
     push!(x._stack, X1)
     push!(x._stack, X2)
@@ -138,7 +85,7 @@ function branch_node!(t::ExtensionType, x::Optimizer)
 end
 
 """
-    single_storage!
+    single_storage!(t::ExtensionType, x::Optimizer)
 
 Stores the current node to the stack after updating lower/upper bounds.
 """
@@ -155,7 +102,7 @@ function single_storage!(t::ExtensionType, x::Optimizer)
 end
 
 """
-    fathom!
+    fathom!(t::ExtensionType, d::Optimizer)
 
 Selects and deletes nodes from stack with lower bounds greater than global
 upper bound.
@@ -181,7 +128,7 @@ function fathom!(t::ExtensionType, d::Optimizer)
 end
 
 """
-    repeat_check
+    repeat_check(t::ExtensionType, x::Optimizer)
 
 Checks to see if current node should be reprocessed.
 """
@@ -199,7 +146,7 @@ function relative_tolerance(L::Float64, U::Float64, tol::Float64)
 end
 
 """
-    termination_check
+    termination_check(t::ExtensionType, x::Optimizer)
 
 Checks for termination of algorithm due to satisfying absolute or relative
 tolerance, infeasibility, or a specified limit, returns a boolean valued true
@@ -261,26 +208,24 @@ function termination_check(t::ExtensionType, x::Optimizer)
 end
 
 """
-    convergence_check
+    convergence_check(t::ExtensionType, x::Optimizer)
 
 Checks for convergence of algorithm with respect to absolute and/or relative
 tolerances.
 """
 function convergence_check(t::ExtensionType, x::Optimizer)
 
-  #println("ran convergence check...")
   L = x._lower_objective_value
   U = x._global_upper_bound
   t = (U - L) <= x.absolute_tolerance
   if (U < Inf) & (L > Inf)
       t |= (abs(U - L)/(max(abs(L),abs(U))) <= x.relative_tolerance)
   end
- # println("algorithm converged... $t")
   return t
 end
 
 """
-    is_globally_optimal
+    is_globally_optimal(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
 
 Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns
 the tuple `(valid_result::Bool, feasible::Bool)`. The value `valid_result` is
@@ -311,7 +256,7 @@ function is_globally_optimal(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCo
 end
 
 """
-    is_feasible_solution
+    is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
 
 Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `true`
 if this corresponds to a solution that is proven to be feasible.
@@ -340,7 +285,7 @@ function is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusC
 end
 
 """
-    set_dual!
+    set_dual!(x::Optimizer)
 
 Retrieves the lower and upper duals for variable bounds from the
 `relaxed_optimizer` and sets the appropriate values in the
@@ -370,7 +315,7 @@ function set_dual!(x::Optimizer)
 end
 
 """
-    preprocess!
+    preprocess!(t::ExtensionType, x::Optimizer)
 
 Runs interval, linear, quadratic contractor methods followed by obbt and a
 constraint programming walk up to tolerances specified in
@@ -392,7 +337,7 @@ function preprocess!(t::ExtensionType, x::Optimizer)
 
     # runs univariate quadratic contractor
     if ((x.quad_uni_depth >= x._iteration_count) & feas)
-        for i = 1:x.quad_uni_reptitions
+        for i = 1:x.quad_uni_repetitions
             feas = univariate_quadratic(x)
             (~feas) && (break)
         end
@@ -403,7 +348,7 @@ function preprocess!(t::ExtensionType, x::Optimizer)
         #println("ran obbt... $(x.obbt_depth) >= $(x._iteration_count)")
         if feas
             x._obbt_performed_flag = true
-            for i = 1:x.obbt_reptitions
+            for i = 1:x.obbt_repetitions
                 feas = obbt(x)
                 (~feas) && (break)
             end
@@ -421,11 +366,11 @@ function preprocess!(t::ExtensionType, x::Optimizer)
 end
 
 """
-    update_relaxed_problem_box!
+    update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
 
-Updates the relaxed constraint by setting the constraint set of v == x* ,
-xL_i <= x_i , and x_i <= xU_i for each such constraint added to the relaxed
-    optimizer.
+Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
+`xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
+optimizer.
 """
 function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
 
@@ -466,8 +411,8 @@ end
 """
     interval_bound
 
-Computes the natural interval extension of a ScalarAffineFunction or
-ScalarQuadaraticFunction on a node y. Returns the lower bound if flag
+Computes the natural interval extension of a MathOptInterface function `s` or
+ScalarQuadaraticFunction on a node `y`. Returns the lower bound if flag
 is true and the upper bound if flag is false.
 """
 function interval_bound(s::SAF, y::NodeBB, flag::Bool)
@@ -525,7 +470,7 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
 end
 
 """
-    interval_lower_bound!
+    interval_lower_bound!(x::Optimizer, y::NodeBB)
 
 A fallback lower bounding problem that consists of an natural interval extension
 calculation. This is called when the optimizer used to compute the lower bound
@@ -623,7 +568,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
 end
 
 """
-    lower_problem!
+    lower_problem!(t::ExtensionType, x::Optimizer)
 
 Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
@@ -631,8 +576,6 @@ and optimizer on node `y`.
 function lower_problem!(t::ExtensionType, x::Optimizer)
 
     y = x._current_node
-
-    contains_optimum!(y, "Lower Problem Start")
 
     if ~x._obbt_performed_flag
         x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
@@ -652,14 +595,11 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
     x._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
     x._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
     valid_flag, feas_flag = is_globally_optimal(x._lower_termination_status, x._lower_result_status)
-    #println("valid_flag: $(valid_flag)")
-    #println("feas_flag: $(feas_flag)")
 
     if valid_flag
         if feas_flag
             x._lower_feasibility = true
             x._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
-            #println("lower_objective_value: $(x._lower_objective_value)")
             @inbounds x._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
             x._cut_add_flag = x._lower_feasibility
             set_dual!(x)
@@ -670,22 +610,18 @@ function lower_problem!(t::ExtensionType, x::Optimizer)
         end
     else
         interval_lower_bound!(x, y)
-        #println("lower feasibility: $(x._lower_feasibility)")
-        #println("lower objective: $(x._lower_objective_value)")
         x._cut_add_flag = false
     end
-    contains_optimum!(y, "Lower Problem End")
     return
 end
 
 """
-    cut_update
+    cut_update(x::Optimizer)
 
 Updates the internal storage in the optimizer after a valid feasible cut is added.
 """
 function cut_update(x::Optimizer)
 
-    contains_optimum!(x._current_node, "Cut Update Start")
     x._cut_feasibility = true
 
     opt = x.relaxed_optimizer
@@ -704,13 +640,12 @@ function cut_update(x::Optimizer)
     else
         x._cut_add_flag = false
     end
-    contains_optimum!(x._current_node, "Cut Update End")
 
     return
 end
 
 """
-    cut_condition
+    cut_conditioncut_condition(t::ExtensionType, x::Optimizer)
 
 Checks if a cut should be added and computes a new reference point to add the
 cut at. If no cut should be added the constraints not modified in place are
@@ -718,8 +653,6 @@ deleted from the relaxed optimizer and the solution is compared with the
 interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, x::Optimizer)
-
-
 
     flag = x._cut_add_flag
     flag &= (x._cut_iterations < x.cut_max_iterations)
@@ -788,20 +721,18 @@ function cut_condition(t::ExtensionType, x::Optimizer)
             fill!(x._lower_uvd, 0.0)
         end
     end
-    contains_optimum!(x._current_node, "Cut Condition End")
     x._cut_iterations += 1
 
     return flag
 end
 
 """
-    add_cut!
+    add_cut!(t::ExtensionType, x::Optimizer)
 
 Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, x::Optimizer)
 
-    #println("x._cut_iterations: $(x._cut_iterations)")
     relax_problem!(x, x._current_xref, x._cut_iterations)
     relax_objective!(x, x._current_xref)
     if x.objective_cut_on
@@ -827,13 +758,12 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     else
         x._cut_add_flag = false
     end
-    #contains_optimum!(y, "Add Cut End")
 
     return
 end
 
 """
-    default_nlp_heurestic
+    default_nlp_heurestic(x::Optimizer, y::NodeBB)
 
 Default check to see if the upper bounding problem should be run. By default,
 The upper bounding problem is run on every node up to depth `upper_bounding_depth`
@@ -848,7 +778,7 @@ function default_nlp_heurestic(x::Optimizer, y::NodeBB)
 end
 
 """
-    solve_local_nlp!
+    solve_local_nlp!(x::Optimizer)
 
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
@@ -949,9 +879,10 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
 end
 
 """
-    upper_problem!
+    upper_problem!(t::ExtensionType, x::Optimizer)
 
-Default upper bounding problem which simply calls `solve_local_nlp!`.
+Default upper bounding problem which simply calls `solve_local_nlp!` to solve
+the nlp locally.
 """
 function upper_problem!(t::ExtensionType, x::Optimizer)
 
@@ -961,9 +892,9 @@ end
 
 
 """
-    postprocess!
+    postprocess!(t::ExtensionType, x::Optimizer)
 
-Perfoms duality-based bound tightening on the `y`.
+Default postprocess perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, x::Optimizer)
 
@@ -979,7 +910,7 @@ function postprocess!(t::ExtensionType, x::Optimizer)
 end
 
 """
-    optimize_hook!
+    optimize_hook!(t::ExtensionType, x::Optimizer)
 
 Provides a hook for extensions to EAGO as opposed to standard global, local,
 or linear solvers.

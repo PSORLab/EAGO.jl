@@ -71,6 +71,15 @@ function __init__()
       setrounding(Interval, :accurate)
 end
 
+"""
+    RelaxTag
+
+An `abstract type` the subtypes of which define the manner of relaxation that will
+be performed for each operator applied to the MC object. Currently, the `struct NS`
+which specifies that standard (Mitsos 2009) are to be used is fully supported. Limited
+support is provided for differentiable McCormick relaxations specified by `struct Diff`
+(Khan 2017) and struct MV `struct MV` (Tsoukalas 2011.)
+"""
 abstract type RelaxTag end
 struct NS <: RelaxTag end
 struct MV <: RelaxTag end
@@ -217,11 +226,7 @@ isequal(x::Interval{Float64},y::Interval{Float64},atol::Float64,rtol::Float64) =
 function cut(xL::Float64,xU::Float64,
              cv::Float64,cc::Float64,
              cv_grad::SVector{N,Float64},cc_grad::SVector{N,Float64}) where {N}
-    #println("cv_grad: $(cv_grad)")
-  #  println("cc_grad: $(cc_grad)")
-    #println("typeof(cv_grad): $(typeof(cv_grad))")
-    #println("typeof(cc_grad): $(typeof(cc_grad))")
-    #println("zero(SVector{N,Float64})): $(zero(SVector{N,Float64}))")
+
     if (cc > xU)
       cco::Float64 = xU
       cc_grado::SVector{N,Float64} = zero(SVector{N,Float64})
@@ -258,7 +263,7 @@ end
 """
     MC
 
-`MC` is the smooth McCormick (w/ gradient) structure which is used to overload
+`MC{N, T <: RelaxTag} <: Real` is the McCormick (w/ (sub)gradient) structure which is used to overload
 standard calculations. The fields are:
 * `cc::Float64`: Concave relaxation
 * `cv::Float64`: Convex relaxation
@@ -283,7 +288,7 @@ struct MC{N, T <: RelaxTag} <: Real
 end
 
 """
-    MC(y::Interval{Float64})
+    MC{N,T}(y::Interval{Float64})
 
 Constructs McCormick relaxation with convex relaxation equal to `y.lo` and
 concave relaxation equal to `y.hi`.
@@ -292,15 +297,37 @@ function MC{N,T}(y::Interval{Float64}) where {N, T <: RelaxTag}
     MC{N,T}(y.lo, y.hi, y, zero(SVector{N,Float64}),
                            zero(SVector{N,Float64}), true)
 end
+
+"""
+    MC{N,T}(y::Float64)
+
+Constructs McCormick relaxation with convex relaxation equal to `y` and
+concave relaxation equal to `y`.
+"""
 MC{N,T}(y::Float64) where {N, T <: RelaxTag} = MC{N,T}(Interval{Float64}(y))
 function MC{N,T}(y::Y) where {N, T <: RelaxTag, Y <: AbstractIrrational}
     MC{N,T}(Interval{Float64}(y))
 end
+
+"""
+    MC{N,T}(cv::Float64, cc::Float64)
+
+Constructs McCormick relaxation with convex relaxation equal to `cv` and
+concave relaxation equal to `cc`.
+"""
 function MC{N,T}(cv::Float64, cc::Float64) where {N, T <: RelaxTag}
     MC{N,T}(cv, cc, Interval{Float64}(cv,cc),
             zero(SVector{N,Float64}),
             zero(SVector{N,Float64}), true)
 end
+
+"""
+    MC{N,T}(val::Float64, Intv::Interval{Float64}, i::Int64)
+
+Constructs McCormick relaxation with convex relaxation equal to `val`,
+concave relaxation equal to `val`, interval bounds of `Intv`, and a unit subgradient
+with nonzero's ith dimension of length N.
+"""
 function MC{N,T}(val::Float64, Intv::Interval{Float64}, i::Int64) where {N, T <: RelaxTag}
     MC{N,T}(val, val, Intv, seed_gradient(i,Val(N)), seed_gradient(i,Val(N)), false)
 end
