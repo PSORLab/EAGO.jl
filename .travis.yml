@@ -1,7 +1,7 @@
 ## Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
-codecov: true
-coveralls: true
+#codecov: true
+#coveralls: true
 os:
   - linux
   #- osx
@@ -33,5 +33,5 @@ addons:
   apt_packages:
     - gfortran
 
-after_success:
-    - julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+#after_success:
+#   - julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
