@@ -7,11 +7,15 @@ Department of Chemical and Biomolecular Engineering, University of Connecticut
 
 Semi-infinite programming remains an active area of research. In general, the solution of semi-infinite programs with nonconvex semi-infinite constraints of the below form are extremely challenging:
 
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/SIPProbFormulation.png" width="30%" height="30%">
+<img src="SIPProbFormulation.png"
+     width = 50%
+     align="center" />
 
 EAGO implements the SIPres of [1] to determine a globally optimal solution to problems of the above form. This accomplished using the `explicit_sip_solve` function which returns the optimal value, the solution, and a boolean feasibility value. To illustrate the functions use, a simple example is presented here which solves the below problem:
 
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/SIPformulation.png" width="30%" height="30%">
+<img src="SIPformulation.png"
+     width = 65%
+     align="center" />
 
 ```julia
 using EAGO, JuMP
