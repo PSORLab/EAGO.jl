@@ -1,0 +1,3 @@
+[deps]
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+EAGO = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
