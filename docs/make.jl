@@ -46,10 +46,10 @@ makedocs(modules = [EAGO, McCormick],
 
 
 deploydocs(
-    #deps = Deps.pip("pygments", "mkdocs", "python-markdown-math"),
     repo   = "github.com/PSORLab/EAGO.jl.git",
     target = "build",
     osname = "linux",
     julia = "1.1",
     deps = nothing,
-    make = nothing)
+    make = nothing
+)
