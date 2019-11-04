@@ -3,7 +3,6 @@
 # Cassette specific functions for scrubbing udfs of objects that interfere with overloading
 overdub(ctx::ScrubCtx, ::typeof(typeassert), x::Real, type::Type) = x
 function overdub(ctx::ScrubCtx, ::typeof(zeros), t, dims...)
-    println("zeros every overdubbed...")
     if t <: AbstractFloat
         return zeros(Real, dims...)
     elseif t <: Integer
@@ -40,7 +39,6 @@ function generated_scrubbed_method(f::Function, n::Int, inplace = false)
     return g
 end
 
-# scrub each udf expression (works for n = 1 )
 """
     scrub(f::Function, n::Int, inplace = false)
 
@@ -51,8 +49,10 @@ overdubs `f` in `ScrubCtx`.
 function scrub(f::Function, n::Int, inplace = false)
     if inplace
         if hasmethod(f, Tuple{Array{Float64,1}})
+            println("scrub arc 1...")
             return false, (y,x) -> overdub(ScrubCtx(), f, y, x)
         else
+            println("scrub arc 2...")
             fna = generated_scrubbed_method(f, n, true)
             return true, (y,x) -> overdub(ScrubCtx(), fna, y, x)
         end
@@ -66,7 +66,6 @@ function scrub(f::Function, n::Int, inplace = false)
     end
 end
 
-# scrub the model
 """
     scrub!(d::_NLPData)
 
@@ -80,12 +79,8 @@ function scrub!(d::_NLPData)
         evalr = user_ops.multivariate_operator_evaluator[i]
         f_old = evalr.f
         flag, fnew = scrub(evalr.f, evalr.len)
-        ftemp = (out, a) -> gradient!(out, x -> f_old(x...), a)
+        ftemp = (out, a) -> gradient!(out, x -> f_old(x), a)
         fnew2 = (y, x) -> overdub(ScrubCtx(), ftemp, y, x)
-        flag, fnew2 = scrub(evalr.∇f, evalr.len, true)
-        out = zeros(3)
-        a = [1.0; 2.0; 3.0]
-        #fnew2(out,a)
         evalr.f = fnew
         evalr.∇f = fnew2
         user_ops.multivariate_operator_evaluator[i] = evalr

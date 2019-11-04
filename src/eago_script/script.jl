@@ -12,7 +12,7 @@ module Script
                               UserOperatorRegistry, adjmat
     import Cassette: @context, Cassette.overdub, Cassette.prehook
     #import CodeTransformation: addmethod! TODO: add this later
-    import ForwardDiff: derivative
+    import ForwardDiff: derivative, gradient!
     export dag_flattening!
 
     include("codetransformation.jl") # TODO: delete this later
