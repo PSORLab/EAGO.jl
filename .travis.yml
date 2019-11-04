@@ -1,5 +1,8 @@
 ## Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
+
+sudo: required
+
 #codecov: true
 #coveralls: true
 os:
@@ -14,6 +17,10 @@ julia:
 #matrix:
 #  allow_failures:
 #  - julia: nightly
+
+env:
+  global:
+    - DOCUMENTER_DEBUG=true
 
 jobs:
   include:
@@ -35,3 +42,5 @@ addons:
 
 #after_success:
 #   - julia --color=yes -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+
+sudo: false
