@@ -109,7 +109,6 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 - 7/5/2019: [**EAGO v0.2.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.1). This contains fixes for a few minor issues.
   - Bug fix for explicit SIP solving routine that occurred for uncertainty sets of dimension greater than 1.
   - Bug fix for Max objective sense.
-<!--
 - 11/1/2019: [**EAGO v0.3.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.3.0): This update is intended to be the last to create a large number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
   - A number of performance improvements have been made to the underlying McCormick relaxation library.
   - The optimizer used to construct relaxations is now modified in place.
@@ -120,7 +119,6 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
   - JIT compilation time has been reduced substantially.
   - Support for silent tag and time limits.
--->
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
