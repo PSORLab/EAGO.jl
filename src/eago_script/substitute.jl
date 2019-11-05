@@ -179,6 +179,7 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
                     match_flag = false
                     break
                 end
+
             end
         else
             match_flag = false
@@ -191,20 +192,24 @@ end
 function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,Int},
                     const_values::Vector{Float64}, parameter_values::Vector{Float64})
 
+    #println("started find match:")
     flag = false
     pattern_number = -1
     match_dict = Dict{Int,Int}()
     @inbounds sub_len = DAG_LENGTHS[1]
     for i in 1:sub_len
+        #println("checking pattern i = $i")
         @inbounds pattern = DAG_PATTERNS[i]
         inner_flag, match_dict = is_match(pattern, indx, nd, adj,
                                           const_values, parameter_values)
+        #println("inner_flag = $(inner_flag)")
         if inner_flag
             flag = true
             pattern_number = i
             break
         end
     end
+    #println("flag = $flag")
     return flag, pattern_number, match_dict
 end
 
@@ -315,7 +320,13 @@ end
     flatten_expression!
 
 Flattens (usually) the dag by making all registered substitutions for the
-expression `expr::_NonlinearExprData`.
+expression `expr::_NonlinearExprData`. Performs a depth-first search through
+the expression adding the terminal node to the stack, then checking to determine
+if it matches a registered substitution pattern. If it doesn't not then node is
+added to the new expression graph representation and it's children are added to
+the queue. If an expression (node) is identified as a pattern then it is
+substituted and any children expression nodes are then checked for patterns until
+the depth first search is exhausted.
 """
 function flatten_expression!(expr::_NonlinearExprData, parameter_values::Vector{Float64})
     nd = expr.nd
@@ -354,12 +365,16 @@ function flatten_expression!(expr::_NonlinearExprData, parameter_values::Vector{
                                                     queue, new_nds, adj, children_arr)
             end
         else
-            push!(new_nds, NodeData(active_node.nodetype, active_node.index, prior_prt))
+            new_parent = parent_dict[prior_prt]
+            push!(new_nds, NodeData(active_node.nodetype, active_node.index, new_parent))
+            #push!(new_nds, NodeData(active_node.nodetype, active_node.index, prior_prt))
             node_count += 1
             @inbounds parent_dict[node_num] = node_count
         end
     end
+    #println("parent_dict: $(parent_dict)")
     expr.nd = new_nds
+    return
 end
 
 """
@@ -369,16 +384,24 @@ Flattens (usually) the dag by making all registered substitutions for every
 nonlinear term in the Optimizer.
 """
 function dag_flattening!(x::T) where T <: AbstractOptimizer
-    nlp_data = x._nlp_data.evaluator.m.nlp_data
-    params = nlp_data.nlparamvalues
-    if ~isnothing(nlp_data.nlobj)
-        flatten_expression!(nlp_data.nlobj, params)
-    end
-    for i in 1:length(nlp_data.nlconstr)
-        flatten_expression!(nlp_data.nlconstr[i].terms, params)
-    end
-    for i in 1:length(nlp_data.nlexpr)
-        flatten_expression!(nlp_data.nlexpr[i], params)
+    if isa(x._nlp_data.evaluator, NLPEvaluator)
+        nlp_data = x._nlp_data.evaluator.m.nlp_data
+        params = nlp_data.nlparamvalues
+        if ~isnothing(nlp_data.nlobj)
+            flatten_expression!(nlp_data.nlobj, params)
+        end
+        for i in 1:length(nlp_data.nlconstr)
+            for j in 1:length(nlp_data.nlconstr[i].terms.nd)
+                println("starting constraint[$i] term[$j]: $(nlp_data.nlconstr[i].terms.nd[j])")
+            end
+            flatten_expression!(nlp_data.nlconstr[i].terms, params)
+            for j in 1:length(nlp_data.nlconstr[i].terms.nd)
+                println("ending constraint[$i] term[$j]: $(nlp_data.nlconstr[i].terms.nd[j])")
+            end
+        end
+        for i in 1:length(nlp_data.nlexpr)
+            flatten_expression!(nlp_data.nlexpr[i], params)
+        end
     end
     return
 end
