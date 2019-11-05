@@ -6,7 +6,6 @@ function build_model(problem::SIPProblem)
   return model
 end
 
-
 function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
                     problem::SIPProblem, cb::SIPCallback, indx::Int64)
 
