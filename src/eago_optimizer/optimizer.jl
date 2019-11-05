@@ -550,8 +550,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
 
         # Optimizer display options
         default_opt_dict[:verbosity] = 1
-        default_opt_dict[:output_iterations] = 10
-        default_opt_dict[:header_iterations] = 100
+        default_opt_dict[:output_iterations] = 1000
+        default_opt_dict[:header_iterations] = 10000
 
         # Extension options
         default_opt_dict[:enable_optimize_hook] = false

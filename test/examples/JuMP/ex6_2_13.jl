@@ -1,22 +1,7 @@
-using JuMP, EAGO
+using JuMP, EAGO, Gurobi
 
-m = Model(with_optimizer(EAGO.Optimizer,
-                             lp_depth = 100000000,
-                             lp_reptitions = 3,
-                             quad_uni_depth = -1,
-                             obbt_depth = 3,
-                             cp_depth = -1,
-                             iteration_limit = 50000000,
-                             verbosity = 1,
-                             output_iterations = 10000,
-                             header_iterations = 2000000,
-                             relative_tolerance = 1E-3,
-                             absolute_tolerance = 1E-3,
-                             dbbt_depth = 100000000,
-                             subgrad_tighten = true,
-                             objective_cut_on = true,
-                             max_cut_iterations = 3,
-                             time_limit = 1000.0))
+m = Model(with_optimizer(EAGO.Optimizer, relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
+
 # ----- Variables ----- #
 x_Idx = Any[2, 3, 4, 5, 6, 7]
 @variable(m, x[x_Idx])
