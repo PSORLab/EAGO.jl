@@ -3,9 +3,9 @@
 # EAGO: Easy-Advanced Global Optimization
 EAGO is an open-source development environment for **robust and global optimization** in Julia.
 
-| **Documentation**                                                               | **Linux/OS**                                                                     | **Windows**                                                                     |
-|:-------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PSORLab.github.io/EAGO.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/latest) | [![Build Status](https://travis-ci.org/PSORLab/EAGO.jl.svg?branch=master)](https://travis-ci.org/PSORLab/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/oc8ql7kdugc19skf?svg=true)](https://ci.appveyor.com/project/mewilhel/eago-jl) |
+| **Documentation**                                                | **Linux/OS**                                                                     | **Windows**                                                                     |
+|:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PSORLab.github.io/EAGO.jl/) | [![Build Status](https://travis-ci.org/PSORLab/EAGO.jl.svg?branch=master)](https://travis-ci.org/PSORLab/EAGO.jl) | [![Build status](https://ci.appveyor.com/api/projects/status/oc8ql7kdugc19skf?svg=true)](https://ci.appveyor.com/project/mewilhel/eago-jl) |
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
