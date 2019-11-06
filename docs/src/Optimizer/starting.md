@@ -5,15 +5,6 @@ Department of Chemical and Biomolecular Engineering, University of Connecticut
 
 In [1,2], a surrogate ANN model of bioreactor productivity was constructed by fitting results from computationally expensive CFD simulations. The author then optimized this surrogate model to obtain ideal processing conditions. This optimization problem is given by:
 
-$
-\begin{align}
-    \label{prob:ANN1}
-    \max_{\mathbf x\in X} B_2 + \sum_{i=1}^{3}\frac{2D_{i}}{1+\exp(-2y_{i})} \qquad \text{where} \qquad y_{i} =  B_i + \sum_{i=1}^{3}\sum_{j=1}^{8} W_{ij}x_{i}\\
-\end{align}
-$
-
-We'll repeat this exercise using JuMP and EAGO.
-
 ### Input parameters
 
 In the first block, we input parameters values supplied in the paper for $W$, $B$, $D$, and $X$ into Julia as simple array objects.
