@@ -1,2 +1,104 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Future Work · EAGO.jl: Easy Advanced Global Optimization</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>EAGO.jl: Easy Advanced Global Optimization</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Introduction</a></li><li><span class="toctext">McCormick Operator Library</span><ul><li><a class="toctext" href="../../McCormick/overview/">Overview</a></li><li><a class="toctext" href="../../McCormick/usage/">Basic Usage</a></li><li><a class="toctext" href="../../McCormick/operators/"><strong>Currently supported operators</strong></a></li><li><a class="toctext" href="../../McCormick/type/"><strong>Types</strong></a></li><li><a class="toctext" href="../../McCormick/implicit/">Relaxation of Implicit Functions</a></li></ul></li><li><span class="toctext">Global Optimizer</span><ul><li><a class="toctext" href="../../Optimizer/starting/">Solving simple example: an artificial neural network with EAGO</a></li><li><a class="toctext" href="../../Optimizer/optimizer/">EAGO Optimizer</a></li><li><a class="toctext" href="../../Optimizer/bnb_back/">EAGO&#39;s Branch and Bound Routine</a></li><li><a class="toctext" href="../../Optimizer/relax_back/">Relaxation Backend</a></li><li><a class="toctext" href="../../Optimizer/domain_reduction/">Domain Reduction</a></li><li><a class="toctext" href="../../Optimizer/high_performance/">High-Performance Configuration</a></li><li><a class="toctext" href="../../Optimizer/udf_utilities/">User-Define Functions and DAG Utilities</a></li></ul></li><li><a class="toctext" href="../../SemiInfinite/semiinfinite/">Semi-Infinite Programming</a></li><li><span class="toctext">Contributing to EAGO</span><ul><li><a class="toctext" href="../contributing/">How to Contribute</a></li><li class="current"><a class="toctext" href>Future Work</a><ul class="internal"><li><a class="toctext" href="#Current-Activity:-1">Current Activity:</a></li><li><a class="toctext" href="#Other-things-on-the-wishlist-(but-not-actively-being-worked-on):-1">Other things on the wishlist (but not actively being worked on):</a></li></ul></li></ul></li><li><a class="toctext" href="../../ref/">References</a></li><li><a class="toctext" href="../../cite/">Citing EAGO</a></li></ul></nav><article id="docs"><header><nav><ul><li>Contributing to EAGO</li><li><a href>Future Work</a></li></ul><a class="edit-page" href="https://github.com//blob/master/docs/src/Dev/future.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Future Work</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Future-Work-1" href="#Future-Work-1">Future Work</a></h1><h2><a class="nav-anchor" id="Current-Activity:-1" href="#Current-Activity:-1">Current Activity:</a></h2><ul><li>Update CI testing.</li><li>Specialized algorithms for relaxing ODE constrained problems and solving</li></ul><p>global and robust optimization problems.</p><ul><li>Extensions for nonconvex dynamic global &amp; robust optimization.</li><li>Provide support for mixed-integer problems.</li><li>Update EAGO to support nonsmooth problems (requires: a nonsmooth local nlp optimizer or lexiographic AD, support for relaxations is already included).</li><li>Performance assessment of nonlinear (differentiable) relaxations and incorporation into main EAGO routine.</li><li>Evaluation and incorporation of implicit relaxation routines in basic solver.</li></ul><h2><a class="nav-anchor" id="Other-things-on-the-wishlist-(but-not-actively-being-worked-on):-1" href="#Other-things-on-the-wishlist-(but-not-actively-being-worked-on):-1">Other things on the wishlist (but not actively being worked on):</a></h2><ul><li>Implement the interval constraint propagation scheme presented in Vu 2008. For</li></ul><p>improved convergences.</p><ul><li>A parametric bisection routine will be updated that can divide the <code>(X,P)</code></li></ul><p>space into a series of boxes that all contain unique branches of the implicit function <code>p-&gt;y(p)</code>.</p><ul><li>Provide a better interface the nonconvex semi-infinite programs solvers</li></ul><p>(JuMPeR extension?).</p><ul><li>Add additional McCormick relaxations.</li><li>Add handling for domain reduction of special expression forms.</li></ul><footer><hr/><a class="previous" href="../contributing/"><span class="direction">Previous</span><span class="title">How to Contribute</span></a><a class="next" href="../../ref/"><span class="direction">Next</span><span class="title">References</span></a></footer></article></body></html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Future Work · EAGO.jl: Easy Advanced Global Optimization</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css" />
+  <link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css" />
+  <script>documenterBaseURL="../.."</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script>
+  <script src="../../siteinfo.js"></script>
+  <script src="../../../versions.js"></script>
+  <link href="../../assets/documenter.css" rel="stylesheet" type="text/css" />
+</head>
+
+<body>
+  <nav class="toc">
+    <h1>EAGO.jl: Easy Advanced Global Optimization</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select>
+    <form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs" /></form>
+    <ul>
+      <li><a class="toctext" href="../../">Introduction</a></li>
+      <li><span class="toctext">McCormick Operator Library</span>
+        <ul>
+          <li><a class="toctext" href="../../McCormick/overview/">Overview</a></li>
+          <li><a class="toctext" href="../../McCormick/usage/">Basic Usage</a></li>
+          <li><a class="toctext" href="../../McCormick/operators/"><strong>Currently supported operators</strong></a></li>
+          <li><a class="toctext" href="../../McCormick/type/"><strong>Types</strong></a></li>
+          <li><a class="toctext" href="../../McCormick/implicit/">Relaxation of Implicit Functions</a></li>
+        </ul>
+      </li>
+      <li><span class="toctext">Global Optimizer</span>
+        <ul>
+          <li><a class="toctext" href="../../Optimizer/starting/">Solving simple example: an artificial neural network with EAGO</a></li>
+          <li><a class="toctext" href="../../Optimizer/optimizer/">EAGO Optimizer</a></li>
+          <li><a class="toctext" href="../../Optimizer/bnb_back/">EAGO&#39;s Branch and Bound Routine</a></li>
+          <li><a class="toctext" href="../../Optimizer/relax_back/">Relaxation Backend</a></li>
+          <li><a class="toctext" href="../../Optimizer/domain_reduction/">Domain Reduction</a></li>
+          <li><a class="toctext" href="../../Optimizer/high_performance/">High-Performance Configuration</a></li>
+          <li><a class="toctext" href="../../Optimizer/udf_utilities/">User-Define Functions and DAG Utilities</a></li>
+        </ul>
+      </li>
+      <li><a class="toctext" href="../../SemiInfinite/semiinfinite/">Semi-Infinite Programming</a></li>
+      <li><span class="toctext">Contributing to EAGO</span>
+        <ul>
+          <li><a class="toctext" href="../contributing/">How to Contribute</a></li>
+          <li class="current"><a class="toctext" href>Future Work</a>
+            <ul class="internal">
+              <li><a class="toctext" href="#Current-Activity:-1">Current Activity:</a></li>
+              <li><a class="toctext" href="#Other-things-on-the-wishlist-(but-not-actively-being-worked-on):-1">Other things on the wishlist (but not actively being worked on):</a></li>
+            </ul>
+          </li>
+        </ul>
+      </li>
+      <li><a class="toctext" href="../../ref/">References</a></li>
+      <li><a class="toctext" href="../../cite/">Citing EAGO</a></li>
+    </ul>
+  </nav>
+  <article id="docs">
+    <header>
+      <nav>
+        <ul>
+          <li>Contributing to EAGO</li>
+          <li><a href>Future Work</a></li>
+        </ul><a class="edit-page" href="https://github.com//blob/master/docs/src/Dev/future.md"><span class="fa"></span> Edit on GitHub</a>
+      </nav>
+      <hr />
+      <div id="topbar"><span>Future Work</span><a class="fa fa-bars" href="#"></a></div>
+    </header>
+    <h1><a class="nav-anchor" id="Future-Work-1" href="#Future-Work-1">Future Work</a></h1>
+    <h2><a class="nav-anchor" id="Current-Activity:-1" href="#Current-Activity:-1">Current Activity:</a></h2>
+    <ul>
+      <li>Update CI testing.</li>
+      <li>Specialized algorithms for relaxing ODE constrained problems and solving global and robust optimization problems.</li>
+    </ul>
+    <ul>
+      <li>Extensions for nonconvex dynamic global &amp; robust optimization.</li>
+      <li>Provide support for mixed-integer problems.</li>
+      <li>Update EAGO to support nonsmooth problems (requires: a nonsmooth local nlp optimizer or lexiographic AD, support for relaxations is already included).</li>
+      <li>Performance assessment of nonlinear (differentiable) relaxations and incorporation into main EAGO routine.</li>
+      <li>Evaluation and incorporation of implicit relaxation routines in basic solver.</li>
+    </ul>
+    <h2><a class="nav-anchor" id="Other-things-on-the-wishlist-(but-not-actively-being-worked-on):-1" href="#Other-things-on-the-wishlist-(but-not-actively-being-worked-on):-1">Other things on the wishlist (but not actively being worked on):</a></h2>
+    <ul>
+      <li>Implement the interval constraint propagation scheme presented in Vu 2008. For improved convergences. </li>
+    </ul>
+    <ul>
+      <li>A parametric bisection routine will be updated that can divide the <code>(X,P)</code> space into a series of boxes that all contain unique branches of the implicit function <code>p-&gt;y(p)</code>.</li>
+    </ul>
+    <ul>
+      <li>Provide a better interface the nonconvex semi-infinite programs solvers (JuMPeR extension?).</li>
+    </ul>
+    <ul>
+      <li>Add additional McCormick relaxations.</li>
+      <li>Add handling for domain reduction of special expression forms.</li>
+    </ul>
+    <footer>
+      <hr /><a class="previous" href="../contributing/"><span class="direction">Previous</span><span class="title">How to Contribute</span></a><a class="next" href="../../ref/"><span class="direction">Next</span><span class="title">References</span></a></footer>
+  </article>
+</body>
+
+</html>
