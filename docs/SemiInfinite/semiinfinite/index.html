@@ -72,10 +72,10 @@
     <p><a href="https://psor.uconn.edu/person/matthew-wilhelm/">Matthew Wilhelm</a> Department of Chemical and Biomolecular Engineering, University of Connecticut</p>
     <h2><a class="nav-anchor" id="Using-EAGO-to-solve-a-SIP-1" href="#Using-EAGO-to-solve-a-SIP-1">Using EAGO to solve a SIP</a></h2>
     <p>Semi-infinite programming remains an active area of research. In general, the solution of semi-infinite programs with nonconvex semi-infinite constraints of the below form are extremely challenging:</p>
-    <img src="https://github.com/PSORLab/EAGO.jl/tree/master/docs/SemiInfinite/SIPProbFormulation.png" width = 65% align="center" >
+    <img src="SIPProbFormulation.png" width = 55% align="center" >
     <p>EAGO implements the SIPres of [1] to determine a globally optimal solution to problems of the above form. This accomplished using the <code>explicit_sip_solve</code> function which returns the optimal value, the solution, and a boolean
       feasibility value. To illustrate the functions use, a simple example is presented here which solves the below problem:</p>
-    <img src="https://github.com/PSORLab/EAGO.jl/tree/master/docs/SemiInfinite/SIPformulation.png" width = 65% align="center" >
+    <img src="SIPformulation.png" width = 70% align="center" >
     <pre><code class="language-julia">using EAGO, JuMP
 
 # Define semi-infinite program
