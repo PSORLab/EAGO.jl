@@ -1,6 +1,7 @@
 # Defines functions required for linear algebra packages
 one(x::MC{N,T}) where {N, T <: RelaxTag} = MC{N,T}(1.0, 1.0, one(Interval{Float64}), zero(SVector{N,Float64}), zero(SVector{N,Float64}), true)
-zero(x::MC{N,T}) where {N, T <: RelaxTag} = MC{N,T}(0.0, 0.0, zero(Interval{Float64}), zero(SVector{N,Float64}), zero(SVector{N,Float64}), true)
+zero(::Type{MC{N,T}}) where {N, T <: RelaxTag} = MC{N,T}(0.0, 0.0, zero(Interval{Float64}), zero(SVector{N,Float64}), zero(SVector{N,Float64}), true)
+zero(x::MC{N,T}) where {N, T <: RelaxTag} = zero(MC{N,T})
 real(x::MC) = x
 @inline dist(x1::MC, x2::MC) = max(abs(x1.cc - x2.cc), abs(x1.cv - x2.cv))
 @inline eps(x::MC) = max(eps(x.cc), eps(x.cv))

@@ -645,7 +645,7 @@ function cut_update(x::Optimizer)
 end
 
 """
-    cut_conditioncut_condition(t::ExtensionType, x::Optimizer)
+    cut_condition(t::ExtensionType, x::Optimizer)
 
 Checks if a cut should be added and computes a new reference point to add the
 cut at. If no cut should be added the constraints not modified in place are

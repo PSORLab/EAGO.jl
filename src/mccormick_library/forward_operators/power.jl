@@ -349,15 +349,15 @@ function inv1(x::MC{N,NS}, y::Interval{Float64}) where N
   cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
   return MC{N,NS}(cv, cc, y, cv_grad, cc_grad, x.cnst)
 end
-function inv_kernel(x::MC, y::Interval{Float64})
-    if (x.Intv.lo <= 0.0 <= x.Intv.hi)
-		    error("Function unbounded on domain: $(x.Intv)")
+function inv_kernel(x::MC{N,T}, y::Interval{Float64}) where {N,T<:RelaxTag}
+	if (x.Intv.lo <= 0.0 <= x.Intv.hi)
+		error("Function unbounded on domain: $(x.Intv)")
 	end
 	if (x.Intv.hi < 0.0)
-	    x = neg_powneg_odd(x, -1, y)
+		x = neg_powneg_odd(x, -1, y)
   	elseif (x.Intv.lo > 0.0)
 		x = inv1(x, y)
 	end
 	return x
 end
-inv(x::MC) = inv_kernel(x, (x.Intv)^(-1))
+inv(x::MC{N,T}) where {N,T<:RelaxTag} = inv_kernel(x, (x.Intv)^(-1))

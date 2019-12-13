@@ -1,5 +1,6 @@
 module McCormick
 
+using DocStringExtensions, LinearAlgebra
 using DiffRules: diffrule
 using StaticArrays: @SVector, SVector, zeros, ones
 
@@ -63,13 +64,8 @@ export grad, zgrad, ∩, mid3, MC_param, mid_grad, seed_g, line_seg, dline_seg,
        set_outer_rnd, tighten_subgrad, set_iterations, set_tolerance,
        default_options, value, mincv, maxcc, promote_rule
 =#
-export mc_opts, gen_expansion_params, gen_expansion_params!, implicit_relax_h,
-       implicit_relax_h!, implicit_relax_f, implicit_relax_fg
-
-
-function __init__()
-      setrounding(Interval, :accurate)
-end
+export MCCallback, gen_expansion_params!, implicit_relax_h!, DenseMidInv,
+       NewtonGS, KrawczykCW
 
 """
     RelaxTag
@@ -139,20 +135,19 @@ function mid3(x::Float64,y::Float64,z::Float64)
 end
 
 """
-    mid_grad(cc_grad::SVector{N,T}, cv_grad::SVector{N,T}, id::Int64)
+$(FUNCTIONNAME)
 
 Takes the concave relaxation gradient 'cc_grad', the convex relaxation gradient
 'cv_grad', and the index of the midpoint returned 'id' and outputs the appropriate
 gradient according to McCormick relaxation rules.
 """
-function mid_grad(cc_grad::SVector{N,Float64}, cv_grad::SVector{N,Float64}, id::Int64) where {N, T <: RelaxTag}
-  if (id == 1)
-    return cc_grad
-  elseif (id == 2)
-    return cv_grad
-  elseif (id == 3)
+function mid_grad(cc_grad::SVector{N,Float64}, cv_grad::SVector{N,Float64}, id::Int64) where N
+    if (id == 1)
+        return cc_grad
+    elseif (id == 2)
+        return cv_grad
+    end
     return zero(SVector{N,Float64})
-  end
 end
 
 """

@@ -60,7 +60,7 @@ function div_kernel(x::MC{N,Diff}, y::MC{N,Diff}, z::Interval{Float64}) where {N
     return zMC
 end
 
-function /(x::MC, y::MC)
+function /(x::MC{N,T}, y::MC{N,T}) where {N,T<:RelaxTag}
     @assert ~(y.Intv.lo <= 0.0 <= y.Intv.hi)
     return div_kernel(x, y, x.Intv/y.Intv)
 end
