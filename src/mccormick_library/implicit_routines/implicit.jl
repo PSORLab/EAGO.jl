@@ -1,5 +1,6 @@
 """
-    final_cut
+$(FUNCTIONNAME)
+
 An operator that cuts the `x_mc` object using the `x_mc_int bounds` in a
 differentiable or nonsmooth fashion to achieve a composite relaxation within
 `x_mc_int`.
@@ -33,7 +34,7 @@ struct NewtonGS <: AbstractContractorMC end
 struct KrawczykCW <: AbstractContractorMC end
 
 abstract type AbstractPrecondionerMC end
-function preconditioner_storage(x::AbstractPrecondionerMC)
+function preconditioner_storage(x::AbstractPrecondionerMC, t::T) where T<:RelaxTag
     error("Must define function that generates appropriate storage type for preconditioner")
 end
 
@@ -48,7 +49,6 @@ struct MCCallback{FH <: Function, FJ <: Function, C <: AbstractContractorMC,
     xmid::Vector{Float64}
     X::Vector{Interval{Float64}}
     P::Vector{Interval{Float64}}
-    t::Vector{Float64}
     nx::Int
     np::Int
     lambda::Float64
@@ -69,17 +69,16 @@ struct MCCallback{FH <: Function, FJ <: Function, C <: AbstractContractorMC,
 end
 function MCCallback(h!::FH, hj!::FJ, nx::Int, np::Int,
                     contractor::S = NewtonGS(),
-                    preconditioner::T = DenseMidInv(zeros(Float64,1,1),lu!(fill(1.1,(1,1))), 1, 1, NS()),
+                    preconditioner::T = DenseMidInv(zeros(Float64,1,1), zeros(Interval{Float64},1), 1, 1),
                     relax_tag::TAG = NS()) where {FH <: Function,
                                                   FJ <: Function,
                                                   S <: AbstractContractorMC,
-                                                  T <: AbstractPrecondionerMC,
+                                                  T,
                                                   TAG <: RelaxTag}
     H = zeros(MC{np,TAG}, (nx,))
     xmid = zeros(Float64, (nx,))
     P = zeros(Interval{Float64}, (np,))
     X = zeros(Interval{Float64}, (nx,))
-    t = zeros(Float64,(1,))
     lambda = 0.5
     eps = 0.0
     kmax = 2
@@ -92,27 +91,23 @@ function MCCallback(h!::FH, hj!::FJ, nx::Int, np::Int,
     aff_mc = zeros(MC{np,TAG}, (nx,))
     z_mc = zeros(MC{np,TAG}, (nx,))
     contractor = NewtonGS()
-    preconditioner = preconditioner(h!, hj!, nx, np, relax_tag)
-    J = preconditioner_storage(preconditioner)
+    preconditioner = preconditioner(h!, hj!, nx, np)
+    J = preconditioner_storage(preconditioner, relax_tag)
     apply_precond = true
     param = fill(zeros(MC{np,TAG}, (nx, )), (kmax,))
 
-    return MCCallback{FH, FJ, NewtonGS, DenseMidInv, np, TAG, typeof(J)}(h!, hj!, H, J, xmid, X, P, t, nx, np,
+    return MCCallback{FH, FJ, NewtonGS, DenseMidInv, np, TAG, typeof(J)}(h!, hj!, H, J, xmid, X, P, nx, np,
                                                                          lambda, eps, kmax, p_ref, p_mc, x0_mc, x_mc,
                                                                          xa_mc, xA_mc, aff_mc, z_mc,
                                                                          contractor, preconditioner,
                                                                          apply_precond, param)
 end
 function (d::MCCallback)()
-    d.h!(d.H, d.z_mc, d.p_mc, d.t[1])
-    d.hj!(d.J, d.aff_mc, d.p_mc, d.t[1])
+    d.h!(d.H, d.z_mc, d.p_mc)
+    d.hj!(d.J, d.aff_mc, d.p_mc)
     return
 end
-
-function precondition!(d::MCCallback)
-    precondition!(d.preconditioner, d.H, d.J)
-    return
-end
+# performance optimized
 
 include("preconditioner/dense.jl")
 
@@ -146,6 +141,7 @@ function affine_exp!(x::S, p::Vector{MC{N,T}}, d::MCCallback) where {S, N, T<:Re
     end
     return
 end
+# affine_exp! currently optimized....
 
 """
 $(FUNCTIONNAME)
@@ -157,24 +153,20 @@ function correct_exp!(d::MCCallback{FH,FJ,C,PRE,N,T}) where {FH <: Function,
                                                              C, PRE, N,
                                                              T<:RelaxTag}
     zero_grad = zeros(SVector{N,Float64})
-    for i = 1:d.nx
-        if (d.z_mc[i].Intv.lo - d.eps < d.X[i].lo) &&
-           (d.z_mc[i].Intv.hi + d.eps > d.X[i].hi)
-            @inbounds d.x_mc[i] = MC{N,T}(d.X[i])
-        end
-        if (d.z_mc[i].Intv.lo - d.eps < d.X[i].lo)
-            @inbounds d.x_mc[i] = MC{N,T}(d.X[i].lo, d.x_mc[i].cc,
-                                          Interval(d.X[i].lo, d.x_mc[i].Intv.hi),
-                                          zero_grad, d.x_mc[i].cc_grad, d.x_mc[i].cnst)
-        end
-        if (d.z_mc[i].Intv.hi + d.eps > d.X[i].hi)
-            @inbounds d.x_mc[i] = MC{N,T}(d.x_mc[i].cv, d.X[i].hi,
-                                          Interval(d.x_mc[i].Intv.lo, d.X[i].hi),
-                                          d.x_mc[i].cv_grad, zero_grad, d.x_mc[i].cnst)
+    @inbounds for i = 1:d.nx
+        if (d.z_mc[i].Intv.lo - d.eps < d.X[i].lo) && (d.z_mc[i].Intv.hi + d.eps > d.X[i].hi)
+            d.x_mc[i] = MC{N,T}(d.X[i])
+        elseif (d.z_mc[i].Intv.lo - d.eps < d.X[i].lo)
+            d.x_mc[i] = MC{N,T}(d.X[i].lo, d.x_mc[i].cc, Interval(d.X[i].lo, d.x_mc[i].Intv.hi),
+                                zero_grad, d.x_mc[i].cc_grad, d.x_mc[i].cnst)
+        elseif (d.z_mc[i].Intv.hi + d.eps > d.X[i].hi)
+            d.x_mc[i] = MC{N,T}(d.x_mc[i].cv, d.X[i].hi, Interval(d.x_mc[i].Intv.lo, d.X[i].hi),
+                                d.x_mc[i].cv_grad, zero_grad, d.x_mc[i].cnst)
         end
     end
     return
 end
+# correct_exp! currently optimized....
 
 include("contract.jl")
 
@@ -189,14 +181,17 @@ function precond_and_contract!(callback!::MCCallback{FH,FJ,C,PRE,N,T}) where {FH
     @. callback!.aff_mc = MC{N,T}(cv(callback!.xa_mc), cc(callback!.xA_mc))
     callback!()
     if callback!.apply_precond
-        precondition!(callback!)
+        precondition!(callback!.preconditioner, callback!.H, callback!.J)
     end
     contract!(callback!.contractor, callback!)
     return
 end
+# precond_and_contract! currently optimized....
 
 """
 $(FUNCTIONNAME)
+
+Populates `x_mc`, `xa_mc`, `xA_mc`, and `z_mc` with affine bounds.
 """
 function populate_affine!(d::MCCallback{FH,FJ,C,PRE,N,T}, interval_bnds::Bool) where {FH <: Function,
                                                                                       FJ <: Function,
@@ -204,15 +199,16 @@ function populate_affine!(d::MCCallback{FH,FJ,C,PRE,N,T}, interval_bnds::Bool) w
                                                                                       PRE <: AbstractPrecondionerMC,
                                                                                       N, T<:RelaxTag}
     if interval_bnds
-        for i in 1:d.nx
+        @inbounds for i in 1:d.nx
             d.x_mc[i] = MC{N,T}(d.X[i].lo, d.X[i].hi)
             d.xa_mc[i] = MC{N,T}(d.X[i].lo, d.X[i].lo)
             d.xA_mc[i] = MC{N,T}(d.X[i].hi, d.X[i].hi)
-        end
+            d.z_mc[i] = d.lambda*d.xa_mc[i] + (1.0 - d.lambda)*d.xA_mc[i]
+         end
     end
-    @. d.z_mc = d.lambda*d.xa_mc + (1.0 - d.lambda)*d.xA_mc
     return
 end
+# populate_affine! currently optimized....
 
 """
 $(FUNCTIONNAME)
@@ -220,10 +216,8 @@ $(FUNCTIONNAME)
 function gen_expansion_params!(d::MCCallback, interval_bnds::Bool = true) where {N, T<:RelaxTag}
     populate_affine!(d, interval_bnds)
     @. d.param[1] = d.x_mc
-    println("d.x_mc: $(d.x_mc)")
     for k = 2:d.kmax
         precond_and_contract!(d)
-        println("d.x_mc: $(d.x_mc)")
         affine_exp!(d.x_mc, d.pref_mc, d)
         correct_exp!(d)
         @. d.param[k] = d.x_mc
@@ -236,11 +230,9 @@ $(FUNCTIONNAME)
 """
 function implicit_relax_h!(d::MCCallback, interval_bnds::Bool = true) where {N, T<:RelaxTag}
     populate_affine!(d, interval_bnds)
-    println("d.x_mc: $(d.x_mc)")
     for k=1:d.kmax
         affine_exp!(d.param[k], d.p_mc, d)
         precond_and_contract!(d)
-        println("d.x_mc: $(d.x_mc)")
     end
     return
 end

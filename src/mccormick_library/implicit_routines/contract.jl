@@ -5,9 +5,9 @@ Performs a single step of the parametric method associated with `t` the inputs h
 """
 function contract! end
 function contract!(t::NewtonGS, d::MCCallback{FH,FJ,C,PRE,N,T}) where {FH <: Function,
-                                                                         FJ <: Function,
-                                                                         C, PRE, N,
-                                                                         T<:RelaxTag}
+                                                                       FJ <: Function,
+                                                                       C, PRE, N,
+                                                                       T<:RelaxTag}
     S = zero(MC{N,T})
     @. d.x0_mc = d.x_mc
     for i = 1:d.nx
@@ -22,10 +22,11 @@ function contract!(t::NewtonGS, d::MCCallback{FH,FJ,C,PRE,N,T}) where {FH <: Fun
     end
     return
 end
+# contract is optimized!
 function contract!(t::KrawczykCW, d::MCCallback{FH,FJ,C,PRE,N,T}) where {FH <: Function,
-                                                                           FJ <: Function,
-                                                                           C, PRE, N,
-                                                                           T<:RelaxTag}
+                                                                         FJ <: Function,
+                                                                         C, PRE, N,
+                                                                         T<:RelaxTag}
     S1::MC{N,T} = zero(MC{N,T})
     x_mc_int::MC{N,T} = zero(MC{N,T})
     for i=1:nx
@@ -45,3 +46,4 @@ function contract!(t::KrawczykCW, d::MCCallback{FH,FJ,C,PRE,N,T}) where {FH <: F
     end
     return
 end
+# contract is optimized!
