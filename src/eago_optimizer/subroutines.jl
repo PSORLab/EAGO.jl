@@ -864,7 +864,7 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
         if is_feasible_solution(x._upper_termination_status, x._upper_result_status)
             x._upper_feasibility = true
             value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-            x._upper_objective_value = value  + 1.0E-6
+            x._upper_objective_value = value*(1.0 + 1.0E-6)
             x._best_upper_value = min(value, x._best_upper_value)
             x._upper_solution[1:end] = MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else
