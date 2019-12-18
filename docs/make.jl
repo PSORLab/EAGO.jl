@@ -3,8 +3,7 @@ push!(LOAD_PATH,"../src/")
 using Documenter
 using EAGO, IntervalArithmetic, MathOptInterface
 using EAGO.McCormick
-import EAGO.McCormick: affine_exp!, correct_exp!, final_cut, mc_dense_krawczyk_cw!,
-                       mc_dense_newton_gs!, pmc_kernel!
+import EAGO.McCormick: affine_exp!, correct_exp!, final_cut
 import EAGO: ExtensionType, Evaluator, FunctionSetStorage,
              SubexpressionSetStorage, variable_dbbt!,
              set_current_node!, relax_quadratic_gen_saf, eval_objective_lo,
