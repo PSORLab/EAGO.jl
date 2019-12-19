@@ -1,4 +1,6 @@
 language: julia
+codecov: true
+coveralls: true
 
 sudo: required
 
@@ -21,12 +23,6 @@ matrix:
 
 notifications:
   email: false
-
-after_success:
-  - julia -e 'using Pkg; cd(Pkg.dir("EAGO")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
-  - julia -e 'using Pkg; cd(Pkg.dir("EAGO")); using Coverage; Codecov.submit(process_folder())'
-  #- julia -e 'using Pkg; ps=PackageSpec(name="Documenter", version="0.19"); Pkg.add(ps); Pkg.pin(ps)'
-  #- julia -e 'using Pkg; cd(Pkg.dir("Unitful")); include(joinpath("docs", "make.jl"))'
 
 addons:
   apt_packages:
