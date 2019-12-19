@@ -19,7 +19,7 @@ import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
 const MOI = MathOptInterface
 
 makedocs(modules = [EAGO, McCormick],
-         doctest = true,
+         doctest = false,
          format = Documenter.HTML(),
          authors = "Matthew Wilhelm",
          sitename = "EAGO.jl: Easy Advanced Global Optimization",
@@ -43,11 +43,4 @@ makedocs(modules = [EAGO, McCormick],
                   "Citing EAGO" => "cite.md"]
 )
 
-
-deploydocs(
-    repo   = "github.com/PSORLab/EAGO.jl.git",
-    target = "build",
-    osname = "linux",
-    deps = nothing,
-    make = nothing
-)
+deploydocs(repo = "github.com/PSORLab/EAGO.jl.git")
