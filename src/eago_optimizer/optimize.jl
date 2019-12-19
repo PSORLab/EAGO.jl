@@ -284,7 +284,7 @@ function convert_to_min!(x::Optimizer)
 end
 
 function has_evaluator(x::MOI.NLPBlockData)
-    flag = ~isnothing(x.evaluator)
+    flag = x.evaluator !== nothing
     flag &= ~isa(x.evaluator, EmptyNLPEvaluator)
     return flag
 end
