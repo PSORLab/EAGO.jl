@@ -22,21 +22,51 @@ function check_vs_ref2(f::Function, x::MC, c::Float64, yref1::MC, yref2::MC, mct
     check_vs_ref_kernel(f(c, x), yref2, mctol) && pass_flag
 end
 
-@testset "Access Functions & Constructors" begin
+@testset "Access Functions, Constructors, Utilities" begin
    x_exp = MC{2,NS}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
-   @test Intv(x_exp) == x_exp.Intv
-   @test lo(x_exp) == x_exp.Intv.lo
-   @test hi(x_exp) == x_exp.Intv.hi
-   @test cc(x_exp) == x_exp.cc
-   @test cv(x_exp) == x_exp.cv
-   @test cc_grad(x_exp) == x_exp.cc_grad
-   @test cv_grad(x_exp) == x_exp.cv_grad
-   @test cnst(x_exp) == x_exp.cnst
-   @test length(x_exp) == length(x_exp.cc_grad)
+   @test EAGO.McCormick.Intv(x_exp) == x_exp.Intv
+   @test EAGO.McCormick.lo(x_exp) == x_exp.Intv.lo
+   @test EAGO.McCormick.hi(x_exp) == x_exp.Intv.hi
+   @test EAGO.McCormick.cc(x_exp) == x_exp.cc
+   @test EAGO.McCormick.cv(x_exp) == x_exp.cv
+   @test EAGO.McCormick.cc_grad(x_exp) == x_exp.cc_grad
+   @test EAGO.McCormick.cv_grad(x_exp) == x_exp.cv_grad
+   @test EAGO.McCormick.cnst(x_exp) == x_exp.cnst
+   @test EAGO.McCormick.length(x_exp) == length(x_exp.cc_grad)
 
    @test MC{2,NS}(1.0) == MC{2,NS}(Interval{Float64}(1.0))
    @test MC{2,NS}(pi) == MC{2,NS}(Interval{Float64}(pi))
 
+   xintv = Interval{Float64}(1.0,4.0)
+   @test EAGO.McCormick.lo(xintv) == xintv.lo
+   @test EAGO.McCormick.hi(xintv) == xintv.hi
+
+   @test EAGO.McCormick.mid_grad(zeros(SVector{2,Float64}), zeros(SVector{2,Float64}), 3) == zeros(SVector{2,Float64})
+
+   f1(x) = 1.0
+   df1(x) = 2.0
+   @test (1.0,2.0) == EAGO.McCormick.dline_seg(f1, df1, 0.0, 0.0, 0.0)
+
+   f2(x,c) = 1.1
+   df2(x,c) = 2.1
+   @test (1.1,2.1) == EAGO.McCormick.dline_seg(f2, df2, 0.0, 0.0, 0.0, 2)
+
+   f3(x,c) = 1.2
+   df3(x,c) = 2.2
+   @test (1.2,2.2) == EAGO.McCormick.dline_seg(f3, df3, 0.0, 0.0, 0.0, 2.1)
+end
+
+@testset "Rootfinding Routine" begin
+   xL = 0.0
+   xU = 2.0
+   f(x,xlo,xup) = x^2 - 1.0
+   out = EAGO.McCormick.golden_section(xL, xU, f, 0.0, 0.0)
+   @test out == 1.0
+
+   xL = 0.0
+   xU = 2.0
+   g(x,xlo,xup) = x^2 + 3.0
+   @test_throws ErrorException EAGO.McCormick.golden_section(xL, xU, g, 0.0, 0.0)
 end
 
 @testset "Test Univariate" begin
@@ -554,7 +584,40 @@ end
     @test isapprox(out.Intv.hi,-0.39999999999999997,atol=1E-6)
 end
 
-# IMPLICIT ROUTINES
+@testset "Min/Max" begin
+
+   c = 5.0
+   z = Interval{Float64}(2.1,3.4)
+   x = MC{2,NS}(z)
+   x0 = MC{2,NS}(Interval{Float64}(1.1,5.4))
+
+   @test max(c, x) == EAGO.McCormick.max_kernel(x, c, max(x.Intv, c))
+   @test max(x, Float32(c)) == EAGO.McCormick.max_kernel(x, convert(Float64, Float32(c)), max(x.Intv, Float32(c)))
+   @test max(Float32(c), x) == EAGO.McCormick.max_kernel(x, convert(Float64, Float32(c)), max(x.Intv, Float32(c)))
+   @test max(x, Int64(c)) == EAGO.McCormick.max_kernel(x, convert(Float64, Int64(c)), max(x.Intv, Int64(c)))
+   @test max(Int64(c), x) == EAGO.McCormick.max_kernel(x, convert(Float64, Int64(c)), max(x.Intv, Int64(c)))
+
+   @test min(c, x) == EAGO.McCormick.min_kernel(x, c, min(x.Intv, c))
+   @test min(x, Float32(c)) == EAGO.McCormick.min_kernel(x, convert(Float64, Float32(c)), min(x.Intv, Float32(c)))
+   @test min(Float32(c), x) == EAGO.McCormick.min_kernel(x, convert(Float64, Float32(c)), min(x.Intv, Float32(c)))
+   @test min(x, Int64(c)) == EAGO.McCormick.min_kernel(x, convert(Float64, Int64(c)), min(x.Intv, Int64(c)))
+   @test min(Int64(c), x) == EAGO.McCormick.min_kernel(x, convert(Float64, Int64(c)), min(x.Intv, Int64(c)))
+
+   @test EAGO.McCormick.minus_kernel(x, Float32(c), z) == EAGO.McCormick.minus_kernel(x, convert(Float64,Float32(c)), z)
+   @test EAGO.McCormick.minus_kernel(Float32(c), x, z) == EAGO.McCormick.minus_kernel(convert(Float64,Float32(c)), x, z)
+   @test EAGO.McCormick.minus_kernel(x, Int64(c), z) == EAGO.McCormick.minus_kernel(x, convert(Float64,Int64(c)), z)
+   @test EAGO.McCormick.minus_kernel(Int64(c), x, z) == EAGO.McCormick.minus_kernel(convert(Float64,Int64(c)), x, z)
+
+   @test EAGO.McCormick.plus_kernel(x, z) == x
+
+   @test zero(x) == zero(MC{2,NS})
+   @test real(x) == x
+   @test dist(x, x0) == max(abs(x.cc - x0.cc), abs(x.cv - x0.cv))
+   @test eps(x) == max(eps(x.cc), eps(x.cv))
+   @test mid(x) == mid(x.Intv)
+   @test one(x) == MC{2,NS}(1.0, 1.0, one(Interval{Float64}), zero(SVector{2,Float64}), zero(SVector{2,Float64}), true)
+end
+
 @testset "Implicit" begin
    function h!(out::A,x::B,p::C) where {A,B,C}
        out[1] = x[1]^2 + x[1]*p[1] + 4.0

@@ -189,19 +189,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
-(Sub)gradient calculation function. Takes the convex gradient, 'cv', the
-concave gradient, 'cc', the mid index values 'int1,int2', and the derivative of
-the convex and concave envelope functions 'dcv,dcc'.
-"""
-function grad_calc(cv::SVector{N,Float64},cc::SVector{N,Float64},int1::Int,int2::Int,dcv::Float64,dcc::Float64) where {N, T <: RelaxTag}
-  cv_grad::SVector{N,Float64} = dcv*( int1==1 ? cv : ( int1==2 ? cv : zero(SVector{N,Float64})))
-  cc_grad::SVector{N,Float64} = dcc*( int2==1 ? cc : ( int2==2 ? cc : zero(SVector{N,Float64})))
-  return cv_grad, cc_grad
-end
-
-"""
-$(FUNCTIONNAME)
 """
 function cut(xL::Float64,xU::Float64,
              cv::Float64,cc::Float64,
@@ -222,10 +209,6 @@ function cut(xL::Float64,xU::Float64,
       cv_grado = cv_grad
   end
   return cvo,cco,cv_grado,cc_grado
-end
-
-function neq(x::Float64,y::Float64)
-  abs(x-y)>EqualityTolerance
 end
 
 lo(x::Interval{Float64}) = x.lo
@@ -409,7 +392,7 @@ function golden_section(xL::Float64,xU::Float64,f::Function,envp1::Float64,envp2
   fL::Float64 = f(xL,envp1,envp2)
   fU::Float64 = f(xU,envp1,envp2)
 
-  (fL*fU > 0.0) && error("GOLDEN EXCEPTION")
+  (fL*fU > 0.0) && error("GOLDEN EXCEPTION: No root present in range [xL, xU]")
   xm::Float64 = xU-(2.0-golden)*(xU-xL)
   fm::Float64 = f(xm,envp1,envp2)
   return golden_section_it(1,xL,fL,xm,fm,xU,fU,f,envp1,envp2)
@@ -425,31 +408,32 @@ the iteration number of the golden section method.
 """
 function golden_section_it(init::Int,a::Float64,fa::Float64,b::Float64,fb::Float64,c::Float64,
                                    fc::Float64,f::Function,envp1::Float64,envp2::Float64)
-  b_t_x::Bool = (c-b > b-a)
-  if (b_t_x)
-    x::Float64 = b + (2.0-golden)*(c-b)
-  else
-    x = b - (2.0-golden)*(b-a)
-  end
-  itr::Int = init
-  if (abs(c-a)<MC_ENV_TOL*(abs(b)+abs(x)) || (itr>MC_ENV_MAX_INT))
-    return (c+a)/2.0
-  end
-  itr += 1
-  fx::Float64 = f(x,envp1,envp2)
-  if (b_t_x)
-    if (fa*fx < 0.0)
-      golden_section_it(itr,a,fa,b,fb,x,fx,f,envp1,envp2)
+    b_t_x::Bool = (c-b > b-a)
+    if b_t_x
+        x = b + (2.0-golden)*(c-b)
     else
-      golden_section_it(itr,b,fb,x,fx,c,fc,f,envp1,envp2)
+        x = b - (2.0-golden)*(b-a)
     end
-  else
-    if (fa*fb<(fa))
-      golden_section_it(itr,a,fa,x,fx,b,fb,f,envp1,envp2)
+    itr = init
+    if (abs(c-a) < MC_ENV_TOL*(abs(b)+abs(x)) || (itr > MC_ENV_MAX_INT))
+        return (c+a)/2.0
+    end
+    itr += 1
+    fx::Float64 = f(x,envp1,envp2)
+    if b_t_x
+        if fa*fx < 0.0
+            out = golden_section_it(itr,a,fa,b,fb,x,fx,f,envp1,envp2)
+        else
+            out = golden_section_it(itr,b,fb,x,fx,c,fc,f,envp1,envp2)
+        end
     else
-      golden_section_it(itr,x,fx,b,fb,c,fc,f,envp1,envp2)
+        if fa*fb < 0.0
+            out = golden_section_it(itr,a,fa,x,fx,b,fb,f,envp1,envp2)
+        else
+            out = golden_section_it(itr,x,fx,b,fb,c,fc,f,envp1,envp2)
+        end
     end
-  end
+    return out
 end
 
 include("forward_operators/forward.jl")

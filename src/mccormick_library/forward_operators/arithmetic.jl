@@ -66,15 +66,12 @@ minus_kernel(y::C, x::MC, z::Interval{Float64}) where {C <: Integer} = minus_ker
 
 # Multiplication
 function mult_kernel(x::MC{N,T}, c::Float64, z::Interval{Float64}) where {N, T <: RelaxTag}
-	#println("multo kernel: c = $c, x = $x, z = $z")
 	delcv_cc = (x.cv - x.cc)
-	#println("delcv_cc: $delcv_cc")
 	if (c >= 0.0)
 		zMC = MC{N,T}(c*x.cv, c*x.cc, z, c*x.cv_grad, c*x.cc_grad, x.cnst)
 	else
 		zMC = MC{N,T}(c*x.cc, c*x.cv, z, c*x.cc_grad, c*x.cv_grad, x.cnst)
 	end
-	#println("zMC")
 	return zMC
 end
 mult_kernel(c::Float64, x::MC, z::Interval{Float64}) = mult_kernel(x, c, z)
