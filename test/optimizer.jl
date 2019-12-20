@@ -218,7 +218,9 @@ end
     sqf_hi = @inferred EAGO.interval_bound(sqf, n, false)
     @test isapprox(sqf_lo, fintv_sqf.lo, atol = 1E-7)
     @test isapprox(sqf_hi, fintv_sqf.hi, atol = 1E-7)
+end
 
+@testset "Fallback Interval Bound 2" begin
     # test linear expression interval fallback
     n = EAGO.NodeBB([-1.0], [2.0], -Inf, Inf, 3, 2)
 
