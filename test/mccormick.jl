@@ -331,6 +331,50 @@ end
    @test X3.cv == 2.1
 
    @test +X == X
+
+   xextras = MC{2,NS}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+
+   @test asec(xextras) == acos(inv(xextras))
+   @test acsc(xextras) == asin(inv(xextras))
+   @test acot(xextras) == atan(inv(xextras))
+   @test sech(xextras) == inv(cosh(xextras))
+   @test csch(xextras) == inv(sinh(xextras))
+   @test coth(xextras) == inv(tanh(xextras))
+   @test acsch(xextras) == log(sqrt(1.0+inv(sqr(xextras)))+inv(xextras))
+   @test acoth(xextras) == 0.5*(log(1.0+inv(xextras))-log(1.0-inv(xextras)))
+   @test sind(xextras) == sin(deg2rad(xextras))
+   @test cosd(xextras) == cos(deg2rad(xextras))
+   @test tand(xextras) == tan(deg2rad(xextras))
+   @test secd(xextras) == inv(cosd(xextras))
+   @test cscd(xextras) == inv(sind(xextras))
+   @test cotd(xextras) == inv(tand(xextras))
+   @test atand(xextras) == rad2deg(atan(xextras))
+   @test asecd(xextras) == rad2deg(asec(xextras))
+   @test acscd(xextras) == rad2deg(acsc(xextras))
+   @test acotd(xextras) == rad2deg(acot(xextras))
+
+   xextras1 = xextras = MC{2,NS}(0.1, 0.2, Interval{Float64}(0.05,0.21), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   @test csc(xextras) == inv(sin(xextras))
+   @test sec(xextras) == inv(cos(xextras))
+   @test cot(xextras) == inv(tan(xextras))
+   @test asind(xextras) == rad2deg(asin(xextras))
+   @test acosd(xextras) == rad2deg(acos(xextras))
+
+   x_atan_p = MC{2,Diff}(0.6, 0.6, Interval{Float64}(0.1,0.7), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   x_atan_n = MC{2,Diff}(-0.6, -0.6, Interval{Float64}(-0.7,-0.1), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   x_atan_z1 = MC{2,Diff}(0.6, 0.6, Interval{Float64}(-0.6,0.7), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   x_atan_z2 = MC{2,Diff}(-0.5, -0.5, Interval{Float64}(-0.7,0.6), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   x_atan_z1_ns = MC{2,NS}(0.6, 0.6, Interval{Float64}(-0.6,0.7), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+
+   yref_atan_d1_p = MC{2,Diff}(0.5255497457395342, 0.5404195002705842, Interval{Float64}(0.09966865249116202,0.6107259643892087), @SVector[0.8517621864967442, 0.0], @SVector[0.7352941176470589, 0.0], false)
+   yref_atan_d1_n = MC{2,Diff}(-0.5404195002705842, -0.5255497457395342, Interval{Float64}(-0.6107259643892087,-0.09966865249116202), @SVector[0.7352941176470589, 0.0], @SVector[0.8517621864967442, 0.0], false)
+   yref_atan_d1_z2 = MC{2,Diff}(-0.4636476090008061, -0.43024560156279196, Interval{Float64}(-0.6107259643892087,0.5404195002705842), @SVector[0.8, 0.0], @SVector[0.9024018141320833, 0.0], false)
+   yref_atan_ns = MC{2,NS}(0.5204857829760002, 0.540419500270584, Interval{Float64}(-0.5404195002705842,0.6107259643892087), @SVector[0.9024018141320833, 0.0], @SVector[0.7352941176470589, 0.0], false)
+
+   @test check_vs_ref1(atan, x_atan_p, yref_atan_d1_p, mctol)
+   @test check_vs_ref1(atan, x_atan_n, yref_atan_d1_n, mctol)
+   @test check_vs_ref1(atan, x_atan_z2, yref_atan_d1_z2, mctol)
+   @test check_vs_ref1(atan, x_atan_z1_ns, yref_atan_ns, mctol)
 end
 
 
