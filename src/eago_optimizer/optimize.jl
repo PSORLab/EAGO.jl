@@ -442,7 +442,8 @@ function local_solve!(x::Optimizer)
         x._feasible_solution_found = true
         x._first_solution_node = x._maximum_node_id
         x._solution_value = x._upper_objective_value
-        @inbounds x._continuous_solution[:] = x._upper_solution
+        x._continuous_solution .= x._upper_solution
+        x._objective_value = x._upper_objective_value
         x._termination_status_code = MOI.LOCALLY_SOLVED
         x._result_status_code = MOI.FEASIBLE_POINT
     else

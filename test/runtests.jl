@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 using Test
-using EAGO, JuMP, MathOptInterface, StaticArrays, Ipopt
+using EAGO, JuMP, MathOptInterface, StaticArrays, Ipopt, ForwardDiff
 using EAGO.McCormick
 using IntervalArithmetic
 const MOI = MathOptInterface

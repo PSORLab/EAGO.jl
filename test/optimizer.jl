@@ -463,10 +463,64 @@ end
     # Problem with a convex quadratic constraint
 end
 
-@testset "Local NLP Solve" begin
-    # A problem solve locally
+@testset "User Defined Function Scrubber" begin
+    gamma1_x1(z) = z[1]*(1253/z[3])/(1 + 2.62*(z[1]/z[2]))^2
+    gamma2_x2(z) = z[2]*(479/z[3])/(1 + 0.382*(z[2]/z[1]))^2
+
+    function cons_1ex(z...)
+        temp = ForwardDiff.gradient(z -> log(gamma1_x1(z)), collect(z))
+        temp[1]
+    end
+
+    unity(x) = x::Float64
+    function cons_2ex(z...)
+        temp = ForwardDiff.gradient(z -> log(gamma2_x2(z)), collect(z))
+        unity(temp[2])
+    end
+
+    # Define the JuMP model and solve
+    m = Model(with_optimizer(EAGO.Optimizer, presolve_scrubber_flag = true))
+    register(m, :cons_1ex, 3, cons_1ex, autodiff = true)
+    register(m, :cons_2ex, 3, cons_2ex, autodiff = true)
+    @variable(m, 0.01 <= x1 <= 0.99)
+    @variable(m, 0.01 <= x2 <= 0.99)
+    @variable(m, 363.15 <= T <= 398.15)
+    @constraint(m, x1 + x2 == 1.0)
+    @NLexpression(m, P1, 1.33*exp(11.83572 - 4169.84/(T - 17.665)))
+    @NLexpression(m, P2, 1.33*exp(11.33986 - 3724.523/(T - 69.854)))
+
+    @NLconstraint(m, cons_1ex(x1,x2,T)*P1 + cons_2ex(x1,x2,T)*P2 == 1.02)
+    @NLconstraint(m, cons_1ex(x1,x2,T)*P1/1.02 >= 0.95)
+    @NLconstraint(m, cons1, cons_1ex(x1, x2, T) >= 0.001)
+    @NLconstraint(m, cons2, cons_2ex(x1, x2, T) >= 0.001)
+    @NLobjective(m, Min, T)
+    optimize!(m)
+    @test MOI.INFEASIBILITY_CERTIFICATE === primal_status(m)
 end
 
-@testset "Logging" begin
-    # A problem solved with logging
+@testset "Local NLP Solve && Logging" begin
+    m = Model(with_optimizer(EAGO.Optimizer, local_solve_only=true, log_on=true,
+                             log_subproblem_info=true, log_interval=1, verbosity=0))
+
+    x_Idx = Any[1, 2, 3, 4, 5, 6]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[1], 1500.0)
+    JuMP.set_upper_bound(x[1], 2000.0)
+    JuMP.set_lower_bound(x[2], 1.0)
+    JuMP.set_upper_bound(x[2], 120.0)
+    JuMP.set_lower_bound(x[3], 3000.0)
+    JuMP.set_upper_bound(x[3], 3500.0)
+    JuMP.set_lower_bound(x[4], 85.0)
+    JuMP.set_upper_bound(x[4], 93.0)
+    JuMP.set_lower_bound(x[5], 90.0)
+    JuMP.set_upper_bound(x[5], 95.0)
+    JuMP.set_lower_bound(x[6], 3.0)
+    JuMP.set_upper_bound(x[6], 12.0)
+
+    @NLobjective(m, Min, 3000.0 + 0.035*x[1]*x[6]-0.063*x[3]*x[5]+1.715*x[1]+4.0565*x[3] + 10*x[2])
+
+    JuMP.optimize!(m)
+    @test isapprox(objective_value(m), -1009.74929, atol=1E-3)
+    @test MOI.FEASIBLE_POINT === primal_status(m)
+    @test MOI.LOCALLY_SOLVED === termination_status(m)
 end
