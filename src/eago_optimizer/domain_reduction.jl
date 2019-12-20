@@ -1,5 +1,5 @@
 """
-    variable_dbbt!
+$(FUNCTIONNAME)
 
 Tightens the bounds of the `_current_node` using the current global upper bound
 and the duality information obtained from the relaxation.
@@ -36,7 +36,7 @@ function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
 end
 
 """
-    trivial_filtering!
+$(FUNCTIONNAME)
 
 Excludes OBBT on variable indices that are tight for the solution of the relaxation.
 """
@@ -78,7 +78,7 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
 end
 
 """
-    bool_indx_diff
+$(FUNCTIONNAME)
 
 Utility function used to set vector of booleans z to x & ~y. Avoids the
 generation of conversion of the BitArray created by broadcasting logical operators.
@@ -91,7 +91,7 @@ function bool_indx_diff(z::Vector{Bool},x::Vector{Bool}, y::Vector{Bool})
 end
 
 """
-    aggressive_filtering!
+$(FUNCTIONNAME)
 
 Excludes OBBT on variable indices after a search in a filtering direction.
 """
@@ -211,7 +211,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
 end
 
 """
-    aggressive_obbt_on_heurestic
+$(FUNCTIONNAME)
 
 Routine that determines if aggressive filtering should be used. Currently,
 a user-specified option.
@@ -219,7 +219,7 @@ a user-specified option.
 aggressive_obbt_on_heurestic(x::Optimizer) = x.obbt_aggressive_on
 
 """
-    obbt
+$(FUNCTIONNAME)
 
 Performs OBBT with filtering and greedy ordering as detailed in:
 Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731.
@@ -230,13 +230,12 @@ function obbt(x::Optimizer)
     feasibility = true
 
     y = x._current_node
-    ymid = @. 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
-    x._current_xref = ymid
+    x._current_xref .= 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
 
     # solve initial problem to feasibility
     update_relaxed_problem_box!(x, y)
-    relax_problem!(x, ymid, 1)
-    relax_objective!(x, ymid)
+    relax_problem!(x, x._current_xref, 1)
+    relax_objective!(x, x._current_xref)
     objective_cut_linear!(x, 1)
     MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(x.relaxed_optimizer)
@@ -251,7 +250,16 @@ function obbt(x::Optimizer)
     if aggressive_obbt_on_heurestic(x)
         feasibility = aggressive_filtering!(x, y)
     end
-    xLP = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
+
+    x._preprocess_termination_status = MOI.get(x.relaxed_optimizer, MOI.TerminationStatus())
+    x._preprocess_result_status = MOI.get(x.relaxed_optimizer, MOI.PrimalStatus())
+    valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
+                                                    x._preprocess_result_status)
+    if valid_flag & feasible_flag
+        xLP = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
+    else
+        return false
+    end
 
     while any(x._obbt_working_lower_index) & any(x._obbt_working_upper_index) & ~isempty(y)
 
@@ -294,7 +302,6 @@ function obbt(x::Optimizer)
 
             @inbounds x._obbt_working_lower_index[lower_indx] = false
             @inbounds var = x._lower_variable[lower_indx]
-            # SHOULD UPDATE BOX HERE TOO
             MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
             MOI.set(x.relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
             MOI.optimize!(x.relaxed_optimizer)
@@ -305,7 +312,7 @@ function obbt(x::Optimizer)
 
             if valid_flag
                 if feasible_flag
-                    @inbounds xLP[:] = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
+                    xLP .= MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
                     if is_integer_variable(x, lower_indx)
                         @inbounds y.lower_variable_bounds[lower_indx] = ceil(xLP[lower_indx])
                     else
@@ -335,7 +342,7 @@ function obbt(x::Optimizer)
 
             if valid_flag
                 if feasible_flag
-                    @inbounds xLP[:] = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
+                    xLP .= MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
                     if is_integer_variable(x, upper_indx)
                         @inbounds y.upper_variable_bounds[upper_indx] = ceil(xLP[upper_indx])
                     else
@@ -358,7 +365,7 @@ function obbt(x::Optimizer)
 end
 
 """
-    lp_bound_tighten
+$(FUNCTIONNAME)
 
 Performs the linear bound tightening.
 """
@@ -573,9 +580,7 @@ function get_univariate_coeff(func::MOI.ScalarQuadraticFunction{Float64}, set::T
     a,b,c,vi
 end
 
-"""
-Checks to see if constraint is a bivariant quadratic term
-"""
+# Checks to see if constraint is a bivariant quadratic term
 function check_bivariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
     vIndx = Int64[]
     (length(f.quadratic_terms) > 3) && (return false)
@@ -630,7 +635,7 @@ function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,v
 end
 
 """
-    classify_quadratics!
+$(FUNCTIONNAME)
 
 Classifies constraints as univariate or bivariate and adds
 them to storage vectors.
@@ -692,7 +697,7 @@ function classify_quadratics!(m::Optimizer)
 end
 
 """
-    univariate_kernel
+$(FUNCTIONNAME)
 
 Kernel of the bound tightening operation on univariant qudaratic functions.
 Called for each univariate function.
@@ -725,7 +730,7 @@ function univariate_kernel(n::NodeBB,a::Float64,b::Float64,c::Float64,vi::Int)
 end
 
 """
-    univariate_quadratic
+$(FUNCTIONNAME)
 
 Performs bound tightening on all univariate quadratic functions.
 """
@@ -760,7 +765,7 @@ function univariate_quadratic(m::Optimizer)
 end
 
 """
-    bivariate_kernel
+$(FUNCTIONNAME)
 
 Kernel of the bound tightening operation on bivariate qudaratic functions.
 Called for each bivariate function.
@@ -771,7 +776,7 @@ function bivariate_kernel(m::Optimizer,n::NodeBB,ax::Float64,ay::Float64,axy::Fl
 end
 
 """
-    bivariate_quadratic
+$(FUNCTIONNAME)
 
 Performs bound tightening on all bivariate quadratic functions.
 """
@@ -786,7 +791,7 @@ function bivariate_quadratic(m::Optimizer,n::NodeBB)
 end
 
 """
-    cpwalk
+$(FUNCTIONNAME)
 
 Performs forward-reverse pass on directed graph as
 part of constraint propagation.

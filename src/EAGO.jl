@@ -4,7 +4,7 @@ module EAGO
 
     import MathOptInterface
 
-    using NumericIO
+    using NumericIO, DocStringExtensions
 
     using JuMP
     import JuMP._Derivatives: operators, NodeData
