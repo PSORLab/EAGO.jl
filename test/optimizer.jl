@@ -220,7 +220,7 @@ end
     @test isapprox(sqf_hi, fintv_sqf.hi, atol = 1E-7)
 
     # test linear expression interval fallback
-    n = EAGO.NodeBB([-1.0,], [2.0], -Inf, Inf, 3, 2)
+    n = EAGO.NodeBB([-1.0], [2.0], -Inf, Inf, 3, 2)
 
     m1 = Model(with_optimizer(EAGO.Optimizer))
     @variable(m1, -1.0 <= x <= 2.0)
@@ -236,7 +236,7 @@ end
     @test isapprox(objective_value(m1), -0.5610957770947067, atol=1E-3)
 
     b = backend(m1).optimizer.model.optimizer
-    @test_nowarn EAGO.interval_lower_bound!(b, n)
+    EAGO.interval_lower_bound!(b, n)
     @test isapprox(b._lower_objective_value, -0.832293, atol=1E-3)
 end
 
