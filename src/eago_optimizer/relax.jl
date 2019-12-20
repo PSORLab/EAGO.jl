@@ -153,9 +153,7 @@ function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
     else
         c = saf.constant
         saf.constant = 0.0
-        #println("c: $c")
         new_set = LT(upper - c)
-        #println("c: $c")
         cindxo = MOI.add_constraint(opt, saf, new_set)
         x._quadratic_ci_leq[q][i] = cindxo
     end
@@ -166,8 +164,8 @@ function store_eq_quadratic!(x::Optimizer, ci1::CI{SAF,LT}, ci2::CI{SAF,LT},
                             q::Int64)
     opt = x.relaxed_optimizer
     if (q == 1) & x.relaxed_inplace_mod
-        store_ge_quadratic!(x, ci1, saf1, value, q)
-        store_le_quadratic!(x, ci2, saf2, value, q)
+        store_ge_quadratic!(x, ci1, saf1, value, i, q)
+        store_le_quadratic!(x, ci2, saf2, value, i, q)
     else
         c1 = saf1.constant
         c2 = saf2.constant
@@ -249,17 +247,14 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
 
     # Add objective
     if x._objective_is_sv
-        #println("relax objective arc 1 :")
         MOI.set(opt, MOI.ObjectiveFunction{SV}(), x._objective_sv)
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     elseif x._objective_is_saf
-        #println("relax objective arc 2 :")
         MOI.set(opt, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     elseif x._objective_is_sqf
-        #println("relax objective arc 3 :")
         if (x._objective_convexity)
             saf = relax_convex_kernel(x._objective, vi, nx, x0)
         else
@@ -271,7 +266,7 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
 
     else
         if x._objective_is_nlp
-            #println("relax objective arc 4 :")
+
             evaluator = x._relaxed_evaluator
 
             # Calculates convex relaxation
@@ -286,18 +281,14 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
             saf_const = f
             grad_c = 0.0
             x0_c = 0.0
-            #println("saf_const: $saf_const")
+
             for i in 1:nx
                 @inbounds grad_c = df[i]
                 @inbounds x0_c = x0[i]
                 @inbounds vindx = vi[i]
-                #println("grad_c: $grad_c")
-                #println("x0_c: $x0_c")
-                #println("vindx: $vindx")
                 saf_const -= x0_c*grad_c
                 MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SCoefC(vindx, grad_c))
             end
-            #println("saf_const: $saf_const")
             MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SConsC(saf_const))
             MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
         end

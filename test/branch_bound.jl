@@ -123,9 +123,24 @@ end
     @test EAGO.upper_bound(x) == 2.1
     @test EAGO.depth(x) == 2
 
-    @inferred EAGO.lower_variable_bounds(x)
-    @inferred EAGO.upper_variable_bounds(x)
-    @inferred EAGO.lower_bound(x)
-    @inferred EAGO.upper_bound(x)
-    @inferred EAGO.depth(x)
+    @test_nowarn @inferred EAGO.lower_variable_bounds(x)
+    @test_nowarn @inferred EAGO.upper_variable_bounds(x)
+    @test_nowarn @inferred EAGO.lower_bound(x)
+    @test_nowarn @inferred EAGO.upper_bound(x)
+    @test_nowarn @inferred EAGO.depth(x)
+
+    x1 = EAGO.NodeBB(Float64[1.0,5.0], Float64[3.0,6.0], -3.4, 2.1, 2, 1)
+    x2 = EAGO.NodeBB(Float64[0.9,5.0], Float64[2.0,6.0], -3.4, 2.1, 2, 1)
+    x3 = copy(x)
+    x4 = EAGO.NodeBB(x)
+    @test ~EAGO.same_box(x, x1, 0.0)
+    @test ~EAGO.same_box(x, x2, 0.0)
+    @test EAGO.same_box(x, x, 0.0)
+    @test EAGO.same_box(x, x3, 0.0)
+    @test EAGO.same_box(x, x4, 0.0)
+
+    lower = EAGO.lower_variable_bounds(x, 1, 2)
+    upper = EAGO.upper_variable_bounds(x, 1, 2)
+    @test lower == Float64[1.0,5.0]
+    @test upper == Float64[2.0,6.0]
 end

@@ -28,8 +28,6 @@ upper_variable_bounds(x::NodeBB, id::Int64, nid::Int64) = x.upper_variable_bound
 lower_bound(x::NodeBB) = x.lower_bound
 upper_bound(x::NodeBB) = x.upper_bound
 depth(x::NodeBB) = x.depth
-last_branch(x::NodeBB) = x.last_branch
-branch_direction(x::NodeBB) = x.branch_direction
 
 function diam(x::NodeBB)
     return x.upper_variable_bounds - x.lower_variable_bounds
@@ -56,7 +54,7 @@ NodeBB(x::NodeBB) = NodeBB(x.lower_variable_bounds, x.upper_variable_bounds,
                            x.lower_bound, x.upper_bound, x.depth, x.id)
 
 function copy(x::NodeBB)
-    return NodeBB(x.lower_variable_bounds, x.upper_variable_bounds,
+    return NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
                   x.lower_bound, x.upper_bound, x.depth, x.id)
 end
 

@@ -218,7 +218,28 @@ end
     sqf_hi = @inferred EAGO.interval_bound(sqf, n, false)
     @test isapprox(sqf_lo, fintv_sqf.lo, atol = 1E-7)
     @test isapprox(sqf_hi, fintv_sqf.hi, atol = 1E-7)
+
+    # test linear expression interval fallback
+    n = EAGO.NodeBB([-1.0,], [2.0], -Inf, Inf, 3, 2)
+
+    m1 = Model(with_optimizer(EAGO.Optimizer))
+    @variable(m1, -1.0 <= x <= 2.0)
+    @variable(m1, -1.0 <= y <= 2.0)
+    @constraint(m1, x^2 + y + x*y <= 50.0)
+    @constraint(m1, x^2 + y >= -50.0)
+    @constraint(m1, 2x + y <= 50.0)
+    @constraint(m1, 2x - y >= -50.0)
+    @NLconstraint(m1, x^2 + sin(x) <= 50.0)
+    @NLconstraint(m1, x^2 + sin(x) >= -50.0)
+    @NLobjective(m1, Min, cos(x)*x)
+    optimize!(m1)
+    @test isapprox(objective_value(m1), -0.5610957770947067, atol=1E-3)
+
+    b = backend(m1).optimizer.model.optimizer
+    @test_nowarn EAGO.interval_lower_bound!(b, n)
+    @test isapprox(b._lower_objective_value, -0.832293, atol=1E-3)
 end
+
 
 
 #=

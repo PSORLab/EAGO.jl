@@ -493,13 +493,12 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
         eval_constraint_lo!(d, constraints_intv_lo)
         eval_constraint_hi!(d, constraints_intv_hi)
         constraints_bnd_lo = d.constraints_lbd
-        constrains_bnd_hi = d.constraints_ubd
+        constraints_bnd_hi = d.constraints_ubd
 
         for i in 1:d.constraint_number
-            @inbounds constraints_intv_li = constraints_bnd_lo[i]
+            @inbounds constraints_intv_lo = constraints_bnd_lo[i]
             @inbounds constraints_intv_hi = constraints_bnd_hi[i]
-            if (constaints_intv_li > constaints_intv_hi) ||
-               (constaints_intv_hi < constaints_intv_li)
+            if (constraints_intv_lo > constraints_intv_hi) || (constraints_intv_hi < constraints_intv_lo)
                 feas = false
                 break
             end
@@ -529,8 +528,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
     end
     for (func, set, i) in x._linear_eq_constraints
         (~feas) && break
-        if (interval_bound(func, y, true) > set.value) ||
-           (interval_bound(func, y, false) < set.value)
+        if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
             feas = false
         end
     end
@@ -549,8 +547,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
     end
     for (func, set, i) in x._quadratic_eq_constraints
         (~feas) && break
-        if (interval_bound(func, y, true) > set.value) ||
-           (interval_bound(func, y, false) < set.value)
+        if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
             feas = false
         end
     end
