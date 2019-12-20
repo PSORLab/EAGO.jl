@@ -234,7 +234,7 @@ end
     @NLconstraint(m1, x^2 + sin(x) <= 50.0)
     @NLconstraint(m1, x^2 + sin(x) >= -50.0)
     @NLobjective(m1, Min, cos(x)*x)
-    @test_nowarn optimize!(m1)
+    optimize!(m1)
     obj_value = objective_value(m1)
     @test isapprox(obj_value, -0.5610957770947067, atol=1E-3)
 
