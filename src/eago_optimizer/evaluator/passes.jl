@@ -297,7 +297,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                       nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64},
                       current_node::NodeBB, x_values::Vector{Float64},
                       subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N,T}},
-                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, subgrad_tighten::Bool,
+                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, flt_user_input_buffer::Vector{Float64}, subgrad_tighten::Bool,
                       tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
                       tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
                       first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry,
@@ -365,6 +365,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @assert n_children == 2
                 forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
                                setstorage, current_node, subgrad_tighten, first_eval_flag)
+            #=
             elseif op == 6 # ifelse
                 @assert n_children == 3
                 idx1 = first(children_idx)
@@ -387,11 +388,13 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                     @inbounds rhs = numberstorage[children_arr[idx1+2]]
                 end
                 error("IF ELSE TO BE IMPLEMENTED SHORTLY")
-                #storage[k] = set_value_post(x_values, ifelse(condition == 1, lhs, rhs), current_node)                                                 # DONE
+                #storage[k] = set_value_post(x_values, ifelse(condition == 1, lhs, rhs), current_node)
+            =#
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 op_sym = id_to_operator[op]
                 evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]
                 f_input = view(user_input_buffer, 1:n_children)
+                fnum_input = view(flt_user_input_buffer, 1:n_children)
                 r = 1
                 isnum = true
                 for c_idx in children_idx
@@ -399,27 +402,30 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                     @inbounds chdset = numvalued[ix]
                     isnum &= chdset
                     if chdset
+                        if isnum
+                            @inbounds fnum_input[r] = numberstorage[ix]
+                        end
                         @inbounds f_input[r] = numberstorage[ix]
                     else
                         @inbounds f_input[r] = setstorage[ix]
                     end
                     r += 1
                 end
-                fval = MOI.eval_objective(evaluator, f_input)
                 if isnum
-                    numberstorage[k] = fval
+                    numberstorage[k] = MOI.eval_objective(evaluator, fnum_input)
                 else
+                    fval = MOI.eval_objective(evaluator, f_input)
                     if first_eval_flag
                         setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
                     else
                         setstorage[k] = set_value_post(x_values, fval ∩ setstorage[k], current_node, subgrad_tighten)
                     end
                 end
-                numvalued[k] = isnum                  # DONE
+                numvalued[k] = isnum
             else
                 error("Unsupported operation $(operators[op])")
             end
-        elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR                         # DONE
+        elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
             @inbounds child_idx = children_arr[adj.colptr[k]]
             @inbounds chdset = numvalued[child_idx]
             if chdset
@@ -489,6 +495,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 end
             end
             numvalued[k] = chdset
+        #=
         elseif nod.nodetype == JuMP._Derivatives.COMPARISON                         # DONE
             op = nod.index
             @inbounds children_idx = nzrange(adj,k)
@@ -544,7 +551,8 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
             elseif op == 2
                 numberstorage[k] = cval_lhs || cval_rhs
             end
-        else                                                                        # DONE
+            =#
+        else
             error("Unrecognized node type $(nod.nodetype).")
         end
     end
@@ -556,6 +564,7 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
     subexpr_values_set = d.subexpression_values_set
     user_operators = d.user_operators
     user_input_buffer = d.jac_storage
+    flt_user_input_buffer = d.flt_jac_storage
     subgrad_tighten = d.subgrad_tighten
 
     seeds = d.seeds
@@ -564,7 +573,7 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
         temp = forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
                                          ex.nd, ex.adj, d.current_node,
                                          x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                                         user_input_buffer, subgrad_tighten, #ex.tpdict,
+                                         user_input_buffer, flt_user_input_buffer, subgrad_tighten, #ex.tpdict,
                                          user_operators,seeds)
         d.subexpression_isnum[ind] = ex.numvalued[1]
         if d.subexpression_isnum[ind]
@@ -579,7 +588,7 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
         forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
                      ex.nd, ex.adj, d.current_node,
                      x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                     user_input_buffer, subgrad_tighten, #ex.tpdict,
+                     user_input_buffer, flt_user_input_buffer, subgrad_tighten, #ex.tpdict,
                      user_operators,seeds)
     end
 end
@@ -590,6 +599,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
     subexpr_values_set = d.subexpression_values_set
     user_operators = d.user_operators
     user_input_buffer = d.jac_storage
+    flt_user_input_buffer = d.flt_jac_storage
     subgrad_tighten = d.subgrad_tighten
     first_eval_flag = d.first_eval_flag
     seeds = d.seeds
@@ -599,7 +609,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
         forward_eval(subex.setstorage, subex.numberstorage, subex.numvalued,
                     subex.nd, subex.adj, d.current_node,
                     x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                    user_input_buffer, subgrad_tighten, subex.tpdict,
+                    user_input_buffer, flt_user_input_buffer, subgrad_tighten, subex.tpdict,
                     subex.tp1storage, subex.tp2storage, subex.tp3storage,
                     subex.tp4storage, first_eval_flag, user_operators, seeds)
 
@@ -616,7 +626,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
         forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
                      ex.nd, ex.adj, d.current_node,
                      x, subexpr_values_flt, subexpr_values_set,
-                     d.subexpression_isnum, user_input_buffer, subgrad_tighten, ex.tpdict,
+                     d.subexpression_isnum, user_input_buffer, flt_user_input_buffer, subgrad_tighten, ex.tpdict,
                      ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
                      first_eval_flag, user_operators, seeds)
     end
@@ -625,7 +635,7 @@ function forward_eval_all(d::Evaluator, x::Vector{Float64})
         forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
                      ex.nd, ex.adj, d.current_node,
                      x, subexpr_values_flt, subexpr_values_set,
-                     d.subexpression_isnum, user_input_buffer, subgrad_tighten, ex.tpdict,
+                     d.subexpression_isnum, user_input_buffer, flt_user_input_buffer, subgrad_tighten, ex.tpdict,
                      ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
                      first_eval_flag, user_operators, seeds)
     end

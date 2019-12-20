@@ -158,6 +158,7 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
     last_node::NodeBB
     last_obj::MC{N,T}
     jac_storage::Vector{MC{N,T}}
+    flt_jac_storage::Vector{Float64}
     user_output_buffer::Vector{MC{N,T}}
     seeds::Vector{SVector{N,Float64}}
     function Evaluator{N,T}() where {N,T<:RelaxTag}

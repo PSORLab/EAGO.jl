@@ -499,13 +499,13 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
         push!(d.constraints_ubd, bnds.upper)
     end
 
-    # USER OUTPUT BUFFERS??????
     d.cp_tolerance = x.cp_tolerance
     d.cp_repetitions = x.cp_repetitions
     d.has_reverse = x._cp_evaluation_reverse
     d.subgrad_tighten = x.subgrad_tighten
     d.subgrad_tighten_reverse = x.subgrad_tighten_reverse
     d.jac_storage = fill(zero(MC{N,T}), max(num_variables_, nldata.largest_user_input_dimension))
+    d.flt_jac_storage = fill(0.0, max(num_variables_, nldata.largest_user_input_dimension))
 
     d.constraint_number = length(d.constraints)
     d.subexpression_number = length(d.subexpressions)

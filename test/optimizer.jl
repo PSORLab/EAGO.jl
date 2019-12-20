@@ -224,7 +224,7 @@ end
     # test linear expression interval fallback
     n = EAGO.NodeBB([-1.0; -1.0], [2.0; 2.0], -Inf, Inf, 3, 2)
 
-    m1 = Model(with_optimizer(EAGO.Optimizer))
+    m1 = Model(with_optimizer(EAGO.Optimizer, verbosity = 4))
     @variable(m1, -1.0 <= x <= 2.0)
     @variable(m1, -1.0 <= y <= 2.0)
     @constraint(m1, x^2 + y + x*y <= 50.0)
@@ -234,7 +234,7 @@ end
     @NLconstraint(m1, x^2 + sin(x) <= 50.0)
     @NLconstraint(m1, x^2 + sin(x) >= -50.0)
     @NLobjective(m1, Min, cos(x)*x)
-    optimize!(m1)
+    @test_nowarn optimize!(m1)
     obj_value = objective_value(m1)
     @test isapprox(obj_value, -0.5610957770947067, atol=1E-3)
 
@@ -242,7 +242,6 @@ end
     EAGO.interval_lower_bound!(b, n)
     @test isapprox(b._lower_objective_value, -0.832293, atol=1E-3)
 end
-
 
 
 #=
@@ -561,4 +560,46 @@ end
 
     JuMP.optimize!(m)
     @test isapprox(JuMP.objective_value(m), 0.000, atol=1E-3)
+
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
+    # ----- Variables ----- #
+    x_Idx = Any[2, 3, 4]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[2], 1.0e-6)
+    JuMP.set_upper_bound(x[2], 1.0)
+    JuMP.set_lower_bound(x[3], 1.0e-6)
+    JuMP.set_upper_bound(x[3], 1.0)
+    JuMP.set_lower_bound(x[4], 1.0e-6)
+    JuMP.set_upper_bound(x[4], 1.0)
+
+    # ----- Constraints ----- #
+    @constraint(m, e2, x[2]+x[3]+x[4] == 1.0)
+
+    # ----- Objective ----- #
+    @NLobjective(m, Max, (15.3261663216011*x[2]+23.2043471859416*x[3]+6.69678129464404*x[4])*log(2.1055*x[2]+3.1878*x[3]+0.92*x[4]) - (1.0-2.0) + (2.0*3.0) + (4.1+6.2) + (4.1/6.2) + (3.1^2))
+
+    JuMP.optimize!(m)
+    @test isapprox(objective_value(m), 54.0, atol=1E-3)
+
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
+
+    x_Idx = Any[2, 3, 4]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[2], 1.0e-6)
+    JuMP.set_upper_bound(x[2], 1.0)
+    JuMP.set_lower_bound(x[3], 1.0e-6)
+    JuMP.set_upper_bound(x[3], 1.0)
+    JuMP.set_lower_bound(x[4], 1.0e-6)
+    JuMP.set_upper_bound(x[4], 1.0)
+
+    my_square(x) = x^2
+    my_f(x,y) = (x - 1)^2 + (y - 2)^2
+
+    register(m, :my_f, 2, my_f, autodiff=true)
+    register(m, :my_square, 1, my_square, autodiff=true)
+    @NLexpression(m, my_expr, exp(x[2]))
+    @NLobjective(m, Max, my_expr + my_f(1.2, 2.3) + (15.3261663216011*x[2]+23.2043471859416*x[3]+6.69678129464404*x[4])*log(2.1055*x[2]+3.1878*x[3]+0.92*x[4]) - (1.0-2.0) + (2.0*3.0) + (4.1+6.2) + (4.1/6.2) + (3.1^2))
+
+    JuMP.optimize!(m)
+    @test isapprox(objective_value(m), 113.035, atol=1E-2)
 end

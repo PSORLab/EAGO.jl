@@ -10,7 +10,6 @@ function MOI.eval_objective(d::Evaluator, x::Vector{Float64})
     else
         error("No nonlinear objective.")
     end
-    #println("val: $val")
     return val
 end
 
@@ -119,7 +118,7 @@ function MOI.eval_objective_gradient(d::Evaluator, df::Vector{Float64}, x::Vecto
             end
         end
     else
-        error("No nonlinar objective.")
+        error("No nonlinear objective.")
     end
     return
 end
@@ -136,22 +135,18 @@ function MOI.jacobian_structure(d::Evaluator)
 end
 
 function MOI.eval_constraint_jacobian(d::Evaluator,g,x)
-    #d.eval_constraint_jacobian_timer += @elapsed begin
-        forward_reverse_pass(d,x)
-        #t = typeof(d.constraints[1].setstorage[1])
-        #g = zero.(g)
-        for i in 1:length(d.constraints)
-            if ~d.constraints[i].numvalued[1]
-                for j in 1:d.variable_number
-                    g[i,j] = d.constraints[i].setstorage[1].cv_grad[j]
-                end
-            else
-                for j in 1:length(d.constraints[i].setstorage[1].cv_grad)
-                    g[i,j] = 0.0
-                end
+    forward_reverse_pass(d,x)
+    for i in 1:length(d.constraints)
+        if ~d.constraints[i].numvalued[1]
+            for j in 1:d.variable_number
+                g[i,j] = d.constraints[i].setstorage[1].cv_grad[j]
+            end
+        else
+            for j in 1:length(d.constraints[i].setstorage[1].cv_grad)
+                g[i,j] = 0.0
             end
         end
-    #end
+    end
     return
 end
 

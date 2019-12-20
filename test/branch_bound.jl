@@ -111,7 +111,6 @@ end
     @test (valid & ~feas)
     valid, feas = EAGO.is_globally_optimal(MOI.SLOW_PROGRESS, MOI.REDUCTION_CERTIFICATE)
     @test ~valid
-
 end
 
 @testset "Node Access Functions" begin

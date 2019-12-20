@@ -419,20 +419,20 @@ function interval_bound(s::SAF, y::NodeBB, flag::Bool)
     val_lo = s.constant
     lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
-    for term in s.terms
+    @inbounds for term in s.terms
         vi = term.variable_index.value
         coeff = term.coefficient
         if (coeff > 0.0)
             if flag
-                @inbounds val_lo += coeff*lo_bnds[vi]
+                val_lo += coeff*lo_bnds[vi]
             else
-                @inbounds val_lo += coeff*up_bnds[vi]
+                val_lo += coeff*up_bnds[vi]
             end
         else
             if flag
-                @inbounds val_lo += coeff*up_bnds[vi]
+                val_lo += coeff*up_bnds[vi]
             else
-                @inbounds val_lo += coeff*lo_bnds[vi]
+                val_lo += coeff*lo_bnds[vi]
             end
         end
     end
