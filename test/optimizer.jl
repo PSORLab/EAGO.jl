@@ -579,7 +579,7 @@ end
     @NLobjective(m, Max, (15.3261663216011*x[2]+23.2043471859416*x[3]+6.69678129464404*x[4])*log(2.1055*x[2]+3.1878*x[3]+0.92*x[4]) - (1.0-2.0) + (2.0*3.0) + (4.1+6.2) + (4.1/6.2) + (3.1^2))
 
     JuMP.optimize!(m)
-    @test isapprox(objective_value(m), 54.0, atol=1E-3)
+    @test isapprox(objective_value(m), 54.0, atol=1E-0)
 
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
 

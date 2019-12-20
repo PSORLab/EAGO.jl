@@ -570,6 +570,12 @@ end
    @test isapprox(mccall!.x_mc[1].Intv.lo, -0.7720045045045048, atol = 1E-5)
    @test isapprox(mccall!.x_mc[1].cv_grad[1], 0.09414689079323225, atol = 1E-5)
    @test isapprox(mccall!.x_mc[1].cc_grad[1], 0.0455312, atol = 1E-5)
+
+   dense = EAGO.McCormick.DenseMidInv(nx, np)
+   @test dense.Y == zeros(Float64,nx,nx)
+   @test dense.YInterval == zeros(Interval{Float64},1)
+   @test dense.nx == nx
+   @test dense.np == np
 end
 
 # REVERSE OPERATORS
