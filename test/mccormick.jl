@@ -62,11 +62,6 @@ end
    f(x,xlo,xup) = x^2 - 1.0
    out = EAGO.McCormick.golden_section(xL, xU, f, 0.0, 0.0)
    @test out == 1.0
-
-   #xL = 0.0
-   #xU = 2.0
-   #g(x,xlo,xup) = x^2 + 3.0
-   #@test_throws ErrorException EAGO.McCormick.golden_section(xL, xU, g, 0.0, 0.0)
 end
 
 @testset "Test Univariate" begin
