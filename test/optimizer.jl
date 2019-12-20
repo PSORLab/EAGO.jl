@@ -222,7 +222,7 @@ end
 
 @testset "Fallback Interval Bound 2" begin
     # test linear expression interval fallback
-    n = EAGO.NodeBB([-1.0], [2.0], -Inf, Inf, 3, 2)
+    n = EAGO.NodeBB([-1.0; -1.0], [2.0; 2.0], -Inf, Inf, 3, 2)
 
     m1 = Model(with_optimizer(EAGO.Optimizer))
     @variable(m1, -1.0 <= x <= 2.0)
@@ -235,7 +235,8 @@ end
     @NLconstraint(m1, x^2 + sin(x) >= -50.0)
     @NLobjective(m1, Min, cos(x)*x)
     optimize!(m1)
-    @test isapprox(objective_value(m1), -0.5610957770947067, atol=1E-3)
+    obj_value = objective_value(m1)
+    @test isapprox(obj_value, -0.5610957770947067, atol=1E-3)
 
     b = backend(m1).optimizer.model.optimizer
     EAGO.interval_lower_bound!(b, n)
