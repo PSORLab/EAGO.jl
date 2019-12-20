@@ -22,6 +22,22 @@ function check_vs_ref2(f::Function, x::MC, c::Float64, yref1::MC, yref2::MC, mct
     check_vs_ref_kernel(f(c, x), yref2, mctol) && pass_flag
 end
 
+@testset "Access Functions & Constructors" begin
+   x_exp = MC{2,NS}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   @test Intv(x_exp) == x_exp.Intv
+   @test lo(x_exp) == x_exp.Intv.lo
+   @test hi(x_exp) == x_exp.Intv.hi
+   @test cc(x_exp) == x_exp.cc
+   @test cv(x_exp) == x_exp.cv
+   @test cc_grad(x_exp) == x_exp.cc_grad
+   @test cv_grad(x_exp) == x_exp.cv_grad
+   @test cnst(x_exp) == x_exp.cnst
+   @test length(x_exp) == length(x_exp.cc_grad)
+
+   @test MC{2,NS}(1.0) == MC{2,NS}(Interval{Float64}(1.0))
+   @test MC{2,NS}(pi) == MC{2,NS}(Interval{Float64}(pi))
+
+end
 
 @testset "Test Univariate" begin
 

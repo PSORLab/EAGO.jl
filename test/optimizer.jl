@@ -173,14 +173,6 @@ end
     @test @inferred MOI.is_empty(model)
 end
 
-@testset "Quadratic Constraint Utilities" begin
-    #gen_quad_vals(func::SQF)
-    #gen_quadratic_storage!(x::Optimizer)
-    #is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{Int64,Int64})
-    #label_quadratic_convexity!(x::Optimizer)
-end
-
-
 @testset "Fallback Interval Bounds" begin
 
     # test linear expression interval fallback
@@ -242,166 +234,6 @@ end
     EAGO.interval_lower_bound!(b, n)
     @test isapprox(b._lower_objective_value, -0.832293, atol=1E-3)
 end
-
-
-#=
-load_relaxed_problem!(x::Optimizer)
-convert_to_min!(x::Optimizer)
-has_evaluator(x::MOI.NLPBlockData)
-initialize_scrub!(m::Optimizer, y::JuMP.NLPEvaluator)
-initialize_evaluators!(m::Optimizer, flag::Bool)
-label_fixed_variables!(m::Optimizer)
-local_solve!(x::Optimizer)
-build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool)
-build_nlp_evaluator(N::Int64, s::T, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool)
-parse_problem!(m::Optimizer)
-check_disable_fbbt!(m::Optimizer)
-presolve_problem!(m::Optimizer)
-store_candidate_solution!(x::Optimizer)
-global_solve!(x::Optimizer)
-throw_optimize_hook!(m::Optimizer)
-MOI.optimize!(m::Optimizer)
-=#
-
-
-#=
-function test_forward_evaluator(m::JuMP.Model, expr::Expr, xpnt::Vector{Float64},
-                                xL::Vector{Float64}, xU::Vector{Float64},
-                                tfunc::Function; atol = 0.0)
-    n = length(xpnt)
-    JuMP.set_NL_objective(m, MOI.MIN_SENSE, expr)
-    JuMP.add_NL_constraint(m, :($expr <= 0.0))
-    source_evaluator = JuMP.NLPEvaluator(m)
-    MOI.initialize(source_evaluator , Symbol[:Grad, :Jac])
-
-    opt = m.moi_backend.optimizer.model.optimizer
-    built_evaluator = EAGO.build_nlp_evaluator(2, source_evaluator, opt, true)
-
-    # Add current node and define point
-    built_evaluator.current_node = EAGO.NodeBB(xL, xU, -Inf, Inf, 2, 1, true)
-    user_operators = built_evaluator.m.nlp_data.user_operators
-    nlp_data = built_evaluator.m.nlp_data
-    user_input_buffer = built_evaluator.jac_storage
-
-    EAGO.forward_eval_all(built_evaluator, xpnt)
-
-    cv_val_eval = MOI.eval_objective(built_evaluator, xpnt)
-    cv_grad_eval = zeros(Float64, (n,))
-    MOI.eval_objective_gradient(built_evaluator, cv_grad_eval, xpnt)
-    Jstor = zeros(Float64, (1,n))
-    MOI.eval_constraint_jacobian(built_evaluator, Jstor, xpnt)
-
-    xMC = MC{n}.(xpnt, IntervalType.(xL,xU), [i for i in 1:n])
-    zMC = tfunc(xMC)
-
-
-    pass_flag::Bool = true
-    descr = "Failing Components: ("
-    ~isapprox(zMC.cv, cv_val_eval, atol = atol) &&  (descr = descr*" (obj CV, $(zMC.cv) !== $(cv_val_eval))"; pass_flag = false)
-    for i in 1:n
-        ~isapprox(zMC.cv_grad[i], cv_grad_eval[i], atol = atol) &&  (descr = descr*" (obj CVgrad[$i], $(zMC.cv_grad[i]) !== $(cv_grad_eval[i]))"; pass_flag = false)
-    end
-    for i in 1:n
-        ~isapprox(zMC.cv_grad[i], Jstor[1,i], atol = atol) &&  (descr = descr*" (jac CVgrad[$i], $(zMC.cv_grad[i]) !== $(Jstor[1,i]))"; pass_flag = false)
-    end
-    (descr !== "Failing Components: (") && println(descr*")")
-    pass_flag
-end
-
-
-@testset "NLP Evaluator" begin
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[1]) + $(x[2])^2)
-        test_func = x -> (x[1]) + (x[2])^2
-        xL = [1.0; 2.0]
-        xU = [5.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :(exp(1.0 - $(x[1]))^2 + 100.0*($(x[2]) - $(x[1])^2)^2)
-        test_func = x -> exp(1.0 - x[1])^2 + 100.0*(x[2] - x[1]^2)^2
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[2])/1.0)
-        test_func = x -> x[2]/1.0
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[2])/$(x[1]))
-        test_func = x -> x[2]/x[1]
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[2]) - $(x[1]))
-        test_func = x -> x[2] - x[1]
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :(sin($(x[2])) - abs($(x[1])))
-        test_func = x -> sin(x[2]) - abs(x[1])
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :(($(x[2]))^3 - ($(x[1]))^6)
-        test_func = x -> x[2]^3 - x[1]^6
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[2])*$(x[1]))
-        test_func = x -> x[2]*x[1]
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func, atol = 1E-8)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[2])*$(x[1])*1.1*$(x[1]))
-        test_func = x -> x[2]*x[1]*1.1*x[1]
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func, atol = 1E-8)
-
-        m = Model(with_optimizer(EAGO.Optimizer))
-        @variable(m, x[1:2])
-        expr = :($(x[2])+$(x[1])+$(x[2])+1.2)
-        test_func = x -> x[2]+x[1]+x[2]+1.2
-        xL = [1.0; 5.0]
-        xU = [2.0; 6.0]
-        midx = (xL + xU)/2.0
-        @test test_forward_evaluator(m, expr, midx, xL, xU, test_func, atol = 1E-8)
-end
-=#
 
 @testset "LP Problems" begin
     m = Model(with_optimizer(EAGO.Optimizer,
@@ -602,4 +434,41 @@ end
 
     JuMP.optimize!(m)
     @test isapprox(objective_value(m), 113.035, atol=1E-2)
+end
+
+@testset "Empty Evaluator" begin
+    x = EAGO.EmptyNLPEvaluator()
+    n = EAGO.NodeBB()
+    @test_nowarn EAGO.set_current_node!(x,n)
+
+    fa = MOI.features_available(x)
+    @test fa[1] === :Grad
+    @test fa[2] === :Jac
+    @test fa[3] === :Hess
+
+    @test_nowarn MOI.initialize(x, [:Grad, :Jac, :Hess])
+    @test MOI.eval_objective(x, 0.0) === NaN
+
+    @test_throws AssertionError MOI.eval_constraint(x, [0.0], 0.0)
+    @test_nowarn MOI.eval_constraint(x, [], 0.0)
+    @test_throws AssertionError MOI.eval_constraint_jacobian(x, [0.0], 0.0)
+    @test_nowarn MOI.eval_constraint_jacobian(x, [], 0.0)
+    @test_nowarn MOI.eval_objective_gradient(x, [0.0], 0.0)
+    @test_nowarn MOI.jacobian_structure(x)
+    @test_nowarn MOI.hessian_lagrangian_structure(x)
+    @test_throws AssertionError MOI.eval_hessian_lagrangian(x, [0.0], 0.0, 0.0, 0.0)
+    @test_nowarn MOI.eval_hessian_lagrangian(x, [], 0.0, 0.0, 0.0)
+end
+
+@testset "Additional Quadratic NLPs" begin
+    # Problem with an equality constrained quadratic constraint
+    # Problem with a convex quadratic constraint
+end
+
+@testset "Local NLP Solve" begin
+    # A problem solve locally
+end
+
+@testset "Logging" begin
+    # A problem solved with logging
 end

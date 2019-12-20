@@ -59,8 +59,8 @@ export plus_rev, mul_rev, min_rev, max_rev, minus_rev, div_rev, exp_rev,
 
 # Export utility operators
 #=
-export grad, zgrad, ∩, mid3, MC_param, mid_grad, seed_g, line_seg, dline_seg,
-       outer_rnd, cut, set_valid_check, set_subgrad_refine, set_multivar_refine,
+export grad, ∩, mid3, MC_param, mid_grad, seed_g, line_seg, dline_seg,
+        cut, set_valid_check, set_subgrad_refine, set_multivar_refine,
        set_outer_rnd, tighten_subgrad, set_iterations, set_tolerance,
        default_options, value, mincv, maxcc, promote_rule
 =#
@@ -115,7 +115,7 @@ OtherList = [:sin,:cos,:min,:max,:abs,:step, :sign, :inv, :*, :+, :-, :/,
 :promote_rule, :convert, :one, :zero, :real, :dist, :eps, :fma, :^]
 
 """
-    seed_gradient(j::Int64, x::Val{N})
+$(FUNCTIONNAME)
 
 Creates a `x::SVector{N,Float64}` object that is one at `x[j]` and zero everywhere else.
 """
@@ -124,7 +124,7 @@ function seed_gradient(j::Int64, x::Val{N}) where N
 end
 
 """
-    mid3(x::T,y::T,z::T)
+$(FUNCTIONNAME)
 
 Calculates the midpoint of three numbers returning the value and the index.
 """
@@ -151,7 +151,7 @@ function mid_grad(cc_grad::SVector{N,Float64}, cv_grad::SVector{N,Float64}, id::
 end
 
 """
-    dline_seg(f::Function, df::Function, x::Float64, xL::Float64, xU::Float64)
+$(FUNCTIONNAME)
 
 Calculates the value of the slope line segment between `(xL, f(xL))` and `(xU, f(xU))`
 defaults to evaluating the derivative of the function if the interval is tight.
@@ -188,7 +188,7 @@ end
 end
 
 """
-    grad_calc(cv::T,cc::T,int1::Int64,int2::Int64,dcv::SVector{N,T},dcc::SVector{N,T}) where {N,T}
+$(FUNCTIONNAME)
 
 (Sub)gradient calculation function. Takes the convex gradient, 'cv', the
 concave gradient, 'cc', the mid index values 'int1,int2', and the derivative of
@@ -201,22 +201,7 @@ function grad_calc(cv::SVector{N,Float64},cc::SVector{N,Float64},int1::Int,int2:
 end
 
 """
-    outer_rnd!(Intv::Interval{T})
-
-Outer rounds the interval `Intv` by `MC_param.outer_param`.
-"""
-outer_rnd(Intv::Interval{Float64}) = Intv.lo-MC_param.outer_param, Intv.hi+MC_param.outer_param
-
-"""
-    isequal(x::Interval{Float64},y::Interval{Float64},atol::Float64,rtol::Float64)
-
-Checks that `x` and `y` are equal to with absolute tolerance `atol` and relative
-tolerance `rtol`.
-"""
-isequal(x::Interval{Float64},y::Interval{Float64},atol::Float64,rtol::Float64) = (abs(x-y) < (atol + 0.5*abs(x+y)*rtol))
-
-"""
-    cut
+$(FUNCTIONNAME)
 """
 function cut(xL::Float64,xU::Float64,
              cv::Float64,cc::Float64,
@@ -328,27 +313,6 @@ function MC{N,T}(val::Float64, Intv::Interval{Float64}, i::Int64) where {N, T <:
 end
 function MC{N,T}(x::MC{N,T}) where {N, T <: RelaxTag}
     MC{N,T}(x.cv, x.cc, x.Intv, x.cv_grad, x.cc_grad, x.cnst)
-end
-
-
-"""
-    grad(x::MC{N,T},j::Int) where {N, T <: RelaxTag}
-
-sets convex and concave (sub)gradients of length `n` of `x` to be `1` at index `j`
-"""
-function grad(x::MC{N,T},j::Int) where {N, T <: RelaxTag}
-  sv_grad::SVector{N,Float64} = seed_gradient(T,j,N)
-  return MC{N,T}(x.cc,x.cv,sv_grad,sv_grad,x.Intv,x.cnst)
-end
-
-"""
-    zgrad(x::SMCg{N,T},n::Int64) where {N,T}
-
-sets convex and concave (sub)gradients of length `n` to be zero
-"""
-function zgrad(x::MC{N,T}) where {N, T <: RelaxTag}
-  grad::SVector{N,Float64} = zero(SVector{N,Float64})
-  return MC{N,T}(x.cc,x.cv,grad,grad,x.Intv,x.cnst)
 end
 
 Intv(x::MC) = x.Intv
