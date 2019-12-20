@@ -175,20 +175,20 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
     check_convergence(result.lower_bound, result.upper_bound, abs_tolerance, verbosity) && (break)
 
     # solve lower bounding problem and check feasibility
-    val, xsol, feas = sipRes_bnd(init_bnd, lower_disc, 0.0, result, prob, true, cb)
+    val, result.xsol[:], feas = sipRes_bnd(init_bnd, lower_disc, 0.0, result, prob, true, cb)
     result.lower_bound = val
     if (~feas)
       result.feasibility = feas
       println("Lower Bounding Problem Not Feasible. Algorithm Terminated")
       break
     end
-    print_summary!(verbosity, result.lower_bound, xsol, result.feasibility, "LBD")
+    print_summary!(verbosity, result.lower_bound, result.xsol, result.feasibility, "LBD")
 
     # solve inner program  and update lower discretization set
     non_positive_flag = true
     temp_lower_disc = Vector{Float64}[]
     for i in 1:nSIP
-      llp_out = sipRes_llp1(xsol, result, prob, cb, i)
+      llp_out = sipRes_llp1(result.xsol, result, prob, cb, i)
       print_summary!(verbosity, llp_out[1], llp_out[2], llp_out[3], "Lower LLP$i")
       if (llp_out[1] + tolerance > 0.0)
         non_positive_flag = false
@@ -197,20 +197,19 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
     end
     push!(lower_disc, temp_lower_disc)
     if non_positive_flag
-      result.xsol[:] = xsol
       result.feasibility = true
       break
     end
 
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
-    val, xsol, feas = sipRes_bnd(init_bnd, upper_disc, eps_g, result, prob, false, cb)
-    print_summary!(verbosity, val, xsol, feas, "UBD")
+    val, result.xsol[:], feas = sipRes_bnd(init_bnd, upper_disc, eps_g, result, prob, false, cb)
+    print_summary!(verbosity, val, result.xsol, feas, "UBD")
     if feas
       non_positive_flag = true
       temp_upper_disc = Vector{Float64}[]
       for i in 1:nSIP
-        llp2_out = sipRes_llp2(xsol, result, prob, cb, i)
+        llp2_out = sipRes_llp2(result.xsol, result, prob, cb, i)
         print_summary!(verbosity, llp2_out[1], llp2_out[2], llp2_out[3], "Upper LLP$i")
         if (llp2_out[1] + tolerance/10.0 > 0.0)
           non_positive_flag = false
@@ -220,13 +219,13 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
       if non_positive_flag
           if (val <= result.upper_bound) && ismin
               result.upper_bound = val
-              xstar[:] = xsol[:]
+              xstar .= result.xsol
           elseif (val <= result.upper_bound) && ~ismin && (result.upper_bound === Inf)
             result.upper_bound = val
-            xstar[:] = xsol[:]
+            xstar .= result.xsol
           elseif (val >= result.upper_bound) && ~ismin
             result.upper_bound = val
-            xstar[:] = xsol[:]
+            xstar .= result.xsol
           end
           eps_g = eps_g/r
       else
