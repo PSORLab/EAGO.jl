@@ -265,6 +265,7 @@ function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
   m = haskey(kwargs, :sip_optimizer) ? kwargs[:sip_optimizer] : EAGO.Optimizer
 
   prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, m, kwargs)
+  check_inputs!(prob.initial_r, prob.initial_eps_g)
   result = SIPResult()
   result.xsol = fill(0.0, (prob.nx,))
   result.psol = fill(0.0, (prob.np,))

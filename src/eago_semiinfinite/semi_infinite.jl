@@ -165,25 +165,6 @@ mutable struct SIPProblem
     return false
   end
 
-  function llp2_update(llp2_obj_val::Float64, r::Float64, eps_g::Float64,
-                       xbar::Vector{Float64}, pbar::Vector{Float64},
-                       UBD::Float64, UBDg::Float64,
-                       disc_set::Vector{Vector{Vector{Float64}}}, i::Int64)
-    xstar = fill(NaN,(length(xbar),))
-    UBDtemp = UBDg
-    eps_g_out = eps_g
-    if (llp2_obj_val < 0.0)
-      if (UBD <= UBDg)
-        UBDtemp = UBD
-        xstar[:] = xbar[:]
-      end
-      eps_g_out = eps_g/r
-    else
-      push!(disc_set[i], pbar)
-    end
-    return UBDtemp, xstar, eps_g_out
-  end
-
   struct SIPCallback
     f
     gSIP
