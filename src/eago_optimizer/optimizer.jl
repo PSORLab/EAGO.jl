@@ -376,6 +376,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     _quadratic_leq_dict::Vector{ImmutableDict{Int64,Int64}}
     _quadratic_geq_dict::Vector{ImmutableDict{Int64,Int64}}
     _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}}
+    _quadratic_obj_dict::ImmutableDict{Int64,Int64}
 
     _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}}
     _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}}
@@ -679,6 +680,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         m._quadratic_leq_dict = ImmutableDict{Int64,Int64}[]
         m._quadratic_geq_dict = ImmutableDict{Int64,Int64}[]
         m._quadratic_eq_dict = ImmutableDict{Int64,Int64}[]
+        m._quadratic_obj_dict = ImmutableDict{Int64,Int64}()
 
         m._quadratic_leq_sparsity = Vector{VI}[]
         m._quadratic_geq_sparsity = Vector{VI}[]

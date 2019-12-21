@@ -255,10 +255,10 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     elseif x._objective_is_sqf
-        if (x._objective_convexity)
-            saf = relax_convex_kernel(x._objective, vi, nx, x0)
+        if x._objective_convexity
+            saf = relax_convex_kernel(x._objective_sqf, vi, nx, x0)
         else
-            saf = relax_nonconvex_kernel(x._objective, vi, x,  nx, x0)
+            saf = relax_nonconvex_kernel(x._objective_sqf, vi, x._current_node, x._quadratic_obj_dict, nx, x0)
         end
 
         MOI.set(opt, MOI.ObjectiveFunction{SAF}(), saf)
@@ -275,7 +275,6 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
             # calculates the convex relaxation subgradient
             df = zeros(nx)
             MOI.eval_objective_gradient(evaluator, df, x0)
-
 
             # Add objective relaxation to model
             saf_const = f

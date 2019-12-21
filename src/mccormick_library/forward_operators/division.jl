@@ -40,12 +40,14 @@ function div_kernel(x::MC{N,NS}, y::MC{N,NS}, z::Interval{Float64}) where N
     end
     return zMC
 end
+#=
 function div_kernel(x::MC{N,MV}, y::MC{N,MV}, z::Interval{Float64}) where N
     pos_orth::Bool = (x.Intv.lo >= 0) && (y.Intv.lo >= 0)
     degen1 = ((x.Intv.hi - x.Intv.lo) == 0.0)
     degen2 = ((y.Intv.hi - y.Intv.lo) == 0.0)
     error("To be implemented")
 end
+=#
 function div_kernel(x::MC{N,Diff}, y::MC{N,Diff}, z::Interval{Float64}) where {N}
     degen1 = ((x.Intv.hi - x.Intv.lo) == 0.0)
     degen2 = ((y.Intv.hi - y.Intv.lo) == 0.0)

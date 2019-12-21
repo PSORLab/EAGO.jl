@@ -107,6 +107,15 @@ function gen_quadratic_storage!(x::Optimizer)
         push!(x._quadratic_ci_eq, fill((CI{SAF,LT}(-1), CI{SAF,LT}(-1)), (len_eq_ci,)))
     end
 
+    if x._objective_is_sqf
+        v = gen_quad_vals(x._objective_sqf)
+        d = ImmutableDict{Int64,Int64}()
+        for (i, val) in enumerate(v)
+            d = ImmutableDict(d, val => i)
+        end
+        x._quadratic_obj_dict = d
+    end
+
     return
 end
 
@@ -419,7 +428,7 @@ function label_quadratic_convexity!(x::Optimizer)
     end
 
     for i in 1:length(x._quadratic_eq_constraints)
-        @inbounds func, set, ind = x._quadratic_geq_constraints[i]
+        @inbounds func, set, ind = x._quadratic_eq_constraints[i]
         @inbounds cvx_dict = x._quadratic_eq_dict[i]
         push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0, cvx_dict))
         push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0, cvx_dict))
