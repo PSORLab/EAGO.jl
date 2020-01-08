@@ -1,5 +1,5 @@
 """
-    sinh_rev!
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `sinh`.
 """
@@ -9,7 +9,7 @@ function sinh_rev(y::MC, x::MC)
 end
 
 """
-    cosh_rev!
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `cosh`.
 """
@@ -22,7 +22,7 @@ function cosh_rev(y::MC, x::MC)
 end
 
 """
-    tanh_rev!
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `tanh`.
 """

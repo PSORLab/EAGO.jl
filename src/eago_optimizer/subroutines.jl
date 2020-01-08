@@ -813,8 +813,8 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
                 elseif var.has_upper_bound
                     MOI.add_constraint(upper_optimizer, sv, LT(uvb))
                 end
-                x0 = @. 0.5*(lvb + uvb)
-                MOI.set(upper_optimizer, MOI.VariablePrimalStart(), svi, x0)
+                #x0 = @. 0.5*(lvb + uvb)
+                #MOI.set(upper_optimizer, MOI.VariablePrimalStart(), svi, x0)
             end
         end
 

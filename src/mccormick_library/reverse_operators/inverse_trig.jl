@@ -1,5 +1,5 @@
 """
-    asin_rev
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `asin`.
 """
@@ -13,7 +13,7 @@ function asin_rev(y::MC, x::MC)  # y = asin(x)
 end
 
 """
-    acos_rev
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `acos`.
 """
@@ -26,7 +26,7 @@ function acos_rev(y::MC, x::MC)
 end
 
 """
-    atan_rev
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `atan`.
 """

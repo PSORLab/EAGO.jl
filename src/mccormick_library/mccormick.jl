@@ -19,7 +19,7 @@ import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            csch, coth, acsch, acoth, asech,
                            sign, dist, mid, pow, Interval, interval, sinh, cosh,
                            ∩, IntervalBox, pi_interval, bisect, isdisjoint, length,
-                           atan, asin, acos,
+                           atan, asin, acos, AbstractInterval,
                            sind, cosd, tand, asind, acosd, atand,
                            secd, cscd, cotd, asecd, acscd, acotd, half_pi, setrounding
 
@@ -279,6 +279,18 @@ Constructs McCormick relaxation with convex relaxation equal to `cv` and
 concave relaxation equal to `cc`.
 """
 function MC{N,T}(cv::Float64, cc::Float64) where {N, T <: RelaxTag}
+    MC{N,T}(cv, cc, Interval{Float64}(cv,cc),
+            zero(SVector{N,Float64}),
+            zero(SVector{N,Float64}), true)
+end
+
+"""
+    MC{N,T}(cv::Float64, cc::Float64, Intv::Interval{Float64})
+
+Constructs McCormick relaxation with convex relaxation equal to `cv` and
+concave relaxation equal to `cc`.
+"""
+function MC{N,T}(cv::Float64, cc::Float64, Intv::Interval{Float64}) where {N, T <: RelaxTag}
     MC{N,T}(cv, cc, Interval{Float64}(cv,cc),
             zero(SVector{N,Float64}),
             zero(SVector{N,Float64}), true)

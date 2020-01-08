@@ -126,9 +126,9 @@ min(c::C, x::MC) where {C<:Integer} = min_kernel(x, convert(Float64, c), min(x.I
 # Promote and Convert
 promote_rule(::Type{MC{N,T}}, ::Type{S}) where {S<:Integer, N, T <: RelaxTag} = MC{N,T}
 promote_rule(::Type{MC{N,T}}, ::Type{S}) where {S<:AbstractFloat, N, T <: RelaxTag} = MC{N,T}
-promote_rule(::Type{MC{N,T}}, ::Type{S}) where {S<:Interval, N, T <: RelaxTag} = MC{N,T}
+#promote_rule(::Type{MC{N,T}}, ::Type{Interval{Float64}}) where {N, T <: RelaxTag} = MC{N,T}
 promote_rule(::Type{MC{N,T}}, ::Type{S}) where {S<:Real, N, T <: RelaxTag} = MC{N,T}
 
 convert(::Type{MC{N,T}}, x::S) where {S<:Integer, N, T <: RelaxTag} = MC{N,T}(Interval{Float64}(x))
 convert(::Type{MC{N,T}}, x::S) where {S<:AbstractFloat, N, T <: RelaxTag} = MC{N,T}(Interval{Float64}(x))
-convert(::Type{MC{N,T}}, x::S) where {S<:Interval, N, T <: RelaxTag} = MC{N,T}(Interval{Float64}(x.lo, x.hi))
+convert(::Type{MC{N,T}}, x::S) where {S<:AbstractInterval, N, T <: RelaxTag} = MC{N,T}(Interval{Float64}(x.lo, x.hi))

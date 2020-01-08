@@ -413,6 +413,7 @@ end
     JuMP.optimize!(m)
     @test isapprox(objective_value(m), 54.0, atol=1E-0)
 
+    #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
 
     x_Idx = Any[2, 3, 4]
@@ -434,6 +435,7 @@ end
 
     JuMP.optimize!(m)
     @test isapprox(objective_value(m), 113.035, atol=1E-2)
+    =#
 end
 
 @testset "Empty Evaluator" begin
@@ -462,7 +464,7 @@ end
     # Problem with an equality constrained quadratic constraint
     # Problem with a convex quadratic constraint
 end
-
+#=
 @testset "User Defined Function Scrubber" begin
     gamma1_x1(z) = z[1]*(1253/z[3])/(1 + 2.62*(z[1]/z[2]))^2
     gamma2_x2(z) = z[2]*(479/z[3])/(1 + 0.382*(z[2]/z[1]))^2
@@ -497,7 +499,7 @@ end
     optimize!(m)
     @test MOI.INFEASIBILITY_CERTIFICATE === primal_status(m)
 end
-
+=#
 @testset "Local NLP Solve && Logging" begin
     m = Model(with_optimizer(EAGO.Optimizer, local_solve_only=true, log_on=true,
                              log_subproblem_info=true, log_interval=1, verbosity=0))

@@ -308,7 +308,7 @@ end
 
 function initialize_evaluators!(m::Optimizer, flag::Bool)
 
-    nlp_data = m._nlp_data
+    nlp_data = deepcopy(m._nlp_data)
 
     has_eval = has_evaluator(nlp_data)
     if has_evaluator(nlp_data)
@@ -321,11 +321,12 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
         init_feat = [:Grad, :ExprGraph]
         num_nlp_constraints > 0 && push!(init_feat, :Jac)
         MOI.initialize(evaluator, init_feat)
+        m._nlp_data = nlp_data
 
         # Scrub user-defined functions
-        initialize_scrub!(m, evaluator)
+        #initialize_scrub!(m, evaluator)
 
-        built_evaluator = build_nlp_evaluator(m._variable_number, NS(), evaluator, m, false)
+        built_evaluator = build_nlp_evaluator(m._variable_number, NS(), deepcopy(evaluator), m, false)
         m._relaxed_evaluator = built_evaluator
         m._relaxed_eval_has_objective = m._nlp_data.has_objective
         append!(m._relaxed_constraint_bounds, m._nlp_data.constraint_bounds)

@@ -1,5 +1,5 @@
 """
-    asinh_rev!
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `asinh`.
 """
@@ -9,7 +9,7 @@ function asinh_rev(y::MC, x::MC)
 end
 
 """
-    acosh_rev!
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `acosh`.
 """
@@ -22,7 +22,7 @@ function acosh_rev(y::MC, x::MC)
 end
 
 """
-    atanh_rev!
+$(FUNCTIONNAME)
 
 Reverse McCormick operator for `atanh`.
 """

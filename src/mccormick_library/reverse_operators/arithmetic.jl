@@ -1,5 +1,5 @@
 """
-    plus_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `b` +`c`
 """
@@ -12,7 +12,7 @@ end
 #plus_rev(a,b,c) = plus_rev(promote(a,b,c)...)
 
 """
-    minus_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `b`- `c`
 """
@@ -30,7 +30,7 @@ end
 #minus_rev(a,b) = minus_rev(promote(a,b)...)
 
 """
-    mul_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `b`*`c`
 """
@@ -53,7 +53,7 @@ mul_rev(a::MC{N,T},b::MC{N,T},c::Float64) where {N, T<:RelaxTag} = mul_rev(a,b,M
 mul_rev(a::MC{N,T},b::Float64,c::MC{N,T}) where {N, T<:RelaxTag} = mul_rev(a,MC{N,T}(b),c)
 
 """
-    div_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `b`/`c`
 """
@@ -69,7 +69,7 @@ end
 #div_rev(a,b,c) = div_rev(promote(a,b,c)...)
 
 """
-    inv_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `inv(b)`
 """
@@ -80,7 +80,7 @@ end
 inv_rev(a,b) = inv_rev(promote(a,b)...)
 
 """
-    power_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `b`^`c`
 """
@@ -105,7 +105,7 @@ end
 
 
 """
-    sqrt_rev
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `sqrt(b)`
 """
@@ -117,7 +117,7 @@ end
 
 
 """
-    abs_rev!
+$(FUNCTIONNAME)
 
 Creates reverse McCormick contractor for `a` = `abs(b)`
 """

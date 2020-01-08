@@ -115,24 +115,26 @@ end
 end
 @inline abs(x::MC) = abs_kernel(x, abs(x.Intv))
 
-@inline function intersect(x::MC{N, NS}, y::MC{N, NS}) where N
-    if (x.cv >= y.cv)
-      cv = x.cv
-      cv_grad = x.cv_grad
+@inline function intersect(x_mc::MC{N,NS}, x_mc_int::MC{N,NS}) where N
+    Intv = x_mc.Intv ∩ x_mc_int.Intv
+    if (x_mc.cc < x_mc_int.cc)
+      cc = x_mc.cc
+      cc_grad::SVector{N,Float64} = x_mc.cc_grad
     else
-      cv = y.cv
-      cv_grad = y.cv_grad
+      cc = x_mc_int.cc
+      cc_grad = x_mc_int.cc_grad
     end
-    if (x.cc <= y.cc)
-      cc = x.cc
-      cc_grad = x.cc_grad
+    if (x_mc.cv > x_mc_int.cv)
+      cv = x_mc.cv
+      cv_grad::SVector{N,Float64} = x_mc.cv_grad
     else
-      cc = y.cc
-      cc_grad = y.cc_grad
+      cv = x_mc_int.cv
+      cv_grad = x_mc_int.cv_grad
     end
-	# ADD NAN CHECK HERE
-    return MC{N, NS}(cv, cc, intersect(x.Intv,y.Intv), cv_grad, cc_grad, (x.cnst && y.cnst))
+    x_out::MC{N,NS} = MC{N,NS}(cv, cc,(x_mc.Intv ∩ x_mc_int.Intv), cv_grad, cc_grad, x_mc.cnst)
+  return x_out
 end
+
 @inline function intersect(x::MC{N, Diff}, y::MC{N, Diff}) where N
     max_MC = x - max(x - y, 0.0)   # used for convex
     min_MC = y - max(y - x, 0.0)   # used for concave
