@@ -566,16 +566,19 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
     user_input_buffer = d.jac_storage
     flt_user_input_buffer = d.flt_jac_storage
     subgrad_tighten = d.subgrad_tighten
+    first_eval_flag = d.first_eval_flag
+    seeds = d.seeds
 
     seeds = d.seeds
     for (ind, k) in enumerate(reverse(d.subexpression_order))
-        ex = d.subexpressions[k]
-        temp = forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
-                                         ex.nd, ex.adj, d.current_node,
-                                         x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                                         user_input_buffer, flt_user_input_buffer, subgrad_tighten, #ex.tpdict,
-                                         user_operators,seeds)
-        d.subexpression_isnum[ind] = ex.numvalued[1]
+        subex = d.subexpressions[k]
+        temp = forward_eval(subex.setstorage, subex.numberstorage, subex.numvalued,
+                    subex.nd, subex.adj, d.current_node,
+                    x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
+                    user_input_buffer, flt_user_input_buffer, subgrad_tighten, subex.tpdict,
+                    subex.tp1storage, subex.tp2storage, subex.tp3storage,
+                    subex.tp4storage, first_eval_flag, user_operators, seeds)
+        d.subexpression_isnum[ind] = subex.numvalued[1]
         if d.subexpression_isnum[ind]
             d.subexpression_values_flt[k] = temp
         else
@@ -587,10 +590,12 @@ function forward_eval_obj(d::Evaluator, x::Vector{Float64})
         ex = d.objective
         forward_eval(ex.setstorage, ex.numberstorage, ex.numvalued,
                      ex.nd, ex.adj, d.current_node,
-                     x, subexpr_values_flt, subexpr_values_set, d.subexpression_isnum,
-                     user_input_buffer, flt_user_input_buffer, subgrad_tighten, #ex.tpdict,
-                     user_operators,seeds)
+                     x, subexpr_values_flt, subexpr_values_set,
+                     d.subexpression_isnum, user_input_buffer, flt_user_input_buffer, subgrad_tighten, ex.tpdict,
+                     ex.tp1storage, ex.tp2storage, ex.tp3storage, ex.tp4storage,
+                     first_eval_flag, user_operators, seeds)
     end
+    return
 end
 
 function forward_eval_all(d::Evaluator, x::Vector{Float64})

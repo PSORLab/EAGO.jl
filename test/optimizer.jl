@@ -413,6 +413,18 @@ end
     JuMP.optimize!(m)
     @test isapprox(objective_value(m), 54.0, atol=1E-0)
 
+    r = backend(m).optimizer.model.optimizer._relaxed_evaluator
+    @test EAGO.num_state_variables(r) == 0
+    @test EAGO.num_decision_variables(r) == 3
+    jac_struct = MOI.jacobian_structure(r)
+    @test isempty(jac_struct)
+    features = MOI.features_available(r)
+    @test features[1] == :Grad
+    @test features[2] == :Jac
+    xhalf = Float64[0.5 for i in 1:3]
+    EAGO.forward_eval_obj(r, xhalf)
+    @test isapprox(r.objective.setstorage[1], -53.31880224185876, atol=1E-5)
+
     #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
 
