@@ -1,3 +1,6 @@
+empty(x::MC{N,T}) where {N,T <: RelaxTag} = MC{N,T}(Inf, -Inf, Interval{Float64}(Inf,-Inf),
+                                                  SVector{N,Float64}(zeros(Float64,N)),
+                                                  SVector{N,Float64}(zeros(Float64,N)), false)
 
 function interval_MC(x::MC{S,T}) where {S,T<:RelaxTag}
 	MC{S,T}(x.Intv)

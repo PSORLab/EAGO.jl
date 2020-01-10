@@ -54,6 +54,10 @@ end
    f3(x,c) = 1.2
    df3(x,c) = 2.2
    @test (1.2,2.2) == EAGO.McCormick.dline_seg(f3, df3, 0.0, 0.0, 0.0, 2.1)
+
+   @test empty(MC{2,NS}(Interval{Float64}(1.0))) == MC{2,NS}(Inf, -Inf, Interval{Float64}(Inf,-Inf),
+                                                     SVector{2,Float64}(zeros(Float64,2)),
+                                                     SVector{2,Float64}(zeros(Float64,2)), false)
 end
 
 @testset "Rootfinding Routine" begin

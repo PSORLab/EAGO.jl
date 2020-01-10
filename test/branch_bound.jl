@@ -58,39 +58,44 @@ end
                       EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
     y = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1)
 
-    @test EAGO.repeat_check(x) == false
+    @test EAGO.repeat_check(EAGO.DefaultExt(), x) == false
 
-    @test EAGO.termination_check(x) == true
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == true
 
     push!(x._stack, y); x.iteration_limit = -1; x._iteration_count = 2
-    @test EAGO.termination_check(x) == true
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == true
 
     x.iteration_limit = 1E8; x.node_limit = -1;
-    @test EAGO.termination_check(x) == true
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == true
 
     x.node_limit = 1E8; x._lower_objective_value = 1.1;
     x._upper_objective_value = 1.1 + 1.0E-6; x.absolute_tolerance = 1.0E-4
-    @test EAGO.termination_check(x) == false
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x.absolute_tolerance = 1.0E-1; x.relative_tolerance = 1.0E-12
-    @test EAGO.termination_check(x) == false
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x._lower_objective_value = -Inf;  x._upper_objective_value = Inf
     x.relative_tolerance = 1.0E10;
-    @test EAGO.termination_check(x) == false
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x._lower_objective_value = 2.1;  x._upper_objective_value = 2.1+1E-9
     x.relative_tolerance = 1.0E10; x.absolute_tolerance = 1.0E-6
-    @test EAGO.termination_check(x) == false
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x.relative_tolerance = 1.0E-6; x.absolute_tolerance = 1.0E10
-    @test EAGO.termination_check(x) == false
+    @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x.relative_tolerance = 1.0E-20; x.absolute_tolerance = 1.0E-20
-    @test EAGO.termination_check(x) == false
+    @test EAGO.termination_check(EAGO.DefaultExt(),x) == false
 
     @inferred EAGO.repeat_check(x)
     @inferred EAGO.termination_check(x)
+
+    x._run_time = 100.0
+    x.time_limit = 10.0
+    @test EAGO.termination_check(EAGO.DefaultExt(),x)
+    @test x._termination_status_code === MOI.TIME_LIMIT
 
     @test @inferred EAGO.is_feasible_solution(MOI.OPTIMAL, MOI.FEASIBLE_POINT)
     @test EAGO.is_feasible_solution(MOI.LOCALLY_SOLVED, MOI.FEASIBLE_POINT)

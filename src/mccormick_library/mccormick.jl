@@ -10,7 +10,7 @@ import Base: +, -, *, /, convert, in, isempty, one, zero, real, eps, max, min,
              sqrt, sin, cos, tan, min, max, sec, csc, cot, ^, step, sign, intersect,
              promote_rule, asinh, atanh, tanh, atan, asin, cosh, acos,
              sind, cosd, tand, asind, acosd, atand,
-             secd, cscd, cotd, asecd, acscd, acotd, isone, isnan
+             secd, cscd, cotd, asecd, acscd, acotd, isone, isnan, empty
 
 import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            one, zero, real, eps, max, min, abs, exp,
