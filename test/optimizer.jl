@@ -11,6 +11,18 @@
     @test model._optimization_sense == MOI.FEASIBILITY_SENSE
 end
 
+@testset "Evaluate Functions" begin
+    @test EAGO.eval_function(MOI.SingleVariable(MOI.VariableIndex(2)), [1.0 2.0]) == 2.0
+    aff = MOI.ScalarAffineFunction{Float64}([MOI.ScalarAffineTerm{Float64}(2.1,MOI.VariableIndex(2)),
+                                             MOI.ScalarAffineTerm{Float64}(1.4,MOI.VariableIndex(3))], 3.3)
+    @test EAGO.eval_function(aff, [0.0 2.0 3.0]) == 11.7
+    quad = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(2.1,MOI.VariableIndex(2)),
+                                                 MOI.ScalarAffineTerm{Float64}(1.4,MOI.VariableIndex(3))],
+                                                [MOI.ScalarQuadraticTerm{Float64}(2.1,MOI.VariableIndex(1),MOI.VariableIndex(2)),
+                                                 MOI.ScalarQuadraticTerm{Float64}(1.4,MOI.VariableIndex(3),MOI.VariableIndex(3))], 3.3)
+    @test isapprox(EAGO.eval_function(quad, [1.0 2.0 3.0]), 20.1, atol=1E-5)
+end
+
 @testset "Get Termination Code " begin
 
     model = EAGO.Optimizer()
@@ -423,7 +435,7 @@ end
     @test features[2] == :Jac
     xhalf = Float64[0.5 for i in 1:3]
     EAGO.forward_eval_obj(r, xhalf)
-    @test isapprox(r.objective.setstorage[1], -53.31880224185876, atol=1E-5)
+    @test isapprox(r.objective.setstorage[1].cv, -53.31880224185876, atol=1E-5)
 
     #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))

@@ -1206,11 +1206,7 @@ function eval_function(quad::SQF, x)
         row_idx = term.variable_index_1
         col_idx = term.variable_index_2
         coefficient = term.coefficient
-        if row_idx == col_idx
-            function_value += 0.5*coefficient*x[row_idx.value]*x[col_idx.value]
-        else
-            function_value += coefficient*x[row_idx.value]*x[col_idx.value]
-        end
+        function_value += 0.5*coefficient*x[row_idx.value]*x[col_idx.value]
     end
     return function_value
 end
