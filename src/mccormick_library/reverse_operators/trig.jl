@@ -1,5 +1,3 @@
-# Intersect Interval then promote and intersect (can do full McCormick later)
-
 """
 $(FUNCTIONNAME)
 

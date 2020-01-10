@@ -1,14 +1,33 @@
-@testset "Set Objective" begin
-    model = @inferred EAGO.Optimizer()
+@testset "Set/Get Attributes" begin
 
-    @inferred MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    @test model._optimization_sense == MOI.MIN_SENSE
+    m = EAGO.Optimizer()
+    @test MOI.get(m, MOI.SolverName()) === "EAGO: Easy Advanced Global Optimization"
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-    @test model._optimization_sense == MOI.MAX_SENSE
+    m._maximum_node_id = 55
+    @test MOI.get(m, MOI.NodeCount()) === 55
 
-    MOI.set(model, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
-    @test model._optimization_sense == MOI.FEASIBILITY_SENSE
+    m._result_status_code = MOI.FEASIBLE_POINT
+    @test MOI.get(m, MOI.ResultCount()) === 1
+
+    m._result_status_code = MOI.OTHER_RESULT_STATUS
+    @test MOI.get(m, MOI.ResultCount()) === 0
+
+    m._global_lower_bound = 4.0
+    m._global_upper_bound = 6.0
+    m._optimization_sense = MOI.MIN_SENSE
+    @test isapprox(MOI.get(m, MOI.RelativeGap()), 0.33333333, atol=1E-5)
+
+    m._optimization_sense = MOI.MAX_SENSE
+    @test MOI.get(m, MOI.RelativeGap()) === 0.5
+    @test MOI.get(m, MOI.ObjectiveBound()) === -4.0
+
+    m.verbosity = 2
+    m.log_on = true
+    MOI.set(m, MOI.Silent(), 1)
+    @test m.verbosity === 0
+    @test m.log_on === false
+
+    @test MOI.supports(m, MOI.ObjectiveSense())
 end
 
 @testset "Evaluate Functions" begin
@@ -63,6 +82,10 @@ end
 @testset "Add Variable Bounds" begin
     model = EAGO.Optimizer()
 
+    @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.LessThan{Float64})
+    @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.GreaterThan{Float64})
+    @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.EqualTo{Float64})
+
     x = MOI.add_variables(model,3)
     z = MOI.add_variable(model)
 
@@ -95,6 +118,10 @@ end
 @testset "Add Linear Constraint " begin
 
     model = EAGO.Optimizer()
+
+    @test MOI.supports_constraint(model, MOI.ScalarAffineFunction{Float64}, MOI.LessThan{Float64})
+    @test MOI.supports_constraint(model, MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64})
+    @test MOI.supports_constraint(model, MOI.ScalarAffineFunction{Float64}, MOI.EqualTo{Float64})
 
     x = MOI.add_variables(model,3)
 
@@ -137,6 +164,10 @@ end
 
     model = EAGO.Optimizer()
 
+    @test MOI.supports_constraint(model, MOI.ScalarQuadraticFunction{Float64}, MOI.LessThan{Float64})
+    @test MOI.supports_constraint(model, MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64})
+    @test MOI.supports_constraint(model, MOI.ScalarQuadraticFunction{Float64}, MOI.EqualTo{Float64})
+
     x = MOI.add_variables(model,3)
 
     func1 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(5.0,x[1])],
@@ -178,6 +209,41 @@ end
     @test model._quadratic_leq_constraints[1][3] == 1
     @test model._quadratic_geq_constraints[1][3] == 1
     @test model._quadratic_eq_constraints[1][3] == 1
+end
+
+@testset "Set Objective" begin
+    model = @inferred EAGO.Optimizer()
+
+    x = MOI.add_variables(model,3)
+
+    @inferred MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    @test model._optimization_sense == MOI.MIN_SENSE
+
+    MOI.set(model, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+    @test model._optimization_sense == MOI.MAX_SENSE
+
+    MOI.set(model, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
+    @test model._optimization_sense == MOI.FEASIBILITY_SENSE
+
+    @test MOI.supports(model, MOI.ObjectiveFunction{MOI.SingleVariable}())
+    @test MOI.supports(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}())
+    @test MOI.supports(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}())
+
+    x = MOI.add_variables(model,3)
+
+    MOI.set(model, MOI.ObjectiveFunction{MOI.SingleVariable}(), MOI.SingleVariable(MOI.VariableIndex(2)))
+    @test model._objective_is_sv
+    @test model._objective_sv == MOI.SingleVariable(MOI.VariableIndex(2))
+
+    MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[5.0,-2.3],[x[1],x[2]]),2.0))
+    @test model._objective_is_saf
+    @test model._objective_saf.constant == 2.0
+
+    MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+                                         MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(5.0,x[1])],
+                                        [MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],3.0))
+    @test model._objective_is_sqf
+    @test model._objective_sqf.constant == 3.0
 end
 
 @testset "Empty/Isempty, EAGO Model " begin
