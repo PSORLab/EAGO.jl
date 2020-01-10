@@ -129,24 +129,5 @@ end
 end
 @inline max(x::MC, y::MC) = max_kernel(x, y, max(x.Intv, y.Intv))
 
-@inline function maxcv(x::MC, y::MC)
-        cv = 0.0
-        temp_mid = 0.0
-        if (y.Intv.hi <= x.Intv.lo) || (x.Intv.hi<=y.Intv.lo)
-            cv = psil_max(x.cv, y.cv, x.Intv, y.Intv)
-        elseif (y.Intv.lo <= x.Intv.lo) & (x.Intv.lo < y.Intv.hi)
-          temp_mid = mid3(x.cv, x.cc, y.cv - (y.Intv.hi - x.Intv.lo)*(MC_DIFF_MU+1)^(-1.0/MC_DIFF_MU))
-          cv = psil_max(temp_mid, y.cv, x.Intv, y.Intv)
-        elseif (x.Intv.lo < y.Intv.lo) & (y.Intv.lo < x.Intv.hi)
-          temp_mid = mid3(y.cv, y.cc, x.cv - (x.Intv.hi - y.Intv.lo)*(MC_DIFF_MU+1)^(-1.0/MC_DIFF_MU))
-          cv = psil_max(x.cv, temp_mid, x.Intv, y.Intv)
-        end
-        return cv
-end
-@inline function maxcc(x::MC,y::MC)
-        psir_max(x.cc, y.cc, x.Intv, y.Intv)
-end
-@inline mincv(x::MC,y::MC) = - maxcc(-x,-y)
-
 @inline min_kernel(x::MC, y::MC, z::Interval{Float64}) = -max(-x,-y)
 @inline min(x::MC,y::MC) = -max(-x,-y)
