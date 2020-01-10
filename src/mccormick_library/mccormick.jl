@@ -291,7 +291,7 @@ Constructs McCormick relaxation with convex relaxation equal to `cv` and
 concave relaxation equal to `cc`.
 """
 function MC{N,T}(cv::Float64, cc::Float64, Intv::Interval{Float64}) where {N, T <: RelaxTag}
-    MC{N,T}(cv, cc, Interval{Float64}(cv,cc),
+    MC{N,T}(cv, cc, Intv,
             zero(SVector{N,Float64}),
             zero(SVector{N,Float64}), true)
 end

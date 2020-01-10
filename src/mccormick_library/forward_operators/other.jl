@@ -165,13 +165,13 @@ end
 		cv = NaN
 		cc = NaN
 	end
-    return MC{N, NS}(cv, cc, intersect(x.Intv,y), cv_grad, cc_grad, (x.cnst && y.cnst))
+    return MC{N, NS}(cv, cc, intersect(x.Intv,y), cv_grad, cc_grad, (x.cnst))
 end
 @inline function intersect(x::MC{N, Diff}, y::Interval{Float64}) where N
      max_MC = x - max(x - y, 0.0)   # used for convex
      min_MC = y - max(y - x, 0.0)   # used for concave
      return MC{N, Diff}(max_MC.cv, min_MC.cc, intersect(x.Intv,y),
-	                    max_MC.cv_grad, min_MC.cc_grad, (x.cnst && y.cnst))
+	                    max_MC.cv_grad, min_MC.cc_grad, x.cnst)
 end
 
 @inline in(x::MC) = in(x.Intv)

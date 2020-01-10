@@ -14,7 +14,7 @@ $(FUNCTIONNAME)
 Reverse McCormick operator for `cosh`.
 """
 function cosh_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(1.0, Inf)
+    y = y ∩ Interval{Float64}(1.0, Inf)
     if ~isempty(y)
         x = x ∩ acosh(y)
     end
@@ -27,7 +27,7 @@ $(FUNCTIONNAME)
 Reverse McCormick operator for `tanh`.
 """
 function tanh_rev(y::MC, x::MC)
-    y = y ∩ IntervalType(-1.0, 1.0)
+    y = y ∩ Interval{Float64}(-1.0, 1.0)
     if ~isempty(y)
         x = x ∩ atanh(y)
     end
