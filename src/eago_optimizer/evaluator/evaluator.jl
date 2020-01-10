@@ -79,48 +79,6 @@ mutable struct SubexpressionSetStorage{N,T<:RelaxTag}
     linearity::JuMP._Derivatives.Linearity
 end
 
-function SubexpressionSetStorage(N::Int64, s::T, nd::Vector{JuMP.NodeData},
-                                 const_values, num_variables,
-                                 subexpression_linearity,
-                                 moi_index_to_consecutive_index) where T<:RelaxTag
-
-    nd = JuMP.replace_moi_variables(nd, moi_index_to_consecutive_index)
-    len_nd = length(nd)
-    adj = adjmat(nd)
-    setstorage = zeros(MC{N}, len_nd)
-    numberstorage = zeros(len_nd)
-    numvalued = zeros(Bool, len_nd)
-    linearity = JuMP.classify_linearity(nd, adj, subexpression_linearity)
-
-    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
-    tp1_count = 0
-    tp2_count = 0
-    tp3_count = 0
-    tp4_count = 0
-    for i in 1:len_nd
-        op = nd[i].index
-        if double_tp(op)
-            tp1_count += 1
-            tp2_count += 1
-            tp3_count += 1
-            tp4_count += 1
-            tpdict[i] = (tp1_count, tp2_count, tp3_count, tp4_count)
-        elseif single_tp(op)
-            tp1_count += 1
-            tp2_count += 1
-            tpdict[i] = (tp1_count, tp2_count, -1, -1)
-        end
-    end
-    tp1storage = zeros(tp1_count)
-    tp2storage = zeros(tp2_count)
-    tp3storage = zeros(tp3_count)
-    tp4storage = zeros(tp4_count)
-
-    return SubexpressionSetStorage{N,T}(nd, adj, const_values, setstorage, numberstorage,
-                                      numvalued, tp1storage, tp2storage, tp3storage,
-                                      tp4storage, tpdict, linearity[1])
-end
-
 """
     Evaluator
 
