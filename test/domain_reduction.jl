@@ -17,45 +17,8 @@
     @test isapprox(lvb[4], 3.33333333, atol= 1E-5); @test uvb[4] == 4.0
 end
 
-#=
-@testset "Poor Man's LP" begin
-    # Puranik 2017 example
-    opt1 = EAGO.Optimizer(udf_scrubber_flag = false,
-                          udf_to_JuMP_flag = false,
-                          verbosity = 0)
-    x = MOI.add_variables(opt1, 3)
-
-    MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.LessThan(4.0))
-    MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.GreaterThan(-2.0))
-    MOI.add_constraint(opt1,MOI.SingleVariable(x[2]), MOI.LessThan(4.0))
-    MOI.add_constraint(opt1,MOI.SingleVariable(x[2]), MOI.GreaterThan(0.0))
-    MOI.add_constraint(opt1,MOI.SingleVariable(x[3]), MOI.LessThan(1.0))
-    MOI.add_constraint(opt1,MOI.SingleVariable(x[3]), MOI.GreaterThan(-1.0))
-
-    MOI.add_constraint(opt1,MOI.ScalarAffineFunction{Float64}([MOI.ScalarAffineTerm(1.0, x[1]), MOI.ScalarAffineTerm(1.0, x[2])], -2.0), MOI.GreaterThan(2.0))
-    MOI.add_constraint(opt1,MOI.ScalarAffineFunction{Float64}([MOI.ScalarAffineTerm(1.0, x[2]), MOI.ScalarAffineTerm(1.0, x[3])], -1.0), MOI.LessThan(0.0))
-
-    n1 = EAGO.NodeBB()
-    n1.lower_variable_bounds = [-2.0, 0.0, -1.0]
-    n1.upper_variable_bounds = [4.0, 4.0, 1.0]
-    n1.lower_bound = -Inf
-    n1.upper_bound = Inf
-    n1.depth = 3
-
-    opt1.variable_index_to_storage = Dict{Int,Int}(1 => 1, 2 => 2, 3 => 3)
-    opt1.bisection_variable = Dict{Int,Int}(1 => true, 2 => true, 3 => true)
-
-    feas1 = EAGO.poor_man_lp(opt1,n1)
-    feas1 = EAGO.poor_man_lp(opt1,n1)
-    @test (n1.lower_variable_bounds == [2.0, 0.0, -1.0])
-    @test (n1.upper_variable_bounds == [4.0, 2.0, 1.0])
-    @test (feas1 == true)
-end
-
 @testset "Classify Quadratic Types" begin
-    opt1 = EAGO.Optimizer(udf_scrubber_flag = false,
-                          udf_to_JuMP_flag = false,
-                          verbosity = 0)
+    opt1 = EAGO.Optimizer(verbosity = 0)
     x = MOI.add_variables(opt1, 3)
 
     MOI.add_constraint(opt1,MOI.SingleVariable(x[1]), MOI.LessThan(4.0))
@@ -89,59 +52,52 @@ end
     EAGO.classify_quadratics!(opt1)
 
     # checks to see if classification was correct
-    @test opt1.univariate_quadratic_eq_constraints[1][1] == 1.5
-    @test opt1.univariate_quadratic_eq_constraints[1][2] == 1.4
-    @test opt1.univariate_quadratic_eq_constraints[1][3] == 1.0
-    @test opt1.univariate_quadratic_eq_constraints[1][4] == 2
+    @test opt1._univariate_quadratic_eq_constraints[1][1] == 1.5
+    @test opt1._univariate_quadratic_eq_constraints[1][2] == 1.4
+    @test opt1._univariate_quadratic_eq_constraints[1][3] == 1.0
+    @test opt1._univariate_quadratic_eq_constraints[1][4] == 2
 
-    @test opt1.univariate_quadratic_leq_constraints[1][1] == -1.5
-    @test opt1.univariate_quadratic_leq_constraints[1][2] == -1.2
-    @test opt1.univariate_quadratic_leq_constraints[1][3] == 1.0
-    @test opt1.univariate_quadratic_leq_constraints[1][4] == 1
+    @test opt1._univariate_quadratic_leq_constraints[1][1] == -1.5
+    @test opt1._univariate_quadratic_leq_constraints[1][2] == -1.2
+    @test opt1._univariate_quadratic_leq_constraints[1][3] == 1.0
+    @test opt1._univariate_quadratic_leq_constraints[1][4] == 1
 
-    @test opt1.univariate_quadratic_geq_constraints[1][1] == 1.5
-    @test opt1.univariate_quadratic_geq_constraints[1][2] == 1.1
-    @test opt1.univariate_quadratic_geq_constraints[1][3] == 0.0
-    @test opt1.univariate_quadratic_geq_constraints[1][4] == 1
+    @test opt1._univariate_quadratic_geq_constraints[1][1] == 1.5
+    @test opt1._univariate_quadratic_geq_constraints[1][2] == 1.1
+    @test opt1._univariate_quadratic_geq_constraints[1][3] == 0.0
+    @test opt1._univariate_quadratic_geq_constraints[1][4] == 1
 
-    @test opt1.univariate_quadratic_geq_constraints[2][1] == 1.5
-    @test opt1.univariate_quadratic_geq_constraints[2][2] == 1.3
-    @test opt1.univariate_quadratic_geq_constraints[2][3] == 4.0
-    @test opt1.univariate_quadratic_geq_constraints[2][4] == 2
+    @test opt1._univariate_quadratic_geq_constraints[2][1] == 1.5
+    @test opt1._univariate_quadratic_geq_constraints[2][2] == 1.3
+    @test opt1._univariate_quadratic_geq_constraints[2][3] == 4.0
+    @test opt1._univariate_quadratic_geq_constraints[2][4] == 2
 end
 
 @testset "Quadratic Domain Reduction (Univariate)" begin
-    m = EAGO.Optimizer(udf_scrubber_flag = false,
-                       udf_to_JuMP_flag = false,
-                       verbosity = 0)
+    m = EAGO.Optimizer(verbosity = 0)
 
-    n2 = NodeBB()
-    n2.lower_variable_bounds = [-10.0, -10.0, -10.0]
-    n2.upper_variable_bounds = [10.0, 10.0, 10.0]
-    n2.lower_bound = -Inf
-    n2.upper_bound = Inf
-    n2.depth = 1
+    m._current_node = NodeBB([-10.0, -10.0, -10.0], [10.0, 10.0, 10.0], -Inf, Inf, 1, 1)
     a1, b1, c1 = 2.0, -4.0, 3.0
     a2, b2, c2 = 2.0, -4.0, 3.0
     a3, b3, c3 = 2.0, -4.0, 3.0
-    push!(m.univariate_quadratic_geq_constraints,(a1,b1,c1,1))
-    push!(m.univariate_quadratic_leq_constraints,(a2,b2,c2,2))
-    push!(m.univariate_quadratic_eq_constraints,(a3,b3,c3,3))
-    feas = EAGO.univariate_quadratic(m,n2)
+    push!(m._univariate_quadratic_geq_constraints,(a1,b1,c1,1))
+    push!(m._univariate_quadratic_leq_constraints,(a2,b2,c2,2))
+    push!(m._univariate_quadratic_eq_constraints,(a3,b3,c3,3))
+    feas = EAGO.univariate_quadratic(m)
 
     @test feas == true
-    @test isapprox(n2.lower_variable_bounds[1],-10.0,atol=1E-3)
-    @test isapprox(n2.lower_variable_bounds[2],-0.58113,atol=1E-3)
-    @test isapprox(n2.lower_variable_bounds[3],-0.58113,atol=1E-3)
-    @test isapprox(n2.upper_variable_bounds[1],10.0,atol=1E-3)
-    @test isapprox(n2.upper_variable_bounds[2],2.5811,atol=1E-3)
-    @test isapprox(n2.upper_variable_bounds[3],2.5811,atol=1E-3)
-end
-
-@testset "Quadratic Domain Reduction (Bivariate)" begin
+    @test isapprox(m._current_node.lower_variable_bounds[1],-10.0,atol=1E-3)
+    @test isapprox(m._current_node.lower_variable_bounds[2],-0.58113,atol=1E-3)
+    @test isapprox(m._current_node.lower_variable_bounds[3],-0.58113,atol=1E-3)
+    @test isapprox(m._current_node.upper_variable_bounds[1],10.0,atol=1E-3)
+    @test isapprox(m._current_node.upper_variable_bounds[2],2.5811,atol=1E-3)
+    @test isapprox(m._current_node.upper_variable_bounds[3],2.5811,atol=1E-3)
 end
 
 #=
+@testset "Quadratic Domain Reduction (Bivariate)" begin
+end
+
 @testset "Interval CSP" begin
     # Vigerske 2017 example
     opt1 = EAGO.Optimizer()
@@ -179,12 +135,9 @@ end
     @test feas1 == true
 end
 =#
-
+#=
 @testset "Optimization-Based Bound Tightening (Linear)" begin
-    m = Model(with_optimizer(EAGO.Optimizer,
-                             udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false,
-                             verbosity = 0))
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
     xL = [-4.0; -2.0]
     xU = [4.0; 2.0]
 
@@ -198,33 +151,28 @@ end
     @constraint(m, e3, 0.1*x[1] - x[2] >= -1.6)
     @constraint(m, e4, 3.7*x[1] - x[2] >= -12.8)
 
-    m.moi_backend.optimizer.model.optimizer.global_lower_bound = Inf
-    m.moi_backend.optimizer.model.optimizer.global_upper_bound = -Inf
+    m.moi_backend.optimizer.model.optimizer._global_lower_bound = Inf
+    m.moi_backend.optimizer.model.optimizer._global_upper_bound = -Inf
 
     optimize!(m)
     opt = m.moi_backend.optimizer.model.optimizer
-    m.moi_backend.optimizer.model.optimizer.bisection_variable[1] = true
-    m.moi_backend.optimizer.model.optimizer.bisection_variable[2] = true
-    m.moi_backend.optimizer.model.optimizer.obbt_variables = [MOI.VariableIndex(1), MOI.VariableIndex(2)]
-    m.moi_backend.optimizer.model.optimizer.global_lower_bound = -12.0
-    m.moi_backend.optimizer.model.optimizer.global_upper_bound = 0.0
-    n = opt.stack[1]
-    n.lower_bound = -12.0
-    n.upper_bound = 0.0
-    feas = EAGO.obbt(opt, n)
+    m.moi_backend.optimizer.model.optimizer.branch_variable[1] = true
+    m.moi_backend.optimizer.model.optimizer.branch_variable[2] = true
+    m.moi_backend.optimizer.model.optimizer._global_lower_bound = -12.0
+    m.moi_backend.optimizer.model.optimizer._global_upper_bound = 0.0
+    oldn = pop!(opt._stack)
+    opt._current_node = NodeBB(oldn.lower_variable_bounds, oldn.upper_variable_bounds,-12.0,0.0,1,1)
+    feas = EAGO.obbt(opt)
 
     @test feas
-    @test n.lower_variable_bounds[1] == -1.0
-    @test isapprox(n.lower_variable_bounds[2], -1.7, atol = 1E-6)
-    @test isapprox(n.upper_variable_bounds[1], 3.729729, atol = 1E-6)
-    @test n.upper_variable_bounds[2] == 1.0
+    @test opt._current_node.lower_variable_bounds[1] == -1.0
+    @test isapprox(opt._current_node.lower_variable_bounds[2], -1.7, atol = 1E-6)
+    @test isapprox(opt._current_node.upper_variable_bounds[1], 3.729729, atol = 1E-6)
+    @test opt._current_node.upper_variable_bounds[2] == 1.0
 end
 
 @testset "Optimization-Based Bound Tightening (Nonlinear)" begin
-    m = Model(with_optimizer(EAGO.Optimizer,
-                             udf_scrubber_flag = false,
-                             udf_to_JuMP_flag = false,
-                             verbosity = 0))
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
     xL = [0.0; -2.0]
     xU = [4.0; 4.0]
 
@@ -233,27 +181,23 @@ end
     @NLconstraint(m, e1, exp(x[1]/3) - x[2] == 0)
     @NLconstraint(m, e3, x[2] <= 3*log(x[1]+4))
 
-    m.moi_backend.optimizer.model.optimizer.global_lower_bound = Inf
-    m.moi_backend.optimizer.model.optimizer.global_upper_bound = -Inf
+    m.moi_backend.optimizer.model.optimizer._global_lower_bound = Inf
+    m.moi_backend.optimizer.model.optimizer._global_upper_bound = -Inf
 
     optimize!(m)
     opt = m.moi_backend.optimizer.model.optimizer
-    m.moi_backend.optimizer.model.optimizer.bisection_variable[1] = true
-    m.moi_backend.optimizer.model.optimizer.bisection_variable[2] = true
-    m.moi_backend.optimizer.model.optimizer.obbt_variables = [MOI.VariableIndex(1), MOI.VariableIndex(2)]
-    m.moi_backend.optimizer.model.optimizer.global_lower_bound = -10.0
-    m.moi_backend.optimizer.model.optimizer.global_upper_bound = 10.0
-    n = opt.stack[1]
-    n.lower_bound = -10.0
-    n.upper_bound = 10.0
-    feas = EAGO.obbt(opt, n)
+    m.moi_backend.optimizer.model.optimizer.branch_variable[1] = true
+    m.moi_backend.optimizer.model.optimizer.branch_variable[2] = true
+    m.moi_backend.optimizer.model.optimizer._global_lower_bound = -10.0
+    m.moi_backend.optimizer.model.optimizer._global_upper_bound = 10.0
+    oldn = pop!(opt._stack)
+    opt._current_node = NodeBB(oldn.lower_variable_bounds, oldn.upper_variable_bounds,-10.0,10.0,1,1)
+    feas = EAGO.obbt(opt)
 
     @test feas
-
-    @test n.lower_variable_bounds[1] == 0.0
-    @test isapprox(n.upper_variable_bounds[1], 4.0, atol = 1E-6)
-
-    @test isapprox(n.lower_variable_bounds[2], 0.6492446803515586, atol = 1E-6)
-    @test isapprox(n.upper_variable_bounds[2], 3.7936678946831783, atol = 1E-6)
+    @test opt._current_node.lower_variable_bounds[1] == 0.0
+    @test isapprox(opt._current_node.upper_variable_bounds[1], 4.0, atol = 1E-6)
+    @test isapprox(opt._current_node.lower_variable_bounds[2], 0.6492446803515586, atol = 1E-6)
+    @test isapprox(opt._current_node.upper_variable_bounds[2], 3.7936678946831783, atol = 1E-6)
 end
 =#

@@ -702,25 +702,25 @@ $(FUNCTIONNAME)
 Kernel of the bound tightening operation on univariant qudaratic functions.
 Called for each univariate function.
 """
-function univariate_kernel(n::NodeBB,a::Float64,b::Float64,c::Float64,vi::Int)
+function univariate_kernel(m::Optimizer,a::Float64,b::Float64,c::Float64,vi::Int)
         flag = true
         term1 = c + (b^2)/(4.0*a)
         term2 = term1/a
         if ((term1 > 0.0) && (a < 0.0)) # No solution, fathom node
             flag = false
         elseif (term2 >= 0.0)
-            xlo = n.lower_variable_bounds[vi]
-            xhi = n.upper_variable_bounds[vi]
+            xlo = m._current_node.lower_variable_bounds[vi]
+            xhi = m._current_node.upper_variable_bounds[vi]
             chk1 = -sqrt(term2)-b/(2.0*a)
             chk2 = sqrt(term2)-b/(2.0*a)
             if (a > 0.0)
-                (chk1 < xlo) && (n.lower_variable_bounds[vi] = max(xlo,chk2))
-                (chk2 > xhi) && (n.upper_variable_bounds[vi] = min(xhi,chk1))
+                (chk1 < xlo) && (m._current_node.lower_variable_bounds[vi] = max(xlo,chk2))
+                (chk2 > xhi) && (m._current_node.upper_variable_bounds[vi] = min(xhi,chk1))
             else
-                n.lower_variable_bounds[vi] = max(xlo,chk1)
-                n.upper_variable_bounds[vi] = min(xhi,chk2)
+                m._current_node.lower_variable_bounds[vi] = max(xlo,chk1)
+                m._current_node.upper_variable_bounds[vi] = min(xhi,chk2)
             end
-            if (n.lower_variable_bounds[vi] <= n.upper_variable_bounds[vi])
+            if (m._current_node.lower_variable_bounds[vi] <= m._current_node.upper_variable_bounds[vi])
                 flag = true
             end
         else
@@ -741,25 +741,25 @@ function univariate_quadratic(m::Optimizer)
         if ~feas
             break
         end
-        feas = univariate_kernel(n, a, b, c , vi)
+        feas = univariate_kernel(m, a, b, c , vi)
     end
     # fathom ax^2 + bx + c < u quadratics
     for (a, b, c, vi) in m._univariate_quadratic_leq_constraints
         if ~feas
             break
         end
-        feas = univariate_kernel(n, -a, -b, -c, vi)
+        feas = univariate_kernel(m, -a, -b, -c, vi)
     end
     # fathom ax^2 + bx + c = v quadratics
     for (a, b, c, vi) in m._univariate_quadratic_eq_constraints
         if ~feas
             break
         end
-        feas = univariate_kernel(n, a, b, c, vi)
+        feas = univariate_kernel(m, a, b, c, vi)
         if ~feas
             break
         end
-        feas = univariate_kernel(n, -a, -b, -c, vi)
+        feas = univariate_kernel(m, -a, -b, -c, vi)
      end
      return feas
 end
