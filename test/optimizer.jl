@@ -503,6 +503,26 @@ end
     EAGO.forward_eval_obj(r, xhalf)
     @test isapprox(r.objective.setstorage[1].cv, -53.31880224185876, atol=1E-5)
 
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
+    # ----- Variables ----- #
+    x_Idx = Any[2, 3, 4]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[2], 1.0e-6)
+    JuMP.set_upper_bound(x[2], 1.0)
+    JuMP.set_lower_bound(x[3], 1.0e-6)
+    JuMP.set_upper_bound(x[3], 1.0)
+    JuMP.set_lower_bound(x[4], 1.0e-6)
+    JuMP.set_upper_bound(x[4], 1.0)
+
+    @NLexpression(m, nl_expr, x[2]*x[3] + cos(x[4]) + tanh(x[2]))
+    @NLconstraint(m, nl_expr >= -3.0)
+    @NLobjective(m, Min, nl_expr)
+    JuMP.optimize!(m)
+
+    @test isapprox(JuMP.objective_value(m), 0.540303830954979, atol=1E-6)
+    @test JuMP.termination_status(m) === MOI.OPTIMAL
+    @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
+
     #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
 
