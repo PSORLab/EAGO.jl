@@ -652,59 +652,17 @@ function multiply_MV_NS(x1::MC{N,MV},x2::MC{N,MV},ngrad::Int64,cnst::Bool) where
 end
 
 function multiply_STD_NS(x1::MC, x2::MC, y::Interval{Float64})
-	if (x2.Intv.lo >= 0.0)
-    	(x2.cnst) && (return mul1_u1pos_u2pos(x1, x2, y, x1.cnst))
-    	(x1.cnst) && (return mul1_u1pos_u2pos(x2, x1, y, x2.cnst))
+	if x2.Intv.lo >= 0.0
+    	x2.cnst && (return mul1_u1pos_u2pos(x1, x2, y, x1.cnst))
+    	x1.cnst && (return mul1_u1pos_u2pos(x2, x1, y, x2.cnst))
   		return mul2_u1pos_u2pos(x1, x2, y)
-	elseif (x2.Intv.hi <= 0.0)
+	elseif x2.Intv.hi <= 0.0
 		return -mult_kernel(x1, -x2, -y)
 	else
-    	(x2.cnst) && (return mul1_u1pos_u2mix(x1, x2, y, x1.cnst))
-    	(x1.cnst) && (return mul2_u1pos_u2mix(x1, x2, y, x2.cnst))
-  		return mul3_u1pos_u2mix(x1, x2, y)
+    	x2.cnst && (return mul1_u1pos_u2mix(x1, x2, y, x1.cnst))
+    	x1.cnst && (return mul2_u1pos_u2mix(x1, x2, y, x2.cnst))
 	end
-end
-
-function STD_NS_ALT_kernel(x::MC{N,T}, y::MC{N,NS}, z::Interval{Float64}) where {N,T<:RelaxTag}
-	alpha1 = min( y.Intv.lo*x.cv,  y.Intv.lo*x.cc )
-	alpha2 = min( x.Intv.lo*y.cv,  x.Intv.lo*y.cc )
-	beta1  = min( y.Intv.hi*x.cv,  y.Intv.hi*x.cc )
-	beta2  = min( x.Intv.hi*y.cv,  x.Intv.hi*y.cc )
-	gamma1 = max( y.Intv.lo*x.cv,  y.Intv.lo*x.cc )
-	gamma2 = max( x.Intv.hi*y.cv,  x.Intv.hi*y.cc )
-	delta1 = max( y.Intv.hi*x.cv,  y.Intv.hi*x.cc )
-	delta2 = max( x.Intv.lo*y.cv,  x.Intv.lo*y.cc )
-
-	cv1 = alpha1 + alpha2 - x.Intv.lo*y.Intv.lo
-	cv2 = beta1  + beta2  - x.Intv.hi*y.Intv.hi
-	cc1 = gamma1 + gamma2 - x.Intv.hi*y.Intv.lo
-	cc2 = delta1 + delta2 - x.Intv.lo*y.Intv.hi
-
-	s_alpha1 = (y.Intv.lo >= 0.0) ? y.Intv.lo*x.cv_grad : y.Intv.lo*x.cc_grad
-	s_alpha2 = (x.Intv.lo >= 0.0) ? x.Intv.lo*x.cv_grad : x.Intv.lo*x.cc_grad
-	s_beta1  = (y.Intv.hi >= 0.0) ? y.Intv.hi*x.cv_grad : y.Intv.hi*x.cc_grad
-	s_beta2  = (x.Intv.hi >= 0.0) ? x.Intv.hi*x.cv_grad : x.Intv.hi*x.cc_grad
-	s_gamma1 = (y.Intv.lo >= 0.0) ? y.Intv.lo*x.cc_grad : y.Intv.lo*x.cv_grad
-	s_gamma2 = (x.Intv.hi >= 0.0) ? x.Intv.hi*x.cc_grad : x.Intv.hi*x.cv_grad
-	s_delta1 = (y.Intv.hi >= 0.0) ? y.Intv.hi*x.cc_grad : y.Intv.hi*x.cv_grad
-	s_delta2 = (x.Intv.lo >= 0.0) ? x.Intv.lo*x.cc_grad : x.Intv.lo*x.cv_grad
-
-	if (cv1 >= cv2)
-	    cv = cv1
-	    cv_grad = s_alpha1 + s_alpha2
-	else
-	    cv = cv2
-	    cv_grad = s_beta1 + s_beta2
-	end
-
-	if (cc1 <= cc2)
-	    cc = cc1
-	    cc_grad = s_gamma1 + s_gamma2
-	else
-	    cc = cc2
-	    cc_grad = s_delta1 + s_delta2
-	end
-	return MC{N,T}(cv, cc, z, cv_grad, cc_grad, (x.cnst && y.cnst))
+	mul3_u1pos_u2mix(x1, x2, y)
 end
 
 function mult_kernel(x1::MC{N,NS}, x2::MC{N,NS}, y::Interval{Float64}) where N
@@ -724,10 +682,10 @@ function mult_kernel(x1::MC{N,NS}, x2::MC{N,NS}, y::Interval{Float64}) where N
 	elseif (x2.Intv.hi <= 0.0)
 		return -mult_kernel(-x2, x1, -y)
 	else
-    	(x2.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x1,x2,x1.cnst)
-    	(x1.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x2,x1,x2.cnst)
-  		return mul2_u1mix_u2mix(x1, x2, y) #return STD_NS_ALT(x1,x2)
+    	x2.cnst && (return mul1_u1mix_u2mix(x1,x2,x1.cnst))
+    	x1.cnst && (return mul1_u1mix_u2mix(x2,x1,x2.cnst))
 	end
+	return mul2_u1mix_u2mix(x1, x2, y)
 end
 function mult_kernel(x1::MC{N,MV}, x2::MC{N,MV}, y::Interval{Float64}) where N
 	if (x1.Intv.lo >= 0.0)
@@ -741,32 +699,19 @@ function mult_kernel(x1::MC{N,MV}, x2::MC{N,MV}, y::Interval{Float64}) where N
 	elseif (x2.Intv.hi <= 0.0)
 		return -mult_kernel(-x2, x1, -y)
 	else
-    	(x2.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x1,x2,x1.cnst)
-    	(x1.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x2,x1,x2.cnst)
-  		return mul2_u1mix_u2mix(x1, x2, y) #return STD_NS_ALT(x1,x2)
+    	x2.cnst && (return mul1_u1mix_u2mix(x1,x2,x1.cnst))
+    	x1.cnst && (return mul1_u1mix_u2mix(x2,x1,x2.cnst))
 	end
+	return mul2_u1mix_u2mix(x1, x2, y)
 end
-function mult_kernel(x1::MC{N,Diff}, x2::MC{N,Diff}, y::Interval{Float64}) where N
 
-	degen1 = ((x1.Intv.hi - x1.Intv.lo) == 0.0)
-	degen2 = ((x2.Intv.hi - x2.Intv.lo) == 0.0)
-	if (MC_DIFF_MU >= 1 && ~(degen1||degen2))
-		return multiply_MV(x1, x2, y)
-	elseif (x1.Intv.lo >= 0.0)
-		return multiply_STD_NS(x1, x2, y)
-	elseif (x1.Intv.hi <= 0.0)
-		(x2.Intv.lo >= 0.0) && (return -mult_kernel(-x1, x2, -y))
-	    (x2.Intv.hi <= 0.0) && (return mult_kernel(-x1, -x2, y))
-		return -mult_kernel(x2, -x1, -y)
-	elseif (x2.Intv.lo >= 0.0)
-		return mult_kernel(x2, x1, y)
-	elseif (x2.Intv.hi <= 0.0)
-		return -mult_kernel(-x2, x1, -y)
-	else
-    	(x2.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x1,x2,x1.cnst)
-    	(x1.cnst) && (return STD_NS_ALT_kernel(x1, x2, y)) #return mul1_u1mix_u2mix(x2,x1,x2.cnst)
-  		return mul2_u1mix_u2mix(x1, x2, y) #return STD_NS_ALT(x1,x2)
+function mult_kernel(x1::MC{N,Diff}, x2::MC{N,Diff}, y::Interval{Float64}) where N
+	degen1 = ((x1.Intv.hi - x1.Intv.lo) <= MC_DEGEN_TOL )
+	degen2 = ((x2.Intv.hi - x2.Intv.lo) <= MC_DEGEN_TOL )
+	if degen1 || degen2
+		error("Degenerate interval encountered. Rounding issues with differential McCormick relaxations expected.")
 	end
+	return multiply_MV(x1, x2, y)
 end
 function *(x1::MC{N,NS}, x2::MC{N,NS}) where N
 	z = x1.Intv*x2.Intv

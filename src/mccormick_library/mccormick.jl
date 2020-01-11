@@ -85,6 +85,7 @@ const MC_ENV_MAX_INT = 100
 const MC_ENV_TOL = 1E-10
 const MC_DIFF_MU = 1
 const MC_MV_TOL = 1E-8
+const MC_DEGEN_TOL = 1E-14
 
 const IntervalConstr = interval
 const Half64 = Float64(0.5)

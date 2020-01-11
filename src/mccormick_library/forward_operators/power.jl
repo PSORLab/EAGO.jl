@@ -278,35 +278,35 @@ function flt_pow_1(x::MC{N,NS}, c::Float64, y::Interval{Float64}) where N
 	midcv, cv_id = mid3(x.cc, x.cv, x.Intv.lo)
 	cc, dcc = cc_flt_pow_1(midcc, x.Intv.lo, x.Intv.hi, c)
 	cv, dcv = cv_flt_pow_1(midcv, x.Intv.lo, x.Intv.hi, c)
-  cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
-  cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
-  cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
-  return MC{N,NS}(cv, cc, y, cv_grad, cc_grad, x.cnst)
+    cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
+    cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
+    cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
+    return MC{N,NS}(cv, cc, y, cv_grad, cc_grad, x.cnst)
 end
 function flt_pow_1(x::MC{N,Diff}, c::Float64, y::Interval{Float64}) where N
 	midcc, cc_id = mid3(x.cc, x.cv, x.Intv.hi)
 	midcv, cv_id = mid3(x.cc, x.cv, x.Intv.lo)
 	cc, dcc = cc_flt_pow_1(midcc, x.Intv.lo, x.Intv.hi, c)
 	cv, dcv = cv_flt_pow_1(midcv, x.Intv.lo, x.Intv.hi, c)
-  gcc1, gdcc1 = cc_flt_pow_1(x.cv ,x.Intv.lo, x.Intv.hi, c)
-  gcv1, gdcv1 = cv_flt_pow_1(x.cv, x.Intv.lo, x.Intv.hi, c)
-  gcc2, gdcc2 = cc_flt_pow_1(x.cc, x.Intv.lo, x.Intv.hi, c)
-  gcv2, gdcv2 = cv_flt_pow_1(x.cc, x.Intv.lo, x.Intv.hi, c)
-  cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
-  cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
-  return MC{N,Diff}(cv, cc, y, cv_grad, cc_grad, x.cnst)
+    gcc1, gdcc1 = cc_flt_pow_1(x.cv ,x.Intv.lo, x.Intv.hi, c)
+    gcv1, gdcv1 = cv_flt_pow_1(x.cv, x.Intv.lo, x.Intv.hi, c)
+    gcc2, gdcc2 = cc_flt_pow_1(x.cc, x.Intv.lo, x.Intv.hi, c)
+    gcv2, gdcv2 = cv_flt_pow_1(x.cc, x.Intv.lo, x.Intv.hi, c)
+    cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
+    cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
+    return MC{N,Diff}(cv, cc, y, cv_grad, cc_grad, x.cnst)
 end
 
 function (^)(x::MC{N,NS}, c::Float64, y::Interval{Float64}) where N
     isinteger(c) && (return pow_kernel(x, Int(c), y))
     ((x.Intv.lo >= 0) && (0.0 < c < 1.0)) && (return flt_pow_1(x, c, y))
-		z = exp(c*log(x))
+	z = exp(c*log(x))
     return MC{N,NS}(z.cv, z.cc, y, z.cv_grad, z.cc_grad, x.cnst)
 end
 function (^)(x::MC{N,Diff}, c::Float64, y::Interval{Float64}) where N
     isinteger(c) && (return pow_kernel(x, Int(c), y))
     ((x.Intv.lo >= 0) && (0.0 < c < 1.0)) && (return flt_pow_1(x, c, y))
-		z = exp(c*log(x))
+	z = exp(c*log(x))
     return MC{N,Diff}(z.cv, z.cc, y, z.cv_grad, z.cc_grad, x.cnst)
 end
 
@@ -332,12 +332,12 @@ function cc_inv1(x::Float64, xL::Float64, xU::Float64)
 	t = (xL*xU)
 	cc = (xU + xL - x)/t
 	dcc = -1.0/t
-	cc, dcc
+	return cc, dcc
 end
 function cv_inv1(x::Float64, xL::Float64, xU::Float64)
 	cv = 1.0/x
 	dcv = -1.0/(x*x)
-	cv, dcv
+	return cv, dcv
 end
 function inv1(x::MC{N,NS}, y::Interval{Float64}) where N
   midcc, cc_id = mid3(x.cc, x.cv, x.Intv.lo)
