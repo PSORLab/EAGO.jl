@@ -118,11 +118,11 @@ bounds on concave parts.
 function relax_quadratic_gen_saf(func::SQF, vi::Vector{VI}, n::NodeBB,
                                  nx::Int64, x0::Vector{Float64},
                                  cvx_dict::ImmutableDict{Int64,Int64}, flag::Bool)
-    if flag
-        saf = relax_convex_kernel(func, vi, cvx_dict, nx, x0)
-    else
+    #if flag
+    #    saf = relax_convex_kernel(func, vi, cvx_dict, nx, x0)
+    #else
         saf = relax_nonconvex_kernel(func, vi, n, cvx_dict, nx, x0)
-    end
+    #end
     return saf
 end
 function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
@@ -130,13 +130,13 @@ function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
     opt = x.relaxed_optimizer
     if (q == 1) & x.relaxed_inplace_mod
         for (i, term) in enumerate(saf.terms)
-            MOI.modify(opt, ci, SCoefC(term.variable_index, -1.0*term.coefficient))
+            MOI.modify(opt, ci, SCoefC(term.variable_index, term.coefficient))
         end
-        MOI.set(opt, MOI.ConstraintSet(), ci, LT(-lower + saf.constant))
+        MOI.set(opt, MOI.ConstraintSet(), ci, LT(-lower - saf.constant))
     else
         c = saf.constant
         saf.constant = 0.0
-        x._quadratic_ci_geq[q][i] = MOI.add_constraint(opt, saf, LT(-lower + c))
+        x._quadratic_ci_geq[q][i] = MOI.add_constraint(opt, saf, LT(-lower - c))
     end
     return
 end
@@ -221,7 +221,9 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
         nz = x._quadratic_eq_gradnz[i]
         ci1, ci2 = x._quadratic_ci_eq[q][i]
         flag1 = x._quadratic_eq_convexity_1[i]
+        println("flag1: $flag1")
         flag2 = x._quadratic_eq_convexity_2[i]
+        println("flag2: $flag2")
         saf1 = relax_quadratic_gen_saf(func, vi, n, nz, x0, cvx_dict, flag1)
         vec_sat = SAT[SAT(-t.coefficient, t.variable_index) for t in func.affine_terms]
         vec_sqt = SQT[SQT(-t.coefficient, t.variable_index_1, t.variable_index_2) for t in func.quadratic_terms]

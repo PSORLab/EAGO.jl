@@ -523,6 +523,28 @@ end
     @test JuMP.termination_status(m) === MOI.OPTIMAL
     @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
 
+    m = Model(with_optimizer(EAGO.Optimizer, cut_max_iterations = 3, output_iterations = 1,
+                             iteration_limit = 300000, obbt_depth = 6, verbosity = 0))
+
+    # ----- Variables ----- #
+    xL = [500.0 1300.0 5000.0 100.0 200.0 200.0 200.0 300.0 6900.0]
+    xU = [600.0 1500.0 6000.0 200.0 300.0 300.0 400.0 500.0 7100.0]
+    @variable(m, xL[i] <= x[i=1:9] <= xU[i])
+
+    # ----- Constraints ----- #
+    @constraint(m, e1, x[1] + x[2]+ x[3] - x[9] == 0.0)
+    @constraint(m, e2, 0.0025*x[4]+0.0025*x[6] <= 1.0)
+    @constraint(m, e3, -0.0025*x[4]+0.0025*x[5]+0.0025*x[7] <= 1.0)
+    @constraint(m, e4, -0.01*x[5]+0.01*x[8] <= 1.0)
+    @constraint(m, e5, 100*x[1]-x[1]*x[6]+833.33252*x[4] <= 83333.333)
+    @constraint(m, e6, -x[2]*x[4]+x[2]*x[7]+1250*x[4]-1250*x[5] >= 0.0)
+    @constraint(m, e7, x[3]*x[5]-x[3]*x[8]-2500*x[5] <= -1.25e6)
+
+    # ----- Objective ----- #
+    @objective(m, Min, x[9])
+    optimize!(m)
+    @test isapprox(objective_value(m), 7049.2548148812575, atol=1E-2)
+
     #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
 

@@ -400,7 +400,9 @@ function is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{I
         if (eigval) > 0.0
             flag = true
         end
-    elseif Q.nzval[1] > 0.0
+    elseif (length(Q.nzval) == 1) && (Q.nzval[1] > 0.0)
+        flag =  true
+    else
         flag =  true
     end
     return flag
