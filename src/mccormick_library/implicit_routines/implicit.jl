@@ -33,14 +33,14 @@ abstract type AbstractContractorMC end
 struct NewtonGS <: AbstractContractorMC end
 struct KrawczykCW <: AbstractContractorMC end
 
-abstract type AbstractPrecondionerMC end
-function preconditioner_storage(x::AbstractPrecondionerMC, t::T) where T<:RelaxTag
+abstract type AbstractPreconditionerMC end
+function preconditioner_storage(x::AbstractPreconditionerMC, t::T) where T<:RelaxTag
     error("Must define function that generates appropriate storage type for preconditioner")
 end
 
 abstract type AbstractMCCallback end
 struct MCCallback{FH <: Function, FJ <: Function, C <: AbstractContractorMC,
-                  PRE <: AbstractPrecondionerMC, N, T<:RelaxTag,
+                  PRE <: AbstractPreconditionerMC, N, T<:RelaxTag,
                   AMAT <: AbstractMatrix} <:  AbstractMCCallback
     h!::FH
     hj!::FJ
@@ -176,7 +176,7 @@ $(FUNCTIONNAME)
 function precond_and_contract!(callback!::MCCallback{FH,FJ,C,PRE,N,T}) where {FH <: Function,
                                                                               FJ <: Function,
                                                                               C <: AbstractContractorMC,
-                                                                              PRE <: AbstractPrecondionerMC,
+                                                                              PRE <: AbstractPreconditionerMC,
                                                                               N, T<:RelaxTag}
     @. callback!.aff_mc = MC{N,T}(cv(callback!.xa_mc), cc(callback!.xA_mc))
     callback!()
@@ -196,7 +196,7 @@ Populates `x_mc`, `xa_mc`, `xA_mc`, and `z_mc` with affine bounds.
 function populate_affine!(d::MCCallback{FH,FJ,C,PRE,N,T}, interval_bnds::Bool) where {FH <: Function,
                                                                                       FJ <: Function,
                                                                                       C <: AbstractContractorMC,
-                                                                                      PRE <: AbstractPrecondionerMC,
+                                                                                      PRE <: AbstractPreconditionerMC,
                                                                                       N, T<:RelaxTag}
     if interval_bnds
         @inbounds for i in 1:d.nx

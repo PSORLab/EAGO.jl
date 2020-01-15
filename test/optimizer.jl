@@ -632,9 +632,12 @@ end
     @test MOI.INFEASIBILITY_CERTIFICATE === primal_status(m)
 end
 =#
-@testset "Local NLP Solve && Logging" begin
-    m = Model(with_optimizer(EAGO.Optimizer, local_solve_only=true, log_on=true,
-                             log_subproblem_info=true, log_interval=1, verbosity=0))
+@testset "Local NLP Solve" begin
+    # Feasible local solve
+    #m = Model(with_optimizer(EAGO.Optimizer, local_solve_only=true, log_on=true,
+    #                         log_subproblem_info=true, log_interval=1, verbosity=0))
+
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity=0, local_solve_only=true))
 
     x_Idx = Any[1, 2, 3, 4, 5, 6]
     @variable(m, x[x_Idx])
@@ -657,4 +660,31 @@ end
     @test isapprox(objective_value(m), -1009.74929, atol=1E-3)
     @test MOI.FEASIBLE_POINT === primal_status(m)
     @test MOI.LOCALLY_SOLVED === termination_status(m)
+
+    # Infeasible local solve
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity=0))
+
+    x_Idx = Any[1, 2, 3, 4, 5, 6]
+    @variable(m, x[x_Idx])
+    JuMP.set_lower_bound(x[1], 1500.0)
+    JuMP.set_upper_bound(x[1], 2000.0)
+    JuMP.set_lower_bound(x[2], 1.0)
+    JuMP.set_upper_bound(x[2], 120.0)
+    JuMP.set_lower_bound(x[3], 3000.0)
+    JuMP.set_upper_bound(x[3], 3500.0)
+    JuMP.set_lower_bound(x[4], 85.0)
+    JuMP.set_upper_bound(x[4], 93.0)
+    JuMP.set_lower_bound(x[5], 90.0)
+    JuMP.set_upper_bound(x[5], 95.0)
+    JuMP.set_lower_bound(x[6], 3.0)
+    JuMP.set_upper_bound(x[6], 12.0)
+
+    @constraint(m, x[1] + x[2] >= 10000.0 )
+
+    @NLobjective(m, Min, 3000.0 + 0.035*x[1]*x[6]-0.063*x[3]*x[5]+1.715*x[1]+4.0565*x[3] + 10*x[2])
+
+    JuMP.optimize!(m)
+    @test objective_value(m) == Inf
+    @test MOI.INFEASIBILITY_CERTIFICATE === primal_status(m)
+    @test MOI.INFEASIBLE === termination_status(m)
 end

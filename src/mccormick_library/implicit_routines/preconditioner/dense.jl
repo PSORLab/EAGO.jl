@@ -3,7 +3,7 @@ $(FUNCTIONNAME)
 
 Dense LU preconditioner for implicit McCormick relaxation.
 """
-struct DenseMidInv <: AbstractPrecondionerMC
+struct DenseMidInv <: AbstractPreconditionerMC
     Y::Array{Float64,2}
     YInterval::Vector{Interval{Float64}}
     nx::Int
