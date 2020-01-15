@@ -132,8 +132,8 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
     for k in 1:x.obbt_aggressive_max_iteration
 
         # Set index differences and vector for filtering direction
-        bool_indx_diff!(x._lower_indx_diff, x._old_low_index, x._new_low_index)
-        bool_indx_diff!(x._upper_indx_diff, x._old_upp_index, x._new_upp_index)
+        bool_indx_diff(x._lower_indx_diff, x._old_low_index, x._new_low_index)
+        bool_indx_diff(x._upper_indx_diff, x._old_upp_index, x._new_upp_index)
 
         for i in 1:obbt_var_len
             @inbounds active_flag = x._lower_indx_diff[i]
@@ -255,13 +255,14 @@ function obbt(x::Optimizer)
     x._preprocess_result_status = MOI.get(x.relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
                                                     x._preprocess_result_status)
+
     if valid_flag & feasible_flag
         xLP = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
     else
         return false
     end
 
-    while any(x._obbt_working_lower_index) & any(x._obbt_working_upper_index) & ~isempty(y)
+    while (any(x._obbt_working_lower_index) || any(x._obbt_working_upper_index)) & ~isempty(y)
 
         # Get lower value
         lower_indx = -1
@@ -283,6 +284,7 @@ function obbt(x::Optimizer)
                 end
             end
         end
+
         # min of yU - xLP on active
         if any(x._obbt_working_upper_index)
             for i in 1:length(x._obbt_working_upper_index)
@@ -361,6 +363,7 @@ function obbt(x::Optimizer)
         end
         trivial_filtering!(x, y)
     end
+
     return feasibility
 end
 

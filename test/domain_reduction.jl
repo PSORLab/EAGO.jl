@@ -135,7 +135,7 @@ end
     @test feas1 == true
 end
 =#
-#=
+
 @testset "Optimization-Based Bound Tightening (Linear)" begin
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
     xL = [-4.0; -2.0]
@@ -162,13 +162,15 @@ end
     m.moi_backend.optimizer.model.optimizer._global_upper_bound = 0.0
     oldn = pop!(opt._stack)
     opt._current_node = NodeBB(oldn.lower_variable_bounds, oldn.upper_variable_bounds,-12.0,0.0,1,1)
+    opt.obbt_variable_values[1] = true
+    opt.obbt_variable_values[2] = true
     feas = EAGO.obbt(opt)
 
     @test feas
-    @test opt._current_node.lower_variable_bounds[1] == -1.0
+    @test isapprox(opt._current_node.lower_variable_bounds[1], -1.0, atol = 1E-6)
     @test isapprox(opt._current_node.lower_variable_bounds[2], -1.7, atol = 1E-6)
     @test isapprox(opt._current_node.upper_variable_bounds[1], 3.729729, atol = 1E-6)
-    @test opt._current_node.upper_variable_bounds[2] == 1.0
+    @test isapprox(opt._current_node.upper_variable_bounds[2], 1.0, atol = 1E-6)
 end
 
 @testset "Optimization-Based Bound Tightening (Nonlinear)" begin
@@ -192,6 +194,8 @@ end
     m.moi_backend.optimizer.model.optimizer._global_upper_bound = 10.0
     oldn = pop!(opt._stack)
     opt._current_node = NodeBB(oldn.lower_variable_bounds, oldn.upper_variable_bounds,-10.0,10.0,1,1)
+    opt.obbt_variable_values[1] = true
+    opt.obbt_variable_values[2] = true
     feas = EAGO.obbt(opt)
 
     @test feas
@@ -200,4 +204,3 @@ end
     @test isapprox(opt._current_node.lower_variable_bounds[2], 0.6492446803515586, atol = 1E-6)
     @test isapprox(opt._current_node.upper_variable_bounds[2], 3.7936678946831783, atol = 1E-6)
 end
-=#

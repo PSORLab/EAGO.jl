@@ -492,7 +492,7 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         # Options for optimality-based bound tightening
         default_opt_dict[:obbt_depth] = 6
         default_opt_dict[:obbt_repetitions] = 20
-        default_opt_dict[:obbt_aggressive_on] = false
+        default_opt_dict[:obbt_aggressive_on] = true
         default_opt_dict[:obbt_aggressive_max_iteration] = 2
         default_opt_dict[:obbt_aggressive_min_dimension] = 2
         default_opt_dict[:obbt_tolerance] = 1E-9

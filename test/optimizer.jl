@@ -310,8 +310,9 @@ end
 
     b = backend(m1).optimizer.model.optimizer
     EAGO.interval_lower_bound!(b, n)
-    @test isapprox(b._lower_objective_value, -0.832293, atol=1E-3)
+    @test isapprox(b._lower_objective_value, -0.1513, atol=1E-3)
 end
+
 
 @testset "LP Problems" begin
     m = Model(with_optimizer(EAGO.Optimizer,
