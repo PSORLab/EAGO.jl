@@ -611,6 +611,56 @@ end
     z5 = x5*y5
     @test isapprox(z5.cv,-50000,atol=1E-4)
     @test isapprox(z5.cc,-40000,atol=1E-4)
+
+    x1a = MC{2,NS}(Interval(2.0, 4.0))
+    x2b = MC{2,NS}(Interval(0.25, 0.5))
+    x2c = MC{2,NS}(Interval(1.0, 2.0))
+    z1 = Interval(2.0, 4.0)*Interval(0.25, 0.5)
+    z2 =Interval(2.0, 4.0)*Interval(1.0, 2.0)
+
+    out1 = EAGO.McCormick.mul1_u1pos_u2mix(x1a, x2b, z1, false)
+    @test out1.cv == 1.0
+    @test out1.cc == 1.5
+    @test out1.Intv.lo == 0.5
+    @test out1.Intv.hi == 2.0
+
+    out2 = EAGO.McCormick.mul1_u1pos_u2mix(x1a, x2c, z2, false)
+    @test out2.cv == 4.0
+    @test out2.cc == 6.0
+    @test out2.Intv.lo == 2.0
+    @test out2.Intv.hi == 8.0
+
+    out3 = EAGO.McCormick.mul2_u1pos_u2mix(x1a, x2b, z1, false)
+    @test out3.cv == 1.0
+    @test out3.cc == 1.5
+    @test out3.Intv.lo == 0.5
+    @test out3.Intv.hi == 2.0
+
+    out4 = EAGO.McCormick.mul2_u1pos_u2mix(x1a, x2c, z2, false)
+    @test out4.cv == 4.0
+    @test out4.cc == 6.0
+    @test out4.Intv.lo == 2.0
+    @test out4.Intv.hi == 8.0
+
+    #=
+    x1a = MC{2,MV}(Interval(2.0, 4.0))
+    x2b = MC{2,MV}(Interval(0.25, 0.5))
+    x2c = MC{2,MV}(Interval(1.0, 2.0))
+    z1 = Interval(2.0, 4.0)*Interval(0.25, 0.5)
+    z2 = Interval(2.0, 4.0)*Interval(1.0, 2.0)
+
+    out1 = x1a*x2b
+    @test out1.cv == 0.5
+    @test out1.cc == 2.0
+    @test isapprox(out1.Intv.lo, 0.5, atol=1E-4)
+    @test isapprox(out1.Intv.hi, 2.0, atol=1E-4)
+
+    out2 = x2b*x2c
+    @test out2.cv == 0.25
+    @test out2.cc == 1.0
+    @test isapprox(out2.Intv.lo, 0.25, atol=1E-4)
+    @test isapprox(out2.Intv.hi, 1.0, atol=1E-4)
+    =#
 end
 
 @testset "Division" begin
