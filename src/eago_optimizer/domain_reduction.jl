@@ -767,6 +767,7 @@ function univariate_quadratic(m::Optimizer)
      return feas
 end
 
+#=
 """
 $(FUNCTIONNAME)
 
@@ -792,6 +793,7 @@ function bivariate_quadratic(m::Optimizer,n::NodeBB)
     end
     return feas
 end
+=#
 
 """
 $(FUNCTIONNAME)
