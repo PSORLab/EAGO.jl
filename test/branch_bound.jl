@@ -83,7 +83,7 @@ end
     x.relative_tolerance = 1.0E10; x.absolute_tolerance = 1.0E-6
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
-    x.relative_tolerance = 1.0E-6; x.absolute_tolerance = 1.0E10
+    x.relative_tolerance = 1.0E-30; x.absolute_tolerance = 1.0E10
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x.relative_tolerance = 1.0E-20; x.absolute_tolerance = 1.0E-20
@@ -120,6 +120,9 @@ end
 
 @testset "Node Access Functions" begin
     x = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -3.4, 2.1, 2, 1)
+    emptyx = EAGO.NodeBB(Float64[7.0,5.0], Float64[1.0,6.0], -3.4, 2.1, 2, 1)
+
+    @test isempty(emptyx)
 
     @test EAGO.lower_variable_bounds(x) == Float64[1.0,5.0]
     @test EAGO.upper_variable_bounds(x) == Float64[2.0,6.0]

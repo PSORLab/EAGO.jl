@@ -577,7 +577,8 @@ end
     @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
 
     m = Model(with_optimizer(EAGO.Optimizer, cut_max_iterations = 3, output_iterations = 1,
-                             iteration_limit = 300000, obbt_depth = 6, verbosity = 0, quad_uni_repetitions = 2))
+                             iteration_limit = 300000, obbt_depth = 6, verbosity = 0, quad_uni_repetitions = 2,
+                             quad_uni_depth = 2))
 
     # ----- Variables ----- #
     xL = [500.0 1300.0 5000.0 100.0 200.0 200.0 200.0 300.0 6900.0]
@@ -598,7 +599,7 @@ end
     optimize!(m)
     @test isapprox(objective_value(m), 7049.2548148812575, atol=1E-2)
 
-    m = Model(with_optimizer(EAGO.Optimizer, quad_uni_repetitions = 2))
+    m = Model(with_optimizer(EAGO.Optimizer, quad_uni_repetitions = 2, quad_uni_depth = 2))
 
     xL = [-2.0 0.0]; xU = [2.0 4.0]
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])
