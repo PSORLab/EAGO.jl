@@ -268,11 +268,13 @@ max(f) = - min(-f).
 function convert_to_min!(x::Optimizer)
     if x._optimization_sense === MOI.MAX_SENSE
         if x._objective_is_sv
-            x._objective_sv = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
+            x._objective_is_saf = true
+            x._objective_is_sv = false
+            x._objective_saf = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
         elseif x._objective_is_saf
             @inbounds x._objective_saf.terms[:] = SAT.(-getfield.(x._objective_saf.terms, :coefficient),
                                                         getfield.(x._objective_saf.terms, :variable_index))
-            x._objective.constant *= -1.0
+            x._objective_saf.constant *= -1.0
         elseif x._objective_is_sqf
             @inbounds x._objective_sqf.affine_terms[:] = SAT.(-getfield.(x._objective_sqf.affine_terms, :coefficient),
                                                                getfield.(x._objective_sqf.affine_terms, :variable_index))

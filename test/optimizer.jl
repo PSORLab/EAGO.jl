@@ -77,6 +77,8 @@ end
 
     @test_nowarn @inferred EAGO.check_inbounds(model, MOI.VariableIndex(1))
     @test_throws ErrorException @inferred EAGO.check_inbounds(model,MOI.VariableIndex(6))
+
+    @test EAGO.is_integer_feasible(model)
 end
 
 @testset "Add Variable Bounds" begin
@@ -413,6 +415,56 @@ end
     @test isapprox(JuMP.objective_value(m), Inf, atol=1E-4)
     @test JuMP.termination_status(m) == MOI.INFEASIBLE
     @test JuMP.primal_status(m) == MOI.INFEASIBILITY_CERTIFICATE
+
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             presolve_scrubber_flag = false,
+                             presolve_to_JuMP_flag = false,
+                             verbosity = 0))
+
+    @variable(m, -3 <= x <= -1)
+    @variable(m, -2 <= y <= 2)
+    @variable(m, 1 <= z <= 3)
+    @variable(m, q == 1)
+
+    @objective(m, Max, x)
+
+    @constraint(m, x + 2y >= -10)
+    @constraint(m, z - 2y <= 2)
+    @constraint(m, y >= 0)
+
+    JuMP.optimize!(m)
+
+    @test isapprox(JuMP.value(x), -1.0, atol=1E-4)
+    @test isapprox(JuMP.value(q), 1.0, atol=1E-4)
+    @test isapprox(JuMP.objective_value(m), -1.0, atol=1E-4)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
+
+    m = Model(with_optimizer(EAGO.Optimizer,
+                             presolve_scrubber_flag = false,
+                             presolve_to_JuMP_flag = false,
+                             verbosity = 0))
+
+    @variable(m, -3 <= x <= -1)
+    @variable(m, -2 <= y <= 2)
+    @variable(m, 1 <= z <= 3)
+    @variable(m, -10 <= q <= 9)
+
+    @objective(m, Max, 2x - 3y + 2z)
+
+    @constraint(m, x + 2y >= -10)
+    @constraint(m, z - 2y <= 2)
+    @constraint(m, y >= 0)
+    @constraint(m, q-3*z-y >= 0)
+
+    JuMP.optimize!(m)
+
+    @test isapprox(JuMP.value(x), -1.0, atol=1E-4)
+    @test isapprox(JuMP.value(y), 0.428571, atol=1E-4)
+    @test isapprox(JuMP.value(z), 2.857142, atol=1E-4)
+    @test isapprox(JuMP.objective_value(m), 2.428571, atol=1E-4)
+    @test JuMP.termination_status(m) == MOI.OPTIMAL
+    @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 end
 
 @testset "NLP Problems" begin
@@ -525,7 +577,7 @@ end
     @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
 
     m = Model(with_optimizer(EAGO.Optimizer, cut_max_iterations = 3, output_iterations = 1,
-                             iteration_limit = 300000, obbt_depth = 6, verbosity = 0))
+                             iteration_limit = 300000, obbt_depth = 6, verbosity = 0, quad_uni_repetitions = 2))
 
     # ----- Variables ----- #
     xL = [500.0 1300.0 5000.0 100.0 200.0 200.0 200.0 300.0 6900.0]
@@ -546,7 +598,7 @@ end
     optimize!(m)
     @test isapprox(objective_value(m), 7049.2548148812575, atol=1E-2)
 
-    m = Model(with_optimizer(EAGO.Optimizer))
+    m = Model(with_optimizer(EAGO.Optimizer, quad_uni_repetitions = 2))
 
     xL = [-2.0 0.0]; xU = [2.0 4.0]
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])

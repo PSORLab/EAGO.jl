@@ -823,7 +823,7 @@ end
 
 function is_integer_feasible(m::Optimizer)
     flag = true
-    for var in m.integer_variables
+    for var in m._integer_variables
         @inbounds val = m._lower_solution[var]
         if (0.0 < val < 1.0)
             flag = false
