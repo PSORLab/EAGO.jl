@@ -584,6 +584,7 @@ function get_univariate_coeff(func::MOI.ScalarQuadraticFunction{Float64}, set::T
 end
 
 # Checks to see if constraint is a bivariant quadratic term
+#=
 function check_bivariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
     vIndx = Int64[]
     (length(f.quadratic_terms) > 3) && (return false)
@@ -599,7 +600,6 @@ function check_bivariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
         return false, nothing, nothing
     end
 end
-
 function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,vxvalue::Int,vyvalue::Int) where {T<:MOI.AbstractScalarSet}
     acnt = length(func.affine_terms)
     (vxvalue != nothing) && (vx = MOI.VariableIndex(vxvalue))
@@ -636,6 +636,7 @@ function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,v
     end
     c = get_value(set) - func.constant
 end
+=#
 
 """
 $(FUNCTIONNAME)
@@ -655,12 +656,14 @@ function classify_quadratics!(m::Optimizer)
             b_neg = -1.0*b
             c_neg = -1.0*c
             push!(m._univariate_quadratic_leq_constraints,(a_neg,b_neg,c_neg,vi))
+        #=
         else
              flag,vxi,vyi = check_bivariate_quad(func)
              if flag
                 ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
                 push!(m._bivariate_quadratic_geq_constraints,(-ax,-ay,-axy,-bx,-by,c,vxi,vyi))
             end
+            =#
         end
     end
 
@@ -669,12 +672,14 @@ function classify_quadratics!(m::Optimizer)
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             push!(m._univariate_quadratic_geq_constraints,(a,b,c,vi))
+        #=
         else
             flag,vxi,vyi = check_bivariate_quad(func)
             if flag
                ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
                push!(m._bivariate_quadratic_geq_constraints,(ax,ay,axy,bx,by,-c,vxi,vyi))
            end
+           =#
         end
     end
 
@@ -683,6 +688,7 @@ function classify_quadratics!(m::Optimizer)
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             push!(m._univariate_quadratic_eq_constraints,(a,b,c,vi))
+        #=
         else
             flag,vxi,vyi = check_bivariate_quad(func)
             if flag
@@ -694,6 +700,7 @@ function classify_quadratics!(m::Optimizer)
               ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
               push!(m._bivariate_quadratic_geq_constraints,(-ax,-ay,-axy,-bx,-by,c,vxi,vyi))
           end
+          =#
         end
     end
     return
