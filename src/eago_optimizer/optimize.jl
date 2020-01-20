@@ -326,7 +326,7 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
         m._nlp_data = nlp_data
 
         # Scrub user-defined functions
-        #initialize_scrub!(m, evaluator)
+        initialize_scrub!(m, evaluator)
 
         built_evaluator = build_nlp_evaluator(m._variable_number, NS(), deepcopy(evaluator), m, false)
         m._relaxed_evaluator = built_evaluator

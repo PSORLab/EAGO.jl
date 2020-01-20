@@ -781,29 +781,32 @@ function MOI.is_empty(m::Optimizer)
     return flag
 end
 
-function check_inbounds(m::Optimizer, vi::MOI.VariableIndex)
+function check_inbounds!(m::Optimizer, vi::MOI.VariableIndex)
     num_variables = length(m._variable_info)
     if !(1 <= vi.value <= num_variables)
         error("Invalid variable index $vi. ($num_variables variables in the model.)")
     end
+    return
 end
 
-check_inbounds(m::Optimizer, var::MOI.SingleVariable) = check_inbounds(m, var.variable)
+check_inbounds!(m::Optimizer, var::MOI.SingleVariable) = check_inbounds!(m, var.variable)
 
-function check_inbounds(m::Optimizer, aff::MOI.ScalarAffineFunction)
+function check_inbounds!(m::Optimizer, aff::MOI.ScalarAffineFunction)
     for term in aff.terms
-        check_inbounds(m, term.variable_index)
+        check_inbounds!(m, term.variable_index)
     end
+    return
 end
 
-function check_inbounds(m::Optimizer, quad::MOI.ScalarQuadraticFunction)
+function check_inbounds!(m::Optimizer, quad::MOI.ScalarQuadraticFunction)
     for term in quad.affine_terms
-        check_inbounds(m, term.variable_index)
+        check_inbounds!(m, term.variable_index)
     end
     for term in quad.quadratic_terms
-        check_inbounds(m, term.variable_index_1)
-        check_inbounds(m, term.variable_index_2)
+        check_inbounds!(m, term.variable_index_1)
+        check_inbounds!(m, term.variable_index_2)
     end
+    return
 end
 
 function has_upper_bound(m::Optimizer, vi::MOI.VariableIndex)
@@ -946,7 +949,7 @@ function MOI.get(m::Optimizer, ::MOI.ResultCount)
 end
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
-    check_inbounds(model, vi)
+    check_inbounds!(model, vi)
     return model._continuous_solution[vi.value]
 end
 
@@ -991,7 +994,7 @@ MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
 #=
 function MOI.add_constraint(m::Optimizer, v::SV, zo::MOI.ZO)
     vi = v.variable
-    check_inbounds(m, vi)
+    check_inbounds!(m, vi)
     has_upper_bound(m, vi) && error("Upper bound on variable $vi already exists.")
     has_lower_bound(m, vi) && error("Lower bound on variable $vi already exists.")
     is_fixed(m, vi) && error("Variable $vi is fixed. Cannot also set upper bound.")
@@ -1006,7 +1009,7 @@ end
 
 function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
     vi = v.variable
-    check_inbounds(m, vi)
+    check_inbounds!(m, vi)
     if isnan(lt.upper)
         error("Invalid upper bound value $(lt.upper).")
     end
@@ -1023,7 +1026,7 @@ end
 
 function MOI.add_constraint(m::Optimizer, v::SV, gt::GT)
     vi = v.variable
-    check_inbounds(m, vi)
+    check_inbounds!(m, vi)
     if isnan(gt.lower)
         error("Invalid lower bound value $(gt.lower).")
     end
@@ -1040,7 +1043,7 @@ end
 
 function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
     vi = v.variable
-    check_inbounds(m, vi)
+    check_inbounds!(m, vi)
     if isnan(eq.value)
         error("Invalid fixed value $(gt.lower).")
     end
@@ -1064,7 +1067,7 @@ end
 #=
 function MOI.add_constraint(m::Optimizer, v::SV, eq::MOI.IT)
     vi = v.variable
-    check_inbounds(m, vi)
+    check_inbounds!(m, vi)
     if isnan(eq.lower)
         error("Invalid fixed value $(gt.lower).")
     end
@@ -1091,7 +1094,7 @@ end
 macro define_addconstraint_linear(function_type, set_type, array_name)
     quote
         function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
-            check_inbounds(m, func)
+            check_inbounds!(m, func)
             push!(m.$(array_name), (func, set, length(func.terms)))
             indx = CI{$function_type, $set_type}(length(m.$(array_name)))
             m._constraint_convexity[indx] = true
@@ -1103,7 +1106,7 @@ end
 macro define_addconstraint_quadratic(function_type, set_type, array_name)
     quote
         function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
-            check_inbounds(m, func)
+            check_inbounds!(m, func)
             for i in func.affine_terms m.branch_variable[i.variable_index.value] = true end
             for i in func.quadratic_terms
                 m.branch_variable[i.variable_index_1.value] = true
@@ -1141,7 +1144,7 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SAF}) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SQF}) = true
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
-    check_inbounds(m, func)
+    check_inbounds!(m, func)
     m._objective_is_sv = true
     m._objective_is_saf = false
     m._objective_is_sqf = false
@@ -1151,7 +1154,7 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
-    check_inbounds(m, func)
+    check_inbounds!(m, func)
     m._objective_is_sv = false
     m._objective_is_saf = true
     m._objective_is_sqf = false
@@ -1161,7 +1164,7 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SQF)
-    check_inbounds(m, func)
+    check_inbounds!(m, func)
     m._objective_is_sv = false
     m._objective_is_saf = false
     m._objective_is_sqf = true

@@ -75,8 +75,8 @@ end
     @test indx == @inferred MOI.VariableIndex[MOI.VariableIndex(1), MOI.VariableIndex(2),
                                     MOI.VariableIndex(3), MOI.VariableIndex(4)]
 
-    @test_nowarn @inferred EAGO.check_inbounds(model, MOI.VariableIndex(1))
-    @test_throws ErrorException @inferred EAGO.check_inbounds(model,MOI.VariableIndex(6))
+    @test_nowarn @inferred EAGO.check_inbounds!(model, MOI.VariableIndex(1))
+    @test_throws ErrorException @inferred EAGO.check_inbounds!(model,MOI.VariableIndex(6))
 
     @test EAGO.is_integer_feasible(model)
 end
@@ -610,7 +610,7 @@ end
     @test isapprox(JuMP.objective_value(m), 1.0652212400578724, atol=1E-3)
 
     #=
-    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, iteration_limit = 3, output_iterations = 1, absolute_tolerance = 1.0E-2))
 
     x_Idx = Any[2, 3, 4]
     @variable(m, x[x_Idx])
@@ -656,11 +656,6 @@ end
     MOI.eval_hessian_lagrangian(x, [], 0.0, 0.0, 0.0) === nothing
 end
 
-@testset "Additional Quadratic NLPs" begin
-    # Problem with an equality constrained quadratic constraint
-    # Problem with a convex quadratic constraint
-end
-#=
 @testset "User Defined Function Scrubber" begin
     gamma1_x1(z) = z[1]*(1253/z[3])/(1 + 2.62*(z[1]/z[2]))^2
     gamma2_x2(z) = z[2]*(479/z[3])/(1 + 0.382*(z[2]/z[1]))^2
@@ -695,12 +690,9 @@ end
     optimize!(m)
     @test MOI.INFEASIBILITY_CERTIFICATE === primal_status(m)
 end
-=#
+
 @testset "Local NLP Solve" begin
     # Feasible local solve
-    #m = Model(with_optimizer(EAGO.Optimizer, local_solve_only=true, log_on=true,
-    #                         log_subproblem_info=true, log_interval=1, verbosity=0))
-
     m = Model(with_optimizer(EAGO.Optimizer, verbosity=0, local_solve_only=true))
 
     x_Idx = Any[1, 2, 3, 4, 5, 6]

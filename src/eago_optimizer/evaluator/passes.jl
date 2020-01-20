@@ -297,7 +297,8 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                       nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64},
                       current_node::NodeBB, x_values::Vector{Float64},
                       subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N,T}},
-                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, flt_user_input_buffer::Vector{Float64}, subgrad_tighten::Bool,
+                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, flt_user_input_buffer::Vector{Float64},
+                      subgrad_tighten::Bool,
                       tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
                       tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
                       first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry,
@@ -365,31 +366,6 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @assert n_children == 2
                 forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
                                setstorage, current_node, subgrad_tighten, first_eval_flag)
-            #=
-            elseif op == 6 # ifelse
-                @assert n_children == 3
-                idx1 = first(children_idx)
-                @inbounds chdset1 = numvalued[idx1]
-                if chdset1
-                    @inbounds condition = setstorage[children_arr[idx1]]
-                else
-                    @inbounds condition = numberstorage[children_arr[idx1]]
-                end
-                @inbounds chdset2 = numvalued[children_arr[idx1+1]]
-                @inbounds chdset3 = numvalued[children_arr[idx1+2]]
-                if chdset2
-                    @inbounds lhs = setstorage[children_arr[idx1+1]]
-                else
-                    @inbounds lhs = numberstorage[children_arr[idx1+1]]
-                end
-                if chdset3
-                    @inbounds rhs = setstorage[children_arr[idx1+2]]
-                else
-                    @inbounds rhs = numberstorage[children_arr[idx1+2]]
-                end
-                error("IF ELSE TO BE IMPLEMENTED SHORTLY")
-                #storage[k] = set_value_post(x_values, ifelse(condition == 1, lhs, rhs), current_node)
-            =#
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 op_sym = id_to_operator[op]
                 evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]
@@ -495,64 +471,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 end
             end
             numvalued[k] = chdset
-        #=
-        elseif nod.nodetype == JuMP._Derivatives.COMPARISON                         # DONE
-            op = nod.index
-            @inbounds children_idx = nzrange(adj,k)
-            n_children = length(children_idx)
-            result = true
-            for r in 1:n_children-1
-                @inbounds ix1 = children_arr[children_idx[r]]
-                @inbounds ix2 = children_arr[children_idx[r+1]]
-                @inbounds isnum1 = numvalued[ix1]
-                @inbounds isnum2 = numvalued[ix2]
-                if isnum1
-                    @inbounds cval_lhs = numberstorage[ix1]
                 else
-                    @inbounds cval_lhs = setstorage[ix1]
-                end
-                if isnum2
-                    @inbounds cval_rhs = numberstorage[ix2]
-                else
-                    @inbounds cval_rhs = setstorage[ix2]
-                end
-                if op == 1
-                    result &= cval_lhs <= cval_rhs
-                elseif op == 2
-                    result &= cval_lhs == cval_rhs
-                elseif op == 3
-                    result &= cval_lhs >= cval_rhs
-                elseif op == 4
-                    result &= cval_lhs < cval_rhs
-                elseif op == 5
-                    result &= cval_lhs > cval_rhs
-                end
-            end
-            numberstorage[k] = result
-        elseif nod.nodetype == JuMP._Derivatives.LOGIC                              # DONE
-            op = nod.index
-            @inbounds children_idx = nzrange(adj,k)
-            ix1 = children_arr[first(children_idx)]
-            ix2 = children_arr[last(children_idx)]
-            @inbounds isnum1 = numvalued[ix1]
-            @inbounds isnum2 = numvalued[ix2]
-            if isnum1
-                cval_lhs = (numberstorage[ix1] == 1)
-            else
-                cval_lhs = (setstorage[ix1] == 1)
-            end
-            if isnum2
-                cval_rhs = (numberstorage[ix2] == 1)
-            else
-                cval_rhs = (setstorage[ix2] == 1)
-            end
-            if op == 1
-                numberstorage[k] = cval_lhs && cval_rhs
-            elseif op == 2
-                numberstorage[k] = cval_lhs || cval_rhs
-            end
-            =#
-        else
             error("Unrecognized node type $(nod.nodetype).")
         end
     end

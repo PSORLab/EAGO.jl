@@ -255,6 +255,14 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     elseif x._objective_is_sqf
+        println("x._objective_is_sqf: $(x._objective_is_sqf)")
+        println("x._objective_convexity: $(x._objective_convexity)")
+        println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
+        println("vi: $(vi)")
+        println("nx: $(nx)")
+        println("x0: $(x0)")
+        println("x._current_node: $(x._current_node)")
+        println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
         if x._objective_convexity
             saf = relax_convex_kernel(x._objective_sqf, vi, nx, x0)
         else
