@@ -610,7 +610,8 @@ end
     @test isapprox(JuMP.objective_value(m), 1.0652212400578724, atol=1E-3)
 
     #=
-    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, iteration_limit = 3, output_iterations = 1, absolute_tolerance = 1.0E-2))
+    m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, iteration_limit = 3,
+                             output_iterations = 1, absolute_tolerance = 1.0E-2))
 
     x_Idx = Any[2, 3, 4]
     @variable(m, x[x_Idx])
