@@ -58,6 +58,10 @@ end
    @test empty(MC{2,NS}(Interval{Float64}(1.0))) == MC{2,NS}(Inf, -Inf, Interval{Float64}(Inf,-Inf),
                                                      SVector{2,Float64}(zeros(Float64,2)),
                                                      SVector{2,Float64}(zeros(Float64,2)), false)
+
+   @test promote_rule(MC{2,NS}, Float16) == MC{2,NS}
+   @test promote_rule(MC{2,NS}, Int32) == MC{2,NS}
+   @test promote_rule(MC{2,NS}, Irrational{:π}) == MC{2,NS}
 end
 
 @testset "Rootfinding Routine" begin
@@ -696,6 +700,16 @@ end
     @test isapprox(out.cv_grad[2],-0.1333333333333333,atol=1E-6)
     @test isapprox(out.Intv.lo,-1.33333333,atol=1E-6)
     @test isapprox(out.Intv.hi,-0.39999999999999997,atol=1E-6)
+
+    x1a = MC{2,MV}(1.1, 2.3, Interval(0.1,3.3))
+    x2a = MC{2,MV}(2.1, 3.3, Interval(1.1,4.3))
+
+    div1 = x2a/Float32(1.1)
+    div2 = x2a/Int32(2)
+    @test isapprox(div1.cv, 1.9090908, atol=1E-6)
+    @test isapprox(div1.cc, 2.9999999, atol=1E-6)
+    @test isapprox(div2.cv, 1.05, atol=1E-6)
+    @test isapprox(div2.cc, 1.65, atol=1E-6)
 end
 
 @testset "Min/Max" begin
