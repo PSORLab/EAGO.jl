@@ -19,7 +19,7 @@ import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            csch, coth, acsch, acoth, asech,
                            sign, dist, mid, pow, Interval, interval, sinh, cosh,
                            ∩, IntervalBox, bisect, isdisjoint, length,
-                           atan, asin, acos, AbstractInterval, pi_interval,
+                           atan, asin, acos, AbstractInterval,
                            sind, cosd, tand, asind, acosd, atand,
                            secd, cscd, cotd, asecd, acscd, acotd, half_pi, setrounding
 
@@ -92,7 +92,7 @@ const Half64 = Float64(0.5)
 const Two64 = Float64(2.0)
 const Three64 = Float64(3.0)
 const EqualityTolerance = Float64(1E-12)
-const DegToRadIntv = pi_interval(Float64)/Interval(180.0)
+const DegToRadIntv = atomic(Interval{Float64}, pi)/Interval(180.0)
 const one_intv = one(Interval{Float64})
 const half_intv = Interval{Float64}(0.5)
 const two_intv = Interval{Float64}(2.0)
