@@ -19,7 +19,7 @@ import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            csch, coth, acsch, acoth, asech,
                            sign, dist, mid, pow, Interval, interval, sinh, cosh,
                            ∩, IntervalBox, bisect, isdisjoint, length,
-                           atan, asin, acos, AbstractInterval,
+                           atan, asin, acos, AbstractInterval, atomic,
                            sind, cosd, tand, asind, acosd, atand,
                            secd, cscd, cotd, asecd, acscd, acotd, half_pi, setrounding
 
