@@ -642,6 +642,27 @@ end
     @test out4.Intv.lo == 2.0
     @test out4.Intv.hi == 8.0
 
+    x1a = MC{2,NS}(1.1, 2.3, Interval(0.1,3.3))
+    x2a = MC{2,NS}(2.1, 3.3, Interval(1.1,4.3))
+    mc1 = EAGO.McCormick.mul1_u1mix_u2mix(x1a, x2a, x1a.Intv*x2a.Intv, false)
+    mc2 = EAGO.McCormick.mul1_u1mix_u2mix(x2a, x1a, x1a.Intv*x2a.Intv, false)
+    @test mc1.cv == 2.75
+    @test isapprox(mc1.cc, 8.46999999, atol=1E-6)
+    @test isapprox(mc1.Intv.lo, 0.11, atol=1E-6)
+    @test isapprox(mc1.Intv.hi, 14.19, atol=1E-6)
+    @test mc2.cv == 2.75
+    @test isapprox(mc2.cc, 8.46999999, atol=1E-6)
+
+    flt1 = 1.34
+    flt2 = 0.57
+    @test isapprox(EAGO.McCormick.mul_MV_ns1cv(flt1, flt2, x1a, x2a), -6.54699999, atol=1E-6)
+    @test isapprox(EAGO.McCormick.mul_MV_ns2cv(flt1, flt2, x1a, x2a), 1.421, atol=1E-6)
+    @test isapprox(EAGO.McCormick.mul_MV_ns3cv(flt1, flt2, x1a, x2a), 1.421, atol=1E-6)
+    @test isapprox(EAGO.McCormick.mul_MV_ns1cc(flt1, flt2, x1a, x2a), -0.27499999, atol=1E-6)
+    @test isapprox(EAGO.McCormick.mul_MV_ns2cc(flt1, flt2, x1a, x2a), 5.389, atol=1E-6)
+    @test isapprox(EAGO.McCormick.mul_MV_ns3cc(flt1, flt2, x1a, x2a), -0.27499999, atol=1E-6)
+    @test ~EAGO.McCormick.isequal_mult_MC(flt1, flt2)
+
     #=
     x1a = MC{2,MV}(Interval(2.0, 4.0))
     x2b = MC{2,MV}(Interval(0.25, 0.5))
