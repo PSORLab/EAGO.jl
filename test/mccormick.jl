@@ -534,6 +534,65 @@ end
    @test check_vs_refv(^, x1_d1, 4, yref_d1_pow12, mctol)
    @test check_vs_refv(^, x5_d1, 4, yref_d1_pow13, mctol)
    @test check_vs_refv(^, x6_d1, 4, yref_d1_pow14, mctol)
+
+   x = MC{2,NS}(2.1, 3.3, Interval(1.1,4.3))
+   c = 1.2
+   cInt = 2
+
+   # c>0
+   z01a = EAGO.McCormick.plus_kernel(x, Float32(c), x.Intv + Float32(c))
+   z02a = EAGO.McCormick.plus_kernel(Float32(c), x, x.Intv + Float32(c))
+   z01b = EAGO.McCormick.plus_kernel(x, Float16(c), x.Intv + Float16(c))
+   z02b = EAGO.McCormick.plus_kernel(Float16(c), x, x.Intv + Float16(c))
+   z03a = EAGO.McCormick.plus_kernel(x, Int32(cInt), x.Intv + Int32(cInt))
+   z04a = EAGO.McCormick.plus_kernel(Int32(cInt), x, x.Intv + Int32(cInt))
+   z03b = EAGO.McCormick.plus_kernel(x, Int16(cInt), x.Intv + Int16(cInt))
+   z04b = EAGO.McCormick.plus_kernel(Int16(cInt), x, x.Intv + Int16(cInt))
+   @test z03a.cv == z04a.cv == z03b.cv == z04b.cv == 4.1
+   @test z03a.cc == z04a.cc == z03b.cc == z04b.cc == 5.3
+   @test isapprox(z01a.cv, 3.3, atol=1E-6)
+   @test isapprox(z02a.cv, 3.3, atol=1E-6)
+   @test isapprox(z01b.cv, 3.3001953, atol=1E-6)
+   @test isapprox(z02b.cv, 3.3001953, atol=1E-6)
+
+   z05a = EAGO.McCormick.mult_kernel(x, Float32(c), x.Intv*Float32(c))
+   z06a = EAGO.McCormick.mult_kernel(Float32(c), x, Float32(c)*x.Intv)
+   z05b = EAGO.McCormick.plus_kernel(x, Float16(c), x.Intv + Float16(c))
+   z06b = EAGO.McCormick.plus_kernel(Float16(c), x, x.Intv + Float16(c))
+   z07a = EAGO.McCormick.mult_kernel(x, Int32(cInt), x.Intv*Int32(cInt))
+   z08a = EAGO.McCormick.mult_kernel(Int32(cInt), x, Int32(cInt)*x.Intv)
+   z07b = EAGO.McCormick.mult_kernel(x, Int16(cInt), x.Intv*Int16(cInt))
+   z08b = EAGO.McCormick.mult_kernel(Int16(cInt), x, Int16(cInt)*x.Intv)
+   @test z07a.cv == z08a.cv == z07b.cv == z08b.cv == 4.2
+   @test z07a.cc == z08a.cc == z07b.cc == z08b.cc == 6.6
+   @test isapprox(z05a.cv, 2.5200001, atol=1E-6)
+   @test isapprox(z06a.cv, 2.5200001, atol=1E-6)
+   @test isapprox(z05b.cc, 4.5001953125, atol=1E-6)
+   @test isapprox(z06b.cc, 4.5001953125, atol=1E-6)
+
+   z09a = EAGO.McCormick.div_kernel(x, Float32(c), x.Intv/Float32(c))
+   z10a = EAGO.McCormick.div_kernel(Float32(c), x, Float32(c)/x.Intv)
+   z11a = EAGO.McCormick.div_kernel(x, Int32(cInt), x.Intv/Int32(cInt))
+   z12a = EAGO.McCormick.div_kernel(Int32(cInt), x, Int32(cInt)/x.Intv)
+   z09b = EAGO.McCormick.div_kernel(x, Float16(c), x.Intv/Float16(c))
+   z10b = EAGO.McCormick.div_kernel(Float16(c), x, Float16(c)/x.Intv)
+   z11b = EAGO.McCormick.div_kernel(x, Int16(cInt), x.Intv/Int16(cInt))
+   z12b = EAGO.McCormick.div_kernel(Int16(cInt), x, Int16(cInt)/x.Intv)
+   @test isapprox(z09a.cv, 1.74999999, atol=1E-6)
+   @test isapprox(z10a.cv, 0.36363637, atol=1E-6)
+   @test isapprox(z11a.cv, 1.05, atol=1E-6)
+   @test isapprox(z12a.cv, 0.6060606060606061, atol=1E-6)
+   @test isapprox(z09b.cv, 1.74931640, atol=1E-6)
+   @test isapprox(z10b.cv, 0.36369554, atol=1E-6)
+   @test isapprox(z11b.cv, 1.05, atol=1E-6)
+   @test isapprox(z12b.cv, 0.6060606060606061, atol=1E-6)
+
+   # c<0
+   z13a = EAGO.McCormick.mult_kernel(x, Float32(-c), x.Intv*Float32(-c))
+   z13b = EAGO.McCormick.mult_kernel(x, Float16(-c), x.Intv*Float16(-c))
+   @test isapprox(z13a.cv, -3.9600001, atol=1E-6)
+   @test isapprox(z13b.cv, -3.96064453125, atol=1E-6)
+
 end
 
 @testset "Multiplication Operator" begin

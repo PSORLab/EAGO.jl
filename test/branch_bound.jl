@@ -48,6 +48,12 @@
     @inferred EAGO.set_global_lower_bound!(x)
     @inferred EAGO.fathom!(x)
 
+
+    @test ~isless(EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1), EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1))
+    @test length(EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1)) == 2
+    diamx = EAGO.diam(EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,7.0], -4.0, 1.0, 2, 1))
+    @test diamx[1] == 1.0
+    @test diamx[2] == 2.0
     #create_initial_node!(x)
 end
 

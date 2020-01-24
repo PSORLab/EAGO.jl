@@ -31,13 +31,15 @@ end
 +(x::MC, y::Float64) = plus_kernel(x, y, (x.Intv + y))
 +(y::Float64, x::MC) = plus_kernel(x, y, (x.Intv + y))
 
-plus_kernel(x::MC, y::C) where {C <: AbstractFloat} = plus_kernel(x, convert(Float64, y))
-plus_kernel(x::C, y::MC) where {C <: AbstractFloat} = plus_kernel(convert(Float64, x), y)
+plus_kernel(x::MC, y::Float32, z::Interval{Float64}) where {C <: AbstractFloat} = plus_kernel(x, convert(Float64, y), z)
+plus_kernel(x::Float32, y::MC, z::Interval{Float64}) where {C <: AbstractFloat} = plus_kernel(y, convert(Float64, x), z)
+plus_kernel(x::MC, y::Float16, z::Interval{Float64}) where {C <: AbstractFloat} = plus_kernel(x, convert(Float64, y), z)
+plus_kernel(x::Float16, y::MC, z::Interval{Float64}) where {C <: AbstractFloat} = plus_kernel(y, convert(Float64, x), z)
 +(x::MC, y::C) where {C <: AbstractFloat} = x + convert(Float64, y)
 +(y::C, x::MC) where {C <: AbstractFloat} = x + convert(Float64, y)
 
-plus_kernel(x::MC, y::C) where {C <: Integer} = plus_kernel(x, convert(Float64, y))
-plus_kernel(x::C, y::MC) where {C <: Integer} = plus_kernel(convert(Float64, x), y)
+plus_kernel(x::MC, y::C, z::Interval{Float64}) where {C <: Integer} = plus_kernel(x, convert(Float64, y), z)
+plus_kernel(x::C, y::MC, z::Interval{Float64}) where {C <: Integer} = plus_kernel(y, convert(Float64, x), z)
 +(x::MC, y::C) where {C <: Integer} = x + convert(Float64, y)
 +(y::C, x::MC) where {C <: Integer} = x + convert(Float64, y)
 
@@ -63,7 +65,6 @@ minus_kernel(y::C, x::MC, z::Interval{Float64}) where {C <: Integer} = minus_ker
 
 # Multiplication
 function mult_kernel(x::MC{N,T}, c::Float64, z::Interval{Float64}) where {N, T <: RelaxTag}
-	delcv_cc = (x.cv - x.cc)
 	if (c >= 0.0)
 		zMC = MC{N,T}(c*x.cv, c*x.cc, z, c*x.cv_grad, c*x.cc_grad, x.cnst)
 	else

@@ -18,6 +18,11 @@
 end
 
 @testset "Classify Quadratic Types" begin
+
+    @test EAGO.get_value(MOI.LessThan{Float64}(1.1)) == 1.1
+    @test EAGO.get_value(MOI.GreaterThan{Float64}(2.1)) == 2.1
+    @test EAGO.get_value(MOI.EqualTo{Float64}(1.3)) == 1.3
+
     opt1 = EAGO.Optimizer(verbosity = 0)
     x = MOI.add_variables(opt1, 3)
 
@@ -196,6 +201,7 @@ end
     opt._current_node = NodeBB(oldn.lower_variable_bounds, oldn.upper_variable_bounds,-10.0,10.0,1,1)
     opt.obbt_variable_values[1] = true
     opt.obbt_variable_values[2] = true
+    @test EAGO.aggressive_obbt_on_heurestic(opt)
     feas = EAGO.obbt(opt)
 
     @test feas

@@ -92,12 +92,11 @@ Stores the current node to the stack after updating lower/upper bounds.
 function single_storage!(t::ExtensionType, x::Optimizer)
     y = x._current_node
     x._node_repetitions += 1
-    x._maximum_node_id += 0
     x._node_count += 1
-    y.lower_bound = max(y.lower_bound, x._lower_objective_value)
-    y.upper_bound = min(y.upper_bound, x._upper_objective_value)
-    y.depth += 1
-    push!(x._stack, y)
+    lower_bound = max(y.lower_bound, x._lower_objective_value)
+    upper_bound = min(y.upper_bound, x._upper_objective_value)
+    push!(x._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
+                           lower_bound, upper_bound, y.depth, y.id))
     return
 end
 

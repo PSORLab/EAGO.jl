@@ -248,9 +248,23 @@ end
     @test model._objective_sqf.constant == 3.0
 end
 
-@testset "Empty/Isempty, EAGO Model " begin
+@testset "Empty/Isempty, EAGO Model, Single Storage, Optimize Hook " begin
     model = EAGO.Optimizer()
     @test @inferred MOI.is_empty(model)
+
+    t = EAGO.DefaultExt()
+    model._current_node = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1)
+    model._lower_objective_value = -3.0
+    model._upper_objective_value = 0.0
+    @test_nowarn EAGO.single_storage!(t, model)
+    new_node = pop!(model._stack)
+    @test new_node.lower_bound == -3.0
+    @test new_node.upper_bound == 0.0
+
+    @test_nowarn EAGO.single_storage!(model)
+
+    @test_nowarn EAGO.optimize_hook!(EAGO.DefaultExt(), model)
+    @test_nowarn EAGO.throw_optimize_hook!(model)
 end
 
 @testset "Fallback Interval Bounds" begin
