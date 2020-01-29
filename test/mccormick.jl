@@ -806,10 +806,14 @@ end
     @test isapprox(out_mc1[1], 0.72855339, atol=1E-5)
     @test isapprox(out_mc1[2][1], 0.25, atol=1E-5)
     @test isapprox(out_mc1[2][2], 0.18213834, atol=1E-5)
-    
+
     out_mc2 = EAGO.McCormick.div_MV(X, -Y, X.Intv/-Y.Intv)
     @test isapprox(out_mc2.cv, 0.72855339, atol=1E-5)
     @test isapprox(out_mc2.cc, 0.86666666666, atol=1E-5)
+
+    out_mc3 = EAGO.McCormick.div_kernel(X, -Y, X.Intv/-Y.Intv)
+    @test isapprox(out_mc3.cv, 0.72855339, atol=1E-5)
+    @test isapprox(out_mc3.cc, 0.86666666666, atol=1E-5)
 end
 
 @testset "Min/Max" begin
