@@ -879,6 +879,30 @@ end
    @test out7.cc == 3.0
    @test out8.cc == 3.0
    @test out9.cc == 3.0
+
+   X = MC{2,NS}(3.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   Y = MC{2,NS}(-4.0,-4.0,Interval{Float64}(-5.0,-3.0), seed_gradient(2,Val(2)), seed_gradient(2,Val(2)),false)
+   out1 = EAGO.McCormick.max_kernel(X, Y, max(X.Intv,Y.Intv))
+   @test out1.cv == 3.0
+   @test out1.cc == 3.0
+
+   X = MC{2,NS}(2.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   Y = MC{2,NS}(4.0,4.0,Interval{Float64}(1.0,6.0), seed_gradient(2,Val(2)), seed_gradient(2,Val(2)),false)
+   out2 = EAGO.McCormick.max_kernel(X, Y, max(X.Intv,Y.Intv))
+   @test out2.cv == 4.0
+   @test isapprox(out2.cc, 5.3571428, atol=1E-5)
+
+   X = MC{2,Diff}(3.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   Y = MC{2,Diff}(-4.0,-4.0,Interval{Float64}(-5.0,-3.0), seed_gradient(2,Val(2)), seed_gradient(2,Val(2)),false)
+   out3 = EAGO.McCormick.max_kernel(X, Y, max(X.Intv,Y.Intv))
+   @test out3.cv == 3.0
+   @test out3.cc == 3.0
+
+   X = MC{2,Diff}(2.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   Y = MC{2,Diff}(4.0,4.0,Interval{Float64}(1.0,6.0), seed_gradient(2,Val(2)), seed_gradient(2,Val(2)),false)
+   out4 = EAGO.McCormick.max_kernel(X, Y, max(X.Intv,Y.Intv))
+   @test out4.cv == 3.0
+   @test out4.cc == 5.2
 end
 
 @testset "Implicit" begin

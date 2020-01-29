@@ -125,7 +125,7 @@ end
         cv,cv_grad = psil_max(x.cv,temp_mid,x.Intv,y.Intv,x,y)
     end
     cc,cc_grad = psir_max(x.cc, y.cc, x.cc_grad, y.cv_grad, x.Intv, y.Intv)
-    return MC{N}(cv, cc, maxIntv, cv_grad, cc_grad, (x.cnst && y.cnst))
+    return MC{N, Diff}(cv, cc, max(x.Intv, y.Intv), cv_grad, cc_grad, (x.cnst && y.cnst))
 end
 @inline max(x::MC, y::MC) = max_kernel(x, y, max(x.Intv, y.Intv))
 
