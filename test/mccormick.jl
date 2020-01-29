@@ -798,6 +798,18 @@ end
 
     out_mc3 = EAGO.McCormick.div_kernel(X, X, X.Intv/X.Intv)
     @test out_mc3.cv == 1.0
+
+    X = MC{2,Diff}(3.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+    Y = MC{2,Diff}(-4.0,-4.0,Interval{Float64}(-5.0,-3.0), seed_gradient(2,Val(2)), seed_gradient(2,Val(2)),false)
+
+    out_mc1 = EAGO.McCormick.div_diffcv(X, -Y)
+    @test isapprox(out_mc1[1], 0.72855339, atol=1E-5)
+    @test isapprox(out_mc1[2][1], 0.25, atol=1E-5)
+    @test isapprox(out_mc1[2][2], 0.18213834, atol=1E-5)
+    
+    out_mc2 = EAGO.McCormick.div_MV(X, -Y, X.Intv/-Y.Intv)
+    @test isapprox(out_mc2.cv, 0.72855339, atol=1E-5)
+    @test isapprox(out_mc2.cc, 0.86666666666, atol=1E-5)
 end
 
 @testset "Min/Max" begin
