@@ -1,6 +1,6 @@
 name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
