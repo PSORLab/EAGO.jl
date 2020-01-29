@@ -623,6 +623,13 @@ end
     optimize!(m)
     @test isapprox(JuMP.objective_value(m), 1.0652212400578724, atol=1E-3)
 
+    m = Model(with_optimizer(EAGO.Optimizer))
+    xL = [-2.0 0.0]; xU = [2.0 4.0]
+    @variable(m, xL[i] <= x[i=1:2] <= xU[i])
+    @NLobjective(m, Max, x[2]^2 + x[1]^2 + x[1]*x[2])
+    optimize!(m)
+    @test isapprox(JuMP.objective_value(m), 27.999972554987703, atol=1E-3)
+
     #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, iteration_limit = 3,
                              output_iterations = 1, absolute_tolerance = 1.0E-2))

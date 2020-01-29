@@ -769,6 +769,35 @@ end
     @test isapprox(div1.cc, 2.9999999, atol=1E-6)
     @test isapprox(div2.cv, 1.05, atol=1E-6)
     @test isapprox(div2.cc, 1.65, atol=1E-6)
+
+    x = Interval{Float64}(2.0, 5.0)
+    y = Interval{Float64}(3.0, 7.0)
+    z = 2.9
+    es = 2.4
+    nu = 3.5
+    omega = 3.1
+    @test isapprox( EAGO.McCormick.div_alphaxy(es, nu, x, y), 0.676190476, atol = 1E-5)
+    @test isapprox(EAGO.McCormick.div_gammay(omega, y), -5.3388888888, atol = 1E-5)
+    @test isapprox(EAGO.McCormick.div_deltaxy(omega, x, y), -3.05079365, atol = 1E-5)
+    @test isapprox(EAGO.McCormick.div_psixy(es, nu, x, y), 0.67620756, atol = 1E-5)
+    @test EAGO.McCormick.div_omegaxy(x, y) == -3.5
+    @test isapprox(EAGO.McCormick.div_lambdaxy(es, nu, x), 0.66341388, atol=1E-5)
+    @test EAGO.McCormick.div_nuline(x, y, z)  == 4.2
+
+    X = MC{2,Diff}(3.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+    Y = MC{2,Diff}(-4.0,-4.0,Interval{Float64}(-5.0,-3.0), seed_gradient(2,Val(2)), seed_gradient(2,Val(2)),false)
+
+    out_mc1 = EAGO.McCormick.div_diffcv(X, Y)
+    @test isapprox(out_mc1[1], -0.72855339, atol=1E-5)
+    @test isapprox(out_mc1[2][1], -0.25, atol=1E-5)
+    @test isapprox(out_mc1[2][2], -0.18213834, atol=1E-5)
+
+    out_mc2 = EAGO.McCormick.div_MV(X, Y, X.Intv/Y.Intv)
+    @test isapprox(out_mc2.cv, -0.86666666666, atol=1E-5)
+    @test isapprox(out_mc2.cc, -0.73333333333, atol=1E-5)
+
+    out_mc3 = EAGO.McCormick.div_kernel(X, X, X.Intv/X.Intv)
+    @test out_mc3.cv == 1.0
 end
 
 @testset "Min/Max" begin

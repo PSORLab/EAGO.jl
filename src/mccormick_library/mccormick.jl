@@ -3,6 +3,7 @@ module McCormick
 using DocStringExtensions, LinearAlgebra
 using DiffRules: diffrule
 using StaticArrays: @SVector, SVector, zeros, ones
+using ForwardDiff: Dual, Partials
 
 import Base: +, -, *, /, convert, in, isempty, one, zero, real, eps, max, min,
              abs, inv, exp, exp2, exp10, expm1, log, log2, log10, log1p, acosh, sech,
