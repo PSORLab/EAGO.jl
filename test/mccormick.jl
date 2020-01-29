@@ -593,6 +593,16 @@ end
    @test isapprox(z13a.cv, -3.9600001, atol=1E-6)
    @test isapprox(z13b.cv, -3.96064453125, atol=1E-6)
 
+   X = MC{2,Diff}(3.0, 3.0, Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   out1 = EAGO.McCormick.flt_pow_1(X, 0.5, X.Intv^0.5)
+   @test isapprox(out1.cv, 1.70710678, atol=1E-5)
+   @test isapprox(out1.cc, 1.7320508, atol=1E-5)
+
+   X = MC{2,NS}(3.0, 3.0, Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   out2 = EAGO.McCormick.flt_pow_1(X, 0.5, X.Intv^0.5)
+   @test isapprox(out2.cv, 1.70710678, atol=1E-5)
+   @test isapprox(out2.cc, 1.7320508, atol=1E-5)
+
 end
 
 @testset "Multiplication Operator" begin
