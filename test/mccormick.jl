@@ -848,6 +848,37 @@ end
    @test eps(x) == max(eps(x.cc), eps(x.cv))
    @test mid(x) == mid(x.Intv)
    @test one(x) == MC{2,NS}(1.0, 1.0, one(Interval{Float64}), zero(SVector{2,Float64}), zero(SVector{2,Float64}), true)
+
+   X = MC{2,NS}(3.0,3.0,Interval{Float64}(2.0,4.0), seed_gradient(1,Val(2)),seed_gradient(1,Val(2)),false)
+   out1 = EAGO.McCormick.max_kernel(3.0, X, max(3.0, X.Intv))
+   out2 = EAGO.McCormick.max_kernel(X, Float32(3.0), max(X.Intv, Float32(3.0)))
+   out3 = EAGO.McCormick.max_kernel(Float32(3.0), X, max(X.Intv, Float32(3.0)))
+   out4 = EAGO.McCormick.max_kernel(X, Int32(3), max(X.Intv, Int32(3.0)))
+   out5 = EAGO.McCormick.max_kernel(Int32(3), X, max(X.Intv, Int32(3.0)))
+   out6 = EAGO.McCormick.min_kernel(X, Float32(3.0), min(X.Intv, Float32(3.0)))
+   out7 = EAGO.McCormick.min_kernel(Float32(3.0), X, min(Float32(3.0), X.Intv))
+   out8 = EAGO.McCormick.min_kernel(X, Int32(3), min(X.Intv, Int32(3.0)))
+   out9 = EAGO.McCormick.min_kernel(Int32(3), X, min(Int32(3.0), X.Intv))
+
+   @test out1.cv == 3.0
+   @test out2.cv == 3.0
+   @test out3.cv == 3.0
+   @test out4.cv == 3.0
+   @test out5.cv == 3.0
+   @test out6.cv == 2.5
+   @test out7.cv == 2.5
+   @test out8.cv == 2.5
+   @test out9.cv == 2.5
+
+   @test out1.cc == 3.5
+   @test out2.cc == 3.5
+   @test out3.cc == 3.5
+   @test out4.cc == 3.5
+   @test out5.cc == 3.5
+   @test out6.cc == 3.0
+   @test out7.cc == 3.0
+   @test out8.cc == 3.0
+   @test out9.cc == 3.0
 end
 
 @testset "Implicit" begin
