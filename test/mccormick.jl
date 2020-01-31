@@ -383,6 +383,36 @@ end
    @test check_vs_ref1(atan, x_atan_n, yref_atan_d1_n, mctol)
    @test check_vs_ref1(atan, x_atan_z2, yref_atan_d1_z2, mctol)
    @test check_vs_ref1(atan, x_atan_z1_ns, yref_atan_ns, mctol)
+
+   x = MC{2, NS}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   out1 = EAGO.McCormick.log10_kernel(x, log10(x.Intv))
+   @test isapprox(out1.cv, 0.20068666, atol=1E-5)
+
+   y = MC{2, Diff}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   out2 = EAGO.McCormick.log10_kernel(y, log10(y.Intv))
+   @test isapprox(out2.cv, 0.20068666, atol=1E-5)
+
+   z = MC{1, Diff}(1.1)
+   out3 = EAGO.McCormick.log10_kernel(z, Interval{Float64}(log10(1.1)))
+   @test isapprox(out3.cv, 0.041392685, atol=1E-5)
+
+   x = MC{2, NS}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   out4 = EAGO.McCormick.exp_kernel(x, exp(x.Intv))
+   @test isapprox(out4.cv, 7.38905609, atol=1E-5)
+
+   y = MC{2, Diff}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   out5 = EAGO.McCormick.exp_kernel(y, exp(y.Intv))
+   @test isapprox(out5.cv, 20.0855369, atol=1E-5)
+
+   x1dual = Dual{1,Float64,2}(2.1, Partials{2,Float64}(NTuple{2,Float64}([1.1; 2.9])))
+   x2dual = Dual{1,Float64,2}(2.4, Partials{2,Float64}(NTuple{2,Float64}([1.1; 2.9])))
+   x3dual = Dual{1,Float64,2}(2.7, Partials{2,Float64}(NTuple{2,Float64}([1.1; 2.9])))
+   out6 = EAGO.McCormick.mid3(x1dual, x2dual, x3dual)
+   out7 = EAGO.McCormick.mid3(x1dual, x3dual, x2dual)
+   out8 = EAGO.McCormick.mid3(x2dual, x3dual, x1dual)
+   @test out6[2] == 2
+   @test out7[2] == 3
+   @test out8[2] == 1
 end
 
 
