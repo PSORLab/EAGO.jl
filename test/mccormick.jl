@@ -943,6 +943,31 @@ end
    out4 = EAGO.McCormick.max_kernel(X, Y, max(X.Intv,Y.Intv))
    @test out4.cv == 3.0
    @test out4.cc == 5.2
+
+   x = MC{2, NS}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   x1 = MC{2, NS}(2.1, 3.1, Interval{Float64}(1.5,3.5), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   out1 = EAGO.McCormick.interval_MC(x)
+   @test out1.cv == 1.0
+   @test out1.cc == 4.0
+
+   y = MC{2, Diff}(2.0, 3.0, Interval{Float64}(1.0,4.0), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+   z = MC{2, Diff}(2.1, 3.1, Interval{Float64}(1.5,3.5), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
+
+   out2 = intersect(y, z)
+   @test isapprox(out1.cv, 0.3, atol=1E-5)
+   @test out1.cc == 3.1
+
+   out2a = intersect(x1, x)
+   @test out2a.cv == 2.1
+   @test out2a.cc == 3.0
+
+   out2b = intersect(x, Interval{Float64}(-4.0,-1.0))
+   @test isnan(out2b.cv)
+   @test isnan(out2b.cc)
+
+   out2c = intersect(x, Interval{Float64}(9.0,10.0))
+   @test isnan(out2c.cv)
+   @test isnan(out2c.cc)
 end
 
 @testset "Implicit" begin
