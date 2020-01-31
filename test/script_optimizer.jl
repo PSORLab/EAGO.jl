@@ -82,6 +82,12 @@ end
     @test tape2.set_trace_count == 14
     @test tape2.const_count == 4
 
+    nds = EAGO.Script.tape_to_list(tape2)
+    @test nds[1].index == 1
+    @test nds[1].children[1] == -1
+    @test nds[13].index == 15
+    @test nds[13].children[1] == 12
+
     function f3(x)
         z = abs(x[1])::Float64
         return z
