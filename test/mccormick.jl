@@ -954,8 +954,8 @@ end
    z = MC{2, Diff}(2.1, 3.1, Interval{Float64}(1.5,3.5), seed_gradient(1,Val(2)), seed_gradient(1,Val(2)), false)
 
    out2 = intersect(y, z)
-   @test isapprox(out1.cv, 0.3, atol=1E-5)
-   @test out1.cc == 3.1
+   @test isapprox(out2.cv, 0.3, atol=1E-5)
+   @test out2.cc == 3.1
 
    out2a = intersect(x1, x)
    @test out2a.cv == 2.1
