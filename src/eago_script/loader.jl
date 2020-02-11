@@ -4,23 +4,32 @@ function tape_to_list(tape::Tape)
     new_nds = NodeData[NodeData(last_node.nodetype, last_node.index, -1)]
 
     queue = Tuple{Int,Int}[(len, -1)]
-    parent_dict = Dict{Int,Int}(len => 1)
+    parent_dict = Dict{Int,Int}(len => 1) # starting node is 1
     node_count = 1
 
     while ~isempty(queue)
-        (node_num, prior_prt) = popfirst!(queue)
-        @inbounds active_node = tape.nd[node_num]
+        println("pre queue: $(queue)")
+        (active_node_num, prior_prt) = popfirst!(queue)
+        @inbounds active_node = tape.nd[active_node_num]
         @inbounds active_node_child1 = active_node.children[1]
+        println("CHILDREN OF ($active_node_num, $(active_node.children), $(active_node.index)) with parent = $prior_prt")
         if (active_node_child1 > 0) # has any children
             for child in active_node.children
-                    push!(queue, (child, node_num))
-                    @inbounds cn = tape.nd[child]
-                    @inbounds parent_num = parent_dict[node_num]
-                    push!(new_nds, NodeData(cn.nodetype, cn.index, parent_num))
-                    node_count += 1
+                push!(queue, (child, active_node_num))
+                @inbounds cn = tape.nd[child]
+                @inbounds parent_num = parent_dict[active_node_num]
+                added_node = NodeData(cn.nodetype, cn.index, parent_num)
+                push!(new_nds, added_node)
+                node_count += 1
+                if haskey(parent_dict, child)
+                    # ADD SPECIAL CASE HANDLING HERE
+                else
                     parent_dict[child] = node_count
+                end
+                println("Node #$(length(new_nds)), (c#, a#, p#, n#, cn, an): $((child, active_node_num, parent_num, node_count, cn, added_node))")
             end
         end
+        println("post queue: $(queue)")
     end
     return new_nds
 end

@@ -675,8 +675,8 @@ function mult_kernel(x1::MC{N,NS}, x2::MC{N,NS}, y::Interval{Float64}) where N
 	elseif (x2.Intv.hi <= 0.0)
 		return -mult_kernel(-x2, x1, -y)
 	else
-    	x2.cnst && (return mul1_u1mix_u2mix(x1,x2,x1.cnst))
-    	x1.cnst && (return mul1_u1mix_u2mix(x2,x1,x2.cnst))
+    	x2.cnst && (return mul1_u1mix_u2mix(x1, x2, y, x1.cnst))
+    	x1.cnst && (return mul1_u1mix_u2mix(x2, x1, y, x2.cnst))
 	end
 	return mul2_u1mix_u2mix(x1, x2, y)
 end
