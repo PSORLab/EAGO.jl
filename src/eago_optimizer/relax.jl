@@ -255,14 +255,14 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     elseif x._objective_is_sqf
-        println("x._objective_is_sqf: $(x._objective_is_sqf)")
-        println("x._objective_convexity: $(x._objective_convexity)")
-        println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
-        println("vi: $(vi)")
-        println("nx: $(nx)")
-        println("x0: $(x0)")
-        println("x._current_node: $(x._current_node)")
-        println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
+        #println("x._objective_is_sqf: $(x._objective_is_sqf)")
+        #println("x._objective_convexity: $(x._objective_convexity)")
+        #println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
+        #println("vi: $(vi)")
+        #println("nx: $(nx)")
+        #println("x0: $(x0)")
+        #println("x._current_node: $(x._current_node)")
+        #println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
         if x._objective_convexity
             saf = relax_convex_kernel(x._objective_sqf, vi, nx, x0)
         else
@@ -442,22 +442,6 @@ function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::I
     end
     relax_quadratic!(x, v, q)
     relax_nlp!(x, v, q)
-
-    sol = [0.9473842345951454;
-           0.05221701195483992;
-           0.0003987534500146176;
-           421.31863096778795;
-           421.31863096778795;5.266478674060949]
-    flag = true
-    for i in 1:6
-        if ~(x._current_node.lower_variable_bounds[i] <= sol[i]
-           <= x._current_node.upper_variable_bounds[i])
-            flag = false
-        end
-    end
-    if flag == true
-        println("solution in box at relax")
-    end
 
     return
 end

@@ -55,13 +55,13 @@ end
 
 minus_kernel(x::MC, y::C, z::Interval{Float64}) where {C <: AbstractFloat} = minus_kernel(x, convert(Float64,y), z)
 minus_kernel(y::C, x::MC, z::Interval{Float64}) where {C <: AbstractFloat} = minus_kernel(convert(Float64,y), x, z)
--(x::MC, c::C) where {C <: AbstractFloat} = minus_kernel(x, convert(Float64,c), x.Intv)
--(c::C, x::MC) where {C <: AbstractFloat} = minus_kernel(convert(Float64,c), x, x.Intv)
+-(x::MC, c::C) where {C <: AbstractFloat} = x - convert(Float64,c)
+-(c::C, x::MC) where {C <: AbstractFloat} = convert(Float64,c) - x
 
 minus_kernel(x::MC, y::C, z::Interval{Float64}) where {C <: Integer} = minus_kernel(x, convert(Float64,y), z)
 minus_kernel(y::C, x::MC, z::Interval{Float64}) where {C <: Integer} = minus_kernel(convert(Float64,y), x, z)
--(x::MC, c::C) where {C <: Integer} = minus_kernel(x, convert(Float64,c), x.Intv)
--(c::C, x::MC) where {C <: Integer} = minus_kernel(convert(Float64,c), x, x.Intv)
+-(x::MC, c::C) where {C <: Integer} = x - convert(Float64,c)
+-(c::C, x::MC) where {C <: Integer} = convert(Float64,c) - x
 
 # Multiplication
 function mult_kernel(x::MC{N,T}, c::Float64, z::Interval{Float64}) where {N, T <: RelaxTag}

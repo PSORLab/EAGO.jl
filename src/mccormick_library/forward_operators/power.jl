@@ -1,8 +1,17 @@
 # defines square operator
 sqr(x::Float64) = x*x
-cv_sqr_NS(x::Float64, xL::Float64, xU::Float64) = x^2
+function cv_sqr_NS(x::Float64, xL::Float64, xU::Float64)
+	x^2
+end
 dcv_sqr_NS(x::Float64, xL::Float64, xU::Float64) = 2.0*x
-cc_sqr(x::Float64, xL::Float64, xU::Float64) = (xU > xL) ? xL^2 + (xL + xU)*(x - xL) : xU^2
+function cc_sqr(x::Float64, xL::Float64, xU::Float64)
+	if (xU > xL)
+		cc = xL^2 + (xL + xU)*(x - xL)
+	else
+		cc = xU^2
+	end
+	return cc
+end
 dcc_sqr(x::Float64, xL::Float64, xU::Float64) = (xU > xL) ? (xL + xU) : 0.0
 function cv_sqr(x::Float64, xL::Float64, xU::Float64)
     (0.0 <= xL || xU <= 0.0) && return x^2
@@ -15,12 +24,8 @@ function dcv_sqr(x::Float64, xL::Float64, xU::Float64)
 	return (3.0*x^2)/xL
 end
 function sqr_kernel(x::MC{N,NS}, y::Interval{Float64}) where N
-  eps_max = abs(x.Intv.hi) > abs(x.Intv.lo) ?  x.Intv.hi : x.Intv.lo
-	if (x.Intv.lo < 0.0 < x.Intv.hi)
-		eps_min = 0.0
-	else
-		eps_min = abs(x.Intv.hi) > abs(x.Intv.lo) ?  x.Intv.lo : x.Intv.hi
-	end
+    eps_min = y.lo
+    eps_max = y.hi
 	midcc, cc_id = mid3(x.cc, x.cv, eps_max)
 	midcv, cv_id = mid3(x.cc, x.cv, eps_min)
 	cc = cc_sqr(midcc, x.Intv.lo, x.Intv.hi)
@@ -29,29 +34,33 @@ function sqr_kernel(x::MC{N,NS}, y::Interval{Float64}) where N
 	dcv = dcv_sqr_NS(midcv, x.Intv.lo, x.Intv.hi)
 	cc_grad = mid_grad(x.cc_grad, x.cv_grad, cc_id)*dcc
 	cv_grad = mid_grad(x.cc_grad, x.cv_grad, cv_id)*dcv
-	cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
+	#cv, cc, cv_grad, cc_grad = cut(y.lo, y.hi, cv, cc, cv_grad, cc_grad)
 	return MC{N,NS}(cv, cc, y, cv_grad, cc_grad, x.cnst)
 end
 function sqr_kernel(x::MC{N,Diff}, y::Interval{Float64}) where N
-  eps_max = abs(x.Intv.hi) > abs(x.Intv.lo) ?  x.Intv.hi : x.Intv.lo
-	if (x.Intv.lo < 0.0 < x.Intv.hi)
-		eps_min = 0.0
-	else
-		eps_min = abs(x.Intv.hi) > abs(x.Intv.lo) ?  x.Intv.lo : x.Intv.hi
-	end
+	if (x.Intv.hi < 0.0)
+      eps_min = x.Intv.hi
+      eps_max = x.Intv.lo
+    elseif (x.Intv.lo > 0.0)
+      eps_min = x.Intv.lo
+      eps_max = x.Intv.hi
+    else
+      eps_min = 0.0
+      eps_max = (abs(x.Intv.lo) >= abs(x.Intv.hi)) ? x.Intv.lo : x.Intv.hi
+    end
 	midcc, cc_id = mid3(x.cc, x.cv, eps_max)
 	midcv, cv_id = mid3(x.cc, x.cv, eps_min)
 	cc = cc_sqr(midcc, x.Intv.lo, x.Intv.hi)
 	dcc = dcc_sqr(midcc, x.Intv.lo, x.Intv.hi)
-  cv = cv_sqr(midcv, x.Intv.lo, x.Intv.hi)
-  dcv = dcv_sqr(midcv, x.Intv.lo, x.Intv.hi)
-  gdcc1 = dcc_sqr(x.cv, x.Intv.lo, x.Intv.hi)
-  gdcv1 = dcv_sqr(x.cv, x.Intv.lo, x.Intv.hi)
-  gdcc2 = dcc_sqr(x.cc, x.Intv.lo, x.Intv.hi)
-  gdcv2 = dcv_sqr(x.cc, x.Intv.lo, x.Intv.hi)
-  cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
-  cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
-  return MC{N,Diff}(cv, cc, y, cv_grad, cc_grad, x.cnst)
+    cv = cv_sqr(midcv, x.Intv.lo, x.Intv.hi)
+    dcv = dcv_sqr(midcv, x.Intv.lo, x.Intv.hi)
+    gdcc1 = dcc_sqr(x.cv, x.Intv.lo, x.Intv.hi)
+    gdcv1 = dcv_sqr(x.cv, x.Intv.lo, x.Intv.hi)
+    gdcc2 = dcc_sqr(x.cc, x.Intv.lo, x.Intv.hi)
+    gdcv2 = dcv_sqr(x.cc, x.Intv.lo, x.Intv.hi)
+    cv_grad = max(0.0, gdcv1)*x.cv_grad + min(0.0, gdcv2)*x.cc_grad
+    cc_grad = min(0.0, gdcc1)*x.cv_grad + max(0.0, gdcc2)*x.cc_grad
+    return MC{N,Diff}(cv, cc, y, cv_grad, cc_grad, x.cnst)
 end
 sqr(x::MC) = sqr_kernel(x, (x.Intv)^2)
 
@@ -241,6 +250,8 @@ function pow_kernel(x::MC, c::Z, y::Interval{Float64}) where {Z<:Integer}
 		    z = x
 	  elseif (c > 0)
         if (c == 2)
+			#println("x = $x")
+			#println("y = $y")
 			      z = sqr_kernel(x, y)
 				elseif isodd(c)
 						z = pos_odd(x, c, y)
