@@ -361,6 +361,22 @@ function preprocess!(t::ExtensionType, x::Optimizer)
     x._final_volume = prod(upper_variable_bounds(x._current_node) -
                            lower_variable_bounds(x._current_node))
     x._preprocess_feasibility = feas
+
+    sol = [0.9473842345951454;
+           0.05221701195483992;
+           0.0003987534500146176;
+           421.31863096778795;
+           421.31863096778795;5.266478674060949]
+    flag = true
+    for i in 1:6
+        if ~(x._current_node.lower_variable_bounds[i] <= sol[i]
+           <= x._current_node.upper_variable_bounds[i])
+            flag = false
+        end
+    end
+    if flag == true
+        println("solution in box at end of preprocess")
+    end
     return
 end
 
@@ -860,7 +876,7 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
         if is_feasible_solution(x._upper_termination_status, x._upper_result_status)
             x._upper_feasibility = true
             value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-            x._upper_objective_value = (value > 0) ? value*(1.0 + 1.0E-6) : value*(1.0 - 1.0E-6)
+            x._upper_objective_value = (value > 0) ? value*(1.0 + 1.0E-4) : value*(1.0 - 1.0E-4)
             x._best_upper_value = min(value, x._best_upper_value)
             x._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else

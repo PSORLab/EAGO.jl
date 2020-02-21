@@ -563,8 +563,8 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:relaxed_optimizer_kwargs] = Base.Iterators.Pairs(NamedTuple(),())
         default_opt_dict[:relaxed_inplace_mod] = true
         default_opt_dict[:upper_optimizer] = Ipopt.Optimizer()
-        fac = with_optimizer(Ipopt.Optimizer, max_iter = 1000, acceptable_tol = 1E30,
-                             acceptable_iter = 300, constr_viol_tol = 0.00001,
+        fac = with_optimizer(Ipopt.Optimizer, max_iter = 10000, acceptable_tol = 1E30,
+                             acceptable_iter = 3000, constr_viol_tol = 0.000001,
                              acceptable_constr_viol_tol = 1E-6, print_level = 0)
 
         default_opt_dict[:upper_factory] = fac

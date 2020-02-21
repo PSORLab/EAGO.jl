@@ -35,6 +35,25 @@ function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
     return
 end
 
+function solution_in_box(y, strs)
+    sol = [0.9473842345951454;
+           0.05221701195483992;
+           0.0003987534500146176;
+           421.31863096778795;
+           421.31863096778795;
+           5.266478674060949]
+    flag = true
+    for i in 1:6
+        if ~(y.lower_variable_bounds[i] <= sol[i]
+           <= y.upper_variable_bounds[i])
+            flag = false
+        end
+    end
+    if flag == true
+        println(strs)
+    end
+end
+
 """
 $(FUNCTIONNAME)
 
@@ -46,6 +65,14 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
     x._preprocess_result_status = MOI.get(x.relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
                                                     x._preprocess_result_status)
+
+    #println("trivial filtering term status: $(x._preprocess_termination_status)")
+    #println("trivial filtering result status: $(x._preprocess_result_status)")
+    #println("trivial filtering valid_flag: $(valid_flag)")
+    #println("trivial filtering feasible_flag: $(feasible_flag) \n")
+    #println("trivial filtering lower index in: $(x._obbt_working_lower_index)")
+    #println("trivial filtering upper index in: $(x._obbt_working_upper_index)  \n")
+
 
     if valid_flag
         if feasible_flag
@@ -74,6 +101,10 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
             end
         end
     end
+
+    #println("trivial filtering lower index out: $(x._obbt_working_lower_index)")
+    #println("trivial filtering upper index out: $(x._obbt_working_upper_index) \n")
+
     return
 end
 
@@ -230,13 +261,16 @@ function obbt(x::Optimizer)
     feasibility = true
 
     y = x._current_node
+    #println("y: $y")
     x._current_xref .= 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
+    #println("y.lower_variable_bounds: $(y.lower_variable_bounds)")
+    #println("y.upper_variable_bounds: $(y.upper_variable_bounds)")
 
     # solve initial problem to feasibility
     update_relaxed_problem_box!(x, y)
     relax_problem!(x, x._current_xref, 1)
     relax_objective!(x, x._current_xref)
-    objective_cut_linear!(x, 1)
+    #objective_cut_linear!(x, 1)
     MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(x.relaxed_optimizer)
 
@@ -250,11 +284,17 @@ function obbt(x::Optimizer)
     if aggressive_obbt_on_heurestic(x)
         feasibility = aggressive_filtering!(x, y)
     end
+    #println("feasibility agg: $feasibility")
 
     x._preprocess_termination_status = MOI.get(x.relaxed_optimizer, MOI.TerminationStatus())
     x._preprocess_result_status = MOI.get(x.relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
                                                     x._preprocess_result_status)
+
+    #println("x._preprocess_termination_status: $(x._preprocess_termination_status)")
+    #println("x._preprocess_result_status: $(x._preprocess_result_status)")
+
+    #println("feasibility first sub: $feasibility")
 
     if valid_flag & feasible_flag
         xLP = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
@@ -315,6 +355,7 @@ function obbt(x::Optimizer)
             if valid_flag
                 if feasible_flag
                     xLP .= MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
+                    #println("set lower bound at i=$(lower_indx) to $(xLP[lower_indx])")
                     if is_integer_variable(x, lower_indx)
                         @inbounds y.lower_variable_bounds[lower_indx] = ceil(xLP[lower_indx])
                     else
@@ -330,6 +371,7 @@ function obbt(x::Optimizer)
             else
                 break
             end
+            #solution_in_box(y, "(lower_value, lower_indx) = ($lower_value, $lower_indx)")
         else
 
             x._obbt_working_upper_index[upper_indx] = false
@@ -345,6 +387,7 @@ function obbt(x::Optimizer)
             if valid_flag
                 if feasible_flag
                     xLP .= MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
+                    #println("set upper bound at i=$(upper_indx) to $(xLP[upper_indx])")
                     if is_integer_variable(x, upper_indx)
                         @inbounds y.upper_variable_bounds[upper_indx] = ceil(xLP[upper_indx])
                     else
@@ -360,10 +403,14 @@ function obbt(x::Optimizer)
             else
                 break
             end
+            #solution_in_box(y, "(upper_value, upper_indx) = ($upper_value, $upper_indx)")
         end
-        trivial_filtering!(x, y)
+        #println("lower bounds: $(y.lower_variable_bounds)")
+        #println("upper bounds: $(y.upper_variable_bounds)")
+        #trivial_filtering!(x, y)
     end
 
+    #println("preprocess feasibility: $feasibility")
     return feasibility
 end
 

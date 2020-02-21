@@ -1,6 +1,6 @@
 name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
-version = "0.3.1"
+version = "0.3.2"
 
 [deps]
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
@@ -20,14 +20,14 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-Cassette = "~0.2.1"
+Cassette = "0.3.1"
 DataStructures = "~0.17"
 DiffRules = "0.0.5, 1.0.0"
 DocStringExtensions = "~0.8"
 ForwardDiff = "~0.5.0, ~0.6, ~0.7, ~0.8, ~0.9, ~0.10"
 GLPK = "~0.9, ~0.10, ~0.11, ~0.12"
-IntervalArithmetic = "~0.15"
-IntervalContractors = "0.4.1"
+IntervalArithmetic = "~0.16"
+IntervalContractors = "~0.3, ~0.4"
 Ipopt = "0.6.0, 0.6.1"
 JuMP = "0.19.2, 0.20.0"
 MathOptInterface = "0.8.1, 0.8.2, 0.8.3, 0.8.4, ~0.9"
