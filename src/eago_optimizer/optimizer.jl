@@ -238,6 +238,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     cut_cvx::Float64
     cut_tolerance::Float64
     objective_cut_on::Bool
+    cut_safe_l::Float64
+    cut_safe_u::Float64
+    cut_safe_b::Float64
 
     # Upper bounding options
     upper_optimizer::T
@@ -576,6 +579,10 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
                 setfield!(m, i, default_opt_dict[i])
             end
         end
+
+        m.cut_safe_l = haskey(options, :cut_safe_l) ? options[:safe_cut_l] : 0.00001
+        m.cut_safe_u = haskey(options, :cut_safe_u) ? options[:safe_cut_u] : 10000.0
+        m.cut_safe_b = haskey(options, :cut_safe_b) ? options[:safe_cut_b] : 100000.0
 
         m._global_lower_bound = -Inf
         m._global_upper_bound = Inf

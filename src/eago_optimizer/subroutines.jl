@@ -115,6 +115,9 @@ function fathom!(t::ExtensionType, d::Optimizer)
         if max_check
             popmax!(d._stack)
             d._node_count -= 1
+            if isempty(d._stack)
+                continue_flag = false
+            end
         else
             if ~max_check
                 continue_flag = false
