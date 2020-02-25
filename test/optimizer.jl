@@ -494,7 +494,7 @@ end
     @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
     @test isapprox(JuMP.value(x), -200.0, atol=1E-5)
     @test isapprox(JuMP.value(y), 300.0, atol=1E-5)
-    @test isapprox(JuMP.objective_value(m), -60000.00119999499, atol=2.0)
+    @test isapprox(JuMP.objective_value(m), -59994.001199872495, atol=2.0)
 
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 0))
     x_Idx = Any[1, 2, 3]
@@ -568,7 +568,7 @@ end
     @test features[2] == :Jac
     xhalf = Float64[0.5 for i in 1:3]
     EAGO.forward_eval_obj(r, xhalf)
-    @test isapprox(r.objective.setstorage[1].cv, -53.31880224185876, atol=1E-5)
+    @test isapprox(r.objective.setstorage[1].cv, -53.31977574645283, atol=1E-5)
 
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, output_iterations = 1, absolute_tolerance = 1.0E-2))
     # ----- Variables ----- #
@@ -586,7 +586,7 @@ end
     @NLobjective(m, Min, nl_expr)
     JuMP.optimize!(m)
 
-    @test isapprox(JuMP.objective_value(m), 0.540303830954979, atol=1E-6)
+    @test isapprox(JuMP.objective_value(m), 0.5403573209807536, atol=1E-6)
     @test JuMP.termination_status(m) === MOI.OPTIMAL
     @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
 
@@ -611,7 +611,7 @@ end
     # ----- Objective ----- #
     @objective(m, Min, x[9])
     optimize!(m)
-    @test isapprox(objective_value(m), 7049.2548148812575, atol=1E-2)
+    @test isapprox(objective_value(m), 7049.952690409949, atol=1E-2)
 
     m = Model(with_optimizer(EAGO.Optimizer, quad_uni_repetitions = 2, quad_uni_depth = 2))
 
@@ -628,7 +628,7 @@ end
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])
     @NLobjective(m, Max, x[2]^2 + x[1]^2 + x[1]*x[2])
     optimize!(m)
-    @test isapprox(JuMP.objective_value(m), 27.999972554987703, atol=1E-3)
+    @test isapprox(JuMP.objective_value(m), 27.99720055493276, atol=1E-3)
 
     #=
     m = Model(with_optimizer(EAGO.Optimizer, verbosity = 4, iteration_limit = 3,
