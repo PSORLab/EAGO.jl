@@ -1,5 +1,5 @@
 """
-    relax_convex_kernel
+$(FUNCTIONNAME)
 
 Stores the kernel of the calculation required to relax convex quadratic
 constraints using the immutable dictionary to label terms.
@@ -37,7 +37,7 @@ function relax_convex_kernel(func::SQF, vi::Vector{VI}, cvx_dict::ImmutableDict{
 end
 
 """
-    relax_nonconvex_kernel
+$(FUNCTIONNAME)
 
 Stores the kernel of the calculation required to relax nonconvex quadratic
 constraints using the immutable dictionary to label terms.
@@ -109,7 +109,7 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
 end
 
 """
-    relax_quadratic_gen_saf
+$(FUNCTIONNAME)
 
 Default routine for relaxing nonconvex quadratic constraint `lower` < `func` < `upper`
 on node `n`. Takes affine bounds of convex part at point `x0` and secant line
@@ -179,7 +179,7 @@ function store_eq_quadratic!(x::Optimizer, ci1::CI{SAF,LT}, ci2::CI{SAF,LT},
 end
 
 """
-    relax_quadratic!
+$(FUNCTIONNAME)
 
 Relaxes all quadratic constraints in `x` optimizer.
 """
@@ -235,7 +235,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
 end
 
 """
-    relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
+$(TYPEDSIGNATURES)
 
 A rountine that only relaxes the objective.
 """
@@ -255,14 +255,6 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     elseif x._objective_is_sqf
-        #println("x._objective_is_sqf: $(x._objective_is_sqf)")
-        #println("x._objective_convexity: $(x._objective_convexity)")
-        #println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
-        #println("vi: $(vi)")
-        #println("nx: $(nx)")
-        #println("x0: $(x0)")
-        #println("x._current_node: $(x._current_node)")
-        #println("x._quadratic_obj_dict: $(x._quadratic_obj_dict)")
         if x._objective_convexity
             saf = relax_convex_kernel(x._objective_sqf, vi, nx, x0)
         else
@@ -304,7 +296,7 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
 end
 
 """
-    relax_nlp!
+$(FUNCTIONNAME)
 
 A rountine that relaxes all nonlinear constraints excluding
 constraints specified as quadratic.
@@ -429,7 +421,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
 end
 
 """
-    relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::Int64)
+$(TYPEDSIGNATURES)
 
 A rountine that updates the current node for the `Evaluator` and relaxes all
 nonlinear constraints and quadratic constraints.
@@ -447,7 +439,7 @@ function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::I
 end
 
 """
-    objective_cut_linear!
+$(FUNCTIONNAME)
 
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """

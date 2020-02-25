@@ -143,7 +143,7 @@ end
 Sets the current node in the Evaluator structure.
 """
 function set_current_node!(x::Evaluator, n::NodeBB)
-    x.current_node = n
+    x.current_node = NodeBB(n)
 end
 
 include("univariate.jl")

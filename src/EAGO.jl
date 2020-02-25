@@ -71,7 +71,4 @@ module EAGO
     export SIP_Options, SIP_Result, explicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
 
-    # precomile in package....
-    println("wasn't precompiled")
-
 end

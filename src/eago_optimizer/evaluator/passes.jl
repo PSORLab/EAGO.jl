@@ -1,5 +1,5 @@
 """
-    set_value_post
+$(FUNCTIONNAME)
 
 Post process set_value operator. By default, performs the affine interval cut on
 a MC structure.
@@ -775,6 +775,7 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                     setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
                 end
             elseif (op == 5) # :/
+                #=
                 child1 = first(children_idx)
                 child2 = last(children_idx)
                 @assert n_children == 2
@@ -809,6 +810,7 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
                     end
                     setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
                 end
+                =#
             elseif (op == 6) # ifelse
                 continue
             end
@@ -914,7 +916,7 @@ function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
             forward_eval_all(d,x)
         end
     end
-    d.last_x = x
+    d.last_x .= x
 
      return flag
 end
