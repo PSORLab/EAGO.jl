@@ -24,6 +24,7 @@ import IntervalArithmetic: dist, mid, pow, +, -, *, /, convert, in, isempty,
                            sind, cosd, tand, asind, acosd, atand,
                            secd, cscd, cotd, asecd, acscd, acotd, half_pi, setrounding
 
+using IntervalContractors
 import IntervalContractors: plus_rev, mul_rev, min_rev, max_rev, minus_rev, div_rev, exp_rev,
        exp2_rev, exp10_rev, expm1_rev, log_rev, log2_rev, log10_rev,
        log1p_rev, sin_rev, cos_rev, tan_rev, asin_rev, acos_rev, atan_rev,

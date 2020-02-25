@@ -1,3 +1,4 @@
+include("interval_contractors_patch.jl")
 include("arithmetic.jl")
 include("exponential.jl")
 include("extrema.jl")
