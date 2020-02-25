@@ -735,7 +735,7 @@ end
     @NLobjective(m, Min, 3000.0 + 0.035*x[1]*x[6]-0.063*x[3]*x[5]+1.715*x[1]+4.0565*x[3] + 10*x[2])
 
     JuMP.optimize!(m)
-    @test isapprox(objective_value(m), -1009.74929, atol=1E-3)
+    @test isapprox(objective_value(m), -1009.6493309043829, atol=1E-3)
     @test MOI.FEASIBLE_POINT === primal_status(m)
     @test MOI.LOCALLY_SOLVED === termination_status(m)
 
