@@ -2,8 +2,8 @@ function IntervalContractors.cos_main(X::IntervalBox)
 
     x, y = X
 
-    x_range = Interval(0, Interval{Float64}(π).lo)
-    y_range = -1..1
+    x_range = Interval(0.0, Interval{Float64}(π).lo)
+    y_range = Interval{Float64}(-1.0, 1.0)
 
     x = x ∩ x_range
     y = y ∩ y_range
@@ -39,7 +39,7 @@ function IntervalContractors.sin_main(X::IntervalBox)
     x, y = X
 
     x_range = Interval(-(Interval{Float64}(π)/2).hi, (Interval{Float64}(π)/2).hi)
-    y_range = -1..1
+    y_range = Interval{Float64}(-1.0, 1.0)
 
     x = x ∩ x_range
     y = y ∩ y_range
