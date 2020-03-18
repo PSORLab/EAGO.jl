@@ -14,23 +14,10 @@ module EAGO
 
     using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse
-    using StaticArrays: SVector
     using LinearAlgebra: eigmin, norm
+    using McCormick, ReverseMcCormick
 
-    import Base: ImmutableDict, isless
-
-    import IntervalArithmetic: +, -, *, /, convert, in, isempty, one, zero,
-                               real, eps, max, min, abs, exp,
-                               expm1, log, log2, log10, log1p, sqrt,
-                               sin, cos, tan, min, max, sec, csc, cot, step,
-                               sign, dist, mid, pow, Interval, sinh, cosh, ∩,
-                               IntervalBox, bisect, isdisjoint, ^, exp2, exp10,
-                               tanh, asinh, cosh, atanh
-
-    include("mccormick_library/mccormick.jl")
-    using .McCormick
-
-    import Base: eltype, copy, length
+    import Base: ImmutableDict, isless, isempty, eltype, copy, length
 
     const MOI = MathOptInterface
     const SAF = MOI.ScalarAffineFunction{Float64}
@@ -70,5 +57,7 @@ module EAGO
     # Routines for solving SIPs
     export SIP_Options, SIP_Result, explicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
+
+    println("new")
 
 end
