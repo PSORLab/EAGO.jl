@@ -4,6 +4,7 @@ module EAGO
 
     import MathOptInterface
 
+    using Reexport
     using NumericIO, DocStringExtensions
 
     using JuMP
@@ -15,7 +16,8 @@ module EAGO
     using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse
     using LinearAlgebra: eigmin, norm
-    using McCormick, ReverseMcCormick
+    @reexport using McCormick
+    @reexport using ReverseMcCormick
 
     import Base: ImmutableDict, isless, isempty, eltype, copy, length
 
