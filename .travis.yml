@@ -17,6 +17,7 @@ julia:
 
 matrix:
   allow_failures:
+  - julia: 1.4
   - julia: nightly
 
 #env:
