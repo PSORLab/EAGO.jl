@@ -5,6 +5,7 @@ module EAGO
     import MathOptInterface
 
     using Reexport
+    using IntervalArithmetic
     using NumericIO, DocStringExtensions
 
     using JuMP
