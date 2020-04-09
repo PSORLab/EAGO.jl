@@ -8,11 +8,11 @@ function tape_to_list(tape::Tape)
     node_count = 1
 
     while ~isempty(queue)
-        println("pre queue: $(queue)")
+        #println("pre queue: $(queue)")
         (active_node_num, prior_prt) = popfirst!(queue)
         @inbounds active_node = tape.nd[active_node_num]
         @inbounds active_node_child1 = active_node.children[1]
-        println("CHILDREN OF ($active_node_num, $(active_node.children), $(active_node.index)) with parent = $prior_prt")
+        #println("CHILDREN OF ($active_node_num, $(active_node.children), $(active_node.index)) with parent = $prior_prt")
         if (active_node_child1 > 0) # has any children
             for child in active_node.children
                 push!(queue, (child, active_node_num))
@@ -26,10 +26,10 @@ function tape_to_list(tape::Tape)
                 else
                     parent_dict[child] = node_count
                 end
-                println("Node #$(length(new_nds)), (c#, a#, p#, n#, cn, an): $((child, active_node_num, parent_num, node_count, cn, added_node))")
+                #println("Node #$(length(new_nds)), (c#, a#, p#, n#, cn, an): $((child, active_node_num, parent_num, node_count, cn, added_node))")
             end
         end
-        println("post queue: $(queue)")
+        #println("post queue: $(queue)")
     end
     return new_nds
 end
