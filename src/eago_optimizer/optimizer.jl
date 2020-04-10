@@ -160,7 +160,6 @@ via keyword arguments in the JuMP/MOI model:
 - `branch_repetition_tol::Float64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
                                     Volume ratio tolerance required to repeat
                                     processing the current node (default = 0.9).
-- `rounding_mode::Symbol`: Interval rounding mode to use (default = :accurate)
 - `node_limit::Int64`: Node limit  (default = 10^7).
 - `time_limit::Float64`: Time limit in seconds (default = 3600).
 - `iteration_limit::Int64`: Iteration limit (default = 3000000).
@@ -257,9 +256,6 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     branch_variable::Vector{Bool}
     branch_max_repetitions::Int64
     branch_repetition_tol::Float64
-
-    # Rounding mode used with interval arithmetic
-    rounding_mode::Symbol
 
     # Termination limits
     node_limit::Int64
@@ -534,9 +530,6 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:branch_variable] = Bool[]
         default_opt_dict[:branch_max_repetitions] = 4
         default_opt_dict[:branch_repetition_tol] = 0.9
-
-        # Rounding mode used with interval arithmetic
-        default_opt_dict[:rounding_mode] = :accurate
 
         # Termination limits
         default_opt_dict[:node_limit] = 10^7

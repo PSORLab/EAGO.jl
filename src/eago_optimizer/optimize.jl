@@ -604,7 +604,6 @@ function build_nlp_evaluator(N::Int64, s::T, src::JuMP.NLPEvaluator, x::Optimize
 end
 
 function parse_problem!(m::Optimizer)
-    setrounding(Interval, m.rounding_mode)
 
     ########### Reformulate DAG using auxilliary variables ###########
     _variable_len = length(m._variable_info)
