@@ -1,28 +1,17 @@
 """
-    FunctionSetStorage
+$(TYPEDEF)
 
 A storage object for both set and number valued data required to
 compute relaxations which contains the tape used to compute a nonlinear function.
 The object is parameterized by a `{N,T<:RelaxTag}` where N corresponds the
 subgradient size used in the MC object.
-- nd::Vector{JuMP.NodeData}
-- adj::SparseMatrixCSC{Bool,Int64}
-- const_values::Vector{Float64}
-- setstorage::Vector{MC{N,T}}
-- numberstorage::Vector{Float64}
-- numvalued::Vector{Bool}
-- tp1storage::Vector{Float64}
-- tp2storage::Vector{Float64}
-- tp3storage::Vector{Float64}
-- tp4storage::Vector{Float64}
-- tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
-- grad_sparsity::Vector{Int64}
-- hess_I::Vector{Int64}
-- hess_J::Vector{Int64}
-- dependent_subexpressions::Vector{Int64}
+
+$(TYPEDFIELDS)
 """
 mutable struct FunctionSetStorage{N,T<:RelaxTag}
+    "List of nodes in nonlinear expression"
     nd::Vector{JuMP.NodeData}
+    "Adjacency Matrix for the expression"
     adj::SparseMatrixCSC{Bool,Int64}
     const_values::Vector{Float64}
     setstorage::Vector{MC{N,T}}
@@ -80,9 +69,11 @@ mutable struct SubexpressionSetStorage{N,T<:RelaxTag}
 end
 
 """
-    Evaluator
+$(TYPEDEF)
 
 MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
+
+$(TYPEDFIELDS)
 """
 mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
     user_operators::JuMP._Derivatives.UserOperatorRegistry
@@ -119,6 +110,8 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
     flt_jac_storage::Vector{Float64}
     user_output_buffer::Vector{MC{N,T}}
     seeds::Vector{SVector{N,Float64}}
+    "Context used to guard against domain violations & branch on these violations if necessary"
+    ctx::GuardCtx
     function Evaluator{N,T}() where {N,T<:RelaxTag}
         d = new()
         d.user_operators = JuMP._Derivatives.UserOperatorRegistry()
@@ -130,6 +123,7 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
         d.objective = FunctionSetStorage(N,T)
         d.index_to_variable = Tuple{Int64,Int64,Int64}[]
         d.seeds = SVector{N,Float64}[]
+        d.ctx = GuardCtx()
         for i in 1:N
             push!(d.seeds, seed_gradient(i, Val(N)))
         end

@@ -1,24 +1,24 @@
 """
-    VariableInfo
+$(TYPEDEF)
 
 A structure used to store information related to the bounds assigned to each
 variable.
-- `is_integer::Bool`:      Is the variable integer valued?
-- `lower_bound::Float64`:  May be -Inf even if has_lower_bound == true
-- `has_lower_bound::Bool`: Implies lower_bound == Inf
-- `upper_bound::Float64`:  May be Inf even if has_upper_bound == true
-- `has_upper_bound::Bool`: Implies upper_bound == Inf
-- `is_fixed::Bool`:        Implies lower_bound == upper_bound and
-                           !has_lower_bound and !has_upper_bound.
+
+$(TYPEDFIELDS)
 """
 mutable struct VariableInfo
+    "Is the variable integer valued?"
     is_integer::Bool
-    lower_bound::Float64           # May be -Inf even if has_lower_bound == true
-    has_lower_bound::Bool          # Implies lower_bound == Inf
-    upper_bound::Float64           # May be Inf even if has_upper_bound == true
-    has_upper_bound::Bool          # Implies upper_bound == Inf
-    is_fixed::Bool                 # Implies lower_bound == upper_bound and
-                                   # !has_lower_bound and !has_upper_bound.
+    "Lower bounds. May be -Inf."
+    lower_bound::Float64
+    "Boolean indicating whether finite lower bound exists."
+    has_lower_bound::Bool
+    "Upper bounds. May be Inf."
+    upper_bound::Float64
+    "Boolean indicating whether finite upper bound exists."
+    has_upper_bound::Bool
+    "Boolean indicating variable is fixed to a finite value."
+    is_fixed::Bool
 end
 VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false)
 lower_bound(x::VariableInfo) = x.lower_bound
@@ -280,6 +280,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
     enable_optimize_hook::Bool
     ext::Dict{Symbol, Any}
     ext_type::ExtensionType
+
+    # handling for domain violations
+    domain_violation_ϵ::Float64
 
     _current_node::NodeBB
     _current_xref::Vector{Float64}
@@ -554,6 +557,9 @@ mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: 
         default_opt_dict[:enable_optimize_hook] = false
         default_opt_dict[:ext] = Dict{Symbol, Any}()
         default_opt_dict[:ext_type] = DefaultExt()
+
+        # Handling for domain violation tolerance
+        default_opt_dict[:domain_violation_ϵ] = 1E-9
 
         default_opt_dict[:relaxed_optimizer] = GLPK.Optimizer()
         default_opt_dict[:relaxed_optimizer_kwargs] = Base.Iterators.Pairs(NamedTuple(),())

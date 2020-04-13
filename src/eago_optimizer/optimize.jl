@@ -1,5 +1,5 @@
 """
-    gen_quad_sparsity
+$(TYPEDSIGNATURES)
 
 Generate the list of variables (1,...,n) that are included in the func.
 """
@@ -19,7 +19,7 @@ function gen_quad_vals(func::SQF)
 end
 
 """
-    gen_quadratic_storage!
+$(TYPEDSIGNATURES)
 
 Generate the storage for the affine relaxations of quadratic functions.
 """
@@ -120,7 +120,7 @@ function gen_quadratic_storage!(x::Optimizer)
 end
 
 """
-    load_relaxed_problem!
+$(TYPEDSIGNATURES)
 
 Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
@@ -260,7 +260,7 @@ function linear_solve!(m::Optimizer)
 end
 
 """
-    convert_to_min!
+$(TYPEDSIGNATURES)
 
 Converts MOI.MAX_SENSE objective to equivalent MOI.MIN_SENSE objective
 max(f) = - min(-f).
@@ -332,7 +332,14 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
         m._relaxed_evaluator = built_evaluator
         m._relaxed_eval_has_objective = m._nlp_data.has_objective
         append!(m._relaxed_constraint_bounds, m._nlp_data.constraint_bounds)
+
+        # add info to guard context
+        temp = GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ))
+        println("made temp: $(GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ)))")
+        #m._relaxed_evaluator.ctx = GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ))
     end
+
+
 
     #m.nlp_data.evaluator = evaluator #TODO: Rebuilt entire nlp_block...
 
@@ -351,7 +358,7 @@ end
 
 # DONE
 """
-    label_fixed_variables!
+$(TYPEDSIGNATURES)
 
 Detects any variables set to a fixed value by equality or inequality constraints
 and populates the _fixed_variable storage array.
@@ -371,7 +378,7 @@ function label_fixed_variables!(m::Optimizer)
 end
 
 """
-    is_convex_quadratic
+$(TYPEDSIGNATURES)
 
 Returns true if `func` < 0  based on eigenvalue tests, false otherwise.
 """
@@ -412,7 +419,7 @@ end
 
 
 """
-    label_quadratic_convexity!
+$(TYPEDSIGNATURES)
 
 Assigns boolean value to constraint_convexity dictionary entry corresponding to
 constraint index that is true if constraint is shown to be convex and false
@@ -443,7 +450,7 @@ function label_quadratic_convexity!(x::Optimizer)
 end
 
 """
-     local_solve!
+$(TYPEDSIGNATURES)
 
 Performs a single local solve of problem.
 """
@@ -589,7 +596,7 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
 end
 
 """
-    build_nlp_evaluator
+$(TYPEDSIGNATURES)
 
 Builds the evaluator used to generate relaxations of the nonlinear equations
 and constraints from a source model.
@@ -633,7 +640,7 @@ function parse_problem!(m::Optimizer)
 end
 
 """
-    create_initial_node!
+$(TYPEDSIGNATURES)
 
 Creates an initial node with initial box constraints and adds it to the stack.
 """
@@ -648,7 +655,7 @@ function create_initial_node!(m::Optimizer)
 end
 
 """
-    check_disable_fbbt!
+$(TYPEDSIGNATURES)
 
 Disables bound tightening for problems lacking the appropriate constraints.
 """
@@ -759,7 +766,7 @@ single_storage!(x::Optimizer) = single_storage!(x.ext_type, x)
 branch_node!(x::Optimizer) = branch_node!(x.ext_type, x)
 fathom!(x::Optimizer) = fathom!(x.ext_type, x)
 """
-    global_solve!
+$(TYPEDSIGNATURES)
 
 Solves the branch and bound problem with the input EAGO optimizer object.
 """
