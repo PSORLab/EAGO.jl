@@ -334,9 +334,7 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
         append!(m._relaxed_constraint_bounds, m._nlp_data.constraint_bounds)
 
         # add info to guard context
-        temp = GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ))
-        println("made temp: $(GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ)))")
-        #m._relaxed_evaluator.ctx = GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ))
+        m._relaxed_evaluator.ctx = GuardCtx(metadata = GuardTracker(m.domain_violation_ϵ))
     end
 
 

@@ -5,9 +5,19 @@ struct GuardTracker
 end
 
 function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::MC{N,T}) where {N,T<:RelaxTag}
-    if (y.Intv.lo <= ctx.metadata.domain_tol) && (y.Intv.hi <= ctx.metadata.domain_tol)
-        z = union(x/MC{N,T}(Interval{Float64}(y.Intv.lo, -ctx.metadata.domain_tol)),
-                  x/MC{N,T}(Interval{Float64}(ctx.metadata.domain_tol, y.Intv.hi)))
+    if (y.Intv.lo <= -ctx.metadata.domain_tol) && (y.Intv.hi >= ctx.metadata.domain_tol)
+        z = MC{N,T}(union(x.Intv/Interval{Float64}(y.Intv.lo, -ctx.metadata.domain_tol),
+                          x.Intv/Interval{Float64}(ctx.metadata.domain_tol, y.Intv.hi)))
+    else
+        z = x/y
+    end
+    z
+end
+
+function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::Float64, y::MC{N,T}) where {N,T<:RelaxTag}
+    if (y.Intv.lo <= -ctx.metadata.domain_tol) && (y.Intv.hi >= ctx.metadata.domain_tol)
+        z = MC{N,T}(union(x.Intv/Interval{Float64}(y.Intv.lo, -ctx.metadata.domain_tol),
+                          x.Intv/Interval{Float64}(ctx.metadata.domain_tol, y.Intv.hi)))
     else
         z = x/y
     end
@@ -15,13 +25,22 @@ function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::MC{N,T}) wh
 end
 
 function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::MC{N,T}) where {N,T<:RelaxTag}
-    x^y
+    if (y < 0.0) && ((x.Intv.lo <= -ctx.metadata.domain_tol) && (x.Intv.hi >= ctx.metadata.domain_tol))
+        z = MC{N,T}(union(Interval{Float64}(x.Intv.lo, -ctx.metadata.domain_tol),
+                          Interval{Float64}(ctx.metadata.domain_tol, x.Intv.hi))^y)
+    else
+        z = x/y
+    end
+    z
 end
 function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::Float64) where {N,T<:RelaxTag}
-    x^y
-end
-function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::Float64, y::MC{N,T}) where {N,T<:RelaxTag}
-    x^y
+    if (y < 0.0) && ((x.Intv.lo <= -ctx.metadata.domain_tol) && (x.Intv.hi >= ctx.metadata.domain_tol))
+        z = MC{N,T}(union(Interval{Float64}(x.Intv.lo, -ctx.metadata.domain_tol),
+                          Interval{Float64}(ctx.metadata.domain_tol, x.Intv.hi))^y)
+    else
+        z = x/y
+    end
+    z
 end
 
 for f in (log, log2, log10, sqrt)
