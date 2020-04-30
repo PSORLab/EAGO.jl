@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimizer.jl
+# Defines optimizer structure used by EAGO, storage functions, and access functions.
+#############################################################################
+
 """
 $(TYPEDEF)
 
@@ -100,8 +114,8 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     presolve_flatten_flag::Bool = false
 
     # Conic reformulations
-    # "Attempt to bridge convex constraint to second order cone"
-    # conic_convert_quadratic::Bool
+    "Attempt to bridge convex constraint to second order cone"
+    conic_convert_quadratic::Bool = false
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
@@ -328,18 +342,18 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
     _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
-    #_conic_norm_infinity::Vector{Tuple{VecOfVar, NormInfinityCone}} = Tuple{VecOfVar, NormInfinityCone}[]
-    #_conic_norm_one::Vector{Tuple{VecOfVar, NormOneCone}} = Tuple{VecOfVar, NormOneCone}[]
-    #_conic_second_order::Vector{Tuple{VecOfVar, SecondOrderCone}} = Tuple{VecOfVar, SecondOrderCone}[]
-    #_conic_rotated_second_order::Vector{Tuple{VecOfVar, RotatedSecondOrderCone}} = Tuple{VecOfVar, RotatedSecondOrderCone}[]
-    #_conic_geometric_mean::Vector{Tuple{VecOfVar, GeometricMeanCone}} = Tuple{VecOfVar, GeometricMeanCone}[]
-    #_conic_exponential::Vector{Tuple{VecOfVar, ExponentialCone}} = Tuple{VecOfVar, ExponentialCone}[]
-    #_conic_dual_exponential::Vector{Tuple{VecOfVar, DualExponentialCone}} = Tuple{VecOfVar, DualExponentialCone}[]
-    #_conic_power_cone::Vector{Tuple{VecOfVar, PowerCone}} = Tuple{VecOfVar, PowerCone}[]
-    #_conic_dual_power::Vector{Tuple{VecOfVar, DualPowerCone}} = Tuple{VecOfVar, DualPowerCone}[]
-    #_conic_relative_entropy::Vector{Tuple{VecOfVar, RelativeEntropyCone}} = Tuple{VecOfVar, RelativeEntropyCone}[]
-    #_conic_norm_spectral::Vector{Tuple{VecOfVar, NormSpectralCone}} = Tuple{VecOfVar, NormSpectralCone}[]
-    #_conic_norm_nuclear::Vector{Tuple{VecOfVar, NormNuclearCone}} = Tuple{VecOfVar, NormNuclearCone}[]
+    _conic_norm_infinity::Vector{Tuple{VecOfVar, MOI.NormInfinityCone}} = Tuple{VecOfVar, MOI.NormInfinityCone}[]
+    _conic_norm_one::Vector{Tuple{VecOfVar, MOI.NormOneCone}} = Tuple{VecOfVar, MOI.NormOneCone}[]
+    _conic_second_order::Vector{Tuple{VecOfVar, MOI.SecondOrderCone}} = Tuple{VecOfVar, MOI.SecondOrderCone}[]
+    _conic_rotated_second_order::Vector{Tuple{VecOfVar, MOI.RotatedSecondOrderCone}} = Tuple{VecOfVar, MOI.RotatedSecondOrderCone}[]
+    _conic_geometric_mean::Vector{Tuple{VecOfVar, MOI.GeometricMeanCone}} = Tuple{VecOfVar, MOI.GeometricMeanCone}[]
+    _conic_exponential::Vector{Tuple{VecOfVar, MOI.ExponentialCone}} = Tuple{VecOfVar, MOI.ExponentialCone}[]
+    _conic_dual_exponential::Vector{Tuple{VecOfVar, MOI.DualExponentialCone}} = Tuple{VecOfVar, MOI.DualExponentialCone}[]
+    _conic_power_cone::Vector{Tuple{VecOfVar, MOI.PowerCone}} = Tuple{VecOfVar, MOI.PowerCone}[]
+    _conic_dual_power::Vector{Tuple{VecOfVar, MOI.DualPowerCone}} = Tuple{VecOfVar, MOI.DualPowerCone}[]
+    _conic_relative_entropy::Vector{Tuple{VecOfVar, MOI.RelativeEntropyCone}} = Tuple{VecOfVar, MOI.RelativeEntropyCone}[]
+    _conic_norm_spectral::Vector{Tuple{VecOfVar, MOI.NormSpectralCone}} = Tuple{VecOfVar, MOI.NormSpectralCone}[]
+    _conic_norm_nuclear::Vector{Tuple{VecOfVar, MOI.NormNuclearCone}} = Tuple{VecOfVar, MOI.NormNuclearCone}[]
 
     _linear_leq_constraints::Vector{Tuple{SAF, LT, Int64}} = Tuple{SAF, LT, Int64}[]
     _linear_geq_constraints::Vector{Tuple{SAF, GT, Int64}} = Tuple{SAF, GT, Int64}[]
@@ -475,6 +489,7 @@ end
 
 function MOI.empty!(m::Optimizer)
     m = Optimizer()
+    nothing
 end
 
 function MOI.is_empty(m::Optimizer)
@@ -487,24 +502,22 @@ function MOI.is_empty(m::Optimizer)
     return flag
 end
 
-function check_inbounds!(m::Optimizer, vi::MOI.VariableIndex)
+##### Utilities for checking that JuMP model contains variables used in expression
+function check_inbounds!(m::Optimizer, vi::VI)
     num_variables = length(m._variable_info)
     if !(1 <= vi.value <= num_variables)
         error("Invalid variable index $vi. ($num_variables variables in the model.)")
     end
     return
 end
-
-check_inbounds!(m::Optimizer, var::MOI.SingleVariable) = check_inbounds!(m, var.variable)
-
-function check_inbounds!(m::Optimizer, aff::MOI.ScalarAffineFunction)
+check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
+function check_inbounds!(m::Optimizer, aff::SAF)
     for term in aff.terms
         check_inbounds!(m, term.variable_index)
     end
     return
 end
-
-function check_inbounds!(m::Optimizer, quad::MOI.ScalarQuadraticFunction)
+function check_inbounds!(m::Optimizer, quad::SQF)
     for term in quad.affine_terms
         check_inbounds!(m, term.variable_index)
     end
@@ -514,17 +527,22 @@ function check_inbounds!(m::Optimizer, quad::MOI.ScalarQuadraticFunction)
     end
     return
 end
+function check_inbounds!(m::Optimizer, vov::VecOfVar)
+    for vi in vov.variables
+        check_inbounds!(m, vi)
+    end
+    return
+end
 
+##### Access variable information from MOI variable index
 function has_upper_bound(m::Optimizer, vi::MOI.VariableIndex)
     @inbounds val = m._variable_info[vi.value]
     return val.has_upper_bound
 end
-
 function has_lower_bound(m::Optimizer, vi::MOI.VariableIndex)
     @inbounds val = m._variable_info[vi.value]
     return val.has_lower_bound
 end
-
 function is_fixed(m::Optimizer, vi::MOI.VariableIndex)
     @inbounds val = m._variable_info[vi.value]
     return val.is_fixed
@@ -543,8 +561,6 @@ function is_integer_feasible(m::Optimizer)
 end
 
 is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
-
-ReverseDict(dict) = Dict(value => key for (key, value) in dict)
 
 function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
     return MOI.Utilities.default_copy_to(model, src, copy_names)
@@ -616,7 +632,7 @@ function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
 end
 =#
 
-MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i in 1:length(m._variable_info)]
+MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i = 1:length(m._variable_info)]
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     mult = 1.0
     if m._optimization_sense === MOI.MAX_SENSE
@@ -657,19 +673,9 @@ function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     return model._continuous_solution[vi.value]
 end
 
-const SCAL_FUNCS = Union{SV, SAF, SQF}
-const INEQ_SETS = Union{LT, GT, ET}
-MOI.supports_constraint(::Optimizer, ::Type{F}, ::Type{S}) where {F <: SCAL_FUNCS, S <: INEQ_SETS} = true
-
-#=
-const CONE_SETS = Union{NormInfinityCone, NormOneCone, SecondOrderCone, RotatedSecondOrderCone,
-                        GeometricMeanCone, ExponentialCone, DualExponentialCone, PowerCone,
-                        DualPowerCone, RelativeEntropyCone, NormSpectralCone, NormNuclearCone}
-MOI.supports_constraint(::Optimizer, ::Type{VecOfVar}, ::Type{S}) where {S <: CONE_SETS} = true
-=#
-
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 
+##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
     m._variable_number += 1
     if ~m._user_branch_variables
@@ -690,8 +696,11 @@ function MOI.add_variable(m::Optimizer)
 end
 MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
 
-#=
-function MOI.add_constraint(m::Optimizer, v::SV, zo::MOI.ZO)
+##### Supports function and add_constraint for single variable functions
+const INEQ_SETS = Union{LT, GT, ET}
+MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: INEQ_SETS} = true
+
+function MOI.add_constraint(m::Optimizer, v::SV, zo::ZO)
     vi = v.variable
     check_inbounds!(m, vi)
     has_upper_bound(m, vi) && error("Upper bound on variable $vi already exists.")
@@ -704,7 +713,6 @@ function MOI.add_constraint(m::Optimizer, v::SV, zo::MOI.ZO)
     m._variable_info[vi.value].is_integer = true
     return CI{SV, MOI.ZO}(vi.value)
 end
-=#
 
 function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
     vi = v.variable
@@ -763,32 +771,8 @@ function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
     return CI{SV, ET}(vi.value)
 end
 
-#=
-function MOI.add_constraint(m::Optimizer, v::SV, eq::MOI.IT)
-    vi = v.variable
-    check_inbounds!(m, vi)
-    if isnan(eq.lower)
-        error("Invalid fixed value $(gt.lower).")
-    end
-    if isnan(eq.upper)
-        error("Invalid fixed value $(gt.upper).")
-    end
-    if has_lower_bound(m, vi)
-        error("Lower bound on variable $vi already exists. Cannot also set interval bounds.")
-    end
-    if has_upper_bound(m, vi)
-        error("Upper bound on variable $vi already exists. Cannot also set interval bounds.")
-    end
-    if is_fixed(m, vi)
-        error("Variable $vi is fixed. Cannot also set interval bounds.")
-    end
-    m._variable_info[vi.value].lower_bound = eq.lower
-    m._variable_info[vi.value].upper_bound = eq.upper
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    return CI{SV, MOI.IT}(vi.value)
-end
-=#
+##### Supports function and add_constraint for scalar affine functions
+MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{S}) where {S <: INEQ_SETS} = true
 
 macro define_addconstraint_linear(function_type, set_type, array_name)
     quote
@@ -804,6 +788,9 @@ end
 @define_addconstraint_linear SAF LT _linear_leq_constraints
 @define_addconstraint_linear SAF GT _linear_geq_constraints
 @define_addconstraint_linear SAF ET _linear_eq_constraints
+
+##### Supports function and add_constraint for scalar quadratic functions
+MOI.supports_constraint(::Optimizer, ::Type{SQF}, ::Type{S}) where {S <: INEQ_SETS} = true
 
 macro define_addconstraint_quadratic(function_type, set_type, array_name)
     quote
@@ -825,7 +812,13 @@ end
 @define_addconstraint_quadratic SQF GT _quadratic_geq_constraints
 @define_addconstraint_quadratic SQF ET _quadratic_eq_constraints
 
-#=
+
+##### Supports function and add_constraint for conic functions
+const CONE_SETS = Union{NormInfinityCone, NormOneCone, SecondOrderCone, RotatedSecondOrderCone,
+                        GeometricMeanCone, ExponentialCone, DualExponentialCone, PowerCone,
+                        DualPowerCone, RelativeEntropyCone, NormSpectralCone, NormNuclearCone}
+MOI.supports_constraint(::Optimizer, ::Type{VecOfVar}, ::Type{S}) where {S <: CONE_SETS} = true
+
 macro define_addconstraint_cone(set_type, array_name)
     quote
         function MOI.add_constraint(m::Optimizer, func::VecOfVar, set::$set_type)
@@ -839,41 +832,32 @@ macro define_addconstraint_cone(set_type, array_name)
     end
 end
 
-@define_addconstraint_cone NormInfinityCone _conic_norm_infinity
-@define_addconstraint_cone NormOneCone _conic_norm_one
-@define_addconstraint_cone SecondOrderCone _conic_second_order
-@define_addconstraint_cone RotatedSecondOrderCone _conic_rotated_second_order
-@define_addconstraint_cone GeometricMeanCone _conic_geometric_mean
-@define_addconstraint_cone ExponentialCone _conic_exponential
-@define_addconstraint_cone DualExponentialCone _conic_dual_exponential
-@define_addconstraint_cone PowerCone _conic_power_cone
-@define_addconstraint_cone DualPowerCone _conic_dual_power
-@define_addconstraint_cone RelativeEntropyCone _conic_relative_entropy
-@define_addconstraint_cone NormSpectralCone _conic_norm_spectral
-@define_addconstraint_cone NormNuclearCone _conic_norm_nuclear
-=#
+@define_addconstraint_cone MOI.NormInfinityCone _conic_norm_infinity
+@define_addconstraint_cone MOI.NormOneCone _conic_norm_one
+@define_addconstraint_cone MOI.SecondOrderCone _conic_second_order
+@define_addconstraint_cone MOI.RotatedSecondOrderCone _conic_rotated_second_order
+@define_addconstraint_cone MOI.GeometricMeanCone _conic_geometric_mean
+@define_addconstraint_cone MOI.ExponentialCone _conic_exponential
+@define_addconstraint_cone MOI.DualExponentialCone _conic_dual_exponential
+@define_addconstraint_cone MOI.PowerCone _conic_power_cone
+@define_addconstraint_cone MOI.DualPowerCone _conic_dual_power
+@define_addconstraint_cone MOI.RelativeEntropyCone _conic_relative_entropy
+@define_addconstraint_cone MOI.NormSpectralCone _conic_norm_spectral
+@define_addconstraint_cone MOI.NormNuclearCone _conic_norm_nuclear
+
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     m._nlp_data = nlp_data
     return
 end
 
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SV}) = true
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SAF}) = true
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SQF}) = true
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
+##### Support, set, and evaluate objective functions
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SV}) where {F <: Union{SV,SAF,SQF}} = true
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::F) where {F <: Union{SV,SAF}}
     check_inbounds!(m, func)
-    m._objective_sv = func
+    m._objective = func
     return
 end
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
-    check_inbounds!(m, func)
-    m._objective_saf = func
-    return
-end
-
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SQF)
     check_inbounds!(m, func)
     m._objective_sqf = func

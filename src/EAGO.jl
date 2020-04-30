@@ -26,6 +26,7 @@ module EAGO
     const SQF = MOI.ScalarQuadraticFunction{Float64}
     const SQT = MOI.ScalarQuadraticTerm{Float64}
     const SV = MOI.SingleVariable
+    const VecOfVar = MOI.VectorOfVariables
     const LT = MOI.LessThan{Float64}
     const GT = MOI.GreaterThan{Float64}
     const ET = MOI.EqualTo{Float64}

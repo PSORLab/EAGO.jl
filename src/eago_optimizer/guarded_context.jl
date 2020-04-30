@@ -14,7 +14,6 @@
 # expansiveness of the bounds of the nonlinear terms not the underlying model.
 #############################################################################
 
-
 Cassette.@context GuardCtx
 
 struct GuardTracker

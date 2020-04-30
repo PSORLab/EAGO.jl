@@ -346,7 +346,6 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     return
 end
 
-# DONE
 """
 $(TYPEDSIGNATURES)
 
