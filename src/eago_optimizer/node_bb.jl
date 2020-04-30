@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/node_bb.jl
+# Defines storage for a node in the B&B tree & utilities functions
+#############################################################################
+
 """
 $(TYPEDEF)
 
@@ -19,7 +33,16 @@ struct NodeBB
     "Unique id for each node."
     id::Int64
 end
+
+# Constructors
 NodeBB() = NodeBB(Float64[], Float64[], -Inf, Inf, 0, 1)
+NodeBB(x::NodeBB) = NodeBB(x.lower_variable_bounds, x.upper_variable_bounds,
+                           x.lower_bound, x.upper_bound, x.depth, x.id)
+
+# Copy utilities
+Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
+                              copy(x.upper_variable_bounds),
+                              x.lower_bound, x.upper_bound, x.depth, x.id)
 
 # Access functions for broadcasting data easily
 lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
@@ -30,25 +53,16 @@ lower_bound(x::NodeBB) = x.lower_bound
 upper_bound(x::NodeBB) = x.upper_bound
 depth(x::NodeBB) = x.depth
 
-isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
-diam(x::NodeBB) = x.upper_variable_bounds - x.lower_variable_bounds
-mid(x::NodeBB) = 0.5*(x.upper_variable_bounds + x.lower_variable_bounds)
-length(x::NodeBB) = length(x.lower_variable_bounds)
-function isempty(x::NodeBB)
+# Iterations Functions
+Base.isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
+Base.length(x::NodeBB) = length(x.lower_variable_bounds)
+function Base.isempty(x::NodeBB)
     for i = 1:length(x)
         @inbounds lower = x.lower_variable_bounds[i]
         @inbounds upper = x.upper_variable_bounds[i]
         (lower >= upper) && (return true)
     end
     false
-end
-
-NodeBB(x::NodeBB) = NodeBB(x.lower_variable_bounds, x.upper_variable_bounds,
-                           x.lower_bound, x.upper_bound, x.depth, x.id)
-
-function copy(x::NodeBB)
-    return NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
-                  x.lower_bound, x.upper_bound, x.depth, x.id)
 end
 
 """
@@ -65,3 +79,7 @@ function same_box(x::NodeBB, y::NodeBB, r::Float64)
     end
     true
 end
+
+# Compute middle & diameter
+diam(x::NodeBB) = x.upper_variable_bounds - x.lower_variable_bounds
+mid(x::NodeBB) = 0.5*(x.upper_variable_bounds + x.lower_variable_bounds)
