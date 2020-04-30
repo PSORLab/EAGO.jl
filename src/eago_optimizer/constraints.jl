@@ -1,0 +1,76 @@
+##### Supports function and add_constraint for scalar affine functions
+MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{S}) where {S <: INEQ_SETS} = true
+
+macro define_addconstraint_linear(function_type, set_type, array_name)
+    quote
+        function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
+            check_inbounds!(m, func)
+            push!(m.$(array_name), (func, set))
+            m._last_constraint_index += 1
+            indx = CI{$function_type, $set_type}(m._last_constraint_index)
+            return indx
+        end
+    end
+end
+
+@define_addconstraint_linear SAF LT _linear_leq_constraints
+@define_addconstraint_linear SAF GT _linear_geq_constraints
+@define_addconstraint_linear SAF ET _linear_eq_constraints
+
+##### Supports function and add_constraint for scalar quadratic functions
+MOI.supports_constraint(::Optimizer, ::Type{SQF}, ::Type{S}) where {S <: INEQ_SETS} = true
+
+macro define_addconstraint_quadratic(function_type, set_type, array_name)
+    quote
+        function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
+            check_inbounds!(m, func)
+            for i in func.affine_terms m.branch_variable[i.variable_index.value] = true end
+            for i in func.quadratic_terms
+                m.branch_variable[i.variable_index_1.value] = true
+                m.branch_variable[i.variable_index_2.value] = true
+            end
+            push!(m.$(array_name), (func, set))
+            m._last_constraint_index += 1
+            indx = CI{$function_type, $set_type}(m._last_constraint_index)
+            return indx
+        end
+    end
+end
+
+@define_addconstraint_quadratic SQF LT _quadratic_leq_constraints
+@define_addconstraint_quadratic SQF GT _quadratic_geq_constraints
+@define_addconstraint_quadratic SQF ET _quadratic_eq_constraints
+
+
+##### Supports function and add_constraint for conic functions
+const CONE_SETS = Union{NormInfinityCone, NormOneCone, SecondOrderCone, RotatedSecondOrderCone,
+                        GeometricMeanCone, ExponentialCone, DualExponentialCone, PowerCone,
+                        DualPowerCone, RelativeEntropyCone, NormSpectralCone, NormNuclearCone}
+MOI.supports_constraint(::Optimizer, ::Type{VECOFVAR}, ::Type{S}) where {S <: CONE_SETS} = true
+
+macro define_addconstraint_cone(set_type, array_name)
+    quote
+        function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::$set_type)
+            if length(func.variables) != dimension(set)
+                error("Dimension of $(s) does not match number of terms in $(f)")
+            end
+            check_inbounds!(m, func)
+            push!(m.$(array_name), (func, set)))
+            m._last_constraint_index += 1
+            return CI{VECOFVAR, $set_type}(m._last_constraint_index)
+        end
+    end
+end
+
+@define_addconstraint_cone MOI.NormInfinityCone _conic_norm_infinity
+@define_addconstraint_cone MOI.NormOneCone _conic_norm_one
+@define_addconstraint_cone MOI.SecondOrderCone _conic_second_order
+@define_addconstraint_cone MOI.RotatedSecondOrderCone _conic_rotated_second_order
+@define_addconstraint_cone MOI.GeometricMeanCone _conic_geometric_mean
+@define_addconstraint_cone MOI.ExponentialCone _conic_exponential
+@define_addconstraint_cone MOI.DualExponentialCone _conic_dual_exponential
+@define_addconstraint_cone MOI.PowerCone _conic_power_cone
+@define_addconstraint_cone MOI.DualPowerCone _conic_dual_power
+@define_addconstraint_cone MOI.RelativeEntropyCone _conic_relative_entropy
+@define_addconstraint_cone MOI.NormSpectralCone _conic_norm_spectral
+@define_addconstraint_cone MOI.NormNuclearCone _conic_norm_nuclear
