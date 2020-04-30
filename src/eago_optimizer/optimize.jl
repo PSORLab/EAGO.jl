@@ -354,19 +354,7 @@ Detects any variables set to a fixed value by equality or inequality constraints
 and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
-    lbd = 0.0
-    ubd = 0.0
-    for i = 1:m._variable_number
-        @inbounds lbd = m._variable_info[i].lower_bound
-        @inbounds ubd = m._variable_info[i].upper_bound
-        if lbd == ubd
-            @inbounds m._variable_info[i].is_fixed = true
-            @inbounds m._fixed_variable[i] = true
-        end
-    end
-    #map!(x -> (x.lower_bound == x.upper_bound), m._fixed_variable, m._variable_info)
-    #@__dot__ getfield(m._variable_info, :fixed) = m._fixed_variable
-    return
+    map!(x -> (x.is_fixed |= (x.lower_bound == x.upper_bound)), m._fixed_variable, m._variable_info)
 end
 
 """
