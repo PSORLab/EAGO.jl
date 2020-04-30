@@ -1,9 +1,38 @@
+struct ConvexSQF{S}
+    x::Vector{Float64}
+    xT::Adjoint{Float64,Vector{Float64}}
+    Qx::Vector{Float64}
+    Q::
+    xindx::Vector{Int}
+    lin_terms::Vector{Float64}
+    vi::Vector{VI}
+    constant::Float64
+
+    quad_coeff::Vector{Float64}
+
+    sqf::SQF
+    set::S
+    coeffs_buffer
+    quad_terms::Vector{Tuple{Float64,Int,Int}}
+    saf_terms::Vector{Float64}
+    n::Int
+end
+
 """
 $(FUNCTIONNAME)
 
 Stores the kernel of the calculation required to relax convex quadratic
 constraints using the immutable dictionary to label terms.
 """
+function relax_convex_kernel!(b::ConvexSQF{S}, x0::Vector{Float64})
+    @__dot__ b.x = x0[b.x0_indx]
+    @__dot__ b.x = b.xT
+    mul!(b.Qx, b.Q, b.x)
+    @__dot__ b.saf.terms = SAT(b.lin_terms + 2.0*b.Qx, b.vi)
+    saf.constant = sqf.constant + mapreduce((x,y)->, +, b.quad_coeff, b.x0_buffer)
+    nothing
+end
+
 function relax_convex_kernel(func::SQF, vi::Vector{VI}, cvx_dict::ImmutableDict{Int64,Int64},
                              nx::Int64, x0::Vector{Float64})
 
@@ -188,7 +217,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
     n = x._current_node
 
     # Relax Convex Constraint Terms TODO: place all quadratic info into one vector of tuples?
-    for i in 1:length(x._quadratic_leq_constraints)
+    for i = 1:length(x._quadratic_leq_constraints)
         func, set, j = x._quadratic_leq_constraints[i]
         cvx_dict = x._quadratic_leq_dict[i]
         vi = x._quadratic_leq_sparsity[i]
@@ -200,7 +229,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
         store_le_quadratic!(x, ci1, saf, set.upper, i, q)
     end
 
-    for i in 1:length(x._quadratic_geq_constraints)
+    for i = 1:length(x._quadratic_geq_constraints)
         func, set, j = x._quadratic_geq_constraints[i]
         cvx_dict = x._quadratic_geq_dict[i]
         vi = x._quadratic_geq_sparsity[i]
@@ -214,7 +243,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
         store_ge_quadratic!(x, ci1, saf, set.lower, i, q)
     end
 
-    for i in 1:length(x._quadratic_eq_constraints)
+    for i = 1:length(x._quadratic_eq_constraints)
         func, set, j = x._quadratic_eq_constraints[i]
         cvx_dict = x._quadratic_eq_dict[i]
         vi = x._quadratic_eq_sparsity[i]
@@ -341,7 +370,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                 lower_nlp_affine_indx = x._lower_nlp_affine_indx
                 upper_nlp_affine_indx = x._upper_nlp_affine_indx
                 if (q == 1) & x.relaxed_inplace_mod
-                    for i in 1:length(lower_nlp_affine_indx)
+                    for i = 1:length(lower_nlp_affine_indx)
                         @inbounds g_indx = lower_nlp_affine_indx[i]
                         @inbounds aff_ci = lower_nlp_affine[i]
                         @inbounds nzidx = lower_nlp_sparsity[i]
@@ -357,7 +386,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         set = LT(-constant)
                         MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
                     end
-                    for i in 1:length(upper_nlp_affine_indx)
+                    for i = 1:length(upper_nlp_affine_indx)
                         @inbounds g_indx = upper_nlp_affine_indx[i]
                         @inbounds aff_ci = upper_nlp_affine[i]
                         @inbounds nzidx = upper_nlp_sparsity[i]
@@ -374,7 +403,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
                     end
                 else
-                    for i in 1:length(lower_nlp_affine_indx)
+                    for i = 1:length(lower_nlp_affine_indx)
                         @inbounds g_indx = lower_nlp_affine_indx[i]
                         @inbounds aff_ci = lower_nlp_affine[i]
                         @inbounds nzidx = lower_nlp_sparsity[i]
@@ -393,7 +422,7 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
                         x._lower_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
                                                                    saf, set)
                     end
-                    for i in 1:length(upper_nlp_affine_indx)
+                    for i = 1:length(upper_nlp_affine_indx)
                         @inbounds g_indx = upper_nlp_affine_indx[i]
                         @inbounds aff_ci = upper_nlp_affine[i]
                         @inbounds nzidx = upper_nlp_sparsity[i]

@@ -472,6 +472,12 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
     return val_intv.hi
 end
 
+function lower_interval_obj(obj::SV, y::NodeBB)
+    @inbounds y.lower_variable_bounds[x._objective_sv.variable.value]
+end
+lower_interval_objective(obj::SAF, y::NodeBB) = interval_bound(obj, y, true)
+lower_interval_objective(obj::SQF, y::NodeBB) = interval_bound(obj, y, true)
+
 """
 $(SIGNATURES)
 
@@ -486,7 +492,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
 
     d = x._relaxed_evaluator
 
-    if x._objective_is_nlp
+    if isa(x._objective, Nothing)
 
         objective_lo = eval_objective_lo(d)
         constraints = d.constraints
@@ -507,14 +513,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
             end
         end
     else
-        if x._objective_is_sv
-            obj_indx = x._objective_sv.variable.value
-            @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
-        elseif x._objective_is_saf
-            objective_lo = interval_bound(x._objective_saf, y, true)
-        elseif x._objective_is_sqf
-            objective_lo = interval_bound(x._objective_sqf, y, true)
-        end
+        objective_lo = lower_interval_objective(x._objective, y)
     end
 
     for (func, set, i) in x._linear_leq_constraints
@@ -644,6 +643,17 @@ function cut_update(x::Optimizer)
     return
 end
 
+delete_objective_cuts!(obj::SV, x::Optimizer) = nothing
+for i in (SAF, SQF, Nothing)
+    @eval function delete_objective_cuts!(obj::$i, x::Optimizer)
+        for i=2:x._cut_iterations
+            ci = x._objective_cut_ci_saf[i]
+            MOI.delete(x.relaxed_optimizer, ci)
+        end
+        nothing
+    end
+end
+
 """
 $(SIGNATURES)
 
@@ -691,29 +701,17 @@ function cut_condition(t::ExtensionType, x::Optimizer)
             end
         end
         if x._objective_cut_set !== -1
-            if ~x._objective_is_sv
-                for i in 2:x._cut_iterations
-                    ci = x._objective_cut_ci_saf[i]
-                    MOI.delete(x.relaxed_optimizer, ci)
-                end
-            end
+            delete_objective_cuts!(x._objective, x)
         end
     end
 
     # check to see if interval bound is preferable
     if x._lower_feasibility
         y = x._current_node
-        if x._objective_is_nlp
+        if isa(x._objective, Nothing)
             intv_lo = eval_objective_lo(x._relaxed_evaluator)
         else
-            if x._objective_is_sv
-                obj_indx = x._objective_sv.variable.value
-                @inbounds intv_lo = y.lower_variable_bounds[obj_indx]
-            elseif x._objective_is_saf
-                intv_lo = interval_bound(x._objective_saf, y, true)
-            elseif x._objective_is_sqf
-                intv_lo = interval_bound(x._objective_sqf, y, true)
-            end
+            intv_lo = lower_interval_objective(x._objective, y)
         end
         if (intv_lo > x._lower_objective_value)
             x._lower_objective_value = intv_lo
@@ -777,6 +775,10 @@ function default_nlp_heurestic(x::Optimizer, y::NodeBB)
     return bool
 end
 
+function set_objective!(obj::S, upper_optimizer::T) where {S, T <: MOI.AbstractOptimizer}
+    MOI.set(upper_optimizer, MOI.ObjectiveFunction{S}(), x._objective)
+    nothing
+end
 """
 $(SIGNATURES)
 
@@ -844,15 +846,8 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
 
         # Add nonlinear evaluation block
         MOI.set(upper_optimizer, MOI.NLPBlock(), x._nlp_data)
-
         MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-        if x._objective_is_sv
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), x._objective_sv)
-        elseif x._objective_is_saf
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
-        elseif x._objective_is_sqf
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective_sqf)
-        end
+        set_objective!(x._objective, upper_optimizer)
 
         # Optimizes the object
         MOI.optimize!(upper_optimizer)
