@@ -523,8 +523,36 @@ work on new constraint relaxation
 Takes the optimizer and constraint index and computes a relaxation inplace if
 possible (no prior relaxation) and no set.
 """
-function relax_expression!(x::Optimizer, c::CID)
-    iszero(x._cut_number[c]) ? relax_iip!(x,c) : relax_oop!(x,c)
+
+function copy_add_from_buffer!(x::Optimizer, c::CID{})
+end
+function relax_to_buffer!(x, c)
+end
+function is_safe_relax(x, c)
+    buffer = x.buffer[x.buffer_indx[c]]
+    coeffs = buffer.coeffs
+    flag = abs(buffer.b) < x.cut_safe_b
+    ~flag && (return flag)
+    for i=1:length(coeffs)
+        ai = coeffs[i]
+        if ~iszero(ai)
+            (x.cut_safe_l > abs(ai)) && (flag = false; break)
+            (x.cut_safe_u < abs(ai)) && (flag = false; break)
+            for j=1:length(coeffs)
+                aj = coeffs[j]
+                if ~iszero(coeffs[j])
+                    d = abs(ai/aj)
+                    (x.cut_safe_l > d) && (flag = false; break)
+                    (x.cut_safe_u < d) && (flag = false; break)
+                end
+            end
+        end
+    end
+    return flag
+end
+function relax_expr!(x::Optimizer, c::CID)
+    relax_to_buffer!(x, c)
+    is_safe_relax(x, c) && copy_add_from_buffer!(x, c)
     x._cut_number[x] += 1
     nothing
 end

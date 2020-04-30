@@ -185,9 +185,12 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     cut_tolerance::Float64 = 0.05
     "Adds an objective cut to the relaxed problem (default = true)."
     objective_cut_on::Bool = true
-    cut_safe_l::Float64 = 0.00001
-    cut_safe_u::Float64 = 10000.0
-    cut_safe_b::Float64 = 100000.0
+    "Lower tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_l::Float64 = 1E-8
+    "Upper tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_u::Float64 = 1E8
+    "Constant tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_b::Float64 = 1E9
 
     # Upper bounding options
     upper_optimizer::T = Ipopt.Optimizer()
