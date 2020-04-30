@@ -31,7 +31,7 @@ function copy_to_function!(d::Evaluator{N,T}, i::Int64, y::JuMP._FunctionStorage
 
     sto = FunctionSetStorage{N,T}(x.nd, x.adj, x.const_values, temp_set, temp_flt,
                                 temp_bool, tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
-                                x.grad_sparsity, x.hess_I, x.hess_J, x.dependent_subexpressions)
+                                x.grad_sparsity, x.dependent_subexpressions)
     if i == 1
         d.objective = sto
     else
@@ -75,4 +75,3 @@ function copy_to_subexpr!(d::Evaluator{N,T}, y::JuMP._SubexpressionStorage) wher
                                      x.linearity)
     push!(d.subexpressions, sto)
 end
-get_node(d::Evaluator) = d.current_node

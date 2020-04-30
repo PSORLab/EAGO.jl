@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/evaluator/evaluator.jl
+# Structures used store nonlinear functions used in computing relaxations.
+#############################################################################
+
 """
 $(TYPEDEF)
 
@@ -23,35 +37,23 @@ mutable struct FunctionSetStorage{N,T<:RelaxTag}
     tp4storage::Vector{Float64}
     tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
     grad_sparsity::Vector{Int64}
-    hess_I::Vector{Int64}
-    hess_J::Vector{Int64}
     dependent_subexpressions::Vector{Int64}
 end
 
 FunctionSetStorage(N,T) = FunctionSetStorage{N,T}(JuMP.NodeData[],spzeros(Bool,1),
                                            Float64[],MC{N,T}[],Float64[], Bool[],
                                            Float64[], Float64[], Float64[], Float64[],
-                                           Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(), Int[],Int[],Int[],Int[])
+                                           Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(), Int[],Int[])
 
 """
-    SubexpressionSetStorage
+$(TYPEDEF)
 
 A storage object for both set and number valued data required to
 compute relaxations  which contains the tape used to compute a nonlinear
 subexpression. The object is parameterized by a `{N,T<:RelaxTag}` where
 N corresponds the the subgradient size used in the MC object.
-- nd::Vector{JuMP.NodeData}
-- adj::SparseMatrixCSC{Bool,Int64}
-- const_values::Vector{Float64}
-- setstorage::Vector{MC{N,T}}
-- numberstorage::Vector{Float64}
-- numvalued::Vector{Bool}
-- tp1storage::Vector{Float64}
-- tp2storage::Vector{Float64}
-- tp3storage::Vector{Float64}
-- tp4storage::Vector{Float64}
-- tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
-- linearity::JuMP._Derivatives.Linearity
+
+$(TYPEDFIELDS)
 """
 mutable struct SubexpressionSetStorage{N,T<:RelaxTag}
     nd::Vector{JuMP.NodeData}
@@ -132,13 +134,14 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
 end
 
 """
-    set_current_node!(x::Evaluator, n::NodeBB)
+$(FUNCTIONNAME)
 
 Sets the current node in the Evaluator structure.
 """
 function set_current_node!(x::Evaluator, n::NodeBB)
     x.current_node = NodeBB(n)
 end
+get_node(d::Evaluator) = d.current_node
 
 include("univariate.jl")
 include("passes.jl")

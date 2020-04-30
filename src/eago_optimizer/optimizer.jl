@@ -544,9 +544,7 @@ end
 
 is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
 
-function ReverseDict(dict)
-    Dict(value => key for (key, value) in dict)
-end
+ReverseDict(dict) = Dict(value => key for (key, value) in dict)
 
 function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
     return MOI.Utilities.default_copy_to(model, src, copy_names)
@@ -923,14 +921,13 @@ end
 
 # Defines evaluation function for objective
 function eval_objective(m::Optimizer, x)
-    @assert !(m._nlp_data.has_objective && m._objective !== nothing)
+    @assert !(m._nlp_data.has_objective && isa(m._objective,Nothing))
     if m._nlp_data.has_objective
         return MOI.eval_objective(m._nlp_data.evaluator, x)
-    elseif m._objective !== nothing
+    elseif ~isa(m._objective, Nothing)
         return eval_function(m._objective, x)
-    else
-        return 0.0
     end
+    return 0.0
 end
 
 
