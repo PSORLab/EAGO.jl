@@ -22,7 +22,7 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, node::NodeBB, f
     if flag
         lower = val.cv
         upper = val.cc
-        for i in 1:N
+        for i = 1:N
             @inbounds cv_val = val.cv_grad[i]
             @inbounds cc_val = val.cc_grad[i]
             if (cv_val > 0.0)
@@ -332,7 +332,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
     tmp_num_2 = 0.0
     tmp_mc_1 = zero(MC{N,T})
     tmp_mc_2 = zero(MC{N,T})
-    for k in length(nd):-1:1
+    for k = length(nd):-1:1
         @inbounds nod = nd[k]
         op = nod.index
         if nod.nodetype == JuMP._Derivatives.VALUE
@@ -606,7 +606,7 @@ function reverse_eval(setstorage::Vector{T}, numberstorage, numvalued, subexpres
     tmp_hold = zero(T)
     continue_flag = true
 
-    for k in 1:length(nd)
+    for k = 1:length(nd)
         @inbounds nod = nd[k]
         if (nod.nodetype == JuMP._Derivatives.VALUE ||
             nod.nodetype == JuMP._Derivatives.LOGIC ||
@@ -879,7 +879,7 @@ function reverse_eval_all(d::Evaluator, x::Vector{Float64})
         feas &= reverse_eval(ex.setstorage, ex.numberstorage, ex.numvalued, subexpr_isnum,
                              subexpr_values_set, ex.nd, ex.adj, x, d.current_node, subgrad_tighten)
     end
-    for i in 1:length(d.constraints)
+    for i = 1:length(d.constraints)
         # Cut constraints on constraint bounds & reverse
         if feas
             ex = d.constraints[i]
@@ -894,7 +894,7 @@ function reverse_eval_all(d::Evaluator, x::Vector{Float64})
             break
         end
     end
-    for k in 1:length(d.subexpression_order)
+    for k = 1:length(d.subexpression_order)
         if feas
             ex = d.subexpressions[d.subexpression_order[k]]
             ex.setstorage[1] = subexpr_values_set[d.subexpression_order[k]]

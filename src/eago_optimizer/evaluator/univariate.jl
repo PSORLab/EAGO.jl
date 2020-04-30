@@ -34,7 +34,7 @@ for i in 3:length(univariate_operators)
 end
 
 univariate_reverse_operator_to_id = Dict{Symbol,Int}()
-for i in 1:length(univariate_operators)
+for i = 1:length(univariate_operators)
     univariate_reverse_operator_to_id[univariate_operators_rev[i]] = i
 end
 

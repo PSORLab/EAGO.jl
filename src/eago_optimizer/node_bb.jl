@@ -73,7 +73,7 @@ Checks that node `x` and `y` have equal domains withing a tolerance of `atol`.
 function same_box(x::NodeBB, y::NodeBB, r::Float64)
     (isempty(x.lower_variable_bounds) ⊻ isempty(y.lower_variable_bounds)) && (return false)
     (isempty(x.upper_variable_bounds) ⊻ isempty(y.upper_variable_bounds)) && (return false)
-    for i in 1:length(x)
+    for i = 1:length(x)
         ~isapprox(x.lower_variable_bounds[i], y.lower_variable_bounds[i], atol=r) && (return false)
         ~isapprox(x.upper_variable_bounds[i], y.upper_variable_bounds[i], atol=r) && (return false)
     end

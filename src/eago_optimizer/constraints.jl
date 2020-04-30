@@ -58,9 +58,9 @@ end
 
 
 ##### Supports function and add_constraint for conic functions
-const CONE_SETS = Union{NormInfinityCone, NormOneCone, SecondOrderCone, RotatedSecondOrderCone,
-                        GeometricMeanCone, ExponentialCone, DualExponentialCone, PowerCone,
-                        DualPowerCone, RelativeEntropyCone, NormSpectralCone, NormNuclearCone}
+const CONE_SETS = Union{MOI.NormInfinityCone, MOI.NormOneCone, MOI.SecondOrderCone, MOI.RotatedSecondOrderCone,
+                        MOI.GeometricMeanCone, MOI.ExponentialCone, MOI.DualExponentialCone, MOI.PowerCone,
+                        MOI.DualPowerCone, MOI.RelativeEntropyCone, MOI.NormSpectralCone, MOI.NormNuclearCone}
 MOI.supports_constraint(::Optimizer, ::Type{VECOFVAR}, ::Type{S}) where {S <: CONE_SETS} = true
 
 macro define_addconstraint_cone(set_type, array_name)
@@ -70,7 +70,7 @@ macro define_addconstraint_cone(set_type, array_name)
                 error("Dimension of $(s) does not match number of terms in $(f)")
             end
             check_inbounds!(m, func)
-            push!(m.$(array_name), (func, set)))
+            push!(m.$(array_name), (func, set))
             m._last_constraint_index += 1
             return CI{VECOFVAR, $set_type}(m._last_constraint_index)
         end

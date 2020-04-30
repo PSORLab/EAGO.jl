@@ -289,9 +289,9 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
 
     _lower_variable::Vector{SV} = SV[]
     _lower_variable_index::Vector{VI} = VI[]
-    _lower_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
-    _lower_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
-    _lower_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
+    _lower_variable_et::Vector{CID{SV, ET}} = CID{SV, ET}[]
+    _lower_variable_lt::Vector{CID{SV, LT}} = CID{SV, LT}[]
+    _lower_variable_gt::Vector{CID{SV, GT}} = CID{SV, GT}[]
     _lower_variable_et_indx::Vector{Int64} = Int64[]
     _lower_variable_lt_indx::Vector{Int64} = Int64[]
     _lower_variable_gt_indx::Vector{Int64} = Int64[]
@@ -339,8 +339,8 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _objective_convexity::Bool = false
 
     _objective_cut_set::Int64 = -1
-    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
-    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+    _objective_cut_ci_sv::CID{SV,LT} = CID{SV,LT}(-1.0)
+    _objective_cut_ci_saf::Vector{CID{SAF,LT}} = CID{SAF,LT}[]
 
     _last_constraint_index::Int = 0
 
@@ -359,7 +359,7 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
 
     _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
     _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
-    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, E}[]
+    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
 
     _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
     _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
@@ -370,9 +370,9 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
     _quadratic_obj_dict::ImmutableDict{Int64,Int64} = ImmutableDict{Int64,Int64}()
 
-    _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
-    _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
-    _quadratic_ci_eq::Vector{Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}} = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
+    _quadratic_ci_leq::Vector{Vector{CID{SAF,LT}}} = CID{SAF,LT}[]
+    _quadratic_ci_geq::Vector{Vector{CID{SAF,LT}}} = CID{SAF,LT}[]
+    _quadratic_ci_eq::Vector{Vector{Tuple{CID{SAF,LT},CID{SAF,LT}}}} = Tuple{CID{SAF,LT},CID{SAF,LT}}[]
 
     _quadratic_leq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
     _quadratic_geq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
@@ -387,8 +387,8 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _quadratic_eq_convexity_1::Vector{Bool} = Bool[]
     _quadratic_eq_convexity_2::Vector{Bool} = Bool[]
 
-    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
-    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
+    _lower_nlp_affine::Vector{Vector{CID{SAF,LT}}} = Vector{CID{SAF,LT}}[]
+    _upper_nlp_affine::Vector{Vector{CID{SAF,LT}}} = Vector{CID{SAF,LT}}[]
 
     _lower_nlp_affine_indx::Vector{Int64} = Int64[]
     _upper_nlp_affine_indx::Vector{Int64} = Int64[]
@@ -450,43 +450,6 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     _relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
     _relaxed_eval_has_objective::Bool = false
-
-    function Optimizer{S, T}(;options...) where {S <: MOI.AbstractOptimizer,
-                                                 T <: MOI.AbstractOptimizer}
-
-        m = new()
-
-        # checks keywords supplied are field names and throws error otherwise
-        allowed_kwargs = fieldnames(Optimizer{S,T})
-        disallowed_kwargs = setdiff(collect(keys(options)), allowed_kwargs)
-        if ~isempty(disallowed_kwargs)
-            error("The following keyword arguments are not recognized by the
-                   EAGO optimizer: $(disallowed_kwargs). Please consult
-                   the documentation for allowed arguments.")
-        end
-
-        for i in keys(options)
-            haskey(options,i) && setfield!(m, i, options[i])
-        end
-
-        m._time_left = m.time_limit
-        m._user_branch_variables = ~isempty(m.branch_variable)
-
-        return m
-    end
-end
-function Optimizer(;options...)
-    rtype = haskey(options, :relaxed_optimizer) ? typeof(options[:relaxed_optimizer]) : GLPK.Optimizer
-    ropts = haskey(options, :relaxed_optimizer_kwargs) ? haskey(options, :relaxed_optimizer_kwargs) : Base.Iterators.Pairs(NamedTuple(),())
-    utype = haskey(options, :upper_optimizer) ? typeof(options[:upper_optimizer]) : Ipopt.Optimizer
-
-    opt = Optimizer{rtype, utype}(;options...)
-    relax_fact = with_optimizer(rtype; ropts...)
-    opt.relaxed_optimizer = relax_fact()
-    if MOI.supports(opt.relaxed_optimizer, MOI.Silent())
-        MOI.set(opt.relaxed_optimizer, MOI.Silent(), true)
-    end
-    return opt
 end
 
 function MOI.empty!(m::Optimizer)
@@ -506,9 +469,8 @@ end
 
 ##### Utilities for checking that JuMP model contains variables used in expression
 function check_inbounds!(m::Optimizer, vi::VI)
-    num_variables = length(m._variable_info)
-    if !(1 <= vi.value <= num_variables)
-        error("Invalid variable index $vi. ($num_variables variables in the model.)")
+    if !(1 <= vi.value <= m._variable_number)
+        error("Invalid variable index $vi. ($(m._variable_numbe) variables in the model.)")
     end
     return
 end
@@ -537,18 +499,9 @@ function check_inbounds!(m::Optimizer, vov::VECOFVAR)
 end
 
 ##### Access variable information from MOI variable index
-function has_upper_bound(m::Optimizer, vi::MOI.VariableIndex)
-    @inbounds val = m._variable_info[vi.value]
-    return val.has_upper_bound
-end
-function has_lower_bound(m::Optimizer, vi::MOI.VariableIndex)
-    @inbounds val = m._variable_info[vi.value]
-    return val.has_lower_bound
-end
-function is_fixed(m::Optimizer, vi::MOI.VariableIndex)
-    @inbounds val = m._variable_info[vi.value]
-    return val.is_fixed
-end
+fhas_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
+has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
+is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
 
 function is_integer_feasible(m::Optimizer)
     flag = true
@@ -666,9 +619,7 @@ MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._maximum_node_id
-function MOI.get(m::Optimizer, ::MOI.ResultCount)
-    (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
-end
+MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
@@ -711,7 +662,6 @@ end
 # Defines single variable objective function
 eval_function(var::SV, x) = x[var.variable.value]
 
-# Defines affine objective function
 function eval_function(aff::SAF, x)
     function_value = aff.constant
     for term in aff.terms
@@ -720,7 +670,6 @@ function eval_function(aff::SAF, x)
     return function_value
 end
 
-# Defines quadratic objective function
 function eval_function(quad::SQF, x)
     function_value = quad.constant
     for term in quad.affine_terms
@@ -735,7 +684,6 @@ function eval_function(quad::SQF, x)
     return function_value
 end
 
-# Defines evaluation function for objective
 function eval_objective(m::Optimizer, x)
     @assert !(m._nlp_data.has_objective && isa(m._objective,Nothing))
     if m._nlp_data.has_objective
@@ -758,10 +706,8 @@ subproblems are logged every 'log_interval'.
 function log_iteration!(x::Optimizer)
 
     if x.log_on
-
         log = x._log
         if (mod(x._iteration_count, x.log_interval) == 0 || x._iteration_count == 1)
-
             if x.log_subproblem_info
                 if x._optimization_sense === MOI.MIN_SENSE
                     push!(log.current_lower_bound, x._lower_objective_value)
@@ -791,7 +737,6 @@ function log_iteration!(x::Optimizer)
             end
             push!(log.run_time, x._run_time)
             push!(log.node_count, x._node_count)
-
         end
     end
     return

@@ -566,6 +566,9 @@ end
 
 function parse_problem!(m::Optimizer)
 
+    m._user_branch_variables = ~isempty(m.branch_variable)
+    m._time_left = m.time_limit
+
     ########### Reformulate DAG using auxilliary variables ###########
     _variable_len = length(m._variable_info)
     m._continuous_variable_number = _variable_len

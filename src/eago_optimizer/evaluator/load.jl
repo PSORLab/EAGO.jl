@@ -26,7 +26,7 @@ function copy_to_function!(d::Evaluator{N,T}, i::Int64, y::JuMP._FunctionStorage
     tp2_count = 0
     tp3_count = 0
     tp4_count = 0
-    for i in 1:lenx
+    for i = 1:lenx
         op = x.nd[i].index
         if double_tp(op)
             tp1_count += 1
@@ -67,7 +67,7 @@ function copy_to_subexpr!(d::Evaluator{N,T}, y::JuMP._SubexpressionStorage) wher
     tp2_count = 0
     tp3_count = 0
     tp4_count = 0
-    for i in 1:lenx
+    for i = 1:lenx
         op = x.nd[i].index
         if double_tp(op)
             tp1_count += 1

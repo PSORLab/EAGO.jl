@@ -12,6 +12,13 @@
 # Structures used store nonlinear functions used in computing relaxations.
 #############################################################################
 
+@enum NodeType CALL CALLUNIVAR MOIVARIABLE VARIABLE VALUE PARAMETER SUBEXPRESSION LOGIC COMPARISON EXTRA
+struct NodeData
+    nodetype::NodeType
+    index::Int64
+    parent::Int64
+end
+
 """
 $(TYPEDEF)
 
@@ -126,7 +133,7 @@ mutable struct Evaluator{N, T<:RelaxTag} <: MOI.AbstractNLPEvaluator
         d.index_to_variable = Tuple{Int64,Int64,Int64}[]
         d.seeds = SVector{N,Float64}[]
         d.ctx = GuardCtx()
-        for i in 1:N
+        for i = 1:N
             push!(d.seeds, seed_gradient(i, Val(N)))
         end
         return d
@@ -150,3 +157,61 @@ include("load.jl")
 
 num_state_variables(x::Evaluator) = 0
 num_decision_variables(x::Evaluator) = x.variable_number
+
+
+#=
+# WORK ON NEW EVALUATOR
+struct NonlinearFunction
+    d::Evaluator
+    indx::
+end
+
+struct EvaluatorParams
+    parameter_values::Vector{Float64}
+    has_user_mv_operator::Bool
+    has_nlobj::Bool
+    has_reverse::Bool
+    subgrad_tighten::Bool
+    subgrad_tighten_reverse::Bool
+    cp_repetitions::Int64
+    cp_tolerance::Float64
+    "Context used to guard against domain violations & branch on these violations if necessary"
+    ctx::GuardCtx
+end
+
+struct Evaluator <: MOI.AbstractNLPEvaluator
+    user_operators::JuMP._Derivatives.UserOperatorRegistry
+    objective::NonlinearFunction
+    constraints::Vector{NonlinearFunction}
+    subexpressions::Vector{Union{NonlinearFunction,Subexpression}}
+    current_node::NodeBB
+    subexpression_order::Vector{Int64}
+    params::EvaluatorParams
+    subexpression_order::Vector{Int64}
+
+    index_to_variable::Vector{Tuple{Int64,Int64,Int64}}
+    first_eval_flag::Bool
+    constraints_lbd::Vector{Float64}
+    constraints_ubd::Vector{Float64}
+    subexpression_order::Vector{Int64}
+    subexpression_linearity::Vector{JuMP._Derivatives.Linearity}
+    last_x::Vector{Float64}
+    last_obj::MC{N,T}
+    jac_storage::Vector{MC{N,T}}
+    flt_jac_storage::Vector{Float64}
+    user_output_buffer::Vector{MC}
+    function Evaluator()
+        d = new()
+        d.user_operators = JuMP._Derivatives.UserOperatorRegistry()
+        d.first_eval_flag = false
+        d.objective_ubd = Inf
+        d.constraints = FunctionSetStorage{N,T}[]
+        d.constraints_lbd = Float64[]
+        d.constraints_ubd = Float64[]
+        d.objective = FunctionSetStorage(N,T)
+        d.index_to_variable = Tuple{Int64,Int64,Int64}[]
+        d.ctx = GuardCtx()
+        return d
+    end
+end
+=#

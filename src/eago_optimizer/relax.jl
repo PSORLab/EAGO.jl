@@ -1,3 +1,4 @@
+#=
 struct ConvexSQF{S}
     x::Vector{Float64}
     xT::Adjoint{Float64,Vector{Float64}}
@@ -17,19 +18,19 @@ struct ConvexSQF{S}
     saf_terms::Vector{Float64}
     n::Int
 end
-
+=#
 """
 $(FUNCTIONNAME)
 
 Stores the kernel of the calculation required to relax convex quadratic
 constraints using the immutable dictionary to label terms.
 """
-function relax_convex_kernel!(b::ConvexSQF{S}, x0::Vector{Float64})
+function relax_convex_kernel!(b::SQF, x0::Vector{Float64})
     @__dot__ b.x = x0[b.x0_indx]
     @__dot__ b.x = b.xT
     mul!(b.Qx, b.Q, b.x)
     @__dot__ b.saf.terms = SAT(b.lin_terms + 2.0*b.Qx, b.vi)
-    saf.constant = sqf.constant + mapreduce((x,y)->, +, b.quad_coeff, b.x0_buffer)
+    saf.constant = sqf.constant + mapreduce((x,y)-> x*y, +, b.quad_coeff, b.x0_buffer)
     nothing
 end
 
@@ -154,7 +155,7 @@ function relax_quadratic_gen_saf(func::SQF, vi::Vector{VI}, n::NodeBB,
     end
     return saf
 end
-function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
+function store_ge_quadratic!(x::Optimizer, ci::CID{SAF,LT}, saf::SAF,
                              lower::Float64, i::Int64, q::Int64)
     opt = x.relaxed_optimizer
     if (q == 1) & x.relaxed_inplace_mod
@@ -169,7 +170,7 @@ function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
     end
     return
 end
-function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
+function store_le_quadratic!(x::Optimizer, ci::CID{SAF,LT}, saf::SAF,
                             upper::Float64, i::Int64, q::Int64)
     opt = x.relaxed_optimizer
     if (q == 1) & x.relaxed_inplace_mod
@@ -188,7 +189,7 @@ function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
     end
     return
 end
-function store_eq_quadratic!(x::Optimizer, ci1::CI{SAF,LT}, ci2::CI{SAF,LT},
+function store_eq_quadratic!(x::Optimizer, ci1::CID{SAF,LT}, ci2::CID{SAF,LT},
                             saf1::SAF, saf2::SAF, value::Float64, i::Int64,
                             q::Int64)
     opt = x.relaxed_optimizer
@@ -515,3 +516,16 @@ end
 
 relax_problem!(x::Optimizer, v::Vector{Float64}, q::Int64) = relax_problem!(x.ext_type, x, v, q)
 relax_objective!(x::Optimizer, v::Vector{Float64}) = relax_objective!(x.ext_type, x, v)
+
+#=
+work on new constraint relaxation
+"""
+Takes the optimizer and constraint index and computes a relaxation inplace if
+possible (no prior relaxation) and no set.
+"""
+function relax_expression!(x::Optimizer, c::CID)
+    iszero(x._cut_number[c]) ? relax_iip!(x,c) : relax_oop!(x,c)
+    x._cut_number[x] += 1
+    nothing
+end
+=#
