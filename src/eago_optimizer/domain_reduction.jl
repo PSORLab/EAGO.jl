@@ -614,7 +614,6 @@ function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,v
     acnt = length(func.affine_terms)
     (vxvalue != nothing) && (vx = MOI.VariableIndex(vxvalue))
     (vyvalue != nothing) && (vy = MOI.VariableIndex(vyvalue))
-
     for qd_term in func.quadratic_terms
         if (qd_term.variable_index1 == vx && qd_term.variable_index2 == vx)
             ax = qd_term.coefficient
@@ -624,7 +623,6 @@ function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,v
             axy = qd_term.coefficient
         end
     end
-
     affine_coefficient_1 = func.affine_terms[1].coefficient
     affine_coefficient_2 = func.affine_terms[2].coefficient
     if acnt == 2
@@ -650,7 +648,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
 Classifies constraints as univariate or bivariate and adds
 them to storage vectors.
 """
@@ -659,7 +656,7 @@ function classify_quadratics!(m::Optimizer)
     b = 0.0
     c = 0.0
     # Check for Univariate and Bivariate Lesser Constraints
-    for (func,set,indx) in m._quadratic_leq_constraints
+    for (func,set) in m._quadratic_leq_constraints
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             a_neg = -1.0*a
@@ -678,7 +675,7 @@ function classify_quadratics!(m::Optimizer)
     end
 
     # Check for Univariate and Bivariate Greater Constraints
-    for (func,set,indx) in m._quadratic_geq_constraints
+    for (func,set) in m._quadratic_geq_constraints
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             push!(m._univariate_quadratic_geq_constraints,(a,b,c,vi))
@@ -694,7 +691,7 @@ function classify_quadratics!(m::Optimizer)
     end
 
     # Check for Univariate and Bivariate Equality Constraints
-    for (func,set,indx) in m._quadratic_eq_constraints
+    for (func,set) in m._quadratic_eq_constraints
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             push!(m._univariate_quadratic_eq_constraints,(a,b,c,vi))
@@ -718,7 +715,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
 Kernel of the bound tightening operation on univariant qudaratic functions.
 Called for each univariate function.
 """
@@ -751,7 +747,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
 Performs bound tightening on all univariate quadratic functions.
 """
 function univariate_quadratic(m::Optimizer)
@@ -787,7 +782,6 @@ end
 #=
 """
 $(FUNCTIONNAME)
-
 Kernel of the bound tightening operation on bivariate qudaratic functions.
 Called for each bivariate function.
 """
@@ -795,10 +789,8 @@ function bivariate_kernel(m::Optimizer,n::NodeBB,ax::Float64,ay::Float64,axy::Fl
                          bx::Float64,by::Float64,vi1::Int,vi2)
         # Case distinction from Vigerske disseration (TO DO)
 end
-
 """
 $(FUNCTIONNAME)
-
 Performs bound tightening on all bivariate quadratic functions.
 """
 function bivariate_quadratic(m::Optimizer,n::NodeBB)

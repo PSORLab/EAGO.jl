@@ -48,7 +48,7 @@ function MOI.add_constraint(m::Optimizer, v::SV, zo::ZO)
     m._variable_info[vi.value].has_lower_bound = true
     m._variable_info[vi.value].has_upper_bound = true
     m._variable_info[vi.value].is_integer = true
-    return CID{SV, MOI.ZO}(vi.value)
+    return CI{SV, MOI.ZO}(vi.value)
 end
 
 function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
@@ -65,7 +65,7 @@ function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
     end
     m._variable_info[vi.value].upper_bound = lt.upper
     m._variable_info[vi.value].has_upper_bound = true
-    return CID{SV, LT}(vi.value)
+    return CI{SV, LT}(vi.value)
 end
 
 function MOI.add_constraint(m::Optimizer, v::SV, gt::GT)
@@ -82,7 +82,7 @@ function MOI.add_constraint(m::Optimizer, v::SV, gt::GT)
     end
     m._variable_info[vi.value].lower_bound = gt.lower
     m._variable_info[vi.value].has_lower_bound = true
-    return CID{SV, GT}(vi.value)
+    return CI{SV, GT}(vi.value)
 end
 
 function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
@@ -105,5 +105,5 @@ function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
     m._variable_info[vi.value].has_lower_bound = true
     m._variable_info[vi.value].has_upper_bound = true
     m._variable_info[vi.value].is_fixed = true
-    return CID{SV, ET}(vi.value)
+    return CI{SV, ET}(vi.value)
 end

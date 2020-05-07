@@ -939,6 +939,8 @@ function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
             forward_eval_all(d,x)
         end
     end
+    println("x: $(x)")
+    println("d.last_x: $(d.last_x)")
     d.last_x .= x
 
      return flag

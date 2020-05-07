@@ -76,18 +76,6 @@ end
 
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
-#=
-struct BufferedSQF{S}
-    sqf::SQF
-    set::S
-    buffer::SAF
-    quad1_to_indx::Vector{Int}
-    quad2_to_indx::Vector{Int}
-    affine_to_indx::Vector{Int}
-end
-=#
-
-
 export Optimizer
 """
 $(TYPEDEF)
@@ -98,7 +86,7 @@ via keyword arguments in the JuMP/MOI model:
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
+Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Presolving options
     presolve_scrubber_flag::Bool = false
@@ -130,7 +118,7 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
 
     # Options for optimality-based bound tightening
     "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
-    relaxed_optimizer::S = GLPK.Optimizer()
+    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
     "Keyword arguments for the relaxed optimizer."
     relaxed_optimizer_kwargs::Base.Iterators.Pairs = Base.Iterators.Pairs(NamedTuple(),())
     relaxed_inplace_mod::Bool = true
@@ -193,7 +181,7 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     cut_safe_b::Float64 = 1E9
 
     # Upper bounding options
-    upper_optimizer::T = Ipopt.Optimizer()
+    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer()
     upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer)
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 4)"
@@ -223,7 +211,7 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
 
     # Termination limits
     "Maximum number of nodes (default = 1E-7)"
-    node_limit::Int64 = 1E-7
+    node_limit::Int64 = 1*10^7
     "Maximum CPU time in seconds (default = 1000)"
     time_limit::Float64 = 1000.0
     "Maximum number of iterations (default 3E6)"
@@ -272,14 +260,13 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
 
     _current_node::NodeBB = NodeBB()
     _current_xref::Vector{Float64} = Float64[]
-    _sense_multiplier::Float64
 
     _variable_number::Int64 = 0
-    _state_variables::Int64
+    _state_variables::Int64 = 0
     _continuous_variable_number::Int64 = 0
-    _integer_variable_number::Int64
+    _integer_variable_number::Int64 = 0
 
-    _user_branch_variables::Bool
+    _user_branch_variables::Bool = false
     _fixed_variable::Vector{Bool} = Bool[]
 
     _continuous_solution::Vector{Float64} = Float64[]
@@ -292,9 +279,9 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
 
     _lower_variable::Vector{SV} = SV[]
     _lower_variable_index::Vector{VI} = VI[]
-    _lower_variable_et::Vector{CID{SV, ET}} = CID{SV, ET}[]
-    _lower_variable_lt::Vector{CID{SV, LT}} = CID{SV, LT}[]
-    _lower_variable_gt::Vector{CID{SV, GT}} = CID{SV, GT}[]
+    _lower_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
+    _lower_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
+    _lower_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
     _lower_variable_et_indx::Vector{Int64} = Int64[]
     _lower_variable_lt_indx::Vector{Int64} = Int64[]
     _lower_variable_gt_indx::Vector{Int64} = Int64[]
@@ -337,13 +324,21 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _last_upper_problem_time::Float64 = 0.0
     _last_postprocessing_time::Float64 = 0.0
 
-    _objective::Union{Nothing, SV, SAF, SQF} = nothing
+    _objective_sv = nothing
+    _objective_saf = nothing
+    _objective_sqf = nothing
+    _objective_is_sv::Bool = false
+    _objective_is_saf::Bool = false
+    _objective_is_sqf::Bool = false
+    _objective_is_nlp::Bool = false
+
+    #_objective::Union{Nothing, SV, SAF, SQF} = nothing
 
     _objective_convexity::Bool = false
 
     _objective_cut_set::Int64 = -1
-    _objective_cut_ci_sv::CID{SV,LT} = CID{SV,LT}(-1.0)
-    _objective_cut_ci_saf::Vector{CID{SAF,LT}} = CID{SAF,LT}[]
+    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
+    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
     _last_constraint_index::Int = 0
 
@@ -373,9 +368,9 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
     _quadratic_obj_dict::ImmutableDict{Int64,Int64} = ImmutableDict{Int64,Int64}()
 
-    _quadratic_ci_leq::Vector{Vector{CID{SAF,LT}}} = CID{SAF,LT}[]
-    _quadratic_ci_geq::Vector{Vector{CID{SAF,LT}}} = CID{SAF,LT}[]
-    _quadratic_ci_eq::Vector{Vector{Tuple{CID{SAF,LT},CID{SAF,LT}}}} = Tuple{CID{SAF,LT},CID{SAF,LT}}[]
+    _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
+    _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
+    _quadratic_ci_eq::Vector{Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}} = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
 
     _quadratic_leq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
     _quadratic_geq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
@@ -390,8 +385,8 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _quadratic_eq_convexity_1::Vector{Bool} = Bool[]
     _quadratic_eq_convexity_2::Vector{Bool} = Bool[]
 
-    _lower_nlp_affine::Vector{Vector{CID{SAF,LT}}} = Vector{CID{SAF,LT}}[]
-    _upper_nlp_affine::Vector{Vector{CID{SAF,LT}}} = Vector{CID{SAF,LT}}[]
+    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
+    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
 
     _lower_nlp_affine_indx::Vector{Int64} = Int64[]
     _upper_nlp_affine_indx::Vector{Int64} = Int64[]
@@ -418,8 +413,8 @@ Base.@kwdef mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOp
     _first_solution_node::Int64 = -1
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
     _objective_value::Float64 = -Inf
-    _termination_status_code::MOI.TerminationStatusCode = MOI.OTHER_RESULT_STATUS
-    _result_status_code::MOI.ResultStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
 
     # Optimality-Based Bound Tightening (OBBT) Options
     _obbt_working_lower_index::Vector{Bool} = Bool[]
@@ -478,6 +473,7 @@ function check_inbounds!(m::Optimizer, vi::VI)
     return
 end
 check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
+
 function check_inbounds!(m::Optimizer, aff::SAF)
     for term in aff.terms
         check_inbounds!(m, term.variable_index)
@@ -494,15 +490,16 @@ function check_inbounds!(m::Optimizer, quad::SQF)
     end
     return
 end
+#=
 function check_inbounds!(m::Optimizer, vov::VECOFVAR)
     for vi in vov.variables
         check_inbounds!(m, vi)
     end
     return
 end
-
+=#
 ##### Access variable information from MOI variable index
-fhas_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
+has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
 has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
 is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
 
@@ -639,9 +636,14 @@ end
 
 ##### Support, set, and evaluate objective functions
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SV}) where {F <: Union{SV,SAF,SQF}} = true
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::F) where {F <: Union{SV,SAF}}
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
     check_inbounds!(m, func)
-    m._objective = func
+    m._objective_sv = func
+    return
+end
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
+    check_inbounds!(m, func)
+    m._objective_saf = func
     return
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SQF)
