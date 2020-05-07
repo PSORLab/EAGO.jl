@@ -26,13 +26,14 @@ module EAGO
     const SQF = MOI.ScalarQuadraticFunction{Float64}
     const SQT = MOI.ScalarQuadraticTerm{Float64}
     const SV = MOI.SingleVariable
+    const VECOFVAR = MOI.VectorOfVariables
     const LT = MOI.LessThan{Float64}
     const GT = MOI.GreaterThan{Float64}
     const ET = MOI.EqualTo{Float64}
     const IT = MOI.Interval{Float64}
     const ZO = MOI.ZeroOne
     const VI = MOI.VariableIndex
-    const CI = MOI.ConstraintIndex
+    const CID = MOI.ConstraintIndex
     const SCoefC = MOI.ScalarCoefficientChange
     const SConsC = MOI.ScalarConstantChange
     const MOIU = MOI.Utilities
@@ -47,6 +48,8 @@ module EAGO
     include("eago_optimizer/evaluator/evaluator.jl")
     include("eago_optimizer/logging.jl")
     include("eago_optimizer/optimizer.jl")
+    include("eago_optimizer/variables.jl")
+    include("eago_optimizer/constraints.jl")
     include("eago_optimizer/display.jl")
     include("eago_optimizer/relax.jl")
     include("eago_optimizer/domain_reduction.jl")

@@ -363,25 +363,25 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
             @inbounds children_idx = nzrange(adj,k)
             n_children = length(children_idx)
             if op == 1 # :+
-                forward_plus!(k, children_idx, children_arr, numvalued, numberstorage, setstorage, first_eval_flag)
+                forward_plus!(k, children_idx, children_arr, numvalued, numberstorage, setstorage, first_eval_flag)::Nothing
             elseif op == 2 # :-
                 @assert n_children == 2
                 child1 = first(children_idx)
                 @inbounds ix1 = children_arr[child1]
                 @inbounds ix2 = children_arr[child1+1]
                 forward_minus!(k, x_values, ix1, ix2, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag)
+                               setstorage, current_node, subgrad_tighten, first_eval_flag)::Nothing
             elseif op == 3 # :*
                 forward_multiply!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                                  setstorage, current_node, subgrad_tighten, first_eval_flag)
+                                  setstorage, current_node, subgrad_tighten, first_eval_flag)::Nothing
             elseif op == 4 # :^                                                      # DONE
                 @assert n_children == 2
                 forward_power!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
+                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)::Nothing
             elseif op == 5 # :/                                                      # DONE
                 @assert n_children == 2
                 forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
+                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)::Nothing
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 op_sym = id_to_operator[op]
                 evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]

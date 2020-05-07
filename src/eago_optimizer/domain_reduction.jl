@@ -122,16 +122,14 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
     copyto!(x._new_upp_index, x._obbt_working_upper_index)
 
     # Exclude unbounded directions
-    for i in 1:obbt_var_len
-        @inbounds active_flag = x._new_low_index[i]
-        if active_flag
-            @inbounds bnd = y.lower_variable_bounds[i]
-            if (bnd == -Inf)
+    for i = 1:obbt_var_len
+        if x._new_low_index[i]
+            if (y.lower_variable_bounds[i] == -Inf)
                 @inbounds x._new_low_index[i] = false
             end
         end
     end
-    for i in 1:obbt_var_len
+    for i = 1:obbt_var_len
         @inbounds active_flag = x._new_low_index[i]
         if active_flag
             @inbounds bnd = y.upper_variable_bounds[i]
