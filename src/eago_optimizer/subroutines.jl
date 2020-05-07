@@ -539,38 +539,38 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
         end
     end
 
-    for (func, set, i) in x._linear_leq_constraints
+    for (func, set) in x._linear_leq_constraints
         (~feas) && break
         if interval_bound(func, y, true) > set.upper
             feas = false
         end
     end
-    for (func, set, i) in x._linear_geq_constraints
+    for (func, set) in x._linear_geq_constraints
         (~feas) && break
         if interval_bound(func, y, false) < set.lower
             feas = false
         end
     end
-    for (func, set, i) in x._linear_eq_constraints
+    for (func, set) in x._linear_eq_constraints
         (~feas) && break
         if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
             feas = false
         end
     end
 
-    for (func, set, i) in x._quadratic_leq_constraints
+    for (func, set) in x._quadratic_leq_constraints
         (~feas) && break
         if interval_bound(func, y, true) > set.upper
             feas = false
         end
     end
-    for (func, set, i) in x._quadratic_geq_constraints
+    for (func, set) in x._quadratic_geq_constraints
         (~feas) && break
         if interval_bound(func, y, false) < set.lower
             feas = false
         end
     end
-    for (func, set, i) in x._quadratic_eq_constraints
+    for (func, set) in x._quadratic_eq_constraints
         (~feas) && break
         if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
             feas = false
@@ -691,9 +691,9 @@ function cut_condition(t::ExtensionType, x::Optimizer)
 
     flag = x._cut_add_flag
     flag &= (x._cut_iterations < x.cut_max_iterations)
+    y = x._current_node
 
     if flag
-        y = x._current_node
         xprior = x._current_xref
         xsol = (x._cut_iterations > 1) ? x._cut_solution : x._lower_solution
         xnew = (1.0 - x.cut_cvx)*mid(y) + x.cut_cvx*xsol
@@ -741,9 +741,8 @@ function cut_condition(t::ExtensionType, x::Optimizer)
 
     # check to see if interval bound is preferable
     if x._lower_feasibility
-        y = x._current_node
         if x._objective_is_nlp
-            intv_lo = eval_objective_lo(x._relaxed_evaluator)
+            objective_lo = eval_objective_lo(x._relaxed_evaluator)
         else
             if x._objective_is_sv
                 obj_indx = x._objective_sv.variable.value
@@ -756,8 +755,8 @@ function cut_condition(t::ExtensionType, x::Optimizer)
                 end
             end
         end
-        if intv_lo > x._lower_objective_value
-            x._lower_objective_value = intv_lo
+        if objective_lo > x._lower_objective_value
+            x._lower_objective_value = objective_lo
             fill!(x._lower_lvd, 0.0)
             fill!(x._lower_uvd, 0.0)
         end

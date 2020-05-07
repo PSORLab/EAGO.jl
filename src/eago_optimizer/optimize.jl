@@ -29,7 +29,7 @@ function gen_quadratic_storage!(x::Optimizer)
     variable_index = x._lower_variable_index
 
     temp_leq_ci = CI{SAF,LT}[]
-    for (func, set, ind) in x._quadratic_leq_constraints
+    for (func, set) in x._quadratic_leq_constraints
 
         v = gen_quad_vals(func)
         nv = length(v)
@@ -55,7 +55,7 @@ function gen_quadratic_storage!(x::Optimizer)
     end
 
     temp_geq_ci = CI{SAF,LT}[]
-    for (func, set, ind) in x._quadratic_geq_constraints
+    for (func, set) in x._quadratic_geq_constraints
 
         v = gen_quad_vals(func)
         nv = length(v)
@@ -81,7 +81,7 @@ function gen_quadratic_storage!(x::Optimizer)
     end
 
     temp_eq_ci = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
-    for (func, set, ind) in x._quadratic_eq_constraints
+    for (func, set) in x._quadratic_eq_constraints
 
         v = gen_quad_vals(func)
         nv = length(v)
@@ -248,6 +248,7 @@ function linear_solve!(m::Optimizer)
     return
 end
 
+#=
 function convert_to_min!(obj::SV, x::Optimizer)
     x._objective = SAF(SAT[SAT(-1.0, x._objective.variable)], 0.0)
     nothing
@@ -276,6 +277,7 @@ function convert_to_min!(obj::Nothing, x::Optimizer)
     end
     nothing
 end
+=#
 
 """
 $(TYPEDSIGNATURES)
@@ -308,7 +310,7 @@ function convert_to_min!(x::Optimizer)
                 @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
             end
         end
-        convert_to_min!(x._objective, x)::Nothing
+        #convert_to_min!(x._objective, x)::Nothing
     end
     return
 end
@@ -390,25 +392,40 @@ Returns true if `func` < 0  based on eigenvalue tests, false otherwise.
 """
 
 # Dictionary free convexity test
-function is_convex_kernel(func::SQF, mult::Float64)
-    qterms = quadratic_terms
-    indx1 = getfield.(getfield.(qterms, :variable_index_1), :value)
-    indx2 = getfield.(getfield.(qterms, :variable_index_2), :value)
-    l1,u1 = extrema(indx1)
-    l2,u2 = extrema(indx2)
-    s = max(u2,u1) - min(l1, l2) + 1
-    A = zeros(Float64,s,s)
-    len = length(indx1)
-    for i=1:len
-        @inbounds A[indx1[i], indx2[i]] = mult*qterms.coefficients[i]
+function is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{Int64,Int64})
+    flag = false
+    row = Int64[]
+    column = Int64[]
+    value = Float64[]
+    for term in func.quadratic_terms
+        coeff = term.coefficient
+        if coeff != 0.0
+            value1 = cvx_dict[term.variable_index_1.value]
+            value2 = cvx_dict[term.variable_index_2.value]
+            mcoeff = mult*coeff
+            push!(row, value1)
+            push!(column, value2)
+            push!(value, mcoeff)
+            push!(row, value2)
+            push!(column, value1)
+            push!(value, mcoeff)
+        end
     end
-    if len > 1
-        eigval = eigmin(A)
-        (eigval > 0.0) && (return true)
-    elseif (len == 1) && (A[1,1] > 0.0)
-        return true
+    Q = sparse(row, column, value)
+    s1, s2 = size(Q)
+    if length(Q.nzval) > 1
+        flag = try
+               F = cholesky(Symmetric(Q))
+               true
+        catch err
+            false
+        end
+    else
+        if (length(Q.nzval) == 1) && (Q.nzval[1] > 0.0)
+            flag = true
+        end
     end
-    false
+    flag
 end
 
 """
@@ -421,19 +438,19 @@ otherwise.
 function label_quadratic_convexity!(x::Optimizer)
 
     for i = 1:length(x._quadratic_leq_constraints)
-        @inbounds func, set, ind = x._quadratic_leq_constraints[i]
+        @inbounds func, set = x._quadratic_leq_constraints[i]
         @inbounds cvx_dict = x._quadratic_leq_dict[i]
         push!(x._quadratic_leq_convexity, is_convex_quadratic(func, 1.0, cvx_dict))
     end
 
     for i = 1:length(x._quadratic_geq_constraints)
-        @inbounds func, set, ind = x._quadratic_geq_constraints[i]
+        @inbounds func, set = x._quadratic_geq_constraints[i]
         @inbounds cvx_dict = x._quadratic_geq_dict[i]
         push!(x._quadratic_geq_convexity, is_convex_quadratic(func, -1.0, cvx_dict))
     end
 
     for i = 1:length(x._quadratic_eq_constraints)
-        @inbounds func, set, ind = x._quadratic_eq_constraints[i]
+        @inbounds func, set = x._quadratic_eq_constraints[i]
         @inbounds cvx_dict = x._quadratic_eq_dict[i]
         push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0, cvx_dict))
         push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0, cvx_dict))
@@ -862,7 +879,7 @@ function throw_optimize_hook!(m::Optimizer)
 end
 
 function MOI.optimize!(m::Optimizer)
-
+    
     m._start_time = time()
     parse_problem!(m)
     presolve_problem!(m)
