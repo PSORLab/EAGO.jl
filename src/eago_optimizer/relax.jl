@@ -18,7 +18,6 @@ struct ConvexSQF{S}
     saf_terms::Vector{Float64}
     n::Int
 end
-=#
 """
 $(FUNCTIONNAME)
 
@@ -33,6 +32,7 @@ function relax_convex_kernel!(b::SQF, x0::Vector{Float64})
     saf.constant = sqf.constant + mapreduce((x,y)-> x*y, +, b.quad_coeff, b.x0_buffer)
     nothing
 end
+=#
 
 function relax_convex_kernel(func::SQF, vi::Vector{VI}, cvx_dict::ImmutableDict{Int64,Int64},
                              nx::Int64, x0::Vector{Float64})
@@ -155,7 +155,7 @@ function relax_quadratic_gen_saf(func::SQF, vi::Vector{VI}, n::NodeBB,
     end
     return saf
 end
-function store_ge_quadratic!(x::Optimizer, ci::CID{SAF,LT}, saf::SAF,
+function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
                              lower::Float64, i::Int64, q::Int64)
     opt = x.relaxed_optimizer
     if (q == 1) & x.relaxed_inplace_mod
@@ -170,7 +170,7 @@ function store_ge_quadratic!(x::Optimizer, ci::CID{SAF,LT}, saf::SAF,
     end
     return
 end
-function store_le_quadratic!(x::Optimizer, ci::CID{SAF,LT}, saf::SAF,
+function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
                             upper::Float64, i::Int64, q::Int64)
     opt = x.relaxed_optimizer
     if (q == 1) & x.relaxed_inplace_mod
@@ -189,7 +189,7 @@ function store_le_quadratic!(x::Optimizer, ci::CID{SAF,LT}, saf::SAF,
     end
     return
 end
-function store_eq_quadratic!(x::Optimizer, ci1::CID{SAF,LT}, ci2::CID{SAF,LT},
+function store_eq_quadratic!(x::Optimizer, ci1::CI{SAF,LT}, ci2::CI{SAF,LT},
                             saf1::SAF, saf2::SAF, value::Float64, i::Int64,
                             q::Int64)
     opt = x.relaxed_optimizer
@@ -524,7 +524,7 @@ Takes the optimizer and constraint index and computes a relaxation inplace if
 possible (no prior relaxation) and no set.
 """
 
-function copy_add_from_buffer!(x::Optimizer, c::CID{})
+function copy_add_from_buffer!(x::Optimizer, c::CI{})
 end
 function relax_to_buffer!(x, c)
 end
@@ -550,7 +550,7 @@ function is_safe_relax(x, c)
     end
     return flag
 end
-function relax_expr!(x::Optimizer, c::CID)
+function relax_expr!(x::Optimizer, c::CI)
     relax_to_buffer!(x, c)
     is_safe_relax(x, c) && copy_add_from_buffer!(x, c)
     x._cut_number[x] += 1

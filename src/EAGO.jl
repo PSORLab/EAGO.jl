@@ -33,7 +33,7 @@ module EAGO
     const IT = MOI.Interval{Float64}
     const ZO = MOI.ZeroOne
     const VI = MOI.VariableIndex
-    const CID = MOI.ConstraintIndex
+    const CI = MOI.ConstraintIndex
     const SCoefC = MOI.ScalarCoefficientChange
     const SConsC = MOI.ScalarConstantChange
     const MOIU = MOI.Utilities

@@ -12,7 +12,6 @@
 # Access functions for information from evaluator.
 #############################################################################
 
-#=
 function MOI.eval_objective(d::Evaluator, x::Vector{Float64})
     forward_reverse_pass(d,x)
     val = 0.0
@@ -161,9 +160,8 @@ function eval_constraint_cc_grad(d::Evaluator, g, y)
         end
     return
 end
-=#
+
 # looks good
-#=
 function MOI.features_available(d::Evaluator)
     features = Symbol[]
     if !d.disable_1storder
@@ -186,8 +184,8 @@ function grad_sparsity(d::Evaluator, j::Int64)
     end
     return sparsity
 end
-=#
 
+#=
 const SCALAR_ACCESS_FUNCTIONS = Union{cv, cc, lo, hi}
 function eval_objective(::typeof{f}, d::NonlinearFunction{N}, x::Vector{Float64}) where {f <: SCALAR_ACCESS_FUNCTIONS, N}
     @assert d.has_nlobj "No nonlinear objective."
@@ -224,3 +222,4 @@ function eval_objective(::typeof{f}, d::NonlinearFunction{N}, df::Vector, x::Vec
     nothing
 end
 grad_sparsity(d::NonlinearFunction) = d.grad_sparsity
+=#
