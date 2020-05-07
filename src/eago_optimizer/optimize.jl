@@ -107,8 +107,8 @@ function gen_quadratic_storage!(x::Optimizer)
         push!(x._quadratic_ci_eq, fill((CI{SAF,LT}(-1), CI{SAF,LT}(-1)), (len_eq_ci,)))
     end
 
-    if x._objective_is_sqf
-        v = gen_quad_vals(x._objective_sqf)
+    if isa(x._objective, SQF)
+        v = gen_quad_vals(x._objective)
         d = ImmutableDict{Int64,Int64}()
         for (i, val) in enumerate(v)
             d = ImmutableDict(d, val => i)
@@ -130,38 +130,29 @@ function load_relaxed_problem!(x::Optimizer)
 
     # add variables and indices
     variable_number = x._variable_number
-    for i in 1:variable_number
+    for i=1:variable_number
         variable_index = MOI.add_variable(opt)
-        single_variable = SV(variable_index)
         push!(x._lower_variable_index, variable_index)
-        push!(x._lower_variable, single_variable) # FIX ME WHEN
+        push!(x._lower_variable, SV(variable_index))
     end
 
     # add variables
     variable = x._lower_variable
-    for i in 1:variable_number
-
+    for i=1:variable_number
         @inbounds var = x._variable_info[i]
-        @inbounds variable_i = variable[i]
-
+        @inbounds var_i = variable[i]
         if var.is_integer
         else
             if var.is_fixed
-                @inbounds bnd = var.lower_bound
-                ci1 = MOI.add_constraint(opt, variable_i, ET(bnd))
-                push!(x._lower_variable_et, ci1)
+                push!(x._lower_variable_et, MOI.add_constraint(opt, var_i, ET(var.lower_bound)))
                 push!(x._lower_variable_et_indx, i)
             else
                 if var.has_lower_bound
-                    @inbounds bnd = var.lower_bound
-                    ci4 = MOI.add_constraint(opt, variable_i, GT(bnd))
-                    push!(x._lower_variable_gt, ci4)
+                    push!(x._lower_variable_gt, MOI.add_constraint(opt, var_i, GT(var.lower_bound)))
                     push!(x._lower_variable_gt_indx, i)
                 end
                 if var.has_upper_bound
-                    @inbounds bnd = var.upper_bound
-                    ci5 = MOI.add_constraint(opt, variable_i, LT(bnd))
-                    push!(x._lower_variable_lt, ci5)
+                    push!(x._lower_variable_lt, MOI.add_constraint(opt, var_i, LT(var.upper_bound)))
                     push!(x._lower_variable_lt_indx, i)
                 end
             end
@@ -216,7 +207,7 @@ function load_relaxed_problem!(x::Optimizer)
     # only solves box constrained problems (+ other constraints) so single
     # variable objective implies that a bound has already been set and it
     # is not fixed
-    if x._objective_is_sv
+    if isa(x._objective, SV)
         for (i, z) in enumerate(x._lower_variable_lt)
             if x._objective_sv.variable.value == x._lower_variable_lt_indx[i]
                 x._objective_cut_ci_sv = z
@@ -225,7 +216,7 @@ function load_relaxed_problem!(x::Optimizer)
         end
     end
 
-    for i in 1:x.cut_max_iterations
+    for i = 1:x.cut_max_iterations
         push!(x._objective_cut_ci_saf, CI{SAF,LT}(-1))
     end
     MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
@@ -238,13 +229,7 @@ is_lp(m::Optimizer) = ~in(true, m.branch_variable)
 function linear_solve!(m::Optimizer)
 
     opt = m.relaxed_optimizer
-
-    # TODO: Add check for nonlinear terms which are actually linear
-    if m._objective_is_sv
-        MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective_sv)
-    elseif m._objective_is_saf
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._objective_saf)
-    end
+    set_objective!(m._objective, opt)::Nothing
 
     MOI.optimize!(opt)
     m._objective_value = MOI.get(opt, MOI.ObjectiveValue())
@@ -259,6 +244,35 @@ function linear_solve!(m::Optimizer)
     return
 end
 
+function convert_to_min!(obj::SV, x::Optimizer)
+    x._objective = SAF(SAT[SAT(-1.0, x._objective.variable)], 0.0)
+    nothing
+end
+function convert_to_min!(obj::SAF, x::Optimizer)
+    @__dot__ x._objective.terms = SAT(-getfield(x._objective.terms, :coefficient),
+                                       getfield(x._objective.terms, :variable_index))
+    x._objective.constant *= -1.0
+    nothing
+end
+function convert_to_min!(obj::SQF, x::Optimizer)
+    @__dot__ x._objective.affine_terms = SAT(-getfield(x._objective.affine_terms, :coefficient),
+                                              getfield(x._objective.affine_terms, :variable_index))
+    @__dot__ x._objective.quadratic_terms = SQT(-getfield(x._objective.quadratic_terms, :coefficient),
+                                                 getfield(x._objective.quadratic_terms, :variable_index_1),
+                                                 getfield(x._objective.quadratic_terms, :variable_index_2))
+    x._objective.constant *= -1.0
+    nothing
+end
+function convert_to_min!(obj::Nothing, x::Optimizer)
+    nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
+    pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
+    nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+    for i = 3:length(nd)
+        @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+    end
+    nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -267,29 +281,7 @@ max(f) = - min(-f).
 """
 function convert_to_min!(x::Optimizer)
     if x._optimization_sense === MOI.MAX_SENSE
-        if x._objective_is_sv
-            x._objective_is_saf = true
-            x._objective_is_sv = false
-            x._objective_saf = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
-        elseif x._objective_is_saf
-            @inbounds x._objective_saf.terms[:] = SAT.(-getfield.(x._objective_saf.terms, :coefficient),
-                                                        getfield.(x._objective_saf.terms, :variable_index))
-            x._objective_saf.constant *= -1.0
-        elseif x._objective_is_sqf
-            @inbounds x._objective_sqf.affine_terms[:] = SAT.(-getfield.(x._objective_sqf.affine_terms, :coefficient),
-                                                               getfield.(x._objective_sqf.affine_terms, :variable_index))
-            @inbounds x._objective_sqf.quadratic_terms[:] = SQT.(-getfield.(x._objective_sqf.quadratic_terms, :coefficient),
-                                                                  getfield.(x._objective_sqf.quadratic_terms, :variable_index_1),
-                                                                  getfield.(x._objective_sqf.quadratic_terms, :variable_index_2))
-            x._objective_sqf.constant *= -1.0
-        else
-            nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
-            pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-            nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-            for i in 3:length(nd)
-                @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
-            end
-        end
+        convert_to_min!(x._objective, x)::Nothing
     end
     return
 end
@@ -354,7 +346,6 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     return
 end
 
-# DONE
 """
 $(TYPEDSIGNATURES)
 
@@ -362,17 +353,7 @@ Detects any variables set to a fixed value by equality or inequality constraints
 and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
-    lbd = 0.0
-    ubd = 0.0
-    for i in 1:m._variable_number
-        @inbounds lbd = m._variable_info[i].lower_bound
-        @inbounds ubd = m._variable_info[i].upper_bound
-        if lbd == ubd
-            @inbounds m._variable_info[i].is_fixed = true
-            @inbounds m._fixed_variable[i] = true
-        end
-    end
-    return
+    map!(x -> (x.is_fixed |= (x.lower_bound == x.upper_bound)), m._fixed_variable, m._variable_info)
 end
 
 """
@@ -380,41 +361,30 @@ $(TYPEDSIGNATURES)
 
 Returns true if `func` < 0  based on eigenvalue tests, false otherwise.
 """
-function is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{Int64,Int64})
-    # Riguous Convexity Test
-    flag = false
-    row = Int64[]
-    column = Int64[]
-    value = Float64[]
-    for term in func.quadratic_terms
-        coeff = term.coefficient
-        if coeff != 0.0
-            value1 = cvx_dict[term.variable_index_1.value]
-            value2 = cvx_dict[term.variable_index_2.value]
-            mcoeff = mult*coeff
-            push!(row, value1)
-            push!(column, value2)
-            push!(value, mcoeff)
-            push!(row, value2)
-            push!(column, value1)
-            push!(value, mcoeff)
-        end
-    end
-    Q = sparse(row, column, value)
-    s1, s2 = size(Q)
-    if length(Q.nzval) > 1
-        eigval = eigmin(Array(Q))
-        if (eigval) > 0.0
-            flag = true
-        end
-    elseif (length(Q.nzval) == 1) && (Q.nzval[1] > 0.0)
-        flag =  true
-    else
-        flag =  true
-    end
-    return flag
-end
 
+# Dictionary free convexity test
+function is_convex_kernel(func::SQF, mult::Float64)
+    qterms = quadratic_terms
+    indx1 = getfield.(getfield.(qterms, :variable_index_1), :value)
+    indx2 = getfield.(getfield.(qterms, :variable_index_2), :value)
+    l1,u1 = extrema(indx1)
+    l2,u2 = extrema(indx2)
+    s = max(u2,u1) - min(l1, l2) + 1
+    A = zeros(Float64,s,s)
+    len = length(indx1)
+    for i=1:len
+        @inbounds A[indx1[i], indx2[i]] = mult*qterms.coefficients[i]
+    end
+    if len > 1
+        eigval = eigmin(A)
+        (eigval > 0.0) && (return true)
+    elseif (len == 1) && (A[1,1] > 0.0)
+        return true
+    end
+    false
+end
+is_pos_convex(func::SQF, set, indx) = is_convex_kernel(func, set, indx, 1.0)
+is_neg_convex(func::SQF, set, indx) = is_convex_kernel(func, set, indx, -1.0)
 
 """
 $(TYPEDSIGNATURES)
@@ -425,24 +395,10 @@ otherwise.
 """
 function label_quadratic_convexity!(x::Optimizer)
 
-    for i in 1:length(x._quadratic_leq_constraints)
-        @inbounds func, set, ind = x._quadratic_leq_constraints[i]
-        @inbounds cvx_dict = x._quadratic_leq_dict[i]
-        push!(x._quadratic_leq_convexity, is_convex_quadratic(func, 1.0, cvx_dict))
-    end
-
-    for i in 1:length(x._quadratic_geq_constraints)
-        @inbounds func, set, ind = x._quadratic_geq_constraints[i]
-        @inbounds cvx_dict = x._quadratic_geq_dict[i]
-        push!(x._quadratic_geq_convexity, is_convex_quadratic(func, -1.0, cvx_dict))
-    end
-
-    for i in 1:length(x._quadratic_eq_constraints)
-        @inbounds func, set, ind = x._quadratic_eq_constraints[i]
-        @inbounds cvx_dict = x._quadratic_eq_dict[i]
-        push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0, cvx_dict))
-        push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0, cvx_dict))
-    end
+    append!(x._quadratic_leq_convexity, is_pos_convex.(x._quadratic_leq_constraints))
+    append!(x._quadratic_geq_convexity, is_neg_convex.(x._quadratic_geq_constraints))
+    append!(x._quadratic_eq_convexity_pos, is_pos_convex.(x._quadratic_eq_constraints))
+    append!(x._quadratic_eq_convexity_neg, is_neg_convex.(x._quadratic_eq_constraints))
 
     return
 end
@@ -610,6 +566,9 @@ end
 
 function parse_problem!(m::Optimizer)
 
+    m._user_branch_variables = ~isempty(m.branch_variable)
+    m._time_left = m.time_limit
+
     ########### Reformulate DAG using auxilliary variables ###########
     _variable_len = length(m._variable_info)
     m._continuous_variable_number = _variable_len
@@ -732,7 +691,7 @@ function store_candidate_solution!(x::Optimizer)
             x._first_solution_node = x._maximum_node_id
             x._solution_value = x._upper_objective_value
             x._global_upper_bound = x._upper_objective_value
-            @inbounds x._continuous_solution[:] = x._upper_solution
+            @__dot__ x._continuous_solution = x._upper_solution
         end
     end
     return

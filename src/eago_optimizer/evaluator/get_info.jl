@@ -47,23 +47,9 @@ function eval_objective_lo(d::Evaluator)
     return val
 end
 
-"""
-    get_node_lower(d::FunctionSetStorage, i::Int64)
-
-Retreives the lower bound of ith term in the tape of `d`.
-"""
-get_node_lower(d::FunctionSetStorage, i::Int64) = d.setstorage[i].Intv.lo
-
-"""
-    get_node_upper(d::FunctionSetStorage, i::Int64)
-
-Retreives the upper bound of ith term in the tape of `d`.
-"""
-get_node_upper(d::FunctionSetStorage, i::Int64) = d.setstorage[i].Intv.hi
-
 function MOI.eval_constraint(d::Evaluator, g::Vector{Float64}, x::Vector{Float64})
     forward_reverse_pass(d,x)
-    for i in 1:length(d.constraints)
+    for i = 1:length(d.constraints)
         #println("i = $i, setstorage = $(d.constraints[i].setstorage[1])")
         if d.constraints[i].numvalued[1]
             g[i] = d.constraints[i].numberstorage[1]
@@ -124,6 +110,7 @@ function eval_constraint_hi!(d::Evaluator, g::Vector{Float64})
     return
 end
 
+
 function MOI.eval_objective_gradient(d::Evaluator, df::Vector{Float64}, x::Vector{Float64})
     forward_reverse_pass(d,x)
     if d.has_nlobj
@@ -138,20 +125,9 @@ function MOI.eval_objective_gradient(d::Evaluator, df::Vector{Float64}, x::Vecto
     return
 end
 
-function MOI.jacobian_structure(d::Evaluator)
-    jacobian_sparsity = Tuple{Int64,Int64}[]
-    for row in 1:length(d.constraints)
-        row_sparsity = d.constraints[row].grad_sparsity
-        for idx in row_sparsity
-            push!(jacobian_sparsity, (row, idx))
-        end
-    end
-    return jacobian_sparsity
-end
-
 function MOI.eval_constraint_jacobian(d::Evaluator,g,x)
     forward_reverse_pass(d,x)
-    for i in 1:length(d.constraints)
+    for i = 1:length(d.constraints)
         if ~d.constraints[i].numvalued[1]
             for j in 1:d.variable_number
                 g[i,j] = d.constraints[i].setstorage[1].cv_grad[j]
@@ -185,45 +161,9 @@ function eval_constraint_cc_grad(d::Evaluator, g, y)
         end
     return
 end
-
-# TO DO (CHECK GRADIENT DIMS)
-function MOI.eval_constraint_jacobian_product(d::Evaluator, y, x, w)
-    if (!d.disable_1storder)
-        forward_reverse_pass(d,x)
-        t = typeof(d.constraints[1].setstorage[1])
-        y = zeros(t,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
-        for i in 1:length(d.constraints)
-            if ~d.constraints[i].numvalued[1]
-                for j in 1:d.variable_number
-                    y[i] += d.constraints[i].setstorage[1].cv_grad[j]*w[j]
-                end
-            end
-        end
-    else
-        error("First order information unavailable.")
-    end
-    return
-end
-
-# TO DO
-function MOI.eval_constraint_jacobian_transpose_product(d::Evaluator, y, x, w)
-    if (!d.disable_1storder)
-        forward_reverse_pass(d,x)
-        y = zeros(Float64,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
-        for i in 1:length(d.constraints)
-            if ~d.constraints[i].numvalued[1]
-                for j in 1:d.variable_number
-                    y[i] += d.constraints[i].setstorage[1].cv_grad[j]*w[j]
-                end
-            end
-        end
-    else
-        error("First order information unavailable.")
-    end
-    return
-end
-
+=#
 # looks good
+#=
 function MOI.features_available(d::Evaluator)
     features = Symbol[]
     if !d.disable_1storder
@@ -246,3 +186,41 @@ function grad_sparsity(d::Evaluator, j::Int64)
     end
     return sparsity
 end
+=#
+
+const SCALAR_ACCESS_FUNCTIONS = Union{cv, cc, lo, hi}
+function eval_objective(::typeof{f}, d::NonlinearFunction{N}, x::Vector{Float64}) where {f <: SCALAR_ACCESS_FUNCTIONS, N}
+    @assert d.has_nlobj "No nonlinear objective."
+    forward_reverse_pass(d, x, 0)
+    d.numvalued[1] ? d.numberstorage[1] : f(d.setstorage[1])::Float64
+end
+function eval_constraint(::typeof{f}, d::NonlinearFunction{N}, x::Vector{Float64}, i::Int) where {f <: SCALAR_ACCESS_FUNCTIONS, N}
+    forward_reverse_pass(d, x, i)
+    d.numvalued[1] ? d.numberstorage[1] : f(d.setstorage[1])
+end
+
+const VECTOR_ACCESS_FUNCTIONS = Union{cv_grad, cc_grad}
+function eval_objective(::typeof{f}, d::NonlinearFunction{N}, df::Vector, x::Vector{Float64}) where {f <: VECTOR_ACCESS_FUNCTIONS, N}
+    @assert d.has_nlobj "No nonlinear objective."
+    forward_reverse_pass(d, x, 0)
+    if d.numvalued[1]
+        for i = 1:d.variable_number
+            df[i] = f(d.setstorage[1])[i]
+        end
+    else
+        fill!(df, 0.0)
+    end
+    nothing
+end
+function eval_objective(::typeof{f}, d::NonlinearFunction{N}, df::Vector, x::Vector{Float64}) where {f <: VECTOR_ACCESS_FUNCTIONS, N}
+    forward_reverse_pass(d, x, 0)
+    if d.numvalued[1]
+        for i = 1:d.variable_number
+            df[i] = f(d.setstorage[1])[i]
+        end
+    else
+        fill!(df, 0.0)
+    end
+    nothing
+end
+grad_sparsity(d::NonlinearFunction) = d.grad_sparsity
