@@ -392,7 +392,7 @@ function lp_bound_tighten(m::Optimizer)
     for i = 1:m.lp_repetitions
 
         # Runs Poor Man LP on constraints of form ax >= b
-        for (func, constr, ind) in m._linear_geq_constraints
+        for (func, constr) in m._linear_geq_constraints
             if feas
                 temp_value = -(constr.lower - func.constant)
                 for term in func.terms
@@ -437,7 +437,7 @@ function lp_bound_tighten(m::Optimizer)
         end
 
         # Runs Poor Man LP on constraints of form ax <= b
-        for (func, constr, ind) in m._linear_leq_constraints
+        for (func, constr) in m._linear_leq_constraints
             if feas
                 temp_value = (constr.upper - func.constant)
                 for term in func.terms
@@ -481,7 +481,7 @@ function lp_bound_tighten(m::Optimizer)
             end
         end
 
-        for (func, constr, ind) in m._linear_eq_constraints
+        for (func, constr) in m._linear_eq_constraints
             if feas
                 temp_value = (constr.value - func.constant)
                 for term in func.terms
@@ -829,6 +829,7 @@ function cpwalk(x::Optimizer)
 
     # Run forward-reverse pass and retreive node for interval forward-reverse pass
     evaluator.subgrad_tighten = ~x.cp_interval_only
+
     feas = forward_reverse_pass(evaluator, midx)
     @inbounds n.lower_variable_bounds[:] = evaluator.current_node.lower_variable_bounds
     @inbounds n.upper_variable_bounds[:] = evaluator.current_node.upper_variable_bounds

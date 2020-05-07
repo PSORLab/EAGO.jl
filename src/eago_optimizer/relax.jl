@@ -219,7 +219,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
 
     # Relax Convex Constraint Terms TODO: place all quadratic info into one vector of tuples?
     for i = 1:length(x._quadratic_leq_constraints)
-        func, set, j = x._quadratic_leq_constraints[i]
+        func, set = x._quadratic_leq_constraints[i]
         cvx_dict = x._quadratic_leq_dict[i]
         vi = x._quadratic_leq_sparsity[i]
         nz = x._quadratic_leq_gradnz[i]
@@ -231,7 +231,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
     end
 
     for i = 1:length(x._quadratic_geq_constraints)
-        func, set, j = x._quadratic_geq_constraints[i]
+        func, set = x._quadratic_geq_constraints[i]
         cvx_dict = x._quadratic_geq_dict[i]
         vi = x._quadratic_geq_sparsity[i]
         nz = x._quadratic_geq_gradnz[i]
@@ -245,7 +245,7 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
     end
 
     for i = 1:length(x._quadratic_eq_constraints)
-        func, set, j = x._quadratic_eq_constraints[i]
+        func, set = x._quadratic_eq_constraints[i]
         cvx_dict = x._quadratic_eq_dict[i]
         vi = x._quadratic_eq_sparsity[i]
         nz = x._quadratic_eq_gradnz[i]

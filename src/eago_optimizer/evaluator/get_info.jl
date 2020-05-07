@@ -175,6 +175,54 @@ end
 function MOI.initialize(d::Evaluator, requested_features::Vector{Symbol})
 end
 
+# TO DO (CHECK GRADIENT DIMS)
+function MOI.eval_constraint_jacobian_product(d::Evaluator, y, x, w)
+    if (!d.disable_1storder)
+        forward_reverse_pass(d,x)
+        t = typeof(d.constraints[1].setstorage[1])
+        y = zeros(t,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
+        for i in 1:length(d.constraints)
+            if ~d.constraints[i].numvalued[1]
+                for j in 1:d.variable_number
+                    y[i] += d.constraints[i].setstorage[1].cv_grad[j]*w[j]
+                end
+            end
+        end
+    else
+        error("First order information unavailable.")
+    end
+    return
+end
+
+# TO DO
+function MOI.eval_constraint_jacobian_transpose_product(d::Evaluator, y, x, w)
+    if (!d.disable_1storder)
+        forward_reverse_pass(d,x)
+        y = zeros(Float64,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
+        for i in 1:length(d.constraints)
+            if ~d.constraints[i].numvalued[1]
+                for j in 1:d.variable_number
+                    y[i] += d.constraints[i].setstorage[1].cv_grad[j]*w[j]
+                end
+            end
+        end
+    else
+        error("First order information unavailable.")
+    end
+    return
+end
+
+function MOI.jacobian_structure(d::Evaluator)
+    jacobian_sparsity = Tuple{Int64,Int64}[]
+    for row in 1:length(d.constraints)
+        row_sparsity = d.constraints[row].grad_sparsity
+        for idx in row_sparsity
+            push!(jacobian_sparsity, (row, idx))
+        end
+    end
+    return jacobian_sparsity
+end
+
 function grad_sparsity(d::Evaluator, j::Int64)
     sparsity = Int64[]
     if j == 1

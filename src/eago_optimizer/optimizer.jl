@@ -109,7 +109,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
     cp_depth::Int64 = 1000
     "Number of repetitions of forward-reverse passes to perform in constraint propagation (default = 3)"
-    cp_repetitions::Int64 = 3
+    cp_repetitions::Int64 = 4
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
     this number (default = 0.99)"
     cp_tolerance::Float64 = 0.99
@@ -181,8 +181,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     cut_safe_b::Float64 = 1E9
 
     # Upper bounding options
-    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer()
-    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer)
+    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(print_level = 0)
+    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, print_level = 0)
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 4)"
     upper_bounding_depth::Int64 = 4
@@ -630,25 +630,41 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
+    m._objective_is_sv = false
+    m._objective_is_saf = false
+    m._objective_is_sqf = false
+    m._objective_is_nlp = nlp_data.has_objective
     m._nlp_data = nlp_data
     return
 end
 
 ##### Support, set, and evaluate objective functions
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SV}) where {F <: Union{SV,SAF,SQF}} = true
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV,SAF,SQF}} = true
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
     m._objective_sv = func
+    m._objective_is_sv = true
+    m._objective_is_saf = false
+    m._objective_is_sqf = false
+    m._objective_is_nlp = false
     return
 end
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
     m._objective_saf = func
+    m._objective_is_saf = true
+    m._objective_is_sv = false
+    m._objective_is_sqf = false
+    m._objective_is_nlp = false
     return
 end
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SQF)
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
     m._objective_sqf = func
+    m._objective_is_sqf = true
+    m._objective_is_sv = false
+    m._objective_is_saf = false
+    m._objective_is_nlp = false
     for term in func.quadratic_terms
         @inbounds m.branch_variable[term.variable_index_1.value] = true
         @inbounds m.branch_variable[term.variable_index_1.value] = true
@@ -693,8 +709,12 @@ function eval_objective(m::Optimizer, x)
     @assert !(m._nlp_data.has_objective && isa(m._objective,Nothing))
     if m._nlp_data.has_objective
         return MOI.eval_objective(m._nlp_data.evaluator, x)
-    elseif ~isa(m._objective, Nothing)
-        return eval_function(m._objective, x)
+    elseif m._objective_is_sv
+        return eval_function(m._objective_sv, x)
+    elseif m._objective_is_saf
+        return eval_function(m._objective_saf, x)
+    elseif m._objective_is_sqf
+        return eval_function(m._objective_sqf, x)
     end
     return 0.0
 end
