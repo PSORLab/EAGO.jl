@@ -1,5 +1,19 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/display.jl
+# Functions used to print information about solution routine to console.
+#############################################################################
+
 """
-    print_solution!
+$(FUNCTIONNAME)
 
 Prints solution information for the B&B problem. Displays first node found, solution value,
 solution, and time spent solving subproblems.
@@ -19,7 +33,7 @@ function print_solution!(x::Optimizer)
 end
 
 """
-    print_node!
+$(FUNCTIONNAME)
 
 Prints node information for the B&B problem. Node id, bound, and interval box.
 """
@@ -35,7 +49,7 @@ const PRINTING_IOFORMAT = :SCI
 const PRINTING_CHARSET = :ASCII
 
 """
-    print_iteration!
+$(FUNCTIONNAME)
 
 Prints the iteration information based on verbosity. The header is displayed
 every `header_interval`, the iteration info is displayed every `iteration_interval`.
@@ -118,7 +132,7 @@ function print_iteration!(x::Optimizer)
 end
 
 """
-    print_results!
+$(FUNCTIONNAME)
 
 Prints the results of a single bounding problem.
 """
@@ -132,6 +146,8 @@ function print_results!(x::Optimizer, flag::Bool)
                 print("Upper Bound (First Iteration): $(-obj_val),")
             end
             print(" Solution: $(x._lower_solution), Feasibility: $(x._lower_feasibility)\n")
+            println("Termination Status Code: $(x._lower_termination_status)")
+            println("Result Code: $(x._lower_result_status)")
         else
             obj_val = x._upper_objective_value
             if (x._optimization_sense === MOI.MIN_SENSE)
@@ -140,13 +156,15 @@ function print_results!(x::Optimizer, flag::Bool)
                 print("Lower Bound: $(-obj_val), ")
             end
             print(" Solution: $(x._upper_solution), Feasibility: $(x._upper_feasibility)\n")
+            println("Termination Status Code: $(x._upper_termination_status)")
+            println("Result Code: $(x._upper_result_status)")
         end
     end
     return
 end
 
 """
-    print_results_post_cut!
+$(FUNCTIONNAME)
 
 Prints the results after performing various cuts.
 """

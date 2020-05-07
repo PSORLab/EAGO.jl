@@ -1,3 +1,19 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/guarded_context.jl
+# Provides utilities for dealing with nonlinear expressions that contain domain
+# violations. The assumption is that domain violations only occur due to
+# expansiveness of the bounds of the nonlinear terms not the underlying model.
+#############################################################################
+
 Cassette.@context GuardCtx
 
 struct GuardTracker

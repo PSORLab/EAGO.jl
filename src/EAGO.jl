@@ -4,7 +4,7 @@ module EAGO
 
     import MathOptInterface
 
-    using Reexport, Cassette, IntervalArithmetic,NumericIO, DocStringExtensions
+    using Reexport, Cassette, IntervalArithmetic, NumericIO, DocStringExtensions
 
     using JuMP
     import JuMP._Derivatives: operators, NodeData

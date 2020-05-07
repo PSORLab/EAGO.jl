@@ -1,3 +1,19 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/evaluator/load.jl
+# Create FunctionSetStorage and SubexpressionSetStorage from JuMP nonlinear
+# backend. We'll evenetually want to build this from an expression drag instead.
+#############################################################################
+
+
 function copy_to_function!(d::Evaluator{N,T}, i::Int64, y::JuMP._FunctionStorage) where {N,T<:RelaxTag}
     x = deepcopy(y)
     lenx = length(x.nd)
@@ -10,7 +26,7 @@ function copy_to_function!(d::Evaluator{N,T}, i::Int64, y::JuMP._FunctionStorage
     tp2_count = 0
     tp3_count = 0
     tp4_count = 0
-    for i in 1:lenx
+    for i = 1:lenx
         op = x.nd[i].index
         if double_tp(op)
             tp1_count += 1
@@ -51,7 +67,7 @@ function copy_to_subexpr!(d::Evaluator{N,T}, y::JuMP._SubexpressionStorage) wher
     tp2_count = 0
     tp3_count = 0
     tp4_count = 0
-    for i in 1:lenx
+    for i = 1:lenx
         op = x.nd[i].index
         if double_tp(op)
             tp1_count += 1

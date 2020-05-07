@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/subroutines.jl
+# Default subroutines for EAGO's global optimizer.
+#############################################################################
+
 """
 $(SIGNATURES)
 
@@ -32,7 +46,7 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     temp_max = 0.0
 
     flag = true
-    for i in 1:nvar
+    for i = 1:nvar
         @inbounds flag = ~x._fixed_variable[i]
         @inbounds flag &= x.branch_variable[i]
         @inbounds vi = x._variable_info[i]
@@ -299,7 +313,7 @@ function set_dual!(x::Optimizer)
 
     lower_variable_lt_indx = x._lower_variable_lt_indx
     lower_variable_lt = x._lower_variable_lt
-    for i in 1:length(lower_variable_lt_indx)
+    for i = 1:length(lower_variable_lt_indx)
         @inbounds vi = lower_variable_lt_indx[i]
         @inbounds ci_lt = lower_variable_lt[i]
         @inbounds x._lower_uvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_lt)
@@ -307,7 +321,7 @@ function set_dual!(x::Optimizer)
 
     lower_variable_gt_indx = x._lower_variable_gt_indx
     lower_variable_gt = x._lower_variable_gt
-    for i in 1:length(lower_variable_gt_indx)
+    for i = 1:length(lower_variable_gt_indx)
         @inbounds vi = lower_variable_gt_indx[i]
         @inbounds ci_gt = lower_variable_gt[i]
         @inbounds x._lower_lvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_gt)

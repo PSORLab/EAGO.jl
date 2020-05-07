@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/domain_reduction.jl
+# Contains subroutines used for domain reduction.
+#############################################################################
+
 """
 $(FUNCTIONNAME)
 
@@ -7,8 +21,6 @@ and the duality information obtained from the relaxation.
 function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Float64},
                         LBD::Float64, UBD::Float64, nx::Int64)
 
-    sempty = isempty(x)
-    oldx = deepcopy(x)
     cut = 0.0
     vb = 0.0
     lvbs = x.lower_variable_bounds
@@ -16,19 +28,19 @@ function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
     if LBD <= UBD
         for i = 1:nx
             @inbounds ml = mult_lo[i]
-            @inbounds mh = mult_hi[i]
             if ml > 0.0
                 @inbounds cut = lvbs[i] + (UBD - LBD)/ml
-                @inbounds vb = uvbs[i]
-                if cut < vb
+                @inbounds if cut < uvbs[i]
                     @inbounds uvbs[i] = cut
                 end
-            elseif mh > 0.0
-                 @inbounds cut = uvbs[i] - (UBD - LBD)/mh
-                 @inbounds vb = lvbs[i]
-                 if cut > vb
-                     @inbounds lvbs[i] = cut
-                 end
+            else
+                @inbounds mh = mult_hi[i]
+                if mh > 0.0
+                    @inbounds cut = uvbs[i] - (UBD - LBD)/mh
+                    @inbounds if cut > lvbs[i]
+                        @inbounds lvbs[i] = cut
+                    end
+                end
             end
          end
     end
@@ -49,7 +61,7 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
 
     if valid_flag
         if feasible_flag
-            for j in 1:length(x._obbt_working_lower_index)
+            for j = 1:length(x._obbt_working_lower_index)
                 @inbounds active_flag = x._obbt_working_lower_index[j]
                 if active_flag
                     @inbounds vi = x._lower_variable_index[j]
@@ -60,7 +72,7 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
                     end
                 end
             end
-            for j in 1:length(x._obbt_working_upper_index)
+            for j = 1:length(x._obbt_working_upper_index)
                 @inbounds active_flag = x._obbt_working_upper_index[j]
                 if active_flag
                     @inbounds vi = x._lower_variable_index[j]
@@ -130,13 +142,13 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
     end
 
     # Begin the main algorithm
-    for k in 1:x.obbt_aggressive_max_iteration
+    for k = 1:x.obbt_aggressive_max_iteration
 
         # Set index differences and vector for filtering direction
         bool_indx_diff(x._lower_indx_diff, x._old_low_index, x._new_low_index)
         bool_indx_diff(x._upper_indx_diff, x._old_upp_index, x._new_upp_index)
 
-        for i in 1:obbt_var_len
+        for i = 1:obbt_var_len
             @inbounds active_flag = x._lower_indx_diff[i]
             if active_flag
                 @inbounds bnd = v[i]
@@ -145,7 +157,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                 end
             end
         end
-        for i in 1:obbt_var_len
+        for i = 1:obbt_var_len
             @inbounds active_flag = x._upper_indx_diff[i]
             if active_flag
                 @inbounds bnd = v[i]
@@ -181,7 +193,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                 variable_primal = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
                 copyto!(x._new_low_index, x._old_low_index)
                 copyto!(x._new_upp_index, x._old_upp_index)
-                for i in 1:obbt_var_len
+                for i = 1:obbt_var_len
                     @inbounds active_flag = x._old_low_index[i]
                     if active_flag
                         @inbounds vp = variable_primal[i]
@@ -191,7 +203,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                         end
                     end
                 end
-                for i in 1:obbt_var_len
+                for i = 1:obbt_var_len
                     @inbounds active_flag = x._old_upp_index[i]
                     if active_flag
                         @inbounds vp = variable_primal[i]
@@ -273,7 +285,7 @@ function obbt(x::Optimizer)
 
         # min of xLP - yL on active
         if any(x._obbt_working_lower_index)
-            for i in 1:length(x._obbt_working_lower_index)
+            for i = 1:length(x._obbt_working_lower_index)
                 @inbounds active_flag = x._obbt_working_lower_index[i]
                 if active_flag
                     @inbounds temp_value = xLP[i]
@@ -288,7 +300,7 @@ function obbt(x::Optimizer)
 
         # min of yU - xLP on active
         if any(x._obbt_working_upper_index)
-            for i in 1:length(x._obbt_working_upper_index)
+            for i = 1:length(x._obbt_working_upper_index)
                 @inbounds active_flag = x._obbt_working_upper_index[i]
                 if active_flag
                     @inbounds temp_value = y.upper_variable_bounds[i]
@@ -379,7 +391,7 @@ function lp_bound_tighten(m::Optimizer)
     lvb = n.lower_variable_bounds
     uvb = n.upper_variable_bounds
 
-    for i in 1:m.lp_repetitions
+    for i = 1:m.lp_repetitions
 
         # Runs Poor Man LP on constraints of form ax >= b
         for (func, constr, ind) in m._linear_geq_constraints

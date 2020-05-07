@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimizer.jl
+# Defines optimizer structure used by EAGO, storage functions, and access functions.
+#############################################################################
+
 """
 $(TYPEDEF)
 
@@ -25,7 +39,7 @@ lower_bound(x::VariableInfo) = x.lower_bound
 upper_bound(x::VariableInfo) = x.upper_bound
 
 """
-    ExtensionType
+$(TYPEDEF)
 
 An abstract type the subtypes of which are associated with functions method
 overloaded for for new extensions. An instance of the `DefaultExt <:ExtensionType`
