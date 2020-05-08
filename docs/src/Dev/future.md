@@ -6,7 +6,6 @@
 * Extensions for nonconvex dynamic global & robust optimization.
 * Provide support for mixed-integer problems.
 * Update EAGO to support nonsmooth problems (requires: a nonsmooth local nlp optimizer or lexiographic AD, support for relaxations is already included).
-* Performance assessment of nonlinear (differentiable) relaxations and incorporation into main EAGO routine.
 * Evaluation and incorporation of implicit relaxation routines in basic solver.
 
 ## Other things on the wishlist (but not actively being worked on):

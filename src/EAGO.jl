@@ -4,7 +4,7 @@ module EAGO
 
     import MathOptInterface
 
-    using NumericIO, DocStringExtensions
+    using Reexport, Cassette, IntervalArithmetic, NumericIO, DocStringExtensions
 
     using JuMP
     import JuMP._Derivatives: operators, NodeData
@@ -14,23 +14,11 @@ module EAGO
 
     using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse
-    using StaticArrays: SVector
     using LinearAlgebra: eigmin, norm
+    @reexport using McCormick
+    @reexport using ReverseMcCormick
 
-    import Base: ImmutableDict, isless
-
-    import IntervalArithmetic: +, -, *, /, convert, in, isempty, one, zero,
-                               real, eps, max, min, abs, exp,
-                               expm1, log, log2, log10, log1p, sqrt,
-                               sin, cos, tan, min, max, sec, csc, cot, step,
-                               sign, dist, mid, pow, Interval, sinh, cosh, ∩,
-                               IntervalBox, bisect, isdisjoint, ^, exp2, exp10,
-                               tanh, asinh, cosh, atanh
-
-    include("mccormick_library/mccormick.jl")
-    using .McCormick
-
-    import Base: eltype, copy, length
+    import Base: ImmutableDict, isless, isempty, eltype, copy, length
 
     const MOI = MathOptInterface
     const SAF = MOI.ScalarAffineFunction{Float64}
@@ -38,6 +26,7 @@ module EAGO
     const SQF = MOI.ScalarQuadraticFunction{Float64}
     const SQT = MOI.ScalarQuadraticTerm{Float64}
     const SV = MOI.SingleVariable
+    const VECOFVAR = MOI.VectorOfVariables
     const LT = MOI.LessThan{Float64}
     const GT = MOI.GreaterThan{Float64}
     const ET = MOI.EqualTo{Float64}
@@ -54,10 +43,13 @@ module EAGO
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
            get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap
 
+    include("eago_optimizer/guarded_context.jl")
     include("eago_optimizer/node_bb.jl")
     include("eago_optimizer/evaluator/evaluator.jl")
     include("eago_optimizer/logging.jl")
     include("eago_optimizer/optimizer.jl")
+    include("eago_optimizer/variables.jl")
+    include("eago_optimizer/constraints.jl")
     include("eago_optimizer/display.jl")
     include("eago_optimizer/relax.jl")
     include("eago_optimizer/domain_reduction.jl")

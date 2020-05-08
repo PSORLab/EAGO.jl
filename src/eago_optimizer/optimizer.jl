@@ -1,31 +1,45 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimizer.jl
+# Defines optimizer structure used by EAGO, storage functions, and access functions.
+#############################################################################
+
 """
-    VariableInfo
+$(TYPEDEF)
 
 A structure used to store information related to the bounds assigned to each
 variable.
-- `is_integer::Bool`:      Is the variable integer valued?
-- `lower_bound::Float64`:  May be -Inf even if has_lower_bound == true
-- `has_lower_bound::Bool`: Implies lower_bound == Inf
-- `upper_bound::Float64`:  May be Inf even if has_upper_bound == true
-- `has_upper_bound::Bool`: Implies upper_bound == Inf
-- `is_fixed::Bool`:        Implies lower_bound == upper_bound and
-                           !has_lower_bound and !has_upper_bound.
+
+$(TYPEDFIELDS)
 """
 mutable struct VariableInfo
+    "Is the variable integer valued?"
     is_integer::Bool
-    lower_bound::Float64           # May be -Inf even if has_lower_bound == true
-    has_lower_bound::Bool          # Implies lower_bound == Inf
-    upper_bound::Float64           # May be Inf even if has_upper_bound == true
-    has_upper_bound::Bool          # Implies upper_bound == Inf
-    is_fixed::Bool                 # Implies lower_bound == upper_bound and
-                                   # !has_lower_bound and !has_upper_bound.
+    "Lower bounds. May be -Inf."
+    lower_bound::Float64
+    "Boolean indicating whether finite lower bound exists."
+    has_lower_bound::Bool
+    "Upper bounds. May be Inf."
+    upper_bound::Float64
+    "Boolean indicating whether finite upper bound exists."
+    has_upper_bound::Bool
+    "Boolean indicating variable is fixed to a finite value."
+    is_fixed::Bool
 end
 VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false)
 lower_bound(x::VariableInfo) = x.lower_bound
 upper_bound(x::VariableInfo) = x.upper_bound
 
 """
-    ExtensionType
+$(TYPEDEF)
 
 An abstract type the subtypes of which are associated with functions method
 overloaded for for new extensions. An instance of the `DefaultExt <:ExtensionType`
@@ -64,718 +78,381 @@ empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
 export Optimizer
 """
-    Optimizer
+$(TYPEDEF)
 
 The main optimizer object used by EAGO to solve problems during the optimization
 routine. The following commonly used options are described below and can be set
 via keyword arguments in the JuMP/MOI model:
-- `presolve_scrubber_flag::Bool`: Replace code in user-defined functions which
-                                  may prevent method overloading on Real subtypes
-                                  (default = false).
-- `presolve_to_JuMP_flag::Bool`: Create and use DAG representations of user-defined
-                                 function (default = false).
-- `presolve_epigraph_flag::Bool`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
-                                  Apply the epigraph reformulation to the problem
-                                  (default = false).
-- `presolve_cse_flag::Bool`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Enable
-                             common subexpression elimination for DAG (default = false).
-- `presolve_flatten_flag::Bool`: Rerranges the DAG using registered transformations
-                                 (default = false)
-- `cp_depth::Int64`: Depth in B&B tree above which constraint propagation should
-                     be disabled (default = 1000).
-- `cp_repetitions::Int64`: Number of repetitions of forward-reverse passes to perform in
-                          constraint propagation (default = 3).
-- `cp_tolerance::Float64`: Disable constraint propagation if the ratio of new node
-                           volume to beginning node volume exceeds this number
-                           (default = 0.99).
-- `cp_interval_only::Bool`: Use only valid interval bounds during constraint
-                            propagation (default = false).
-- `relaxed_optimizer::S`: An instance of the optimizer used to solve the relaxed
-                          subproblems (default = GLPK.Optimizer()).
-- `relaxed_optimizer_kwargs::Base.Iterators.Pairs`: Keyword arguments for the
-                                                    relaxed optimizer.
-- `obbt_depth::Int64`: Depth in B&B tree above which OBBT should
-                     be disabled (default = 1000).
-- `obbt_repetitions::Int64`: Number of repetitions of OBBT to perform in
-                            preprocessing (default = 3).
-- `obbt_aggressive_on::Bool`: Turn aggresive OBBT on (default = false).
-- `obbt_aggressive_max_iteration::Int64`: Maximum iteration to perform aggresive
-                                          OBBT (default = 2)
-- `obbt_aggressive_min_dimension::Int64`: Minimum dimension to perform aggresive
-                                          OBBT (default = 2)
-- `obbt_tolerance::Float64`: Tolerance to consider bounds equal (default = 1E-9).
-- `obbt_variable_values::Vector{Bool}`: Variables to perform OBBT on
-                                        (default: all variables in nonlinear expressions).
-- `lp_depth::Int64`: Depth in B&B tree above which linear FBBT should
-                     be disabled (default = 1000).
-- `lp_repetitions::Int64`: Number of repetitions of linear FBBT to perform in
-                            preprocessing (default = 3).
-- `quad_uni_depth::Int64`: Depth in B&B tree above which univariate quadratic
-                           FBBT should be disabled (default = -1).
-- `quad_uni_repetitions::Int64`: Number of repetitions of univariate quadratic FBBT
-                                 to perform in preprocessing (default = 2).
-- `quad_bi_depth::Int64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in
-                          B&B tree above which bivariate quadratic FBBT should
-                          be disabled (default = -1).
-- `quad_bi_repetitions::Int64`: Number of repetitions of bivariate quadratic FBBT
-                                 to perform in preprocessing (default = 2).
-- `subgrad_tighten::Bool`: Perform tightening of interval bounds using subgradients
-                           at each factor in each nonlinear tape during a forward-reverse
-                           pass (default = true).
-- `subgrad_tighten_reverse::Bool`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Used to
-                                   enable/disable subgradient tightening of interval
-                                   bounds on the reverse pass (default = true).
-- `cut_max_iterations::Int64`
-- `cut_cvx::Float64`: Convex coefficient used to select point for new added cuts.
-                      Branch point is given by `(1-cut_cvx)*xmid + cut_cvx*xsol`
-                      (default = 0.9).
-- `cut_tolerance::Float64`: Add cut if the L1 distance from the prior cutting point
-                            to the new cutting point normalized by the box volume
-                            is greater than the tolerance (default = 0.05).
-- `objective_cut_on::Bool`: Adds an objective cut to the relaxed problem (default = true).
-- `upper_optimizer::T`: Optimizer used to solve upper bounding problem (default = Ipopt.Optimizer())
-- `upper_factory::JuMP.OptimizerFactory`: OptimizerFactory used to build optimizer that
-                                          solves the upper bounding problem
-                                          (default = with_optimizer(Ipopt.Optimizer, kwargs),
-                                          check Optimizer constructor for kwargs used).
-- `upper_bounding_depth::Int64`: Solve upper problem for every node with depth
-                                 less than `upper_bounding_depth` and with a probability
-                                 of (1/2)^(depth-upper_bounding_depth) otherwise
-                                 (default = 4).
-- `dbbt_depth::Int64`: Depth in B&B tree above which duality-based bound tightening
-                       should be disabled (default = 1E10).
-- `dbbt_tolerance::Float64`: New bound is considered equal to the prior bound
-                             if within dbbt_tolerance (default = 1E-9).
-- `branch_cvx_factor::Float64`: Convex coefficient used to select branch point.
-                                Branch point is given by
-                                `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol`
-                                (default = 0.25)
-- `branch_offset::Float64`: Minimum distance from bound to have branch point
-                            normalized by width of dimension to branch on
-                            (default = 0.15)
-- `branch_variable::Vector{Bool}`: Variables to branch on (default is all nonlinear).
-- `branch_max_repetitions::Int64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
-                                   Number of times repeat node processing prior
-                                   to branching (default = 4).
-- `branch_repetition_tol::Float64`: [FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED]
-                                    Volume ratio tolerance required to repeat
-                                    processing the current node (default = 0.9).
-- `rounding_mode::Symbol`: Interval rounding mode to use (default = :accurate)
-- `node_limit::Int64`: Node limit  (default = 10^7).
-- `time_limit::Float64`: Time limit in seconds (default = 3600).
-- `iteration_limit::Int64`: Iteration limit (default = 3000000).
-- `absolute_tolerance::Float64`: Absolute tolerance for terminatin (default = 1E-3).
-- `relative_tolerance::Float64`: Relative tolerance for terminatin (default = 1E-3).
-- `local_solve_only::Bool`: Perform only a local solve of the problem (default = false).
-- `log_on::Bool`: Turns logging on records global bounds, node count and run time.
-                  Additional options are available for recording information specific
-                  to subproblems (default = false).
-- `log_subproblem_info::Bool`: Turns on logging of times and feasibility of
-                               subproblems (default = false).
-- `log_interval::Int64`: Log data every `log_interval` iterations (default = 1).
-- `verbosity::Int64`: The amount of information that should be printed to console
-                      while solving values range from 0 - 4: 0 is silent, 1 shows
-                      iteration summary statistics only, 2-4 show varying degrees
-                      of details about calculations within each iteration
-                      (default = 1).
-- `output_iterations::Int64`: Display summary of iteration to console every
-                             `output_iterations` (default = 10).
-- `header_iterations::Int64`: Display header for summary to console every
-                             `output_iterations` (default = 100).
-- `enable_optimize_hook::Bool`: Specifies that the optimize_hook! function should
-                                be called rather than throw the problem to the
-                                standard B&B routine (default = false).
-- `ext::Dict{Symbol, Any}`: Holds additional storage needed for constructing
-                            extensions to EAGO (default = Dict{Symbol,Any}).
-- `ext_type::ExtensionType`: Holds an instance of a subtype of `EAGO.ExtensionType`
-                             used to define new custom subroutines
-                             (default = DefaultExt()).
+
+$(TYPEDFIELDS)
 """
-mutable struct Optimizer{S<:MOI.AbstractOptimizer, T<:MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
+Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Presolving options
-    presolve_scrubber_flag::Bool
-    presolve_to_JuMP_flag::Bool
-    presolve_epigraph_flag::Bool
-    presolve_cse_flag::Bool
-    presolve_flatten_flag::Bool
+    presolve_scrubber_flag::Bool = false
+    "Create and use DAG representations of user-defined function (default = false)."
+    presolve_to_JuMP_flag::Bool = false
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Apply the epigraph reformulation
+    to the problem (default = false)."
+    presolve_epigraph_flag::Bool = false
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Enable common subexpression
+    elimination for DAG (default = false)."
+    presolve_cse_flag::Bool = false
+    "Rerranges the DAG using registered transformations (default = false)"
+    presolve_flatten_flag::Bool = false
+
+    # Conic reformulations
+    "Attempt to bridge convex constraint to second order cone"
+    conic_convert_quadratic::Bool = false
 
     # Options for constraint propagation
-    cp_depth::Int64
-    cp_improvement::Float64
-    cp_repetitions::Int64
-    cp_tolerance::Float64
-    cp_interval_only::Bool
+    "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
+    cp_depth::Int64 = 1000
+    "Number of repetitions of forward-reverse passes to perform in constraint propagation (default = 3)"
+    cp_repetitions::Int64 = 4
+    "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
+    this number (default = 0.99)"
+    cp_tolerance::Float64 = 0.99
+    "Use only valid interval bounds during constraint propagation (default = false)"
+    cp_interval_only::Bool = false
 
     # Options for optimality-based bound tightening
-    relaxed_optimizer::S
-    relaxed_optimizer_kwargs::Base.Iterators.Pairs
-    relaxed_inplace_mod::Bool
-    obbt_depth::Int64
-    obbt_repetitions::Int64
-    obbt_aggressive_on::Bool
-    obbt_aggressive_max_iteration::Int64
-    obbt_aggressive_min_dimension::Int64
-    obbt_tolerance::Float64
-    obbt_variable_values::Vector{Bool}
+    "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
+    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
+    "Keyword arguments for the relaxed optimizer."
+    relaxed_optimizer_kwargs::Base.Iterators.Pairs = Base.Iterators.Pairs(NamedTuple(),())
+    relaxed_inplace_mod::Bool = true
+
+    "Depth in B&B tree above which OBBT should be disabled (default = 6)"
+    obbt_depth::Int64 = 6
+    "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
+    obbt_repetitions::Int64 = 4
+    "Turn aggresive OBBT on (default = false)"
+    obbt_aggressive_on::Bool = false
+    "Maximum iteration to perform aggresive OBBT (default = 2)"
+    obbt_aggressive_max_iteration::Int64 = 2
+    "Minimum dimension to perform aggresive OBBT (default = 2)"
+    obbt_aggressive_min_dimension::Int64 = 2
+    "Tolerance to consider bounds equal (default = 1E-9)"
+    obbt_tolerance::Float64 = 1E-9
+    "Variables to perform OBBT on (default: all variables in nonlinear expressions)."
+    obbt_variable_values::Vector{Bool} = Bool[]
 
     # Options for linear bound tightening
-    lp_depth::Int64
-    lp_repetitions::Int64
+    "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
+    lp_depth::Int64  = 100000
+    "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
+    lp_repetitions::Int64  = 3
 
     # Options for quadratic bound tightening
-    quad_uni_depth::Int64
-    quad_uni_repetitions::Int64
-    quad_bi_depth::Int64
-    quad_bi_repetitions::Int64
+    "Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
+    quad_uni_depth::Int64 = -1
+    "Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
+    quad_uni_repetitions::Int64 = 2
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which bivariate
+    quadratic FBBT should be disabled (default = -1)"
+    quad_bi_depth::Int64 = -1
+    "Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
+    quad_bi_repetitions::Int64 = 2
 
     # Subgradient tightening flag
-    subgrad_tighten::Bool
-    subgrad_tighten_reverse::Bool
+    "Perform tightening of interval bounds using subgradients at each factor in
+    each nonlinear tape during a forward-reverse pass (default = true)."
+    subgrad_tighten::Bool = true
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Used to enable/disable subgradient
+    tightening of interval bounds on the reverse pass (default = true)"
+    subgrad_tighten_reverse::Bool = false
 
     # Tolerance to add cuts and max number of cuts
-    cut_max_iterations::Int64
-    cut_cvx::Float64
-    cut_tolerance::Float64
-    objective_cut_on::Bool
-    cut_safe_l::Float64
-    cut_safe_u::Float64
-    cut_safe_b::Float64
+    cut_max_iterations::Int64 = 3
+    "Convex coefficient used to select point for new added cuts. Branch point is
+    given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
+    cut_cvx::Float64 = 0.9
+    "Add cut if the L1 distance from the prior cutting point to the new cutting
+    point normalized by the box volume is greater than the tolerance (default = 0.05)."
+    cut_tolerance::Float64 = 0.05
+    "Adds an objective cut to the relaxed problem (default = true)."
+    objective_cut_on::Bool = true
+    "Lower tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_l::Float64 = 1E-8
+    "Upper tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_u::Float64 = 1E8
+    "Constant tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_b::Float64 = 1E9
 
     # Upper bounding options
-    upper_optimizer::T
-    upper_factory::JuMP.OptimizerFactory
-    upper_bounding_depth::Int64
+    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(print_level = 0)
+    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, print_level = 0)
+    "Solve upper problem for every node with depth less than `upper_bounding_depth`
+    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 4)"
+    upper_bounding_depth::Int64 = 4
 
     # Duality-based bound tightening (DBBT) options
-    dbbt_depth::Int64
-    dbbt_tolerance::Float64
+    "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
+    dbbt_depth::Int64 = 10^10
+    "New bound is considered equal to the prior bound if within dbbt_tolerance (default = 1E-9)."
+    dbbt_tolerance::Float64 = 1E-8
 
     # Node branching options
-    branch_cvx_factor::Float64
-    branch_offset::Float64
-    branch_variable::Vector{Bool}
-    branch_max_repetitions::Int64
-    branch_repetition_tol::Float64
-
-    # Rounding mode used with interval arithmetic
-    rounding_mode::Symbol
+    "Convex coefficient used to select branch point. Branch point is given by
+    `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol` (default = 0.25)"
+    branch_cvx_factor::Float64 = 0.25
+    "Minimum distance from bound to have branch point normalized by width of
+    dimension to branch on (default = 0.15)"
+    branch_offset::Float64 = 0.15
+    "Variables to branch on (default is all nonlinear)."
+    branch_variable::Vector{Bool} = Bool[]
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of times repeat node
+    processing priorto branching (default = 4)."
+    branch_max_repetitions::Int64 = 4
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Volume ratio tolerance required
+    to repeat processing the current node (default = 0.9)"
+    branch_repetition_tol::Float64 = 0.9
 
     # Termination limits
-    node_limit::Int64
-    time_limit::Float64
-    iteration_limit::Int64
-    absolute_tolerance::Float64
-    relative_tolerance::Float64
-    local_solve_only::Bool
-    feasible_local_continue::Bool
+    "Maximum number of nodes (default = 1E-7)"
+    node_limit::Int64 = 1*10^7
+    "Maximum CPU time in seconds (default = 1000)"
+    time_limit::Float64 = 1000.0
+    "Maximum number of iterations (default 3E6)"
+    iteration_limit::Int64 = 3*10^6
+    "Absolute tolerance for termination (default = 1E-3)"
+    absolute_tolerance::Float64 = 1E-3
+    "Relative tolerance for termination (default = 1E-3)"
+    relative_tolerance::Float64 = 1E-3
+    "Perform only a local solve of the problem (default = false)."
+    local_solve_only::Bool = false
+    feasible_local_continue::Bool = false
 
     # Iteration logging options
-    log_on::Bool
-    log_subproblem_info::Bool
-    log_interval::Int64
+    "Turns logging on records global bounds, node count and run time. Additional
+     options are available for recording information specific to subproblems (default = false)."
+    log_on::Bool = false
+    "Turns on logging of times and feasibility of subproblems (default = false)"
+    log_subproblem_info::Bool = false
+    "Log data every `log_interval` iterations (default = 1)."
+    log_interval::Int64 = 1
 
     # Optimizer display options
-    verbosity::Int64
-    output_iterations::Int64
-    header_iterations::Int64
+    "The amount of information that should be printed to console while solving
+    values range from 0 - 4: 0 is silent, 1 shows iteration summary statistics
+    only, 2-4 show varying degrees of details about calculations within each
+    iteration (default = 1)."
+    verbosity::Int64 = 1
+    "Display summary of iteration to console every `output_iterations` (default = 10)"
+    output_iterations::Int64 = 1000
+    "Display header for summary to console every `output_iterations` (default = 100)"
+    header_iterations::Int64 = 10000
 
     # Debug
-    enable_optimize_hook::Bool
-    ext::Dict{Symbol, Any}
-    ext_type::ExtensionType
+    "Specifies that the optimize_hook! function should be called rather than
+    throw the problem to the standard B&B routine (default = false)."
+    enable_optimize_hook::Bool = false
+    "Holds additional storage needed for constructing extensions to EAGO
+    (default = Dict{Symbol,Any})."
+    ext::Dict{Symbol, Any} = Dict{Symbol,Any}()
+    "Holds an instance of a subtype of `EAGO.ExtensionType` used to define
+    new custom subroutines (default = DefaultExt())."
+    ext_type::ExtensionType = DefaultExt()
 
-    _current_node::NodeBB
-    _current_xref::Vector{Float64}
-    _sense_multiplier::Float64
+    # handling for domain violations
+    domain_violation_ϵ::Float64 = 1E-9
 
-    _variable_number::Int64
-    _state_variables::Int64
-    _continuous_variable_number::Int64
-    _integer_variable_number::Int64
+    _current_node::NodeBB = NodeBB()
+    _current_xref::Vector{Float64} = Float64[]
 
-    _user_branch_variables::Bool
-    _fixed_variable::Vector{Bool}
-    _constraint_convexity::Dict{CI, Bool}
+    _variable_number::Int64 = 0
+    _state_variables::Int64 = 0
+    _continuous_variable_number::Int64 = 0
+    _integer_variable_number::Int64 = 0
 
-    _continuous_solution::Vector{Float64}
+    _user_branch_variables::Bool = false
+    _fixed_variable::Vector{Bool} = Bool[]
 
-    _integer_variables::Vector{Int64}
-    _variable_info::Vector{VariableInfo}
-    _upper_variables::Vector{VI}
+    _continuous_solution::Vector{Float64} = Float64[]
 
-    _stack::BinaryMinMaxHeap{NodeBB}
+    _integer_variables::Vector{Int64} = Int64[]
+    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _upper_variables::Vector{VI} =  VI[]
 
-    _lower_variable::Vector{SV}
-    _lower_variable_index::Vector{VI}
-    _lower_variable_values::Vector{Int64}
-    _lower_variable_et::Vector{CI{SV, ET}}
-    _lower_variable_lt::Vector{CI{SV, LT}}
-    _lower_variable_gt::Vector{CI{SV, GT}}
-    _lower_variable_et_indx::Vector{Int64}
-    _lower_variable_lt_indx::Vector{Int64}
-    _lower_variable_gt_indx::Vector{Int64}
+    _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
 
-    _preprocess_feasibility::Bool
-    _preprocess_result_status::MOI.ResultStatusCode
-    _preprocess_termination_status::MOI.TerminationStatusCode
+    _lower_variable::Vector{SV} = SV[]
+    _lower_variable_index::Vector{VI} = VI[]
+    _lower_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
+    _lower_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
+    _lower_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
+    _lower_variable_et_indx::Vector{Int64} = Int64[]
+    _lower_variable_lt_indx::Vector{Int64} = Int64[]
+    _lower_variable_gt_indx::Vector{Int64} = Int64[]
 
-    _lower_result_status::MOI.ResultStatusCode
-    _lower_termination_status::MOI.TerminationStatusCode
-    _lower_feasibility::Bool
-    _lower_objective_value::Float64
-    _lower_solution::Vector{Float64}
-    _lower_lvd::Vector{Float64}
-    _lower_uvd::Vector{Float64}
+    _preprocess_feasibility::Bool = true
+    _preprocess_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _preprocess_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
 
-    _cut_result_status::MOI.ResultStatusCode
-    _cut_termination_status::MOI.TerminationStatusCode
-    _cut_solution::Vector{Float64}
-    _cut_objective_value::Float64
-    _cut_feasibility::Bool
+    _lower_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _lower_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _lower_feasibility::Bool = false
+    _lower_objective_value::Float64 = -Inf
+    _lower_solution::Vector{Float64} = Float64[]
+    _lower_lvd::Vector{Float64} = Float64[]
+    _lower_uvd::Vector{Float64} = Float64[]
 
-    _upper_result_status::MOI.ResultStatusCode
-    _upper_termination_status::MOI.TerminationStatusCode
-    _upper_feasibility::Bool
-    _upper_objective_value::Float64
-    _upper_solution::Vector{Float64}
+    _cut_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _cut_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _cut_solution::Vector{Float64} = Float64[]
+    _cut_objective_value::Float64 = -Inf
+    _cut_feasibility::Bool = false
 
-    _best_upper_value::Float64
+    _upper_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _upper_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _upper_feasibility::Bool = false
+    _upper_objective_value::Float64 = Inf
+    _upper_solution::Vector{Float64} = Float64[]
 
-    _postprocess_feasibility::Bool
+    _best_upper_value::Float64 = Inf
 
-    _start_time::Float64
-    _run_time::Float64
-    _time_left::Float64
-    _parse_time::Float64
-    _presolve_time::Float64
-    _last_preprocess_time::Float64
-    _last_lower_problem_time::Float64
-    _last_upper_problem_time::Float64
-    _last_postprocessing_time::Float64
+    _postprocess_feasibility::Bool = false
 
-    _objective_sv::SV
-    _objective_saf::SAF
-    _objective_sqf::SQF
-    _objective_is_sv::Bool
-    _objective_is_saf::Bool
-    _objective_is_sqf::Bool
-    _objective_is_nlp::Bool
+    _start_time::Float64 = 0.0
+    _run_time::Float64 = 0.0
+    _time_left::Float64 = 1000.0
+    _parse_time::Float64 = 0.0
+    _presolve_time::Float64 = 0.0
+    _last_preprocess_time::Float64 = 0.0
+    _last_lower_problem_time::Float64 = 0.0
+    _last_upper_problem_time::Float64 = 0.0
+    _last_postprocessing_time::Float64 = 0.0
 
-    _objective_convexity::Bool
+    _objective_sv = nothing
+    _objective_saf = nothing
+    _objective_sqf = nothing
+    _objective_is_sv::Bool = false
+    _objective_is_saf::Bool = false
+    _objective_is_sqf::Bool = false
+    _objective_is_nlp::Bool = false
 
-    _objective_cut_set::Int64
-    _objective_cut_ci_sv::CI{SV,LT}
-    _objective_cut_ci_saf::Vector{CI{SAF,LT}}
+    #_objective::Union{Nothing, SV, SAF, SQF} = nothing
 
-    _linear_leq_constraints::Vector{Tuple{SAF, LT, Int64}}
-    _linear_geq_constraints::Vector{Tuple{SAF, GT, Int64}}
-    _linear_eq_constraints::Vector{Tuple{SAF, ET, Int64}}
+    _objective_convexity::Bool = false
 
-    _quadratic_leq_constraints::Vector{Tuple{SQF, LT, Int64}}
-    _quadratic_geq_constraints::Vector{Tuple{SQF, GT, Int64}}
-    _quadratic_eq_constraints::Vector{Tuple{SQF, ET, Int64}}
+    _objective_cut_set::Int64 = -1
+    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
+    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
-    _quadratic_leq_dict::Vector{ImmutableDict{Int64,Int64}}
-    _quadratic_geq_dict::Vector{ImmutableDict{Int64,Int64}}
-    _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}}
-    _quadratic_obj_dict::ImmutableDict{Int64,Int64}
+    _last_constraint_index::Int = 0
 
-    _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}}
-    _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}}
-    _quadratic_ci_eq::Vector{Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}}
+    _conic_norm_infinity::Vector{Tuple{VECOFVAR, MOI.NormInfinityCone}} = Tuple{VECOFVAR, MOI.NormInfinityCone}[]
+    _conic_norm_one::Vector{Tuple{VECOFVAR, MOI.NormOneCone}} = Tuple{VECOFVAR, MOI.NormOneCone}[]
+    _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
+    _conic_rotated_second_order::Vector{Tuple{VECOFVAR, MOI.RotatedSecondOrderCone}} = Tuple{VECOFVAR, MOI.RotatedSecondOrderCone}[]
+    _conic_geometric_mean::Vector{Tuple{VECOFVAR, MOI.GeometricMeanCone}} = Tuple{VECOFVAR, MOI.GeometricMeanCone}[]
+    _conic_exponential::Vector{Tuple{VECOFVAR, MOI.ExponentialCone}} = Tuple{VECOFVAR, MOI.ExponentialCone}[]
+    _conic_dual_exponential::Vector{Tuple{VECOFVAR, MOI.DualExponentialCone}} = Tuple{VECOFVAR, MOI.DualExponentialCone}[]
+    _conic_power_cone::Vector{Tuple{VECOFVAR, MOI.PowerCone}} = Tuple{VECOFVAR, MOI.PowerCone}[]
+    _conic_dual_power::Vector{Tuple{VECOFVAR, MOI.DualPowerCone}} = Tuple{VECOFVAR, MOI.DualPowerCone}[]
+    _conic_relative_entropy::Vector{Tuple{VECOFVAR, MOI.RelativeEntropyCone}} = Tuple{VECOFVAR, MOI.RelativeEntropyCone}[]
+    _conic_norm_spectral::Vector{Tuple{VECOFVAR, MOI.NormSpectralCone}} = Tuple{VECOFVAR, MOI.NormSpectralCone}[]
+    _conic_norm_nuclear::Vector{Tuple{VECOFVAR, MOI.NormNuclearCone}} = Tuple{VECOFVAR, MOI.NormNuclearCone}[]
 
-    _quadratic_leq_sparsity::Vector{Vector{VI}}
-    _quadratic_geq_sparsity::Vector{Vector{VI}}
-    _quadratic_eq_sparsity::Vector{Vector{VI}}
+    _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
+    _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
+    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
 
-    _quadratic_leq_gradnz::Vector{Int64}
-    _quadratic_geq_gradnz::Vector{Int64}
-    _quadratic_eq_gradnz::Vector{Int64}
+    _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
+    _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
+    _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
 
-    _quadratic_leq_convexity::Vector{Bool}
-    _quadratic_geq_convexity::Vector{Bool}
-    _quadratic_eq_convexity_1::Vector{Bool}
-    _quadratic_eq_convexity_2::Vector{Bool}
+    _quadratic_leq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
+    _quadratic_geq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
+    _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
+    _quadratic_obj_dict::ImmutableDict{Int64,Int64} = ImmutableDict{Int64,Int64}()
 
-    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}}
-    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}}
+    _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
+    _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
+    _quadratic_ci_eq::Vector{Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}} = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
 
-    _lower_nlp_affine_indx::Vector{Int64}
-    _upper_nlp_affine_indx::Vector{Int64}
+    _quadratic_leq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
+    _quadratic_geq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
+    _quadratic_eq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
 
-    _lower_nlp_sparsity::Vector{Vector{Int64}}
-    _upper_nlp_sparsity::Vector{Vector{Int64}}
+    _quadratic_leq_gradnz::Vector{Int64} = Int64[]
+    _quadratic_geq_gradnz::Vector{Int64} = Int64[]
+    _quadratic_eq_gradnz::Vector{Int64} = Int64[]
 
-    _univariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}}
-    _univariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}}
-    _univariate_quadratic_eq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}}
-    _bivariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}}
-    _bivariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}}
-    _bivariate_quadratic_eq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}}
+    _quadratic_leq_convexity::Vector{Bool} = Bool[]
+    _quadratic_geq_convexity::Vector{Bool} = Bool[]
+    _quadratic_eq_convexity_1::Vector{Bool} = Bool[]
+    _quadratic_eq_convexity_2::Vector{Bool} = Bool[]
 
-    _global_lower_bound::Float64
-    _global_upper_bound::Float64
-    _maximum_node_id::Int64
-    _iteration_count::Int64
-    _node_count::Int64
+    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
+    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
+
+    _lower_nlp_affine_indx::Vector{Int64} = Int64[]
+    _upper_nlp_affine_indx::Vector{Int64} = Int64[]
+
+    _lower_nlp_sparsity::Vector{Vector{Int64}} = Vector{Int64}[]
+    _upper_nlp_sparsity::Vector{Vector{Int64}} = Vector{Int64}[]
+
+    _univariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}} = Tuple{Float64,Float64,Float64,Int64}[]
+    _univariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}} = Tuple{Float64,Float64,Float64,Int64}[]
+    _univariate_quadratic_eq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}} = Tuple{Float64,Float64,Float64,Int64}[]
+    _bivariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}} = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
+    _bivariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}} = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
+    _bivariate_quadratic_eq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}} = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
+
+    _global_lower_bound::Float64 = -Inf
+    _global_upper_bound::Float64 = Inf
+    _maximum_node_id::Int64 = 0
+    _iteration_count::Int64 = 0
+    _node_count::Int64 = 0
 
     # Storage for output
-    _solution_value::Float64
-    _feasible_solution_found::Bool
-    _first_solution_node::Int64
-    _optimization_sense::MOI.OptimizationSense
-    _objective_value::Float64
-    _termination_status_code::MOI.TerminationStatusCode
-    _result_status_code::MOI.ResultStatusCode
+    _solution_value::Float64 = 0.0
+    _feasible_solution_found::Bool = false
+    _first_solution_node::Int64 = -1
+    _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
+    _objective_value::Float64 = -Inf
+    _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
 
     # Optimality-Based Bound Tightening (OBBT) Options
-    _obbt_working_lower_index::Vector{Bool}
-    _obbt_working_upper_index::Vector{Bool}
-    _lower_indx_diff::Vector{Bool}
-    _upper_indx_diff::Vector{Bool}
-    _old_low_index::Vector{Bool}
-    _old_upp_index::Vector{Bool}
-    _new_low_index::Vector{Bool}
-    _new_upp_index::Vector{Bool}
-    _obbt_variables::Vector{VI}
-    _obbt_performed_flag::Bool
+    _obbt_working_lower_index::Vector{Bool} = Bool[]
+    _obbt_working_upper_index::Vector{Bool} = Bool[]
+    _lower_indx_diff::Vector{Bool} = Bool[]
+    _upper_indx_diff::Vector{Bool} = Bool[]
+    _old_low_index::Vector{Bool} = Bool[]
+    _old_upp_index::Vector{Bool} = Bool[]
+    _new_low_index::Vector{Bool} = Bool[]
+    _new_upp_index::Vector{Bool} = Bool[]
+    _obbt_variables::Vector{VI} = VI[]
+    _obbt_performed_flag::Bool = false
 
     # Feasibility-Based Bound Tightening Options
-    _cp_improvement::Float64
-    _cp_evaluation_reverse::Bool
+    _cp_improvement::Float64 = 0.0
+    _cp_evaluation_reverse::Bool = false
 
-    _cut_iterations::Int64
-    _cut_add_flag::Bool
+    _cut_iterations::Int64 = 0
+    _cut_add_flag::Bool = false
 
     # Options for Repetition (If DBBT Performed Well)
-    _node_repetitions::Int64
-    _initial_volume::Float64
-    _final_volume::Float64
+    _node_repetitions::Int64 = 0
+    _initial_volume::Float64 = 0.0
+    _final_volume::Float64 = 0.0
 
     # Log
-    _log::Log
+    _log::Log = Log()
 
-    _nlp_data::MOI.NLPBlockData
+    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
-    _relaxed_evaluator::Evaluator
-    _relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair}
-    _relaxed_eval_has_objective::Bool
-
-    function Optimizer{S, T}(;options...) where {S <: MOI.AbstractOptimizer,
-                                                 T <: MOI.AbstractOptimizer}
-
-        m = new()
-
-        # checks that all keywords supplied to the optimizers are field names
-        # throws error otherwise
-        allowed_kwargs = fieldnames(Optimizer{S,T})
-        disallowed_kwargs = setdiff(collect(keys(options)), allowed_kwargs)
-        if ~isempty(disallowed_kwargs)
-            error("The following keyword arguments are not recognized by the
-                   EAGO optimizer: $(disallowed_kwargs). Please consult
-                   the documentation for allowed arguments.")
-        end
-
-        default_opt_dict = Dict{Symbol,Any}()
-
-        # Presolving options
-        default_opt_dict[:presolve_scrubber_flag] = false
-        default_opt_dict[:presolve_to_JuMP_flag] = false
-        default_opt_dict[:presolve_epigraph_flag] = false
-        default_opt_dict[:presolve_cse_flag] = false
-        default_opt_dict[:presolve_flatten_flag] = false
-
-        # Options for constraint propagation
-        default_opt_dict[:cp_depth] = 1000
-        default_opt_dict[:cp_repetitions] = 3
-        default_opt_dict[:cp_tolerance] = 0.99
-        default_opt_dict[:cp_interval_only] = false
-
-        # Options for optimality-based bound tightening
-        default_opt_dict[:obbt_depth] = 6
-        default_opt_dict[:obbt_repetitions] = 4
-        default_opt_dict[:obbt_aggressive_on] = false
-        default_opt_dict[:obbt_aggressive_max_iteration] = 2
-        default_opt_dict[:obbt_aggressive_min_dimension] = 2
-        default_opt_dict[:obbt_tolerance] = 1E-9
-        default_opt_dict[:obbt_variable_values] = Bool[]
-
-        # Options for linear bound tightening
-        default_opt_dict[:lp_depth] = 100000
-        default_opt_dict[:lp_repetitions] = 3
-
-        # Options for quadratic bound tightening
-        default_opt_dict[:quad_uni_depth] = -1
-        default_opt_dict[:quad_uni_repetitions] = 2
-        default_opt_dict[:quad_bi_depth] = -1
-        default_opt_dict[:quad_bi_repetitions] = 2
-
-        # Subgradient tightening flags for evaluation
-        default_opt_dict[:subgrad_tighten] = true
-        default_opt_dict[:subgrad_tighten_reverse] = false
-
-        # Tolerance to add cuts and max number of cuts
-        default_opt_dict[:objective_cut_on] = true
-        default_opt_dict[:cut_max_iterations] = 3
-        default_opt_dict[:cut_cvx] = 0.9
-        default_opt_dict[:cut_tolerance] = 0.05
-
-        # Upper bounding options
-        default_opt_dict[:upper_bounding_depth] = 4
-
-        # Duality-based bound tightening (DBBT) options
-        default_opt_dict[:dbbt_depth] = 10^10
-        default_opt_dict[:dbbt_tolerance] = 1E-8
-
-        # Node branching options
-        default_opt_dict[:branch_cvx_factor] = 0.25
-        default_opt_dict[:branch_offset] = 0.15
-        default_opt_dict[:branch_variable] = Bool[]
-        default_opt_dict[:branch_max_repetitions] = 4
-        default_opt_dict[:branch_repetition_tol] = 0.9
-
-        # Rounding mode used with interval arithmetic
-        default_opt_dict[:rounding_mode] = :accurate
-
-        # Termination limits
-        default_opt_dict[:node_limit] = 10^7
-        default_opt_dict[:time_limit] = 1000.0
-        default_opt_dict[:iteration_limit] = 3000000
-        default_opt_dict[:absolute_tolerance] = 1E-3
-        default_opt_dict[:relative_tolerance] = 1E-3
-        default_opt_dict[:local_solve_only] = false
-        default_opt_dict[:feasible_local_continue] = false
-
-        # Iteration logging options
-        default_opt_dict[:log_on] = false
-        default_opt_dict[:log_subproblem_info] = false
-        default_opt_dict[:log_interval] = 1
-
-        # Optimizer display options
-        default_opt_dict[:verbosity] = 1
-        default_opt_dict[:output_iterations] = 1000
-        default_opt_dict[:header_iterations] = 10000
-
-        # Extension options
-        default_opt_dict[:enable_optimize_hook] = false
-        default_opt_dict[:ext] = Dict{Symbol, Any}()
-        default_opt_dict[:ext_type] = DefaultExt()
-
-        default_opt_dict[:relaxed_optimizer] = GLPK.Optimizer()
-        default_opt_dict[:relaxed_optimizer_kwargs] = Base.Iterators.Pairs(NamedTuple(),())
-        default_opt_dict[:relaxed_inplace_mod] = true
-        default_opt_dict[:upper_optimizer] = Ipopt.Optimizer()
-        fac = with_optimizer(Ipopt.Optimizer, max_iter = 10000, acceptable_tol = 1E30,
-                             acceptable_iter = 3000, constr_viol_tol = 0.000001,
-                             acceptable_constr_viol_tol = 1E-6, print_level = 0)
-
-        default_opt_dict[:upper_factory] = fac
-
-        for i in keys(default_opt_dict)
-            if (haskey(options,i))
-                setfield!(m, i, options[i])
-            else
-                setfield!(m, i, default_opt_dict[i])
-            end
-        end
-
-        m.cut_safe_l = haskey(options, :cut_safe_l) ? options[:safe_cut_l] : 0.00001
-        m.cut_safe_u = haskey(options, :cut_safe_u) ? options[:safe_cut_u] : 10000.0
-        m.cut_safe_b = haskey(options, :cut_safe_b) ? options[:safe_cut_b] : 100000.0
-
-        m._global_lower_bound = -Inf
-        m._global_upper_bound = Inf
-        m._maximum_node_id = 0
-        m._iteration_count = 0
-        m._node_count = 0
-
-        m._stack = BinaryMinMaxHeap{NodeBB}()
-        m._current_node = NodeBB()
-        m._current_xref = Float64[]
-
-        m._variable_info = VariableInfo[]
-        m._variable_number = 0
-        m._continuous_variable_number = 0
-
-        m._user_branch_variables = ~isempty(m.branch_variable)
-        m._fixed_variable = Bool[]
-        m._constraint_convexity = Dict{CI,Bool}()
-
-        m._continuous_solution = Float64[]
-
-        m._integer_variables = Int64[]
-        m._upper_variables = VI[]
-
-        m._lower_variable = SV[]
-        m._lower_variable_index = VI[]
-        m._lower_variable_et = CI{SV, ET}[]
-        m._lower_variable_lt = CI{SV, LT}[]
-        m._lower_variable_gt = CI{SV, GT}[]
-        m._lower_variable_et_indx = Int64[]
-        m._lower_variable_lt_indx = Int64[]
-        m._lower_variable_gt_indx = Int64[]
-
-        m._preprocess_feasibility = true
-        m._preprocess_result_status = MOI.OTHER_RESULT_STATUS
-        m._preprocess_termination_status = MOI.OPTIMIZE_NOT_CALLED
-
-        m._lower_result_status = MOI.OTHER_RESULT_STATUS
-        m._lower_termination_status = MOI.OPTIMIZE_NOT_CALLED
-        m._lower_feasibility = false
-        m._lower_objective_value = -Inf
-        m._lower_solution = Float64[]
-        m._lower_lvd = Float64[]
-        m._lower_uvd = Float64[]
-
-        m._cut_result_status = MOI.OTHER_RESULT_STATUS
-        m._cut_termination_status = MOI.OPTIMIZE_NOT_CALLED
-        m._cut_solution = Float64[]
-        m._cut_objective_value = -Inf
-        m._cut_feasibility = false
-
-        m._upper_result_status = MOI.OTHER_RESULT_STATUS
-        m._upper_termination_status = MOI.OPTIMIZE_NOT_CALLED
-        m._upper_feasibility = false
-        m._upper_objective_value = Inf
-        m._upper_solution = Float64[]
-
-        m._best_upper_value = Inf
-
-        m._postprocess_feasibility = false
-
-        m._start_time = 0.0
-        m._run_time = 0.0
-        m._time_left = m.time_limit
-        m._parse_time = 0.0
-        m._presolve_time = 0.0
-        m._last_preprocess_time = 0.0
-        m._last_lower_problem_time = 0.0
-        m._last_upper_problem_time = 0.0
-        m._last_postprocessing_time = 0.0
-
-        m._objective_sv = SV(VI(1))
-        m._objective_saf = SAF(SAT.([0.0],[VI(1)]), 0.0)
-        m._objective_sqf = SQF(SAT.([0.0],[VI(1)]), SQT.([0.0],[VI(1)],[VI(1)]), 0.0)
-        m._objective_is_sv = false
-        m._objective_is_saf = false
-        m._objective_is_sqf = false
-        m._objective_is_nlp = false
-        m._objective_cut_set = -1
-        m._objective_cut_ci_sv = CI{SV,LT}(-1.0)
-        m._objective_cut_ci_saf = CI{SAF,LT}[]
-
-        m._objective_convexity = false
-
-        m._linear_leq_constraints = Tuple{SAF, LT, Int64}[]
-        m._linear_geq_constraints = Tuple{SAF, GT, Int64}[]
-        m._linear_eq_constraints = Tuple{SAF, ET, Int64}[]
-
-        m._quadratic_leq_constraints = Tuple{SQF, LT, Int64}[]
-        m._quadratic_geq_constraints = Tuple{SQF, GT, Int64}[]
-        m._quadratic_eq_constraints = Tuple{SQF, ET, Int64}[]
-
-        m._quadratic_leq_dict = ImmutableDict{Int64,Int64}[]
-        m._quadratic_geq_dict = ImmutableDict{Int64,Int64}[]
-        m._quadratic_eq_dict = ImmutableDict{Int64,Int64}[]
-        m._quadratic_obj_dict = ImmutableDict{Int64,Int64}()
-
-        m._quadratic_leq_sparsity = Vector{VI}[]
-        m._quadratic_geq_sparsity = Vector{VI}[]
-        m._quadratic_eq_sparsity = Vector{VI}[]
-
-        m._quadratic_ci_leq = CI{SAF,LT}[]
-        m._quadratic_ci_geq = CI{SAF,LT}[]
-        m._quadratic_ci_eq = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
-
-        m._quadratic_leq_gradnz = Int64[]
-        m._quadratic_geq_gradnz = Int64[]
-        m._quadratic_eq_gradnz = Int64[]
-
-        m._quadratic_leq_convexity = Bool[]
-        m._quadratic_geq_convexity = Bool[]
-        m._quadratic_eq_convexity_1 = Bool[]
-        m._quadratic_eq_convexity_2 = Bool[]
-
-
-        m._lower_nlp_affine = Vector{CI{SAF,LT}}[]
-        m._upper_nlp_affine = Vector{CI{SAF,LT}}[]
-
-        m._lower_nlp_affine_indx = Int64[]
-        m._upper_nlp_affine_indx = Int64[]
-
-        m._lower_nlp_sparsity = Vector{Int64}[]
-        m._upper_nlp_sparsity = Vector{Int64}[]
-
-        m._univariate_quadratic_leq_constraints = Tuple{Float64,Float64,Float64,Int64}[]
-        m._univariate_quadratic_geq_constraints = Tuple{Float64,Float64,Float64,Int64}[]
-        m._univariate_quadratic_eq_constraints = Tuple{Float64,Float64,Float64,Int64}[]
-        m._bivariate_quadratic_leq_constraints = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
-        m._bivariate_quadratic_geq_constraints = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
-        m._bivariate_quadratic_eq_constraints = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
-
-        # Storage for output
-        m._solution_value = 0.0
-        m._feasible_solution_found = false
-        m._first_solution_node = -1
-        m._objective_value = -Inf
-        m._optimization_sense = MOI.MIN_SENSE
-        m._result_status_code = MOI.OTHER_RESULT_STATUS
-        m._termination_status_code = MOI.OPTIMIZE_NOT_CALLED
-
-        # Optimality-based bound tightening (OBBT) options
-        m._obbt_working_lower_index = Bool[]
-        m._obbt_working_upper_index = Bool[]
-        m._lower_indx_diff = Bool[]
-        m._upper_indx_diff = Bool[]
-        m._old_low_index = Bool[]
-        m._old_upp_index = Bool[]
-        m._new_low_index = Bool[]
-        m._new_upp_index = Bool[]
-        m._obbt_variables = VI[]
-        m._obbt_performed_flag = false
-
-        # Feasibility-based bound tightening options
-        m._cp_improvement = 0.0
-        m._cp_evaluation_reverse = false
-
-        # Options for adding additional cuts
-        m._cut_iterations = 0
-        m._cut_add_flag = false
-
-        # Options for repetition
-        m._node_repetitions = 0
-        m._initial_volume = 0.0
-        m._final_volume = 0.0
-
-        # Log
-        m._log = Log()
-
-        m._nlp_data = empty_nlp_data()
-
-        m._relaxed_evaluator = Evaluator{1,NS}()
-        m._relaxed_constraint_bounds = Vector{MOI.NLPBoundsPair}[]
-        m._relaxed_eval_has_objective = false
-
-        return m
-    end
-end
-function Optimizer(;options...)
-    rtype = haskey(options, :relaxed_optimizer) ? typeof(options[:relaxed_optimizer]) : GLPK.Optimizer
-    ropts = haskey(options, :relaxed_optimizer_kwargs) ? haskey(options, :relaxed_optimizer_kwargs) : Base.Iterators.Pairs(NamedTuple(),())
-    utype = haskey(options, :upper_optimizer) ? typeof(options[:upper_optimizer]) : Ipopt.Optimizer
-
-    opt = Optimizer{rtype, utype}(;options...)
-    relax_fact = with_optimizer(rtype; ropts...)
-    opt.relaxed_optimizer = relax_fact()
-    if MOI.supports(opt.relaxed_optimizer, MOI.Silent())
-        MOI.set(opt.relaxed_optimizer, MOI.Silent(), true)
-    end
-    return opt
+    _relaxed_evaluator::Evaluator = Evaluator{1,NS}()
+    _relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
+    _relaxed_eval_has_objective::Bool = false
 end
 
 function MOI.empty!(m::Optimizer)
     m = Optimizer()
+    nothing
 end
 
 function MOI.is_empty(m::Optimizer)
@@ -788,24 +465,22 @@ function MOI.is_empty(m::Optimizer)
     return flag
 end
 
-function check_inbounds!(m::Optimizer, vi::MOI.VariableIndex)
-    num_variables = length(m._variable_info)
-    if !(1 <= vi.value <= num_variables)
-        error("Invalid variable index $vi. ($num_variables variables in the model.)")
+##### Utilities for checking that JuMP model contains variables used in expression
+function check_inbounds!(m::Optimizer, vi::VI)
+    if !(1 <= vi.value <= m._variable_number)
+        error("Invalid variable index $vi. ($(m._variable_numbe) variables in the model.)")
     end
     return
 end
+check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
 
-check_inbounds!(m::Optimizer, var::MOI.SingleVariable) = check_inbounds!(m, var.variable)
-
-function check_inbounds!(m::Optimizer, aff::MOI.ScalarAffineFunction)
+function check_inbounds!(m::Optimizer, aff::SAF)
     for term in aff.terms
         check_inbounds!(m, term.variable_index)
     end
     return
 end
-
-function check_inbounds!(m::Optimizer, quad::MOI.ScalarQuadraticFunction)
+function check_inbounds!(m::Optimizer, quad::SQF)
     for term in quad.affine_terms
         check_inbounds!(m, term.variable_index)
     end
@@ -815,21 +490,18 @@ function check_inbounds!(m::Optimizer, quad::MOI.ScalarQuadraticFunction)
     end
     return
 end
-
-function has_upper_bound(m::Optimizer, vi::MOI.VariableIndex)
-    @inbounds val = m._variable_info[vi.value]
-    return val.has_upper_bound
+#=
+function check_inbounds!(m::Optimizer, vov::VECOFVAR)
+    for vi in vov.variables
+        check_inbounds!(m, vi)
+    end
+    return
 end
-
-function has_lower_bound(m::Optimizer, vi::MOI.VariableIndex)
-    @inbounds val = m._variable_info[vi.value]
-    return val.has_lower_bound
-end
-
-function is_fixed(m::Optimizer, vi::MOI.VariableIndex)
-    @inbounds val = m._variable_info[vi.value]
-    return val.is_fixed
-end
+=#
+##### Access variable information from MOI variable index
+has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
+has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
+is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
 
 function is_integer_feasible(m::Optimizer)
     flag = true
@@ -844,10 +516,6 @@ function is_integer_feasible(m::Optimizer)
 end
 
 is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
-
-function ReverseDict(dict)
-    Dict(value => key for (key, value) in dict)
-end
 
 function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
     return MOI.Utilities.default_copy_to(model, src, copy_names)
@@ -919,7 +587,7 @@ function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
 end
 =#
 
-MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i in 1:length(m._variable_info)]
+MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i = 1:length(m._variable_info)]
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     mult = 1.0
     if m._optimization_sense === MOI.MAX_SENSE
@@ -951,232 +619,52 @@ MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._maximum_node_id
-function MOI.get(m::Optimizer, ::MOI.ResultCount)
-    (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
-end
+MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
     return model._continuous_solution[vi.value]
 end
 
-MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{LT}) = true
-MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{GT}) = true
-MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{ET}) = true
-#MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{IT}) = true
-#MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{MOI.ZO}) = true
-
-MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{LT}) = true
-MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{GT}) = true
-MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{ET}) = true
-#MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{IT}) = true
-
-MOI.supports_constraint(::Optimizer, ::Type{SQF}, ::Type{LT}) = true
-MOI.supports_constraint(::Optimizer, ::Type{SQF}, ::Type{GT}) = true
-MOI.supports_constraint(::Optimizer, ::Type{SQF}, ::Type{ET}) = true
-#MOI.supports_constraint(::Optimizer, ::Type{SQF}, ::Type{IT}) = true
-
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 
-function MOI.add_variable(m::Optimizer)
-    m._variable_number += 1
-    if ~m._user_branch_variables
-        push!(m.branch_variable, false)
-    end
-    push!(m.obbt_variable_values, false)
-    push!(m._obbt_working_lower_index, false)
-    push!(m._obbt_working_upper_index, false)
-    push!(m._lower_indx_diff, false)
-    push!(m._upper_indx_diff, false)
-    push!(m._old_low_index, false)
-    push!(m._old_upp_index, false)
-    push!(m._new_low_index, false)
-    push!(m._new_upp_index, false)
-    push!(m._fixed_variable, false)
-    push!(m._variable_info, VariableInfo())
-    return VI(m._variable_number)
-end
-MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
-
-#=
-function MOI.add_constraint(m::Optimizer, v::SV, zo::MOI.ZO)
-    vi = v.variable
-    check_inbounds!(m, vi)
-    has_upper_bound(m, vi) && error("Upper bound on variable $vi already exists.")
-    has_lower_bound(m, vi) && error("Lower bound on variable $vi already exists.")
-    is_fixed(m, vi) && error("Variable $vi is fixed. Cannot also set upper bound.")
-    m._variable_info[vi.value].lower_bound = 0.0
-    m._variable_info[vi.value].upper_bound = 1.0
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    m._variable_info[vi.value].is_integer = true
-    return CI{SV, MOI.ZO}(vi.value)
-end
-=#
-
-function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
-    vi = v.variable
-    check_inbounds!(m, vi)
-    if isnan(lt.upper)
-        error("Invalid upper bound value $(lt.upper).")
-    end
-    if has_upper_bound(m, vi)
-        error("Upper bound on variable $vi already exists.")
-    end
-    if is_fixed(m, vi)
-        error("Variable $vi is fixed. Cannot also set upper bound.")
-    end
-    m._variable_info[vi.value].upper_bound = lt.upper
-    m._variable_info[vi.value].has_upper_bound = true
-    return CI{SV, LT}(vi.value)
-end
-
-function MOI.add_constraint(m::Optimizer, v::SV, gt::GT)
-    vi = v.variable
-    check_inbounds!(m, vi)
-    if isnan(gt.lower)
-        error("Invalid lower bound value $(gt.lower).")
-    end
-    if has_lower_bound(m, vi)
-        error("Lower bound on variable $vi already exists.")
-    end
-    if is_fixed(m, vi)
-        error("Variable $vi is fixed. Cannot also set lower bound.")
-    end
-    m._variable_info[vi.value].lower_bound = gt.lower
-    m._variable_info[vi.value].has_lower_bound = true
-    return CI{SV, GT}(vi.value)
-end
-
-function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
-    vi = v.variable
-    check_inbounds!(m, vi)
-    if isnan(eq.value)
-        error("Invalid fixed value $(gt.lower).")
-    end
-    if has_lower_bound(m, vi)
-        error("Variable $vi has a lower bound. Cannot be fixed.")
-    end
-    if has_upper_bound(m, vi)
-        error("Variable $vi has an upper bound. Cannot be fixed.")
-    end
-    if is_fixed(m, vi)
-        error("Variable $vi is already fixed.")
-    end
-    m._variable_info[vi.value].lower_bound = eq.value
-    m._variable_info[vi.value].upper_bound = eq.value
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    m._variable_info[vi.value].is_fixed = true
-    return CI{SV, ET}(vi.value)
-end
-
-#=
-function MOI.add_constraint(m::Optimizer, v::SV, eq::MOI.IT)
-    vi = v.variable
-    check_inbounds!(m, vi)
-    if isnan(eq.lower)
-        error("Invalid fixed value $(gt.lower).")
-    end
-    if isnan(eq.upper)
-        error("Invalid fixed value $(gt.upper).")
-    end
-    if has_lower_bound(m, vi)
-        error("Lower bound on variable $vi already exists. Cannot also set interval bounds.")
-    end
-    if has_upper_bound(m, vi)
-        error("Upper bound on variable $vi already exists. Cannot also set interval bounds.")
-    end
-    if is_fixed(m, vi)
-        error("Variable $vi is fixed. Cannot also set interval bounds.")
-    end
-    m._variable_info[vi.value].lower_bound = eq.lower
-    m._variable_info[vi.value].upper_bound = eq.upper
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    return CI{SV, MOI.IT}(vi.value)
-end
-=#
-
-macro define_addconstraint_linear(function_type, set_type, array_name)
-    quote
-        function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
-            check_inbounds!(m, func)
-            push!(m.$(array_name), (func, set, length(func.terms)))
-            indx = CI{$function_type, $set_type}(length(m.$(array_name)))
-            m._constraint_convexity[indx] = true
-            return indx
-        end
-    end
-end
-
-macro define_addconstraint_quadratic(function_type, set_type, array_name)
-    quote
-        function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
-            check_inbounds!(m, func)
-            for i in func.affine_terms m.branch_variable[i.variable_index.value] = true end
-            for i in func.quadratic_terms
-                m.branch_variable[i.variable_index_1.value] = true
-                m.branch_variable[i.variable_index_2.value] = true
-            end
-            push!(m.$(array_name), (func, set, length(m.$(array_name))+1))
-            indx = CI{$function_type, $set_type}(length(m.$(array_name)))
-            m._constraint_convexity[indx] = false
-            return indx
-        end
-    end
-end
-
-@define_addconstraint_linear SAF LT _linear_leq_constraints
-@define_addconstraint_linear SAF GT _linear_geq_constraints
-@define_addconstraint_linear SAF ET _linear_eq_constraints
-
-@define_addconstraint_quadratic SQF LT _quadratic_leq_constraints
-@define_addconstraint_quadratic SQF GT _quadratic_geq_constraints
-@define_addconstraint_quadratic SQF ET _quadratic_eq_constraints
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
+    m._objective_is_sv = false
+    m._objective_is_saf = false
+    m._objective_is_sqf = false
+    m._objective_is_nlp = nlp_data.has_objective
     m._nlp_data = nlp_data
-    if nlp_data.has_objective
-        m._objective_is_sv = false
-        m._objective_is_saf = false
-        m._objective_is_sqf = false
-        m._objective_is_nlp = true
-    end
     return
 end
 
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SV}) = true
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SAF}) = true
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{SQF}) = true
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SV)
+##### Support, set, and evaluate objective functions
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV,SAF,SQF}} = true
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
+    m._objective_sv = func
     m._objective_is_sv = true
     m._objective_is_saf = false
     m._objective_is_sqf = false
     m._objective_is_nlp = false
-    m._objective_sv = func
     return
 end
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SAF)
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
-    m._objective_is_sv = false
+    m._objective_saf = func
     m._objective_is_saf = true
+    m._objective_is_sv = false
     m._objective_is_sqf = false
     m._objective_is_nlp = false
-    m._objective_saf = func
     return
 end
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction, func::SQF)
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
+    m._objective_sqf = func
+    m._objective_is_sqf = true
     m._objective_is_sv = false
     m._objective_is_saf = false
-    m._objective_is_sqf = true
     m._objective_is_nlp = false
-    m._objective_sqf = func
     for term in func.quadratic_terms
         @inbounds m.branch_variable[term.variable_index_1.value] = true
         @inbounds m.branch_variable[term.variable_index_1.value] = true
@@ -1193,11 +681,8 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSens
 end
 
 # Defines single variable objective function
-function eval_function(var::SV, x)
-    return x[var.variable.value]
-end
+eval_function(var::SV, x) = x[var.variable.value]
 
-# Defines affine objective function
 function eval_function(aff::SAF, x)
     function_value = aff.constant
     for term in aff.terms
@@ -1206,7 +691,6 @@ function eval_function(aff::SAF, x)
     return function_value
 end
 
-# Defines quadratic objective function
 function eval_function(quad::SQF, x)
     function_value = quad.constant
     for term in quad.affine_terms
@@ -1221,16 +705,18 @@ function eval_function(quad::SQF, x)
     return function_value
 end
 
-# Defines evaluation function for objective
 function eval_objective(m::Optimizer, x)
-    @assert !(m._nlp_data.has_objective && m._objective !== nothing)
+    @assert !(m._nlp_data.has_objective && isa(m._objective,Nothing))
     if m._nlp_data.has_objective
         return MOI.eval_objective(m._nlp_data.evaluator, x)
-    elseif m._objective !== nothing
-        return eval_function(m._objective, x)
-    else
-        return 0.0
+    elseif m._objective_is_sv
+        return eval_function(m._objective_sv, x)
+    elseif m._objective_is_saf
+        return eval_function(m._objective_saf, x)
+    elseif m._objective_is_sqf
+        return eval_function(m._objective_sqf, x)
     end
+    return 0.0
 end
 
 
@@ -1245,10 +731,8 @@ subproblems are logged every 'log_interval'.
 function log_iteration!(x::Optimizer)
 
     if x.log_on
-
         log = x._log
         if (mod(x._iteration_count, x.log_interval) == 0 || x._iteration_count == 1)
-
             if x.log_subproblem_info
                 if x._optimization_sense === MOI.MIN_SENSE
                     push!(log.current_lower_bound, x._lower_objective_value)
@@ -1278,7 +762,6 @@ function log_iteration!(x::Optimizer)
             end
             push!(log.run_time, x._run_time)
             push!(log.node_count, x._node_count)
-
         end
     end
     return

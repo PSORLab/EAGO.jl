@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/subroutines.jl
+# Default subroutines for EAGO's global optimizer.
+#############################################################################
+
 """
 $(SIGNATURES)
 
@@ -32,7 +46,7 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     temp_max = 0.0
 
     flag = true
-    for i in 1:nvar
+    for i = 1:nvar
         @inbounds flag = ~x._fixed_variable[i]
         @inbounds flag &= x.branch_variable[i]
         @inbounds vi = x._variable_info[i]
@@ -299,7 +313,7 @@ function set_dual!(x::Optimizer)
 
     lower_variable_lt_indx = x._lower_variable_lt_indx
     lower_variable_lt = x._lower_variable_lt
-    for i in 1:length(lower_variable_lt_indx)
+    for i = 1:length(lower_variable_lt_indx)
         @inbounds vi = lower_variable_lt_indx[i]
         @inbounds ci_lt = lower_variable_lt[i]
         @inbounds x._lower_uvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_lt)
@@ -307,7 +321,7 @@ function set_dual!(x::Optimizer)
 
     lower_variable_gt_indx = x._lower_variable_gt_indx
     lower_variable_gt = x._lower_variable_gt
-    for i in 1:length(lower_variable_gt_indx)
+    for i = 1:length(lower_variable_gt_indx)
         @inbounds vi = lower_variable_gt_indx[i]
         @inbounds ci_gt = lower_variable_gt[i]
         @inbounds x._lower_lvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_gt)
@@ -472,6 +486,12 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
     return val_intv.hi
 end
 
+#function lower_interval_obj(obj::SV, y::NodeBB)
+#    @inbounds y.lower_variable_bounds[x._objective_sv.variable.value]
+#end
+#lower_interval_objective(obj::SAF, y::NodeBB) = interval_bound(obj, y, true)
+#lower_interval_objective(obj::SQF, y::NodeBB) = interval_bound(obj, y, true)
+
 """
 $(SIGNATURES)
 
@@ -498,7 +518,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
         constraints_bnd_lo = d.constraints_lbd
         constraints_bnd_hi = d.constraints_ubd
 
-        for i in 1:d.constraint_number
+        for i = 1:d.constraint_number
             @inbounds constraints_intv_lo = constraints_bnd_lo[i]
             @inbounds constraints_intv_hi = constraints_bnd_hi[i]
             if (constraints_intv_lo > constraints_intv_hi) || (constraints_intv_hi < constraints_intv_lo)
@@ -509,46 +529,48 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
     else
         if x._objective_is_sv
             obj_indx = x._objective_sv.variable.value
-            @inbounds objective_lo = y.lower_variable_bounds[obj_indx]
+            objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
         elseif x._objective_is_saf
             objective_lo = interval_bound(x._objective_saf, y, true)
-        elseif x._objective_is_sqf
-            objective_lo = interval_bound(x._objective_sqf, y, true)
+        else
+            if x._objective_is_sqf
+                objective_lo = interval_bound(x._objective_sqf, y, true)
+            end
         end
     end
 
-    for (func, set, i) in x._linear_leq_constraints
+    for (func, set) in x._linear_leq_constraints
         (~feas) && break
         if interval_bound(func, y, true) > set.upper
             feas = false
         end
     end
-    for (func, set, i) in x._linear_geq_constraints
+    for (func, set) in x._linear_geq_constraints
         (~feas) && break
         if interval_bound(func, y, false) < set.lower
             feas = false
         end
     end
-    for (func, set, i) in x._linear_eq_constraints
+    for (func, set) in x._linear_eq_constraints
         (~feas) && break
         if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
             feas = false
         end
     end
 
-    for (func, set, i) in x._quadratic_leq_constraints
+    for (func, set) in x._quadratic_leq_constraints
         (~feas) && break
         if interval_bound(func, y, true) > set.upper
             feas = false
         end
     end
-    for (func, set, i) in x._quadratic_geq_constraints
+    for (func, set) in x._quadratic_geq_constraints
         (~feas) && break
         if interval_bound(func, y, false) < set.lower
             feas = false
         end
     end
-    for (func, set, i) in x._quadratic_eq_constraints
+    for (func, set) in x._quadratic_eq_constraints
         (~feas) && break
         if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
             feas = false
@@ -644,6 +666,19 @@ function cut_update(x::Optimizer)
     return
 end
 
+#=
+delete_objective_cuts!(obj::SV, x::Optimizer) = nothing
+for i in (SAF, SQF, Nothing)
+    @eval function delete_objective_cuts!(obj::$i, x::Optimizer)
+        for i=2:x._cut_iterations
+            ci = x._objective_cut_ci_saf[i]
+            MOI.delete(x.relaxed_optimizer, ci)
+        end
+        nothing
+    end
+end
+=#
+
 """
 $(SIGNATURES)
 
@@ -656,9 +691,9 @@ function cut_condition(t::ExtensionType, x::Optimizer)
 
     flag = x._cut_add_flag
     flag &= (x._cut_iterations < x.cut_max_iterations)
+    y = x._current_node
 
     if flag
-        y = x._current_node
         xprior = x._current_xref
         xsol = (x._cut_iterations > 1) ? x._cut_solution : x._lower_solution
         xnew = (1.0 - x.cut_cvx)*mid(y) + x.cut_cvx*xsol
@@ -691,10 +726,14 @@ function cut_condition(t::ExtensionType, x::Optimizer)
             end
         end
         if x._objective_cut_set !== -1
-            if ~x._objective_is_sv
-                for i in 2:x._cut_iterations
-                    ci = x._objective_cut_ci_saf[i]
-                    MOI.delete(x.relaxed_optimizer, ci)
+            if x._objective_is_sv
+                obj_indx = x._objective_sv.variable.value
+                objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
+            elseif x._objective_is_saf
+                objective_lo = interval_bound(x._objective_saf, y, true)
+            else
+                if x._objective_is_sqf
+                    objective_lo = interval_bound(x._objective_sqf, y, true)
                 end
             end
         end
@@ -702,21 +741,22 @@ function cut_condition(t::ExtensionType, x::Optimizer)
 
     # check to see if interval bound is preferable
     if x._lower_feasibility
-        y = x._current_node
         if x._objective_is_nlp
-            intv_lo = eval_objective_lo(x._relaxed_evaluator)
+            objective_lo = eval_objective_lo(x._relaxed_evaluator)
         else
             if x._objective_is_sv
                 obj_indx = x._objective_sv.variable.value
-                @inbounds intv_lo = y.lower_variable_bounds[obj_indx]
+                objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
             elseif x._objective_is_saf
-                intv_lo = interval_bound(x._objective_saf, y, true)
-            elseif x._objective_is_sqf
-                intv_lo = interval_bound(x._objective_sqf, y, true)
+                objective_lo = interval_bound(x._objective_saf, y, true)
+            else
+                if x._objective_is_sqf
+                    objective_lo = interval_bound(x._objective_sqf, y, true)
+                end
             end
         end
-        if (intv_lo > x._lower_objective_value)
-            x._lower_objective_value = intv_lo
+        if objective_lo > x._lower_objective_value
+            x._lower_objective_value = objective_lo
             fill!(x._lower_lvd, 0.0)
             fill!(x._lower_uvd, 0.0)
         end
@@ -777,13 +817,20 @@ function default_nlp_heurestic(x::Optimizer, y::NodeBB)
     return bool
 end
 
+#=
+function set_objective!(obj::S, upper_optimizer::T) where {S, T <: MOI.AbstractOptimizer}
+    MOI.set(upper_optimizer, MOI.ObjectiveFunction{S}(), x._objective)
+    nothing
+end
+=#
+
 """
 $(SIGNATURES)
 
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
 """
-function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, T <: MOI.AbstractOptimizer}
+function solve_local_nlp!(x::Optimizer)
 
     y = x._current_node
 
@@ -844,14 +891,16 @@ function solve_local_nlp!(x::Optimizer{S,T}) where {S <: MOI.AbstractOptimizer, 
 
         # Add nonlinear evaluation block
         MOI.set(upper_optimizer, MOI.NLPBlock(), x._nlp_data)
-
         MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
         if x._objective_is_sv
             MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), x._objective_sv)
         elseif x._objective_is_saf
             MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
-        elseif x._objective_is_sqf
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective_sqf)
+        else
+            if x._objective_is_sqf
+                MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective_sqf)
+            end
         end
 
         # Optimizes the object

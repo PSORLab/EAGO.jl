@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/domain_reduction.jl
+# Contains subroutines used for domain reduction.
+#############################################################################
+
 """
 $(FUNCTIONNAME)
 
@@ -7,8 +21,6 @@ and the duality information obtained from the relaxation.
 function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Float64},
                         LBD::Float64, UBD::Float64, nx::Int64)
 
-    sempty = isempty(x)
-    oldx = deepcopy(x)
     cut = 0.0
     vb = 0.0
     lvbs = x.lower_variable_bounds
@@ -16,19 +28,19 @@ function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
     if LBD <= UBD
         for i = 1:nx
             @inbounds ml = mult_lo[i]
-            @inbounds mh = mult_hi[i]
             if ml > 0.0
                 @inbounds cut = lvbs[i] + (UBD - LBD)/ml
-                @inbounds vb = uvbs[i]
-                if cut < vb
+                @inbounds if cut < uvbs[i]
                     @inbounds uvbs[i] = cut
                 end
-            elseif mh > 0.0
-                 @inbounds cut = uvbs[i] - (UBD - LBD)/mh
-                 @inbounds vb = lvbs[i]
-                 if cut > vb
-                     @inbounds lvbs[i] = cut
-                 end
+            else
+                @inbounds mh = mult_hi[i]
+                if mh > 0.0
+                    @inbounds cut = uvbs[i] - (UBD - LBD)/mh
+                    @inbounds if cut > lvbs[i]
+                        @inbounds lvbs[i] = cut
+                    end
+                end
             end
          end
     end
@@ -49,7 +61,7 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
 
     if valid_flag
         if feasible_flag
-            for j in 1:length(x._obbt_working_lower_index)
+            for j = 1:length(x._obbt_working_lower_index)
                 @inbounds active_flag = x._obbt_working_lower_index[j]
                 if active_flag
                     @inbounds vi = x._lower_variable_index[j]
@@ -60,7 +72,7 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
                     end
                 end
             end
-            for j in 1:length(x._obbt_working_upper_index)
+            for j = 1:length(x._obbt_working_upper_index)
                 @inbounds active_flag = x._obbt_working_upper_index[j]
                 if active_flag
                     @inbounds vi = x._lower_variable_index[j]
@@ -110,16 +122,14 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
     copyto!(x._new_upp_index, x._obbt_working_upper_index)
 
     # Exclude unbounded directions
-    for i in 1:obbt_var_len
-        @inbounds active_flag = x._new_low_index[i]
-        if active_flag
-            @inbounds bnd = y.lower_variable_bounds[i]
-            if (bnd == -Inf)
+    for i = 1:obbt_var_len
+        if x._new_low_index[i]
+            if (y.lower_variable_bounds[i] == -Inf)
                 @inbounds x._new_low_index[i] = false
             end
         end
     end
-    for i in 1:obbt_var_len
+    for i = 1:obbt_var_len
         @inbounds active_flag = x._new_low_index[i]
         if active_flag
             @inbounds bnd = y.upper_variable_bounds[i]
@@ -130,13 +140,13 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
     end
 
     # Begin the main algorithm
-    for k in 1:x.obbt_aggressive_max_iteration
+    for k = 1:x.obbt_aggressive_max_iteration
 
         # Set index differences and vector for filtering direction
         bool_indx_diff(x._lower_indx_diff, x._old_low_index, x._new_low_index)
         bool_indx_diff(x._upper_indx_diff, x._old_upp_index, x._new_upp_index)
 
-        for i in 1:obbt_var_len
+        for i = 1:obbt_var_len
             @inbounds active_flag = x._lower_indx_diff[i]
             if active_flag
                 @inbounds bnd = v[i]
@@ -145,7 +155,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                 end
             end
         end
-        for i in 1:obbt_var_len
+        for i = 1:obbt_var_len
             @inbounds active_flag = x._upper_indx_diff[i]
             if active_flag
                 @inbounds bnd = v[i]
@@ -181,7 +191,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                 variable_primal = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
                 copyto!(x._new_low_index, x._old_low_index)
                 copyto!(x._new_upp_index, x._old_upp_index)
-                for i in 1:obbt_var_len
+                for i = 1:obbt_var_len
                     @inbounds active_flag = x._old_low_index[i]
                     if active_flag
                         @inbounds vp = variable_primal[i]
@@ -191,7 +201,7 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                         end
                     end
                 end
-                for i in 1:obbt_var_len
+                for i = 1:obbt_var_len
                     @inbounds active_flag = x._old_upp_index[i]
                     if active_flag
                         @inbounds vp = variable_primal[i]
@@ -273,7 +283,7 @@ function obbt(x::Optimizer)
 
         # min of xLP - yL on active
         if any(x._obbt_working_lower_index)
-            for i in 1:length(x._obbt_working_lower_index)
+            for i = 1:length(x._obbt_working_lower_index)
                 @inbounds active_flag = x._obbt_working_lower_index[i]
                 if active_flag
                     @inbounds temp_value = xLP[i]
@@ -288,7 +298,7 @@ function obbt(x::Optimizer)
 
         # min of yU - xLP on active
         if any(x._obbt_working_upper_index)
-            for i in 1:length(x._obbt_working_upper_index)
+            for i = 1:length(x._obbt_working_upper_index)
                 @inbounds active_flag = x._obbt_working_upper_index[i]
                 if active_flag
                     @inbounds temp_value = y.upper_variable_bounds[i]
@@ -379,10 +389,10 @@ function lp_bound_tighten(m::Optimizer)
     lvb = n.lower_variable_bounds
     uvb = n.upper_variable_bounds
 
-    for i in 1:m.lp_repetitions
+    for i = 1:m.lp_repetitions
 
         # Runs Poor Man LP on constraints of form ax >= b
-        for (func, constr, ind) in m._linear_geq_constraints
+        for (func, constr) in m._linear_geq_constraints
             if feas
                 temp_value = -(constr.lower - func.constant)
                 for term in func.terms
@@ -427,7 +437,7 @@ function lp_bound_tighten(m::Optimizer)
         end
 
         # Runs Poor Man LP on constraints of form ax <= b
-        for (func, constr, ind) in m._linear_leq_constraints
+        for (func, constr) in m._linear_leq_constraints
             if feas
                 temp_value = (constr.upper - func.constant)
                 for term in func.terms
@@ -471,7 +481,7 @@ function lp_bound_tighten(m::Optimizer)
             end
         end
 
-        for (func, constr, ind) in m._linear_eq_constraints
+        for (func, constr) in m._linear_eq_constraints
             if feas
                 temp_value = (constr.value - func.constant)
                 for term in func.terms
@@ -604,7 +614,6 @@ function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,v
     acnt = length(func.affine_terms)
     (vxvalue != nothing) && (vx = MOI.VariableIndex(vxvalue))
     (vyvalue != nothing) && (vy = MOI.VariableIndex(vyvalue))
-
     for qd_term in func.quadratic_terms
         if (qd_term.variable_index1 == vx && qd_term.variable_index2 == vx)
             ax = qd_term.coefficient
@@ -614,7 +623,6 @@ function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,v
             axy = qd_term.coefficient
         end
     end
-
     affine_coefficient_1 = func.affine_terms[1].coefficient
     affine_coefficient_2 = func.affine_terms[2].coefficient
     if acnt == 2
@@ -640,7 +648,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
 Classifies constraints as univariate or bivariate and adds
 them to storage vectors.
 """
@@ -649,7 +656,7 @@ function classify_quadratics!(m::Optimizer)
     b = 0.0
     c = 0.0
     # Check for Univariate and Bivariate Lesser Constraints
-    for (func,set,indx) in m._quadratic_leq_constraints
+    for (func,set) in m._quadratic_leq_constraints
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             a_neg = -1.0*a
@@ -668,7 +675,7 @@ function classify_quadratics!(m::Optimizer)
     end
 
     # Check for Univariate and Bivariate Greater Constraints
-    for (func,set,indx) in m._quadratic_geq_constraints
+    for (func,set) in m._quadratic_geq_constraints
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             push!(m._univariate_quadratic_geq_constraints,(a,b,c,vi))
@@ -684,7 +691,7 @@ function classify_quadratics!(m::Optimizer)
     end
 
     # Check for Univariate and Bivariate Equality Constraints
-    for (func,set,indx) in m._quadratic_eq_constraints
+    for (func,set) in m._quadratic_eq_constraints
         if check_univariate_quad(func)
             a,b,c,vi = get_univariate_coeff(func,set)
             push!(m._univariate_quadratic_eq_constraints,(a,b,c,vi))
@@ -708,7 +715,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
 Kernel of the bound tightening operation on univariant qudaratic functions.
 Called for each univariate function.
 """
@@ -741,7 +747,6 @@ end
 
 """
 $(FUNCTIONNAME)
-
 Performs bound tightening on all univariate quadratic functions.
 """
 function univariate_quadratic(m::Optimizer)
@@ -777,7 +782,6 @@ end
 #=
 """
 $(FUNCTIONNAME)
-
 Kernel of the bound tightening operation on bivariate qudaratic functions.
 Called for each bivariate function.
 """
@@ -785,10 +789,8 @@ function bivariate_kernel(m::Optimizer,n::NodeBB,ax::Float64,ay::Float64,axy::Fl
                          bx::Float64,by::Float64,vi1::Int,vi2)
         # Case distinction from Vigerske disseration (TO DO)
 end
-
 """
 $(FUNCTIONNAME)
-
 Performs bound tightening on all bivariate quadratic functions.
 """
 function bivariate_quadratic(m::Optimizer,n::NodeBB)
@@ -827,6 +829,7 @@ function cpwalk(x::Optimizer)
 
     # Run forward-reverse pass and retreive node for interval forward-reverse pass
     evaluator.subgrad_tighten = ~x.cp_interval_only
+
     feas = forward_reverse_pass(evaluator, midx)
     @inbounds n.lower_variable_bounds[:] = evaluator.current_node.lower_variable_bounds
     @inbounds n.upper_variable_bounds[:] = evaluator.current_node.upper_variable_bounds

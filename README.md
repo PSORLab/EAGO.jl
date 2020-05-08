@@ -117,8 +117,11 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Speed and aesthetics for logging and printing utilities have been updated.
   - Subroutines are now customized by creating a subtype of 'ExtensionType' and defining subroutines which dispatch on this new structure.
   - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
-  - JIT compilation time has been reduced substantially.
-  - Support for silent tag and time limits.
+  - JIT compilation time has been reduced sub
+- TBD: [**EAGO v0.4.0**]
+  - Separate McCormick and ReverseMcCormick libraries from main package.
+  - Fix a few bugs.
+  - Introduces a guarded relaxation feature to help deal with domain violations.
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 

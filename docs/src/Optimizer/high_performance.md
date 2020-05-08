@@ -29,6 +29,24 @@ m = JuMP.Model(with_optimizer(EAGO.Optimizer; relaxed_optimizer = Gurobi.Optimiz
                                               relaxed_optimizer_kwargs = Iterators.Pairs([:OutputFlag], [0])))
 ```
 
+## Rounding Mode
+
+The IntervalArithmetic.jl package supports a number of different directed rounding
+modes. The default directed rounding mode is `:tight`. It is recommended that the
+user specify that `:accurate` directed rounding mode be used as it may results
+in a significant performance  improvement. Setting a rounding mode can requires
+the redefinition of a number of functions. As a result, this should only be done
+at the top-level by the user (rather than by using keyword arguments). To set the
+rounding mode to `:accurate` using the following syntax when loading the EAGO package
+initially:
+
+```julia
+using IntervalArithmetic; setrounding(Interval, :accurate)
+using EAGO
+# REST OF CODE
+```
+
+
 ## Ipopt Build
 
 Ipopt is the recommended solver for upper bounding problems. Ipopt's performance is highly
