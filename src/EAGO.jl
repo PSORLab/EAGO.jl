@@ -15,6 +15,9 @@ module EAGO
     using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse
     using LinearAlgebra: eigmin, norm
+
+    import IntervalArithmetic: mid
+
     @reexport using McCormick
     @reexport using ReverseMcCormick
 
