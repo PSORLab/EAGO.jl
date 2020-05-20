@@ -307,24 +307,19 @@ Retrieves the lower and upper duals for variable bounds from the
 `relaxed_optimizer` and sets the appropriate values in the
 `_lower_lvd` and `_lower_uvd` storage fields.
 """
-function set_dual!(x::Optimizer)
+function set_dual!(m::Optimizer)
 
-    opt = x.relaxed_optimizer
+    opt = m.relaxed_optimizer
+    lower_variable_lt_indx = m._lower_variable_lt_indx
+    lower_variable_lt = m._lower_variable_lt
+    lower_variable_gt_indx = m._lower_variable_gt_indx
+    lower_variable_gt = m._lower_variable_gt
 
-    lower_variable_lt_indx = x._lower_variable_lt_indx
-    lower_variable_lt = x._lower_variable_lt
     for i = 1:length(lower_variable_lt_indx)
-        @inbounds vi = lower_variable_lt_indx[i]
-        @inbounds ci_lt = lower_variable_lt[i]
-        @inbounds x._lower_uvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_lt)
+        @inbounds m._lower_uvd[@inbounds lower_variable_lt_indx[i]] = MOI.get(opt, MOI.ConstraintDual(), @inbounds lower_variable_lt[i])
     end
-
-    lower_variable_gt_indx = x._lower_variable_gt_indx
-    lower_variable_gt = x._lower_variable_gt
     for i = 1:length(lower_variable_gt_indx)
-        @inbounds vi = lower_variable_gt_indx[i]
-        @inbounds ci_gt = lower_variable_gt[i]
-        @inbounds x._lower_lvd[vi] = MOI.get(opt, MOI.ConstraintDual(), ci_gt)
+        @inbounds m._lower_lvd[@inbounds lower_variable_gt_indx[i]] = MOI.get(opt, MOI.ConstraintDual(), @inbounds lower_variable_gt[i])
     end
 
     return

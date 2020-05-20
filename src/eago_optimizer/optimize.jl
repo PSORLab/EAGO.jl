@@ -204,15 +204,16 @@ function load_relaxed_problem!(x::Optimizer)
         push!(x._upper_nlp_affine, fill(CI{SAF,LT}(-1), (len_ua,)))
     end
 
-    # only solves box constrained problems (+ other constraints) so single
-    # variable objective implies that a bound has already been set and it
-    # is not fixed
+    # checks to see if a one-sided constraint leq already exists
     if x._objective_type === SINGLE_VARIABLE
         for (i, z) in enumerate(x._lower_variable_lt)
             if x._objective_sv.variable.value == x._lower_variable_lt_indx[i]
                 x._objective_cut_ci_sv = z
                 break
             end
+        end
+        if x._objective_cut_ci_sv == CI{SV,LT}(-1)
+            x._objective_cut_ci_sv = MOI.add_constraint(opt, x._objective_sv.variable, LT(Inf))
         end
     end
 

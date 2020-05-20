@@ -122,19 +122,13 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
 
     # Exclude unbounded directions
     for i = 1:obbt_var_len
-        if x._new_low_index[i]
-            if (y.lower_variable_bounds[i] == -Inf)
-                @inbounds x._new_low_index[i] = false
-            end
+        if @inbounds x._new_low_index[i] && @inbounds y.lower_variable_bounds[i] == -Inf
+            @inbounds x._new_low_index[i] = false
         end
     end
     for i = 1:obbt_var_len
-        @inbounds active_flag = x._new_low_index[i]
-        if active_flag
-            @inbounds bnd = y.upper_variable_bounds[i]
-            if bnd == Inf
-                @inbounds x._new_low_index[i] = false
-            end
+        if @inbounds x._new_low_index[i] && @inbounds y.upper_variable_bounds[i] == Inf
+            @inbounds x._new_low_index[i] = false
         end
     end
 
@@ -146,27 +140,19 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
         bool_indx_diff(x._upper_indx_diff, x._old_upp_index, x._new_upp_index)
 
         for i = 1:obbt_var_len
-            @inbounds active_flag = x._lower_indx_diff[i]
-            if active_flag
-                @inbounds bnd = v[i]
-                if bnd < 0.0
-                    @inbounds v[i] = 0.0
-                end
+            if @inbounds x._lower_indx_diff[i] && @inbounds v[i] < 0.0
+                @inbounds v[i] = 0.0
             end
         end
         for i = 1:obbt_var_len
-            @inbounds active_flag = x._upper_indx_diff[i]
-            if active_flag
-                @inbounds bnd = v[i]
-                if (bnd > 0.0)
-                    @inbounds v[i] = 0.0
-                end
+            if @inbounds x._upper_indx_diff[i] && @inbounds v[i] > 0.0
+                @inbounds v[i] = 0.0
             end
         end
 
         # Termination Condition
         ((~any(x._new_low_index) & ~any(x._new_upp_index)) || (iszero(v))) && break
-        if (k >= 2)
+        if k >= 2
             if (count(x._lower_indx_diff) + count(x._upper_indx_diff)) < x.obbt_aggressive_min_dimension
                 break
             end
@@ -191,23 +177,13 @@ function aggressive_filtering!(x::Optimizer, y::NodeBB)
                 copyto!(x._new_low_index, x._old_low_index)
                 copyto!(x._new_upp_index, x._old_upp_index)
                 for i = 1:obbt_var_len
-                    @inbounds active_flag = x._old_low_index[i]
-                    if active_flag
-                        @inbounds vp = variable_primal[i]
-                        @inbounds xL = y.lower_variable_bounds[i]
-                        if (vp == xL)
-                            @inbounds x._new_low_index[i] = false
-                        end
+                    if @inbounds x._old_low_index[i] && @inbounds variable_primal[i] == @inbounds y.lower_variable_bounds[i]
+                        @inbounds x._new_low_index[i] = false
                     end
                 end
                 for i = 1:obbt_var_len
-                    @inbounds active_flag = x._old_upp_index[i]
-                    if active_flag
-                        @inbounds vp = variable_primal[i]
-                        @inbounds xU = y.upper_variable_bounds[i]
-                        if (vp == xU)
-                            @inbounds x._new_upp_index[i] = false
-                        end
+                    if @inbounds x._old_upp_index[i] && @inbounds variable_primal[i] == @inbounds y.upper_variable_bounds[i]
+                        @inbounds x._new_upp_index[i] = false
                     end
                 end
             end

@@ -90,7 +90,7 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
         @inbounds xU1 = uvb[nidx1]
         @inbounds x01 = x0[nidx1]
         if nidx1 == nidx2               # quadratic terms
-            if (a > 0.0)
+            if a > 0.0
                 @inbounds terms_coeff[vidx1] = 2.0*a*x01
                 quadratic_constant -= x01*x01
             else
@@ -101,7 +101,7 @@ function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
             @inbounds xL2 = lvb[nidx2]
             @inbounds xU2 = uvb[nidx2]
             @inbounds x02 = x0[nidx2]
-            if (a > 0.0)
+            if a > 0.0
                 check_ref = (xU1 - xL1)*x02 + (xU2 - xL2)*x01
                 if (check_ref - xU1*xU2 + xL1*xL2) <= 0.0
                     @inbounds terms_coeff[vidx1] += a*xL2
@@ -260,7 +260,6 @@ function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
         store_eq_quadratic!(x, ci1, ci2, saf1, saf2, set.value, i, q)
     end
 
-
     return
 end
 
@@ -319,7 +318,6 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
             end
             MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SConsC(saf_const))
             MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-        end
     end
     return
 end
@@ -472,49 +470,49 @@ $(FUNCTIONNAME)
 
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
-function objective_cut_linear!(x::Optimizer, q::Int64)
-    if x._global_upper_bound < Inf
-        if (x._objective_cut_set == -1) || (q > 1) ||  ~x.relaxed_inplace_mod
-            z = (x._objective_cut_set == -1) ? 1 : q
-            set = LT(x._global_upper_bound)
-            if x._objective_type === SINGLE_VARIABLE
-                ci_sv = x._objective_cut_ci_sv
-                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
-            elseif x._objective_type === SCALAR_AFFINE
-                ci_saf = MOI.add_constraint(x.relaxed_optimizer, x._objective_saf, set)
+function objective_cut_linear!(m::Optimizer, q::Int64)
+    if m._global_upper_bound < Inf
+        if (m._objective_cut_set == -1) || (q > 1) ||  ~m.relaxed_inplace_mod
+            z = (m._objective_cut_set == -1) ? 1 : q
+            set = LT(m._global_upper_bound)
+            if m._objective_type === SINGLE_VARIABLE
+                ci_sv = m._objective_cut_ci_sv
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
+            elseif m._objective_type === SCALAR_AFFINE
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, m._objective_saf, set)
                 x._objective_cut_ci_saf[z] = ci_saf
-            elseif x._objective_type === SCALAR_QUADRATRIC || x._objective_type === NONLINEAR
-                saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                set = LT(x._global_upper_bound - saf.constant)
+            elseif m._objective_type === SCALAR_QUADRATRIC || m._objective_type === NONLINEAR
+                saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
+                set = LT(m._global_upper_bound - saf.constant)
                 saf.constant = 0.0
-                ci_saf = MOI.add_constraint(x.relaxed_optimizer, saf, set)
-                x._objective_cut_ci_saf[z] = ci_saf
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, saf, set)
+                m._objective_cut_ci_saf[z] = ci_saf
             end
-            x._objective_cut_set = x._iteration_count
+            m._objective_cut_set = m._iteration_count
         elseif q == 1
-            if ~x._objective_type === SINGLE_VARIABLE
-                ci_saf = x._objective_cut_ci_saf[1]
-                saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
+            if m._objective_type !== SINGLE_VARIABLE
+                ci_saf = m._objective_cut_ci_saf[1]
+                saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
                 for term in saf.terms
                     term_coeff = term.coefficient
                     term_indx = term.variable_index
-                    MOI.modify(x.relaxed_optimizer, ci_saf, SCoefC(term_indx, term_coeff))
+                    MOI.modify(m.relaxed_optimizer, ci_saf, SCoefC(term_indx, term_coeff))
                 end
                 #MOI.modify(x.relaxed_optimizer, ci_saf, SConsC(0.0))
-                set = LT(x._global_upper_bound - saf.constant)
-                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
+                set = LT(m._global_upper_bound - saf.constant)
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
             else
-                ci_sv = x._objective_cut_ci_sv
-                set = LT(x._global_upper_bound)
-                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
+                ci_sv = m._objective_cut_ci_sv
+                set = LT(m._global_upper_bound)
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
             end
         end
     end
     return
 end
 
-relax_problem!(x::Optimizer, v::Vector{Float64}, q::Int64) = relax_problem!(x.ext_type, x, v, q)
-relax_objective!(x::Optimizer, v::Vector{Float64}) = relax_objective!(x.ext_type, x, v)
+relax_problem!(m::Optimizer, x::Vector{Float64}, q::Int64) = relax_problem!(m.ext_type, m, x, q)
+relax_objective!(m::Optimizer, x::Vector{Float64}) = relax_objective!(m.ext_type, m, x)
 
 #=
 work on new constraint relaxation
