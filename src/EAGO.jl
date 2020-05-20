@@ -46,6 +46,7 @@ module EAGO
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
            get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap
 
+    include("eago_optimizer/unsafe_utilities.jl")
     include("eago_optimizer/guarded_context.jl")
     include("eago_optimizer/node_bb.jl")
     include("eago_optimizer/evaluator/evaluator.jl")

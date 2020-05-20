@@ -15,9 +15,9 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern AD packages (e.g. **+**, **sin**, **cosh**) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have aprior variable bounds defined and have differentiable constraints. That is problems should be specified in the generic form below:
 
-<p align="center"> 
+<p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="30%" height="30%">
-  
+
 ## EAGO's Relaxations
 
 For each nonlinear term EAGO makes use of factorable representation to construct bounds and relaxations. In the case of F = y(y-1)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
@@ -88,7 +88,7 @@ where $X= [10, 2000] \times[0, 16000] \times[0, 120] \times[0, 5000]$
                  $\qquad \times[0, 2000] \times[85, 93] \times [90,95] \times [3,12] \times [1.2, 4] \times [145, 162]$
 -->
 
-Special handling has been included for linear/quadratic functions defined using the `@constraint` macro in JuMP and these can generally be expected to perform better than specify quadratic or linear terms with the `@NLconstraint` macro.
+Special handling has been included for linear/quadratic functions defined using the `@constraint` macro in JuMP and these can generally be expected to perform better than specifying quadratic or linear terms with the `@NLconstraint` macro.
 
 ## A Cautionary Note on Global Optimization
 
@@ -118,14 +118,36 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Subroutines are now customized by creating a subtype of 'ExtensionType' and defining subroutines which dispatch on this new structure.
   - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
   - JIT compilation time has been reduced sub
-- TBD: [**EAGO v0.4.0**]
+- 5/19/2020: [**EAGO v0.4.0**]
   - Separate McCormick and ReverseMcCormick libraries from main package.
-  - Fix a few bugs.
+  - Fix multiple bugs and add more transparent error codes.
+  - Significantly simplify internal codebase for EAGO.Optimizer (no changes to API).
   - Introduces a guarded relaxation feature to help deal with domain violations.
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
-## Bug reporting and support
+## Installing EAGO
+EAGO is registered Julia package. It can be installed using the Julia package manager.
+From the Julia REPL, type ] to enter the Pkg REPL mode and run the following command
+
+```julia
+pkg> add EAGO
+```
+
+Currently, EAGO is tied to a 0.19+ or greater version of JuMP. This allows a replication
+of some of the internal features shared by EAGO and JuMP's AD scheme aka
+generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
+
+```julia
+pkg> add JuMP
+```
+
+EAGO v0.4 is the current version requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house
+testing has occured using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
+for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
+If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
+
+## Bug reporting, support and feature requests
 
 Please report bugs or feature requests by opening an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues). All manners of feedback are encouraged.
 

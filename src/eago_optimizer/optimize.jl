@@ -107,7 +107,7 @@ function gen_quadratic_storage!(x::Optimizer)
         push!(x._quadratic_ci_eq, fill((CI{SAF,LT}(-1), CI{SAF,LT}(-1)), (len_eq_ci,)))
     end
 
-    if x._objective_is_sqf
+    if x._objective_type === SCALAR_QUADRATIC
         v = gen_quad_vals(x._objective_sqf)
         d = ImmutableDict{Int64,Int64}()
         for (i, val) in enumerate(v)
@@ -207,7 +207,7 @@ function load_relaxed_problem!(x::Optimizer)
     # only solves box constrained problems (+ other constraints) so single
     # variable objective implies that a bound has already been set and it
     # is not fixed
-    if x._objective_is_sv
+    if x._objective_type === SINGLE_VARIABLE
         for (i, z) in enumerate(x._lower_variable_lt)
             if x._objective_sv.variable.value == x._lower_variable_lt_indx[i]
                 x._objective_cut_ci_sv = z
@@ -229,9 +229,9 @@ is_lp(m::Optimizer) = ~in(true, m.branch_variable)
 function linear_solve!(m::Optimizer)
 
     opt = m.relaxed_optimizer
-    if m._objective_is_sv
+    if m._objective_type === SINGLE_VARIABLE
         MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective_sv)
-    elseif  m._objective_is_saf
+    elseif  m._objective_type === SCALAR_AFFINE
         MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._objective_saf)
     end
 
@@ -287,15 +287,14 @@ max(f) = - min(-f).
 """
 function convert_to_min!(x::Optimizer)
     if x._optimization_sense === MOI.MAX_SENSE
-        if x._objective_is_sv
-            x._objective_is_saf = true
-            x._objective_is_sv = false
+        if x._objective_type === SINGLE_VARIABLE
+            x._objective_type = SCALAR_AFFINE
             x._objective_saf = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
-        elseif x._objective_is_saf
+        elseif x._objective_type === SCALAR_AFFINE
             @__dot__ x._objective_saf.terms = SAT(-getfield(x._objective_saf.terms, :coefficient),
                                                    getfield(x._objective_saf.terms, :variable_index))
             x._objective_saf.constant *= -1.0
-        elseif x._objective_is_sqf
+        elseif x._objective_type === SCALAR_QUADRATIC
             @__dot__ x._objective_sqf.affine_terms = SAT(-getfield(x._objective_sqf.affine_terms, :coefficient),
                                                           getfield(x._objective_sqf.affine_terms, :variable_index))
             @__dot__ x._objective_sqf.quadratic_terms = SQT(-getfield(x._objective_sqf.quadratic_terms, :coefficient),
@@ -879,7 +878,7 @@ function throw_optimize_hook!(m::Optimizer)
 end
 
 function MOI.optimize!(m::Optimizer)
-    
+
     m._start_time = time()
     parse_problem!(m)
     presolve_problem!(m)

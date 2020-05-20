@@ -276,15 +276,15 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
     @inbounds vi = x._lower_variable_index[1:nx]
 
     # Add objective
-    if x._objective_is_sv
+    if x._objective_type === SINGLE_VARIABLE
         MOI.set(opt, MOI.ObjectiveFunction{SV}(), x._objective_sv)
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    elseif x._objective_is_saf
+    elseif x._objective_type === SCALAR_AFFINE
         MOI.set(opt, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    elseif x._objective_is_sqf
+    elseif x._objective_type === SCALAR_QUADRATIC
         if x._objective_convexity
             saf = relax_convex_kernel(x._objective_sqf, vi, nx, x0)
         else
@@ -294,8 +294,7 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
         MOI.set(opt, MOI.ObjectiveFunction{SAF}(), saf)
         MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    else
-        if x._objective_is_nlp
+    elseif x._objective_type === NONLINEAR
 
             evaluator = x._relaxed_evaluator
 
@@ -478,13 +477,13 @@ function objective_cut_linear!(x::Optimizer, q::Int64)
         if (x._objective_cut_set == -1) || (q > 1) ||  ~x.relaxed_inplace_mod
             z = (x._objective_cut_set == -1) ? 1 : q
             set = LT(x._global_upper_bound)
-            if x._objective_is_sv
+            if x._objective_type === SINGLE_VARIABLE
                 ci_sv = x._objective_cut_ci_sv
                 MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
-            elseif x._objective_is_saf
+            elseif x._objective_type === SCALAR_AFFINE
                 ci_saf = MOI.add_constraint(x.relaxed_optimizer, x._objective_saf, set)
                 x._objective_cut_ci_saf[z] = ci_saf
-            elseif x._objective_is_sqf || x._objective_is_nlp
+            elseif x._objective_type === SCALAR_QUADRATRIC || x._objective_type === NONLINEAR
                 saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
                 set = LT(x._global_upper_bound - saf.constant)
                 saf.constant = 0.0
@@ -493,7 +492,7 @@ function objective_cut_linear!(x::Optimizer, q::Int64)
             end
             x._objective_cut_set = x._iteration_count
         elseif q == 1
-            if ~x._objective_is_sv
+            if ~x._objective_type === SINGLE_VARIABLE
                 ci_saf = x._objective_cut_ci_saf[1]
                 saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
                 for term in saf.terms

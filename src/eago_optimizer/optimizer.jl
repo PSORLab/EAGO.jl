@@ -76,6 +76,8 @@ end
 
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
+@enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
+
 export Optimizer
 """
 $(TYPEDEF)
@@ -327,11 +329,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _objective_sv = nothing
     _objective_saf = nothing
     _objective_sqf = nothing
-    _objective_is_sv::Bool = false
-    _objective_is_saf::Bool = false
-    _objective_is_sqf::Bool = false
-    _objective_is_nlp::Bool = false
-
+    _objective_type::ObjectiveType = UNSET
     #_objective::Union{Nothing, SV, SAF, SQF} = nothing
 
     _objective_convexity::Bool = false
@@ -628,12 +626,10 @@ end
 
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 
-
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
-    m._objective_is_sv = false
-    m._objective_is_saf = false
-    m._objective_is_sqf = false
-    m._objective_is_nlp = nlp_data.has_objective
+    if nlp_data.has_objective
+        m._objective_type = NONLINEAR
+    end
     m._nlp_data = nlp_data
     return
 end
@@ -643,28 +639,19 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV,SAF,S
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
     m._objective_sv = func
-    m._objective_is_sv = true
-    m._objective_is_saf = false
-    m._objective_is_sqf = false
-    m._objective_is_nlp = false
+    m._objective_type = SINGLE_VARIABLE
     return
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
     m._objective_saf = func
-    m._objective_is_saf = true
-    m._objective_is_sv = false
-    m._objective_is_sqf = false
-    m._objective_is_nlp = false
+    m._objective_type = SCALAR_AFFINE
     return
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
     m._objective_sqf = func
-    m._objective_is_sqf = true
-    m._objective_is_sv = false
-    m._objective_is_saf = false
-    m._objective_is_nlp = false
+    m._objective_type = SCALAR_QUADRATIC
     for term in func.quadratic_terms
         @inbounds m.branch_variable[term.variable_index_1.value] = true
         @inbounds m.branch_variable[term.variable_index_1.value] = true
@@ -706,14 +693,13 @@ function eval_function(quad::SQF, x)
 end
 
 function eval_objective(m::Optimizer, x)
-    @assert !(m._nlp_data.has_objective && isa(m._objective,Nothing))
-    if m._nlp_data.has_objective
+    if m._objective_type === NONLINEAR
         return MOI.eval_objective(m._nlp_data.evaluator, x)
-    elseif m._objective_is_sv
+    elseif m._objective_type === SINGLE_VARIABLE
         return eval_function(m._objective_sv, x)
-    elseif m._objective_is_saf
+    elseif m._objective_type === SCALAR_AFFINE
         return eval_function(m._objective_saf, x)
-    elseif m._objective_is_sqf
+    elseif m._objective_type === SCALAR_QUADRATIC
         return eval_function(m._objective_sqf, x)
     end
     return 0.0

@@ -726,34 +726,28 @@ function cut_condition(t::ExtensionType, x::Optimizer)
             end
         end
         if x._objective_cut_set !== -1
-            if x._objective_is_sv
+            if x._objective_type === SINGLE_VARIABLE
                 obj_indx = x._objective_sv.variable.value
                 objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-            elseif x._objective_is_saf
+            elseif x._objective_type === SCALAR_AFFINE
                 objective_lo = interval_bound(x._objective_saf, y, true)
-            else
-                if x._objective_is_sqf
+            elseif x._objective_type === SCALAR_QUADRATIC
                     objective_lo = interval_bound(x._objective_sqf, y, true)
-                end
             end
         end
     end
 
     # check to see if interval bound is preferable
     if x._lower_feasibility
-        if x._objective_is_nlp
+        if x._objective_type === NONLINEAR
             objective_lo = eval_objective_lo(x._relaxed_evaluator)
-        else
-            if x._objective_is_sv
+        elseif x._objective_type === SINGLE_VARIABLE
                 obj_indx = x._objective_sv.variable.value
                 objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-            elseif x._objective_is_saf
+        elseif x._objective_type === SCALAR_AFFINE
                 objective_lo = interval_bound(x._objective_saf, y, true)
-            else
-                if x._objective_is_sqf
-                    objective_lo = interval_bound(x._objective_sqf, y, true)
-                end
-            end
+        elseif x._objective_type === SCALAR_QUADRATIC
+                objective_lo = interval_bound(x._objective_sqf, y, true)
         end
         if objective_lo > x._lower_objective_value
             x._lower_objective_value = objective_lo
@@ -893,14 +887,12 @@ function solve_local_nlp!(x::Optimizer)
         MOI.set(upper_optimizer, MOI.NLPBlock(), x._nlp_data)
         MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-        if x._objective_is_sv
+        if x._objective_type === SINGLE_VARIABLE
             MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), x._objective_sv)
-        elseif x._objective_is_saf
+        elseif x._objective_type === SCALAR_AFFINE
             MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
-        else
-            if x._objective_is_sqf
-                MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective_sqf)
-            end
+        elseif x._objective_type === SCALAR_QUADRATIC
+            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._objective_sqf)
         end
 
         # Optimizes the object
