@@ -20,6 +20,7 @@ solution, and time spent solving subproblems.
 """
 function print_solution!(x::Optimizer)
     if x.verbosity > 0
+        println(" ")
         println("First Solution Found at Node $(x._first_solution_node)")
         println("UBD = $(MOI.get(x, MOI.ObjectiveValue()))")
         println("Solution is :")
@@ -28,6 +29,7 @@ function print_solution!(x::Optimizer)
                 println("    X[$i] = $(x._continuous_solution[i])")
             end
         end
+        println(" ")
      end
      return
 end
@@ -40,8 +42,10 @@ Prints node information for the B&B problem. Node id, bound, and interval box.
 function print_node!(y::Optimizer)
     x = y._current_node
     bound = (y._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
+    println(" ")
     println("Node ID: $(x.id), Lower Bound: $(bound), Lower Variable Bounds:
              $(x.lower_variable_bounds), Upper Variable Bounds: $(x.upper_variable_bounds)")
+    println(" ")
     return
 end
 
@@ -138,6 +142,7 @@ Prints the results of a single bounding problem.
 """
 function print_results!(x::Optimizer, flag::Bool)
     if x.verbosity > 1
+        println(" ")
         if flag
             obj_val = x._lower_objective_value
             if (x._optimization_sense === MOI.MIN_SENSE)
@@ -159,6 +164,7 @@ function print_results!(x::Optimizer, flag::Bool)
             println("Termination Status Code: $(x._upper_termination_status)")
             println("Result Code: $(x._upper_result_status)")
         end
+        println(" ")
     end
     return
 end
@@ -170,12 +176,14 @@ Prints the results after performing various cuts.
 """
 function print_results_post_cut!(x::Optimizer)
     if x.verbosity > 1
+        println(" ")
         if (x._optimization_sense === MOI.MIN_SENSE)
             print("Lower Bound (Last Iteration): $(x._lower_objective_value)")
         else
             print("Upper Bound (Last Iteration): $(-x._lower_objective_value)")
         end
         print(", Solution: $(x._lower_solution), Feasibility: $(x._lower_feasibility)\n")
+        println(" ")
     end
     return
 end

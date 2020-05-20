@@ -199,14 +199,6 @@ end
 """
 $(FUNCTIONNAME)
 
-Routine that determines if aggressive filtering should be used. Currently,
-a user-specified option.
-"""
-aggressive_obbt_on_heurestic(x::Optimizer) = x.obbt_aggressive_on
-
-"""
-$(FUNCTIONNAME)
-
 Performs OBBT with filtering and greedy ordering as detailed in:
 Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731.
 https://doi.org/10.1007/s10898-016-0450-4
@@ -234,7 +226,7 @@ function obbt(d::Optimizer)
 
     # Prefiltering steps && and sets initial LP values
     trivial_filtering!(d, y)
-    if aggressive_obbt_on_heurestic(d)
+    if d.obbt_aggressive_on
         feasibility = aggressive_filtering!(d, y)
     end
 

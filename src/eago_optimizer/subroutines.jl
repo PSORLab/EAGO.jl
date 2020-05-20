@@ -501,7 +501,7 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
 
     d = x._relaxed_evaluator
 
-    if x._objective_is_nlp
+    if x._objective_type === NONLINEAR
 
         objective_lo = eval_objective_lo(d)
         constraints = d.constraints
@@ -521,17 +521,13 @@ function interval_lower_bound!(x::Optimizer, y::NodeBB)
                 break
             end
         end
-    else
-        if x._objective_is_sv
+    elseif x._objective_type ===  SINGLE_VARIABLE
             obj_indx = x._objective_sv.variable.value
             objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-        elseif x._objective_is_saf
+    elseif x._objective_type === SCALAR_AFFINE
             objective_lo = interval_bound(x._objective_saf, y, true)
-        else
-            if x._objective_is_sqf
-                objective_lo = interval_bound(x._objective_sqf, y, true)
-            end
-        end
+    elseif x._objective_type === SCALAR_QUADRATIC
+            objective_lo = interval_bound(x._objective_sqf, y, true)
     end
 
     for (func, set) in x._linear_leq_constraints

@@ -78,7 +78,7 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
             if (~chdset1 & ~chdset2)
                 tmp_mc = McCormick.plus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k].Intv)
             elseif chdset1 & ~chdset2
-                tmp_mc = McCormick.plus_kernel(numberstorage[ix1], setstorage[ix2], setstorage[k].Intv)
+                tmp_mc = McCormick.plus_kernel(setstorage[ix2], numberstorage[ix1], setstorage[k].Intv)
             elseif chdset2 & ~chdset1
                 tmp_mc = McCormick.plus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k].Intv)
             else
@@ -211,7 +211,7 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
     else
         @inbounds tmp_mc_2 = setstorage[ix2]
     end
-    if ((tmp_num_2 == 1.0) & chdset2)
+    if (tmp_num_2 == 1.0) && chdset2
         if chdset1
             @inbounds numberstorage[k] = tmp_num_1
         else
@@ -222,11 +222,11 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
             @inbounds numberstorage[k] = tmp_num_1^tmp_num_2
         else
             if first_eval_flag
-                if (~chdset1 & chdset2)
+                if ~chdset1 && chdset2
                     tmp_mc_1 = pow(tmp_mc_1, tmp_num_2)
-                elseif (chdset1 & ~chdset2)
+                elseif chdset1 && ~chdset2
                     tmp_mc_1 = Cassette.overdub(ctx, pow, tmp_num_1, tmp_mc_2)
-                elseif (~chdset1 & ~chdset2)
+                elseif ~chdset1 && ~chdset2
                     tmp_mc_1 = Cassette.overdub(ctx, pow, tmp_mc_1, tmp_mc_2)
                 end
             else

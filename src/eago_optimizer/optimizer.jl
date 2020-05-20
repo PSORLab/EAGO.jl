@@ -101,7 +101,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     elimination for DAG (default = false)."
     presolve_cse_flag::Bool = false
     "Rerranges the DAG using registered transformations (default = false)"
-    presolve_flatten_flag::Bool = false
+    presolve_flatten_flag::Bool = true
 
     # Conic reformulations
     "Attempt to bridge convex constraint to second order cone"
@@ -130,7 +130,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
     obbt_repetitions::Int64 = 4
     "Turn aggresive OBBT on (default = false)"
-    obbt_aggressive_on::Bool = false
+    obbt_aggressive_on::Bool = true
     "Maximum iteration to perform aggresive OBBT (default = 2)"
     obbt_aggressive_max_iteration::Int64 = 2
     "Minimum dimension to perform aggresive OBBT (default = 2)"
@@ -183,11 +183,15 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     cut_safe_b::Float64 = 1E9
 
     # Upper bounding options
-    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(print_level = 0)
-    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, print_level = 0)
+    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
+                                                             acceptable_iter = 300, constr_viol_tol = 1E-6,
+                                                             acceptable_constr_viol_tol = 1E-6, print_level = 0)
+    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, max_iter = 3000, acceptable_tol = 1E30,
+                                                          acceptable_iter = 300, constr_viol_tol = 1E-6,
+                                                          acceptable_constr_viol_tol = 1E-6, print_level = 0)
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
-    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 4)"
-    upper_bounding_depth::Int64 = 6
+    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 12)"
+    upper_bounding_depth::Int64 = 8
 
     # Duality-based bound tightening (DBBT) options
     "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
