@@ -586,44 +586,45 @@ $(SIGNATURES)
 Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
-function lower_problem!(t::ExtensionType, x::Optimizer)
+function lower_problem!(t::ExtensionType, m::Optimizer)
 
-    y = x._current_node
+    y = m._current_node
 
-    if ~x._obbt_performed_flag
-        x._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
-        update_relaxed_problem_box!(x, y)
-        relax_problem!(x, x._current_xref, 1)
+    if ~m._obbt_performed_flag
+        m._current_xref = @. 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
+        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+        update_relaxed_problem_box!(m, y)
+        relax_problem!(m, m._current_xref, 1)
     end
 
-    relax_objective!(x, x._current_xref)
-    if (x.objective_cut_on)
-        objective_cut_linear!(x, 1)
+    relax_objective!(m, m._current_xref)
+    if m.objective_cut_on
+        objective_cut_linear!(m, 1)
     end
 
     # Optimizes the object
-    opt = x.relaxed_optimizer
+    opt = m.relaxed_optimizer
     MOI.optimize!(opt)
 
-    x._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
-    x._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
-    valid_flag, feas_flag = is_globally_optimal(x._lower_termination_status, x._lower_result_status)
+    m._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
+    m._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
+    valid_flag, feas_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
     if valid_flag
         if feas_flag
-            x._lower_feasibility = true
-            x._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
-            @inbounds x._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
-            x._cut_add_flag = x._lower_feasibility
-            set_dual!(x)
+            m._lower_feasibility = true
+            m._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
+            @inbounds m._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), m._lower_variable_index)
+            m._cut_add_flag = m._lower_feasibility
+            set_dual!(m)
         else
-            x._cut_add_flag = false
-            x._lower_feasibility  = false
-            x._lower_objective_value = -Inf
+            m._cut_add_flag = false
+            m._lower_feasibility  = false
+            m._lower_objective_value = -Inf
         end
     else
-        interval_lower_bound!(x, y)
-        x._cut_add_flag = false
+        interval_lower_bound!(m, y)
+        m._cut_add_flag = false
     end
     return
 end
@@ -812,6 +813,24 @@ end
 """
 $(SIGNATURES)
 
+Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_tolerance/100.0)*f* + absolute_tolerance/100.0`.
+This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
+tolerance (local problem is minimum).
+"""
+function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
+    adj_atol = d.absolute_tolerance/100.0
+    adj_rtol = d.relative_tolerance/100.0
+    if v > 0.0
+        d._upper_objective_value = v*(1.0 + adj_rtol) + adj_atol
+    else
+        d._upper_objective_value = v*(1.0 - adj_rtol) + adj_atol
+    end
+    nothing
+end
+
+"""
+$(SIGNATURES)
+
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
 """
@@ -896,7 +915,7 @@ function solve_local_nlp!(x::Optimizer)
         if is_feasible_solution(x._upper_termination_status, x._upper_result_status)
             x._upper_feasibility = true
             value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-            x._upper_objective_value = (value > 0) ? value*(1.0 + 1.0E-4) : value*(1.0 - 1.0E-4)
+            stored_adjusted_upper_bound!(x, value)
             x._best_upper_value = min(value, x._best_upper_value)
             x._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
         else

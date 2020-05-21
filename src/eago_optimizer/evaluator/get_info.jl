@@ -114,7 +114,7 @@ function MOI.eval_objective_gradient(d::Evaluator, df::Vector{Float64}, x::Vecto
     forward_reverse_pass(d,x)
     if d.has_nlobj
         if ~d.objective.numvalued[1]
-            for j in 1:length(d.objective.setstorage[1].cv_grad)
+            for j = 1:length(d.objective.setstorage[1].cv_grad)
                 df[j] = d.objective.setstorage[1].cv_grad[j]
             end
         end
@@ -128,11 +128,11 @@ function MOI.eval_constraint_jacobian(d::Evaluator,g,x)
     forward_reverse_pass(d,x)
     for i = 1:length(d.constraints)
         if ~d.constraints[i].numvalued[1]
-            for j in 1:d.variable_number
+            for j = 1:d.variable_number
                 g[i,j] = d.constraints[i].setstorage[1].cv_grad[j]
             end
         else
-            for j in 1:length(d.constraints[i].setstorage[1].cv_grad)
+            for j = 1:length(d.constraints[i].setstorage[1].cv_grad)
                 g[i,j] = 0.0
             end
         end
@@ -149,11 +149,11 @@ function eval_constraint_cc_grad(d::Evaluator, g, y)
         forward_reverse_pass(d,y)
         for i = 1:length(d.constraints)
             if ~d.constraints[i].numvalued[1]
-                for j in 1:d.variable_number
+                for j = 1:d.variable_number
                     g[i,j] = d.constraints[i].setstorage[1].cc_grad[j]
                 end
             else
-                for j in 1:d.variable_number
+                for j = 1:d.variable_number
                     g[i,j] = 0.0
                 end
             end
@@ -177,13 +177,13 @@ end
 
 # TO DO (CHECK GRADIENT DIMS)
 function MOI.eval_constraint_jacobian_product(d::Evaluator, y, x, w)
-    if (!d.disable_1storder)
+    if !d.disable_1storder
         forward_reverse_pass(d,x)
         t = typeof(d.constraints[1].setstorage[1])
         y = zeros(t,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
-        for i in 1:length(d.constraints)
+        for i = 1:length(d.constraints)
             if ~d.constraints[i].numvalued[1]
-                for j in 1:d.variable_number
+                for j = 1:d.variable_number
                     y[i] += d.constraints[i].setstorage[1].cv_grad[j]*w[j]
                 end
             end
@@ -196,12 +196,12 @@ end
 
 # TO DO
 function MOI.eval_constraint_jacobian_transpose_product(d::Evaluator, y, x, w)
-    if (!d.disable_1storder)
+    if !d.disable_1storder
         forward_reverse_pass(d,x)
         y = zeros(Float64,length(d.constraints[1].setstorage[1].cv_grad),length(d.constraints))
         for i in 1:length(d.constraints)
             if ~d.constraints[i].numvalued[1]
-                for j in 1:d.variable_number
+                for j = 1:d.variable_number
                     y[i] += d.constraints[i].setstorage[1].cv_grad[j]*w[j]
                 end
             end
@@ -214,7 +214,7 @@ end
 
 function MOI.jacobian_structure(d::Evaluator)
     jacobian_sparsity = Tuple{Int64,Int64}[]
-    for row in 1:length(d.constraints)
+    for row = 1:length(d.constraints)
         row_sparsity = d.constraints[row].grad_sparsity
         for idx in row_sparsity
             push!(jacobian_sparsity, (row, idx))

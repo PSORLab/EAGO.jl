@@ -58,29 +58,24 @@ function trivial_filtering!(x::Optimizer, y::NodeBB)
     valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
                                                     x._preprocess_result_status)
 
-    if valid_flag
-        if feasible_flag
-            for j = 1:length(x._obbt_working_lower_index)
-                @inbounds active_flag = x._obbt_working_lower_index[j]
-                if active_flag
-                    @inbounds vi = x._lower_variable_index[j]
-                    diff = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), vi)
-                    @inbounds diff -= y.lower_variable_bounds[j]
-                    if (abs(diff) <= x.obbt_tolerance)
-                        @inbounds x._obbt_working_lower_index[j] = false
-                    end
+    if valid_flag && feasible_flag
+        for j = 1:length(x._obbt_working_lower_index)
+            if @inbounds x._obbt_working_lower_index[j]
+                vi = @inbounds x._lower_variable_index[j]
+                diff = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), vi)
+                diff -= @inbounds y.lower_variable_bounds[j]
+                if abs(diff) <= x.obbt_tolerance
+                    @inbounds x._obbt_working_lower_index[j] = false
                 end
             end
-            for j = 1:length(x._obbt_working_upper_index)
-                @inbounds active_flag = x._obbt_working_upper_index[j]
-                if active_flag
-                    @inbounds vi = x._lower_variable_index[j]
-                    diff = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), vi)
-                    diff *= -1.0
-                    @inbounds diff += y.upper_variable_bounds[j]
-                    if (abs(diff) <= x.obbt_tolerance)
-                        @inbounds x._obbt_working_upper_index[j] = false
-                    end
+        end
+        for j = 1:length(x._obbt_working_upper_index)
+            if @inbounds x._obbt_working_upper_index[j]
+                vi = @inbounds x._lower_variable_index[j]
+                diff = -MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), vi)
+                diff += @inbounds y.upper_variable_bounds[j]
+                if abs(diff) <= x.obbt_tolerance
+                    @inbounds x._obbt_working_upper_index[j] = false
                 end
             end
         end

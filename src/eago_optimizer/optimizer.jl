@@ -184,14 +184,14 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Upper bounding options
     upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
-                                                             acceptable_iter = 300, constr_viol_tol = 1E-6,
-                                                             acceptable_constr_viol_tol = 1E-6, print_level = 0)
+                                                             acceptable_iter = 300, constr_viol_tol = 1E-8,
+                                                             acceptable_constr_viol_tol = 1E-8, print_level = 0)
     upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, max_iter = 3000, acceptable_tol = 1E30,
-                                                          acceptable_iter = 300, constr_viol_tol = 1E-6,
-                                                          acceptable_constr_viol_tol = 1E-6, print_level = 0)
+                                                          acceptable_iter = 300, constr_viol_tol = 1E-8,
+                                                          acceptable_constr_viol_tol = 1E-8, print_level = 0)
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
-    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 12)"
-    upper_bounding_depth::Int64 = 8
+    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
+    upper_bounding_depth::Int64 = 6
 
     # Duality-based bound tightening (DBBT) options
     "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"

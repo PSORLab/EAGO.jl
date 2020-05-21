@@ -19,29 +19,68 @@ Post process set_value operator. By default, performs the affine interval cut on
 a MC structure.
 """
 function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, node::NodeBB, flag::Bool) where {N, T<:RelaxTag}
+
     if flag
+
         lower = val.cv
         upper = val.cc
+        lower_refinement = true
+        upper_refinement = true
+
         for i = 1:N
-            @inbounds cv_val = val.cv_grad[i]
-            @inbounds cc_val = val.cc_grad[i]
-            if (cv_val > 0.0)
-                @inbounds lower += cv_val*(node.lower_variable_bounds[i] - x_values[i])
-            else
-                @inbounds lower += cv_val*(node.upper_variable_bounds[i] - x_values[i])
+
+            x_val = @inbounds x_values[i]
+            cv_val = @inbounds val.cv_grad[i]
+            cc_val = @inbounds val.cc_grad[i]
+
+            lower_bound = @inbounds node.lower_variable_bounds[i]
+            upper_bound = @inbounds node.upper_variable_bounds[i]
+
+            if lower_refinement
+                if cv_val > 0.0
+                    if isinf(lower_bound)
+                        !upper_refinement && break
+                        lower_refinement = false
+                    else
+                        lower += cv_val*(lower_bound - x_val)
+                    end
+                else
+                    if isinf(upper_bound)
+                        !upper_refinement && break
+                        lower_refinement = false
+                    else
+                        lower += cv_val*(upper_bound - x_val)
+                    end
+                end
             end
-            if (cc_val > 0.0)
-                @inbounds upper += cc_val*(node.upper_variable_bounds[i] - x_values[i])
-            else
-                @inbounds upper += cc_val*(node.lower_variable_bounds[i] - x_values[i])
+
+            if upper_refinement
+                if cc_val > 0.0
+                    if isinf(lower_bound)
+                        !lower_refinement && break
+                        upper_refinement = false
+                    else
+                        upper += cc_val*(upper_bound - x_val)
+                    end
+                else
+                    if isinf(upper_bound)
+                        !lower_refinement && break
+                        upper_refinement = false
+                    else
+                        upper += cc_val*(lower_bound - x_val)
+                    end
+                end
             end
+
         end
-        lower = max(lower, val.Intv.lo)
-        upper = min(upper, val.Intv.hi)
+
+        lower = lower_refinement ? max(lower, val.Intv.lo) : val.Intv.lo
+        upper = upper_refinement ? min(upper, val.Intv.hi) : val.Intv.hi
+
         return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
-    else
-        return val
     end
+
+    return val
 end
 
 function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
@@ -75,11 +114,11 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
             isnum = (chdset1 & chdset2)
             @inbounds numvalued[k] = isnum
         else
-            if (~chdset1 & ~chdset2)
+            if ~chdset1 && ~chdset2
                 tmp_mc = McCormick.plus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k].Intv)
-            elseif chdset1 & ~chdset2
+            elseif chdset1 && ~chdset2
                 tmp_mc = McCormick.plus_kernel(setstorage[ix2], numberstorage[ix1], setstorage[k].Intv)
-            elseif chdset2 & ~chdset1
+            elseif chdset2 && ~chdset1
                 tmp_mc = McCormick.plus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k].Intv)
             else
                 @inbounds tmp_num = numberstorage[k]
@@ -218,23 +257,23 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
             @inbounds setstorage[k] = tmp_mc_1
         end
     else
-        if (chdset1 & chdset2)
+        if chdset1 && chdset2
             @inbounds numberstorage[k] = tmp_num_1^tmp_num_2
         else
             if first_eval_flag
-                if ~chdset1 && chdset2
+                if !chdset1 && chdset2
                     tmp_mc_1 = pow(tmp_mc_1, tmp_num_2)
-                elseif chdset1 && ~chdset2
+                elseif chdset1 &&!chdset2
                     tmp_mc_1 = Cassette.overdub(ctx, pow, tmp_num_1, tmp_mc_2)
-                elseif ~chdset1 && ~chdset2
+                elseif !chdset1 && !chdset2
                     tmp_mc_1 = Cassette.overdub(ctx, pow, tmp_mc_1, tmp_mc_2)
                 end
             else
-                if (~chdset1 & chdset2)
+                if !chdset1 && chdset2
                     @inbounds tmp_mc_1 = ^(tmp_mc_1, tmp_num_2, setstorage[k].Intv)
-                elseif (chdset1 & ~chdset2)
+                elseif chdset1 && !chdset2
                     @inbounds tmp_mc_1 = Cassette.overdub(ctx, ^, tmp_num_1, tmp_mc_2, setstorage[k].Intv)
-                elseif (~chdset1 & ~chdset2)
+                elseif !chdset1 && !chdset2
                     @inbounds tmp_mc_1 = Cassette.overdub(ctx, ^, tmp_mc_1, tmp_mc_2, setstorage[k].Intv)
                 end
             end
@@ -280,20 +319,20 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
         @inbounds numberstorage[k] = tmp_num_1/tmp_num_2
     else
         if first_eval_flag
-            if ~chdset1 & chdset2
+            if !chdset1 && chdset2
                 tmp_mc_1 = tmp_mc_1/tmp_num_2
-            elseif chdset1 & ~chdset2
+            elseif chdset1 && !chdset2
                 tmp_mc_1 = tmp_num_1/tmp_mc_2
-            elseif ~chdset1 & ~chdset2
+            elseif !chdset1 && !chdset2
                 tmp_mc_1 = tmp_mc_1/tmp_mc_2 #TODO: Overdub this with guard context
             end
         else
             @inbounds intv_k = setstorage[k].Intv
-            if ~chdset1 & chdset2
+            if !chdset1 && chdset2
                 tmp_mc_1 = McCormick.div_kernel(tmp_mc_1, tmp_num_2, intv_k)
-            elseif chdset1 & ~chdset2
+            elseif chdset1 && !chdset2
                 tmp_mc_1 = McCormick.div_kernel(tmp_num_1, tmp_mc_2, intv_k)
-            elseif ~chdset1 & ~chdset2
+            elseif !chdset1 && !chdset2
                 tmp_mc_1 = McCormick.div_kernel(tmp_mc_1, tmp_mc_2, intv_k) #TODO: Overdub this with guard context
             end
         end
@@ -947,21 +986,19 @@ by more that `d.fw_atol` at each iteration.
 function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
     flag = true
     converged_flag = false
-    if (d.last_x != x)
+    if d.last_x != x
         if d.has_reverse
-            for i in 1:d.cp_repetitions
+            for i = 1:d.cp_repetitions
                 d.first_eval_flag = (i == 1)
                 if flag
-                    forward_eval_all(d,x)
-                    flag = reverse_eval_all(d,x)
+                    forward_eval_all(d, x)
+                    flag = reverse_eval_all(d, x)
                     ~flag && break
                     converged_flag = same_box(d.current_node, get_node(d), d.cp_tolerance)
                     converged_flag && break
                 end
             end
-            if flag
-                forward_eval_all(d,x)
-            end
+            flag && forward_eval_all(d, x)
         else
             d.first_eval_flag = true
             forward_eval_all(d,x)

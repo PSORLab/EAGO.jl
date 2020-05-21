@@ -481,7 +481,7 @@ function objective_cut_linear!(m::Optimizer, q::Int64)
             elseif m._objective_type === SCALAR_AFFINE
                 ci_saf = MOI.add_constraint(m.relaxed_optimizer, m._objective_saf, set)
                 x._objective_cut_ci_saf[z] = ci_saf
-            elseif m._objective_type === SCALAR_QUADRATRIC || m._objective_type === NONLINEAR
+            elseif m._objective_type === SCALAR_QUADRATIC || m._objective_type === NONLINEAR
                 saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
                 set = LT(m._global_upper_bound - saf.constant)
                 saf.constant = 0.0
