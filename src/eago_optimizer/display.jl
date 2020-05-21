@@ -64,9 +64,9 @@ function print_iteration!(x::Optimizer)
 
         # prints header line every B.hdr_intv times
         if (mod(x._iteration_count, x.header_iterations) == 0 || x._iteration_count == 1)
-            println("-------------------------------------------------------------------------------------------------------")
-            println("|  Iteration #  |   Nodes  | Lower Bound | Upper Bound  |    Gap    |   Ratio   |  Time   | Time Left |")
-            println("-------------------------------------------------------------------------------------------------------")
+            println("-----------------------------------------------------------------------------------------------------------------------------")
+            println("|  Iteration #  |     Nodes    | Lower Bound  |  Upper Bound  |      Gap     |     Ratio    |     Time     |    Time Left   |")
+            println("-----------------------------------------------------------------------------------------------------------------------------")
         end
 
         # prints iteration summary every B.itr_intv times
@@ -79,12 +79,12 @@ function print_iteration!(x::Optimizer)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  | "
 
-            max_len = 8
+            max_len = 12
             temp_str = string(x._node_count)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 11
+            max_len = 12
             if (x._optimization_sense === MOI.MIN_SENSE)
                 lower = x._global_lower_bound
                 upper = x._global_upper_bound
@@ -104,25 +104,25 @@ function print_iteration!(x::Optimizer)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
-            max_len = 9
+            max_len = 12
             #temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
             temp_str = formatted(abs(x._global_upper_bound - x._global_lower_bound), PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  | "
 
-            max_len = 9
+            max_len = 12
             #temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
             temp_str = formatted(relative_gap(x._global_lower_bound, x._global_upper_bound), PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 8
+            max_len = 12
             #temp_str = string(round(x._run_time, sigdigits = 3))
             temp_str = formatted(x._run_time, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |  "
 
-            max_len = 8
+            max_len = 12
             #temp_str = string(round(x._time_left, sigdigits = 4))
             temp_str = formatted(x._time_left, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             len_str = length(temp_str)
