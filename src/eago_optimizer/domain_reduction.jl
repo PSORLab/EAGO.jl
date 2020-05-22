@@ -214,7 +214,7 @@ function obbt(d::Optimizer)
     MOI.set(d.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(d.relaxed_optimizer)
 
-    # Sets indices to attempt OBBT on
+    # Sets indices to attempt OBBT on (full set...)
     obbt_variables = d.obbt_variable_values
     copyto!(d._obbt_working_lower_index, obbt_variables)
     copyto!(d._obbt_working_upper_index, obbt_variables)
