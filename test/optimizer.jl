@@ -228,17 +228,17 @@ end
     x = MOI.add_variables(model,3)
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.SingleVariable}(), MOI.SingleVariable(MOI.VariableIndex(2)))
-    @test model._objective_type = EAGO.SINGLE_VARIABLE
+    @test model._objective_type == EAGO.SINGLE_VARIABLE
     @test model._objective_sv == MOI.SingleVariable(MOI.VariableIndex(2))
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[5.0,-2.3],[x[1],x[2]]),2.0))
-    @test model._objective_type = EAGO.SCALAR_AFFINE
+    @test model._objective_type == EAGO.SCALAR_AFFINE
     @test model._objective_saf.constant == 2.0
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
                                          MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(5.0,x[1])],
                                         [MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],3.0))
-    @test model._objective_type = EAGO.SCALAR_QUADRATIC
+    @test model._objective_type == EAGO.SCALAR_QUADRATIC
     @test model._objective_sqf.constant == 3.0
 end
 

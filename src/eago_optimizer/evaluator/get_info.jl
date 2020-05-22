@@ -13,7 +13,7 @@
 #############################################################################
 
 function MOI.eval_objective(d::Evaluator, x::Vector{Float64})
-    forward_reverse_pass(d,x)
+    forward_reverse_pass(d, x)
     val = 0.0
     if d.has_nlobj
         if d.objective.numvalued[1]

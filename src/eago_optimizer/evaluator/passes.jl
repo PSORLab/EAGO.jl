@@ -1001,7 +1001,7 @@ function forward_reverse_pass(d::Evaluator, x::Vector{Float64})
             flag && forward_eval_all(d, x)
         else
             d.first_eval_flag = true
-            forward_eval_all(d,x)
+            forward_eval_all(d, x)
         end
     end
 

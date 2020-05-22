@@ -847,7 +847,7 @@ function solve_local_nlp!(x::Optimizer)
         lvb = 0.0
         uvb = 0.0
         x0 = 0.0
-        for i in 1:nvar
+        for i = 1:nvar
             @inbounds var = x._variable_info[i]
             @inbounds svi = upper_vars[i]
             @inbounds sv = MOI.SingleVariable(upper_vars[i])
@@ -949,7 +949,7 @@ Default postprocess perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, x::Optimizer)
 
-    if (x.dbbt_depth > x._iteration_count)
+    if x.dbbt_depth > x._iteration_count
         variable_dbbt!(x._current_node, x._lower_lvd, x._lower_uvd,
                        x._lower_objective_value, x._global_upper_bound,
                        x._variable_number)
