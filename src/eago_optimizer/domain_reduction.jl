@@ -203,14 +203,25 @@ function obbt(d::Optimizer)
     feasibility = true
 
     y = d._current_node
-    d._current_xref .= 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
+
+    println(" ")
+    println("start obbt")
+    println("y.lower_variable_bounds = $(y.lower_variable_bounds)")
+    println("y.upper_variable_bounds = $(y.upper_variable_bounds)")
+
+    @. d._current_xref = 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
     unsafe_check_fill!(isnan, d._current_xref, 0.0, length(d._current_xref))
+
+    println(" ")
+    println("d._current_xref = $(d._current_xref)")
 
     # solve initial problem to feasibility
     update_relaxed_problem_box!(d, y)
     relax_problem!(d, d._current_xref, 1)
     relax_objective!(d, d._current_xref)
-    objective_cut_linear!(d, 1)
+    if d.objective_cut_on
+        objective_cut_linear!(d, 1)
+    end
     MOI.set(d.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(d.relaxed_optimizer)
 
@@ -230,7 +241,7 @@ function obbt(d::Optimizer)
     valid_flag, feasible_flag = is_globally_optimal(d._preprocess_termination_status,
                                                     d._preprocess_result_status)
 
-    if valid_flag & feasible_flag
+    if valid_flag && feasible_flag
         xLP = MOI.get(d.relaxed_optimizer, MOI.VariablePrimal(), d._lower_variable_index)
     else
         return false
@@ -285,6 +296,7 @@ function obbt(d::Optimizer)
             if valid_flag
                 if feasible_flag
                     xLP .= MOI.get(d.relaxed_optimizer, MOI.VariablePrimal(), d._lower_variable_index)
+                    #(lower_indx === 1) && println("lower xLP[$lower_indx] = $(xLP[lower_indx])")
                     if is_integer_variable(d, lower_indx)
                         @inbounds y.lower_variable_bounds[lower_indx] = ceil(xLP[lower_indx])
                     else
@@ -300,7 +312,8 @@ function obbt(d::Optimizer)
             else
                 break
             end
-        else
+
+        elseif upper_indx > 0
 
             d._obbt_working_upper_index[upper_indx] = false
             @inbounds var = d._lower_variable[upper_indx]
@@ -315,10 +328,11 @@ function obbt(d::Optimizer)
             if valid_flag
                 if feasible_flag
                     xLP .= MOI.get(d.relaxed_optimizer, MOI.VariablePrimal(), d._lower_variable_index)
+                    #(upper_indx === 1) && println("upper xLP[$upper_indx] = $(xLP[upper_indx])")
                     if is_integer_variable(d, upper_indx)
                         @inbounds y.upper_variable_bounds[upper_indx] = ceil(xLP[upper_indx])
                     else
-                        @inbounds y.upper_variable_bounds[upper_indx] = xLP[upper_indx]
+                        @inbounds y.upper_variable_bounds[upper_indx] = min(xLP[upper_indx], y.upper_variable_bounds[upper_indx])
                     end
                     if isempty(y)
                         feasibility = false
@@ -330,8 +344,16 @@ function obbt(d::Optimizer)
             else
                 break
             end
+
+        else
+            break
         end
+        trivial_filtering!(d, y)
     end
+    println("end obbt")
+    println("y.lower_variable_bounds = $(y.lower_variable_bounds)")
+    println("y.upper_variable_bounds = $(y.upper_variable_bounds)")
+    println(" ")
 
     return feasibility
 end
@@ -775,13 +797,14 @@ function cpwalk(x::Optimizer)
     evaluator = x._relaxed_evaluator
 
     # runs at midpoint bound
-    midx = (n.upper_variable_bounds + n.lower_variable_bounds)/2.0
+    midx = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+    unsafe_check_fill!(isnan, midx, 0.0, length(midx))
 
     # set working node to n, copies pass parameters from EAGO optimizer
-    evaluator.current_node = n
-    evaluator.has_reverse = true
     prior_sg_tighten = evaluator.subgrad_tighten
-
+    evaluator.current_node = n
+    println("evaluator.current_node = $(evaluator.current_node)")
+    evaluator.has_reverse = true
     evaluator.subgrad_tighten = false
     evaluator.cp_repetitions = x.cp_repetitions
     evaluator.cp_tolerance = x.cp_tolerance
@@ -796,6 +819,8 @@ function cpwalk(x::Optimizer)
     # resets forward reverse scheme for lower bounding problem
     evaluator.has_reverse = false
     evaluator.subgrad_tighten = prior_sg_tighten
+
+    #println("cp feasibility: $(feas)")
 
     return feas
 end

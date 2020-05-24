@@ -19,13 +19,13 @@ Prints solution information for the B&B problem. Displays first node found, solu
 solution, and time spent solving subproblems.
 """
 function print_solution!(x::Optimizer)
-    if x.verbosity > 0
+    if x._parameters.verbosity > 0
         println(" ")
         println("First Solution Found at Node $(x._first_solution_node)")
         println("UBD = $(MOI.get(x, MOI.ObjectiveValue()))")
         println("Solution is :")
         if (x._feasible_solution_found)
-            for i=1:x._variable_number
+            for i = 1:x._variable_number
                 println("    X[$i] = $(x._continuous_solution[i])")
             end
         end
@@ -41,7 +41,7 @@ Prints node information for the B&B problem. Node id, bound, and interval box.
 """
 function print_node!(y::Optimizer)
     x = y._current_node
-    bound = (y._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
+    bound = (y._input_problem._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
     println(" ")
     println("Node ID: $(x.id), Lower Bound: $(bound), Lower Variable Bounds:
              $(x.lower_variable_bounds), Upper Variable Bounds: $(x.upper_variable_bounds)")
@@ -60,17 +60,17 @@ every `header_interval`, the iteration info is displayed every `iteration_interv
 """
 function print_iteration!(x::Optimizer)
 
-    if (x.verbosity > 0)
+    if x._parameters.verbosity > 0
 
         # prints header line every B.hdr_intv times
-        if (mod(x._iteration_count, x.header_iterations) == 0 || x._iteration_count == 1)
+        if (mod(x._iteration_count, x._parameters.header_iterations) == 0 || x._iteration_count == 1)
             println("-----------------------------------------------------------------------------------------------------------------------------")
             println("|  Iteration #  |     Nodes    | Lower Bound  |  Upper Bound  |      Gap     |     Ratio    |     Time     |    Time Left   |")
             println("-----------------------------------------------------------------------------------------------------------------------------")
         end
 
         # prints iteration summary every B.itr_intv times
-        if (mod(x._iteration_count, x.output_iterations) == 0)
+        if (mod(x._iteration_count, x._parameters.output_iterations) == 0)
 
             print_str = "| "
 
@@ -85,7 +85,7 @@ function print_iteration!(x::Optimizer)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 12
-            if (x._optimization_sense === MOI.MIN_SENSE)
+            if x._input_problem._optimization_sense === MOI.MIN_SENSE
                 lower = x._global_lower_bound
                 upper = x._global_upper_bound
             else
@@ -141,11 +141,11 @@ $(FUNCTIONNAME)
 Prints the results of a single bounding problem.
 """
 function print_results!(x::Optimizer, flag::Bool)
-    if x.verbosity > 1
+    if x._parameters.verbosity > 1
         println(" ")
         if flag
             obj_val = x._lower_objective_value
-            if (x._optimization_sense === MOI.MIN_SENSE)
+            if x._input_problem._optimization_sense === MOI.MIN_SENSE
                 print("Lower Bound (First Iteration): $(obj_val),")
             else
                 print("Upper Bound (First Iteration): $(-obj_val),")
@@ -155,7 +155,7 @@ function print_results!(x::Optimizer, flag::Bool)
             println("Result Code: $(x._lower_result_status)")
         else
             obj_val = x._upper_objective_value
-            if (x._optimization_sense === MOI.MIN_SENSE)
+            if x._input_problem._optimization_sense === MOI.MIN_SENSE
                 print("Upper Bound: $(obj_val), ")
             else
                 print("Lower Bound: $(-obj_val), ")
@@ -175,9 +175,9 @@ $(FUNCTIONNAME)
 Prints the results after performing various cuts.
 """
 function print_results_post_cut!(x::Optimizer)
-    if x.verbosity > 1
+    if x._parameters.verbosity > 1
         println(" ")
-        if (x._optimization_sense === MOI.MIN_SENSE)
+        if x._input_problem._optimization_sense === MOI.MIN_SENSE
             print("Lower Bound (Last Iteration): $(x._lower_objective_value)")
         else
             print("Upper Bound (Last Iteration): $(-x._lower_objective_value)")
@@ -186,4 +186,49 @@ function print_results_post_cut!(x::Optimizer)
         println(" ")
     end
     return
+end
+
+
+function in_tol(x::Float64, y::Float64, z::Float64)
+    IN_TOL = 5E-6
+    #println("x = $x, y = $y, z = $z")
+    #println("x - y = $(x - y)")
+    #println("z - x = $(z - x)")
+    if x - y <= -IN_TOL
+        return false
+    elseif z - x <= -IN_TOL
+        return false
+    end
+    return true
+end
+
+function contains_optimimum(d::Optimizer)
+    flag = false
+    x = [#-1161.336602364920054,
+         1728.920894729280008,
+         16000.000000000000000,
+         98.160663611844598,
+         3056.492536663350165,
+         2000.000000000000000, # fail
+         90.616089787108706,
+         94.187764478426800,
+         10.411118319452401,
+         2.616948857367740,
+         149.563293435280002]
+    copied_stack = deepcopy(d._stack)
+    while !isempty(copied_stack)
+        node = pop!(copied_stack)
+        temp_flag = true
+        for i = 1:length(node.lower_variable_bounds)
+            if !in_tol(x[i], node.lower_variable_bounds[i], node.upper_variable_bounds[i])
+                temp_flag = false
+                break
+            end
+        end
+        if temp_flag
+            flag = true
+            break
+        end
+    end
+    return flag
 end

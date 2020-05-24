@@ -47,9 +47,54 @@ function eval_objective_lo(d::Evaluator)
 end
 
 function MOI.eval_constraint(d::Evaluator, g::Vector{Float64}, x::Vector{Float64})
-    forward_reverse_pass(d,x)
+    forward_reverse_pass(d, x)
+
+    n = d.current_node
+
+    print_info = false
+    print_info && println("n = $n")
+    #objvar = MC{11,NS}(x[1], Interval{Float64}(n.lower_variable_bounds[1], n.upper_variable_bounds[1]), 1)
+    xMC = [MC{11,NS}(x[i], Interval{Float64}(n.lower_variable_bounds[i], n.upper_variable_bounds[i]), i) for i in 1:10]
+
+    print_info && println("d.constraints[1].setstorage: $(length(d.constraints[1].nd))")
     for i = 1:length(d.constraints)
-        #println("i = $i, setstorage = $(d.constraints[i].setstorage[1])")
+        if i === 1
+            print_info && println(" ")
+            print_info && println("i = $i, setstorage = $(d.constraints[i].setstorage[1])")
+            #val = -xMC[1]*(1.12 + 0.13167*xMC[8] - 0.00667*(xMC[8])^2)+xMC[4] # interval and cc are different
+            val9 = 0.0
+            print_info && println("val9 = $(val9)")
+            val8 = xMC[1]
+            print_info && println("val8 = $(val8), type = $(typeof(val8))")
+            val7 = xMC[8]
+            print_info && println("val7 = $(val7)")
+            val6 = 0.13167
+            print_info && println("val6 = $(val6)")
+            val5 = val6*val7
+            print_info && println("val5 = $(val5)")
+            val4 = 1.12
+            print_info && println("val4 = $(val4)")
+            val3 = val4 - val5
+            print_info && println("val3 = $(val3), type = $(typeof(val3))")
+            val2 = val8*val3
+            print_info && println("val2 = $(val2), type = $(typeof(val2))")
+            val1 = xMC[1]*(1.12 - 0.13167*xMC[8])
+            print_info && println("val1 = $(val1)")
+
+            #=
+        elseif i === 2
+            val = -0.001*xMC[4]*xMC[9]*xMC[6]/(98 - xMC[6]) + xMC[3]
+        elseif i === 3
+            #val = -(1.098*xMC[8] - 0.038*(xMC[8])^2) - 0.325*xMC[6] + xMC[7] - 57.425 # INTERVAL BOUNDS ARE DIFFERENT
+            val = -1.098*xMC[8] + xMC[8]*xMC[8] - 0.325*xMC[6] + xMC[7] - 57.425
+        elseif i === 4
+            val = -(xMC[2] + xMC[5])/xMC[1] + xMC[8]
+        elseif i === 5
+            val = -0.063*xMC[4]*xMC[7] + 5.04*xMC[1] + 0.035*xMC[2] + 10*xMC[3] + 3.36*xMC[5] - objvar
+            =#
+        end
+        #println("i = $i, val = $(val), val0 = $(val0)")
+        print_info && println(" ")
         if d.constraints[i].numvalued[1]
             g[i] = d.constraints[i].numberstorage[1]
         else

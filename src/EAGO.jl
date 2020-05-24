@@ -49,6 +49,7 @@ module EAGO
     include("eago_optimizer/unsafe_utilities.jl")
     include("eago_optimizer/guarded_context.jl")
     include("eago_optimizer/node_bb.jl")
+    include("eago_optimizer/functions.jl")
     include("eago_optimizer/evaluator/evaluator.jl")
     include("eago_optimizer/logging.jl")
     include("eago_optimizer/optimizer.jl")

@@ -287,7 +287,7 @@ Converts MOI.MAX_SENSE objective to equivalent MOI.MIN_SENSE objective
 max(f) = - min(-f).
 """
 function convert_to_min!(x::Optimizer)
-    if x._optimization_sense === MOI.MAX_SENSE
+    if x._input_problem._optimization_sense === MOI.MAX_SENSE
         if x._objective_type === SINGLE_VARIABLE
             x._objective_type = SCALAR_AFFINE
             x._objective_saf = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
@@ -627,7 +627,6 @@ function parse_problem!(m::Optimizer)
 
     ########### Reformulate DAG using auxilliary variables ###########
     _variable_len = length(m._variable_info)
-    m._continuous_variable_number = _variable_len
     m._variable_number = _variable_len
 
     ########### Set Correct Size for Problem Storage #########
@@ -683,15 +682,15 @@ function check_disable_fbbt!(m::Optimizer)
     end
 
     no_quad_constraints = true
-    if length(m._quadratic_leq_constraints) > 0
+    if m._input_problem._quadratic_leq_count !== 0
         no_constraints &= false
         no_quad_constraints &= false
     end
-    if length(m._quadratic_geq_constraints) > 0
+    if m._input_problem._quadratic_geq_count !== 0
         no_constraints &= false
         no_quad_constraints &= false
     end
-    if length(m._quadratic_eq_constraints) > 0
+    if m._input_problem._quadratic_eq_count !== 0
         no_constraints &= false
         no_quad_constraints &= false
     end
@@ -702,13 +701,13 @@ function check_disable_fbbt!(m::Optimizer)
 
     only_lin_constraints = no_constraints
     no_lin_constraints = true
-    if length(m._linear_leq_constraints) > 0
+    if m._input_problem._linear_leq_count !== 0
         no_lin_constraints &= false
     end
-    if length(m._linear_geq_constraints) > 0
+    if m._input_problem._linear_geq_count !== 0
         no_lin_constraints &= false
     end
-    if length(m._linear_eq_constraints) > 0
+    if m._input_problem._linear_eq_count !== 0
         no_lin_constraints &= false
     end
     if no_lin_constraints
@@ -722,6 +721,29 @@ function check_disable_fbbt!(m::Optimizer)
     return
 end
 
+function create_inner_functions!(m::Optimizer)
+
+    # add buffered quadratic constraints
+    for i = 1:m._input_problem._quadratic_leq_count
+        sqf, lt = m._input_problem._quadratic_leq_constraints
+        add_buffered_quadratic!(m, sqf, lt)
+    end
+
+    # add buffered quadratic constraints
+    for i = 1:m._input_problem._quadratic_geq_count
+        sqf, gt = m._input_problem._quadratic_geq_constraints
+        add_buffered_quadratic!(m, sqf, gt)
+    end
+
+    # add buffered quadratic constraints
+    for i = 1:m._input_problem._quadratic_eq_count
+        sqf, et = m._input_problem._quadratic_eq_constraints
+        add_buffered_quadratic!(m, sqf, et)
+    end
+
+    nothing
+end
+
 function presolve_problem!(m::Optimizer)
 
     m.presolve_epigraph_flag && reform_epigraph!(m)  # perform epigraph rearrangement
@@ -731,6 +753,7 @@ function presolve_problem!(m::Optimizer)
     create_initial_node!(m)                        # Create initial node and add it to the stack
     label_fixed_variables!(m)
     label_nonlinear_variables!(m)
+    create_inner_functions!(m)
     check_disable_fbbt!(m)
     load_relaxed_problem!(m)
     label_quadratic_convexity!(m)
@@ -741,14 +764,12 @@ function presolve_problem!(m::Optimizer)
 end
 
 function store_candidate_solution!(x::Optimizer)
-    if x._upper_feasibility
-        if x._upper_objective_value < x._global_upper_bound
+    if x._upper_feasibility &&  (x._upper_objective_value < x._global_upper_bound)
             x._feasible_solution_found = true
             x._first_solution_node = x._maximum_node_id
             x._solution_value = x._upper_objective_value
             x._global_upper_bound = x._upper_objective_value
             @__dot__ x._continuous_solution = x._upper_solution
-        end
     end
     return
 end
@@ -778,6 +799,7 @@ postprocess!(x::Optimizer) = postprocess!(x.ext_type, x)
 single_storage!(x::Optimizer) = single_storage!(x.ext_type, x)
 branch_node!(x::Optimizer) = branch_node!(x.ext_type, x)
 fathom!(x::Optimizer) = fathom!(x.ext_type, x)
+
 """
 $(TYPEDSIGNATURES)
 
@@ -791,8 +813,14 @@ function global_solve!(x::Optimizer)
     # terminates when max nodes or iteration is reach, or when node stack is empty
     while ~termination_check(x)
 
+        if contains_optimimum(x)
+            println("stack contains true optimimum start")
+        else
+            println("stack DOES NOT contain true optimimum start")
+        end
         # Selects node, deletes it from stack, prints based on verbosity
         node_selection!(x)
+        #println("current node: $(x._current_node)")
         (x.verbosity >= 3) && print_node!(x)
 
         # Performs prepocessing and times
@@ -802,6 +830,7 @@ function global_solve!(x::Optimizer)
             x._last_preprocess_time = time() - start_time
         end
 
+        println("x._preprocess_feasibility = $(x._preprocess_feasibility)")
         if x._preprocess_feasibility
 
             # solves & times lower bounding problem
@@ -816,6 +845,7 @@ function global_solve!(x::Optimizer)
             end
             print_results!(x, true)
             print_results_post_cut!(x)
+            println("x._lower_feasibility = $(x._lower_feasibility)")
 
             # checks for infeasibility stores solution
             if x._lower_feasibility
@@ -828,7 +858,7 @@ function global_solve!(x::Optimizer)
                     end
                     print_results!(x, false)
                     store_candidate_solution!(x)
-                    if x._optimization_sense == MOI.FEASIBILITY_SENSE
+                    if x._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
                         if ~x.feasible_local_continue || x.local_solve_only
                             break
                         end
@@ -865,6 +895,12 @@ function global_solve!(x::Optimizer)
         log_iteration!(x)
         print_iteration!(x)
         x._iteration_count += 1
+
+        if contains_optimimum(x)
+            println("stack contains true optimimum end")
+        else
+            println("stack DOES NOT contain true optimimum end")
+        end
     end
 
     x._objective_value = x._global_upper_bound
