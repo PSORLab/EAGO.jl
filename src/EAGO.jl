@@ -55,6 +55,7 @@ module EAGO
     include("eago_optimizer/optimizer.jl")
     include("eago_optimizer/variables.jl")
     include("eago_optimizer/constraints.jl")
+    include("eago_optimizer/translate_constraints.jl")
     include("eago_optimizer/display.jl")
     include("eago_optimizer/relax.jl")
     include("eago_optimizer/domain_reduction.jl")

@@ -28,7 +28,7 @@ function MOI.add_variable(m::Optimizer)
     push!(m._new_low_index, false)
     push!(m._new_upp_index, false)
     push!(m._fixed_variable, false)
-    push!(m._variable_info, VariableInfo())
+    push!(m._input_problem._variable_info, VariableInfo())
     return VI(m._variable_number)
 end
 MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
@@ -43,11 +43,11 @@ function MOI.add_constraint(m::Optimizer, v::SV, zo::ZO)
     has_upper_bound(m, vi) && error("Upper bound on variable $vi already exists.")
     has_lower_bound(m, vi) && error("Lower bound on variable $vi already exists.")
     is_fixed(m, vi) && error("Variable $vi is fixed. Cannot also set upper bound.")
-    m._variable_info[vi.value].lower_bound = 0.0
-    m._variable_info[vi.value].upper_bound = 1.0
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    m._variable_info[vi.value].is_integer = true
+    m._input_problem._variable_info[vi.value].lower_bound = 0.0
+    m._input_problem._variable_info[vi.value].upper_bound = 1.0
+    m._input_problem._variable_info[vi.value].has_lower_bound = true
+    m._input_problem._variable_info[vi.value].has_upper_bound = true
+    m._input_problem._variable_info[vi.value].is_integer = true
     return CI{SV, MOI.ZO}(vi.value)
 end
 
@@ -63,8 +63,8 @@ function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
     if is_fixed(m, vi)
         error("Variable $vi is fixed. Cannot also set upper bound.")
     end
-    m._variable_info[vi.value].upper_bound = lt.upper
-    m._variable_info[vi.value].has_upper_bound = true
+    m._input_problem._variable_info[vi.value].upper_bound = lt.upper
+    m._input_problem._variable_info[vi.value].has_upper_bound = true
     return CI{SV, LT}(vi.value)
 end
 
@@ -80,8 +80,8 @@ function MOI.add_constraint(m::Optimizer, v::SV, gt::GT)
     if is_fixed(m, vi)
         error("Variable $vi is fixed. Cannot also set lower bound.")
     end
-    m._variable_info[vi.value].lower_bound = gt.lower
-    m._variable_info[vi.value].has_lower_bound = true
+    m._input_problem._variable_info[vi.value].lower_bound = gt.lower
+    m._input_problem._variable_info[vi.value].has_lower_bound = true
     return CI{SV, GT}(vi.value)
 end
 
@@ -100,10 +100,10 @@ function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
     if is_fixed(m, vi)
         error("Variable $vi is already fixed.")
     end
-    m._variable_info[vi.value].lower_bound = eq.value
-    m._variable_info[vi.value].upper_bound = eq.value
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    m._variable_info[vi.value].is_fixed = true
+    m._input_problem._variable_info[vi.value].lower_bound = eq.value
+    m._input_problem._variable_info[vi.value].upper_bound = eq.value
+    m._input_problem._variable_info[vi.value].has_lower_bound = true
+    m._input_problem._variable_info[vi.value].has_upper_bound = true
+    m._input_problem._variable_info[vi.value].is_fixed = true
     return CI{SV, ET}(vi.value)
 end

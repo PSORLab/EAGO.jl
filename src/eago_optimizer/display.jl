@@ -18,15 +18,15 @@ $(FUNCTIONNAME)
 Prints solution information for the B&B problem. Displays first node found, solution value,
 solution, and time spent solving subproblems.
 """
-function print_solution!(x::Optimizer)
-    if x._parameters.verbosity > 0
+function print_solution!(m::Optimizer)
+    if m._parameters.verbosity > 0
         println(" ")
-        println("First Solution Found at Node $(x._first_solution_node)")
-        println("UBD = $(MOI.get(x, MOI.ObjectiveValue()))")
+        println("First Solution Found at Node $(m._first_solution_node)")
+        println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         println("Solution is :")
-        if (x._feasible_solution_found)
-            for i = 1:x._variable_number
-                println("    X[$i] = $(x._continuous_solution[i])")
+        if m._feasible_solution_found
+            for i = 1:m._variable_number
+                println("    X[$i] = $(m._continuous_solution[i])")
             end
         end
         println(" ")
@@ -39,9 +39,9 @@ $(FUNCTIONNAME)
 
 Prints node information for the B&B problem. Node id, bound, and interval box.
 """
-function print_node!(y::Optimizer)
-    x = y._current_node
-    bound = (y._input_problem._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
+function print_node!(m::Optimizer)
+    x = m._current_node
+    bound = (m._input_problem._optimization_sense === MOI.MIN_SENSE) ? x.lower_bound : -x.lower_bound
     println(" ")
     println("Node ID: $(x.id), Lower Bound: $(bound), Lower Variable Bounds:
              $(x.lower_variable_bounds), Upper Variable Bounds: $(x.upper_variable_bounds)")
@@ -58,19 +58,19 @@ $(FUNCTIONNAME)
 Prints the iteration information based on verbosity. The header is displayed
 every `header_interval`, the iteration info is displayed every `iteration_interval`.
 """
-function print_iteration!(x::Optimizer)
+function print_iteration!(m::Optimizer)
 
-    if x._parameters.verbosity > 0
+    if m._parameters.verbosity > 0
 
         # prints header line every B.hdr_intv times
-        if (mod(x._iteration_count, x._parameters.header_iterations) == 0 || x._iteration_count == 1)
+        if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
             println("-----------------------------------------------------------------------------------------------------------------------------")
             println("|  Iteration #  |     Nodes    | Lower Bound  |  Upper Bound  |      Gap     |     Ratio    |     Time     |    Time Left   |")
             println("-----------------------------------------------------------------------------------------------------------------------------")
         end
 
         # prints iteration summary every B.itr_intv times
-        if (mod(x._iteration_count, x._parameters.output_iterations) == 0)
+        if mod(m._iteration_count, m._parameters.output_iterations) === 0
 
             print_str = "| "
 
@@ -140,29 +140,29 @@ $(FUNCTIONNAME)
 
 Prints the results of a single bounding problem.
 """
-function print_results!(x::Optimizer, flag::Bool)
-    if x._parameters.verbosity > 1
+function print_results!(m::Optimizer, flag::Bool)
+    if m._parameters.verbosity > 1
         println(" ")
         if flag
-            obj_val = x._lower_objective_value
-            if x._input_problem._optimization_sense === MOI.MIN_SENSE
+            obj_val = m._lower_objective_value
+            if m._input_problem._optimization_sense === MOI.MIN_SENSE
                 print("Lower Bound (First Iteration): $(obj_val),")
             else
                 print("Upper Bound (First Iteration): $(-obj_val),")
             end
-            print(" Solution: $(x._lower_solution), Feasibility: $(x._lower_feasibility)\n")
-            println("Termination Status Code: $(x._lower_termination_status)")
-            println("Result Code: $(x._lower_result_status)")
+            print(" Solution: $(m._lower_solution), Feasibility: $(m._lower_feasibility)\n")
+            println("Termination Status Code: $(m._lower_termination_status)")
+            println("Result Code: $(m._lower_result_status)")
         else
-            obj_val = x._upper_objective_value
-            if x._input_problem._optimization_sense === MOI.MIN_SENSE
+            obj_val = m._upper_objective_value
+            if m._input_problem._optimization_sense === MOI.MIN_SENSE
                 print("Upper Bound: $(obj_val), ")
             else
                 print("Lower Bound: $(-obj_val), ")
             end
-            print(" Solution: $(x._upper_solution), Feasibility: $(x._upper_feasibility)\n")
-            println("Termination Status Code: $(x._upper_termination_status)")
-            println("Result Code: $(x._upper_result_status)")
+            print(" Solution: $(m._upper_solution), Feasibility: $(m._upper_feasibility)\n")
+            println("Termination Status Code: $(m._upper_termination_status)")
+            println("Result Code: $(m._upper_result_status)")
         end
         println(" ")
     end
@@ -174,15 +174,15 @@ $(FUNCTIONNAME)
 
 Prints the results after performing various cuts.
 """
-function print_results_post_cut!(x::Optimizer)
+function print_results_post_cut!(m::Optimizer)
     if x._parameters.verbosity > 1
         println(" ")
-        if x._input_problem._optimization_sense === MOI.MIN_SENSE
-            print("Lower Bound (Last Iteration): $(x._lower_objective_value)")
+        if m._input_problem._optimization_sense === MOI.MIN_SENSE
+            print("Lower Bound (Last Iteration): $(m._lower_objective_value)")
         else
-            print("Upper Bound (Last Iteration): $(-x._lower_objective_value)")
+            print("Upper Bound (Last Iteration): $(-m._lower_objective_value)")
         end
-        print(", Solution: $(x._lower_solution), Feasibility: $(x._lower_feasibility)\n")
+        print(", Solution: $(m._lower_solution), Feasibility: $(m._lower_feasibility)\n")
         println(" ")
     end
     return

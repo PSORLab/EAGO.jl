@@ -34,9 +34,9 @@ the midpoint of the node. If this solution lies within `branch_offset/width` of
 a bound then the branch point is moved to a distance of `branch_offset/width`
 from the bound.
 """
-function branch_node!(t::ExtensionType, x::Optimizer)
+function branch_node!(t::ExtensionType, m::Optimizer)
 
-    y = x._current_node
+    y = m._current_node
     lvbs = y.lower_variable_bounds
     uvbs = y.upper_variable_bounds
 
@@ -45,11 +45,11 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     temp_max = 0.0
 
     flag = true
-    for i = 1:x._variable_number
-        flag = @inbounds ~x._fixed_variable[i]
-        flag &= @inbounds x.branch_variable[i]
+    for i = 1:m._variable_number
+        flag = @inbounds ~m._fixed_variable[i]
+        flag &= @inbounds m.branch_variable[i]
         if flag
-            vi = @inbounds x._variable_info[i]
+            vi = @inbounds m._variable_info[i]
             temp_max = @inbounds uvbs[i] - lvbs[i]
             temp_max /= vi.upper_bound - vi.lower_bound
             if temp_max > max_val
@@ -61,9 +61,9 @@ function branch_node!(t::ExtensionType, x::Optimizer)
 
     lvb = @inbounds lvbs[max_pos]
     uvb = @inbounds uvbs[max_pos]
-    lsol = @inbounds x._lower_solution[max_pos]
-    cvx_f = x._parameters.branch_cvx_factor
-    cvx_g = x._parameters.branch_offset
+    lsol = @inbounds m._lower_solution[max_pos]
+    cvx_f = m._parameters.branch_cvx_factor
+    cvx_g = m._parameters.branch_offset
     branch_pnt = cvx_f*lsol + (1.0 - cvx_f)*(lvb + uvb)/2.0
     if branch_pnt < lvb*(1.0 - cvx_g) + cvx_g*uvb
         branch_pnt = (1.0 - cvx_g)*lvb + cvx_g*uvb
@@ -81,18 +81,18 @@ function branch_node!(t::ExtensionType, x::Optimizer)
     @inbounds lvb_2[max_pos] = N2.lo
     @inbounds uvb_2[max_pos] = N2.hi
 
-    lower_bound = max(y.lower_bound, x._lower_objective_value)
-    upper_bound = min(y.upper_bound, x._upper_objective_value)
-    x._maximum_node_id += 1
-    X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
-    x._maximum_node_id += 1
-    X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, y.depth + 1, x._maximum_node_id)
+    lower_bound = max(y.lower_bound, m._lower_objective_value)
+    upper_bound = min(y.upper_bound, m._upper_objective_value)
+    m._maximum_node_id += 1
+    X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, y.depth + 1, m._maximum_node_id)
+    m._maximum_node_id += 1
+    X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, y.depth + 1, m._maximum_node_id)
 
-    push!(x._stack, X1)
-    push!(x._stack, X2)
+    push!(m._stack, X1)
+    push!(m._stack, X2)
 
-    x._node_repetitions = 1
-    x._node_count += 2
+    m._node_repetitions = 1
+    m._node_count += 2
 
     return
 end
@@ -102,13 +102,13 @@ $(SIGNATURES)
 
 Stores the current node to the stack after updating lower/upper bounds.
 """
-function single_storage!(t::ExtensionType, x::Optimizer)
-    y = x._current_node
-    x._node_repetitions += 1
-    x._node_count += 1
-    lower_bound = max(y.lower_bound, x._lower_objective_value)
-    upper_bound = min(y.upper_bound, x._upper_objective_value)
-    push!(x._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
+function single_storage!(t::ExtensionType, m::Optimizer)
+    y = m._current_node
+    m._node_repetitions += 1
+    m._node_count += 1
+    lower_bound = max(y.lower_bound, m._lower_objective_value)
+    upper_bound = min(y.upper_bound, m._upper_objective_value)
+    push!(m._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
                            lower_bound, upper_bound, y.depth, y.id))
     return
 end
@@ -119,22 +119,22 @@ $(SIGNATURES)
 Selects and deletes nodes from stack with lower bounds greater than global
 upper bound.
 """
-function fathom!(t::ExtensionType, d::Optimizer)
-    upper = d._global_upper_bound
-    continue_flag = ~isempty(d._stack)
+function fathom!(t::ExtensionType, m::Optimizer)
+    upper = m._global_upper_bound
+    continue_flag = ~isempty(m._stack)
     while continue_flag
-        max_node = maximum(d._stack)
+        max_node = maximum(m._stack)
         max_check = (max_node.lower_bound > upper)
         if max_check
-            popmax!(d._stack)
-            d._node_count -= 1
-            if isempty(d._stack)
+            popmax!(m._stack)
+            m._node_count -= 1
+            if isempty(m._stack)
                 continue_flag = false
             end
         else
             if ~max_check
                 continue_flag = false
-            elseif isempty(d._stack)
+            elseif isempty(m._stack)
                 continue_flag = false
             end
         end
@@ -147,12 +147,12 @@ $(SIGNATURES)
 
 Checks to see if current node should be reprocessed.
 """
-repeat_check(t::ExtensionType, x::Optimizer) = false
+repeat_check(t::ExtensionType, m::Optimizer) = false
 
 function relative_gap(L::Float64, U::Float64)
     gap = Inf
     if (L > -Inf) & (U < Inf)
-        gap = abs(U - L)/(max(abs(L),abs(U)))
+        gap = abs(U - L)/(max(abs(L), abs(U)))
     end
     return gap
 end
@@ -167,52 +167,53 @@ Checks for termination of algorithm due to satisfying absolute or relative
 tolerance, infeasibility, or a specified limit, returns a boolean valued true
 if algorithm should continue.
 """
-function termination_check(t::ExtensionType, x::Optimizer)
+function termination_check(t::ExtensionType, m::Optimizer)
 
-    node_in_stack = length(x._stack)
-    L = x._global_lower_bound
-    U = x._global_upper_bound
+    node_in_stack = length(m._stack)
+    L = m._global_lower_bound
+    U = m._global_upper_bound
 
     if node_in_stack === 0
 
-        if x._first_solution_node > 0
-            x._termination_status_code = MOI.OPTIMAL
-            x._result_status_code = MOI.FEASIBLE_POINT
-            (x._parameters.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
+        if m._first_solution_node > 0
+            m._termination_status_code = MOI.OPTIMAL
+            m._result_status_code = MOI.FEASIBLE_POINT
+            (m._parameters.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
         else
-            x._termination_status_code = MOI.INFEASIBLE
-            x._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
-            (x._parameters.verbosity >= 3) && println("Empty Stack: Infeasible")
+            m._termination_status_code = MOI.INFEASIBLE
+            m._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
+            (m._parameters.verbosity >= 3) && println("Empty Stack: Infeasible")
         end
 
-    elseif node_in_stack >= x._parameters.node_limit
+    elseif node_in_stack >= m._parameters.node_limit
 
-        x._termination_status_code = MOI.NODE_LIMIT
-        x._result_status_code = MOI.UNKNOWN_RESULT_STATUS
-        (x._parameters.verbosity >= 3) && println("Node Limit Exceeded")
+        m._termination_status_code = MOI.NODE_LIMIT
+        m._result_status_code = MOI.UNKNOWN_RESULT_STATUS
+        (m._parameters.verbosity >= 3) && println("Node Limit Exceeded")
 
-    elseif x._iteration_count >= x._parameters.iteration_limit
+    elseif m._iteration_count >= m._parameters.iteration_limit
 
-        x._termination_status_code = MOI.ITERATION_LIMIT
-        x._result_status_code = MOI.UNKNOWN_RESULT_STATUS
-        (x._parameters.verbosity >= 3) && println("Maximum Iteration Exceeded")
+        m._termination_status_code = MOI.ITERATION_LIMIT
+        m._result_status_code = MOI.UNKNOWN_RESULT_STATUS
+        (m._parameters.verbosity >= 3) && println("Maximum Iteration Exceeded")
 
-    elseif ~relative_tolerance(L, U, x._parameters.relative_tolerance)
+    elseif ~relative_tolerance(L, U, m._parameters.relative_tolerance)
 
-        x._termination_status_code = MOI.OPTIMAL
-        x._result_status_code = MOI.FEASIBLE_POINT
-        (x._parameters.verbosity >= 3) && println("Relative Tolerance Achieved")
+        m._termination_status_code = MOI.OPTIMAL
+        m._result_status_code = MOI.FEASIBLE_POINT
+        (m._parameters.verbosity >= 3) && println("Relative Tolerance Achieved")
 
-    elseif (U - L) < x._parameters.absolute_tolerance
-        x._termination_status_code = MOI.OPTIMAL
-        x._result_status_code = MOI.FEASIBLE_POINT
-        (x._parameters.verbosity >= 3) && println("Absolute Tolerance Achieved")
+    elseif (U - L) < m._parameters.absolute_tolerance
 
-    elseif x._run_time > x._parameters.time_limit
+        m._termination_status_code = MOI.OPTIMAL
+        m._result_status_code = MOI.FEASIBLE_POINT
+        (m._parameters.verbosity >= 3) && println("Absolute Tolerance Achieved")
 
-        x._termination_status_code = MOI.TIME_LIMIT
-        x._result_status_code = MOI.UNKNOWN_RESULT_STATUS
-        (x._parameters.verbosity >= 3) && println("Time Limit Exceeded")
+    elseif m._run_time > m._parameters.time_limit
+
+        m._termination_status_code = MOI.TIME_LIMIT
+        m._result_status_code = MOI.UNKNOWN_RESULT_STATUS
+        (m._parameters.verbosity >= 3) && println("Time Limit Exceeded")
 
     else
 
@@ -229,13 +230,13 @@ $(SIGNATURES)
 Checks for convergence of algorithm with respect to absolute and/or relative
 tolerances.
 """
-function convergence_check(t::ExtensionType, x::Optimizer)
+function convergence_check(t::ExtensionType, m::Optimizer)
 
-  L = x._lower_objective_value
-  U = x._global_upper_bound
-  t = (U - L) <= x._parameters.absolute_tolerance
+  L = m._lower_objective_value
+  U = m._global_upper_bound
+  t = (U - L) <= m._parameters.absolute_tolerance
   if (U < Inf) & (L > Inf)
-      t |= (abs(U - L)/(max(abs(L),abs(U))) <= x._parameters.relative_tolerance)
+      t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
   end
   if t && contains_optimimum(x)
       println("----------------------------------------------------------")
@@ -340,47 +341,44 @@ Runs interval, linear, quadratic contractor methods followed by obbt and a
 constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
 """
-function preprocess!(t::ExtensionType, x::Optimizer)
+function preprocess!(t::ExtensionType, m::Optimizer)
 
     # Sets initial feasibility
     feas = true
     rept = 0
 
-    x._initial_volume = prod(upper_variable_bounds(x._current_node) -
-                             lower_variable_bounds(x._current_node))
+    m._initial_volume = prod(upper_variable_bounds(m._current_node) -
+                             lower_variable_bounds(m._current_node))
 
     # runs poor man's LP contractor
-    if ((x._parameters.lp_depth >= x._iteration_count) & feas)
-        feas = lp_bound_tighten(x)
+    if ((m._parameters.lp_depth >= m._iteration_count) & feas)
+        feas = lp_bound_tighten(m)
     end
 
     # runs univariate quadratic contractor
-    if ((x._parameters.quad_uni_depth >= x._iteration_count) & feas)
-        for i = 1:x._parameters.quad_uni_repetitions
-            feas = univariate_quadratic(x)
-            (~feas) && (break)
+    if (m._parameters.quad_uni_depth >= m._iteration_count) & feas
+        for i = 1:m._parameters.quad_uni_repetitions
+            feas = univariate_quadratic(m)
+            !feas && break
         end
     end
 
-    x._obbt_performed_flag = false
-    if (x._parameters.obbt_depth >= x._iteration_count)
-        #println("ran obbt... $(x.obbt_depth) >= $(x._iteration_count)")
-        if feas
-            x._obbt_performed_flag = true
-            for i = 1:x._parameters.obbt_repetitions
-                feas = obbt(x)
-                (~feas) && (break)
-            end
+    m._obbt_performed_flag = false
+    if (m._parameters.obbt_depth >= m._iteration_count) & feas
+        m._obbt_performed_flag = true
+        for i = 1:m._parameters.obbt_repetitions
+            feas = obbt(m)
+            !feas && break
         end
     end
 
-    if ((x._parameters.cp_depth >= x._iteration_count) & feas)
-        feas = cpwalk(x)
+    if (m._parameters.cp_depth >= m._iteration_count) & feas
+        feas = cpwalk(m)
     end
 
-    x._final_volume = prod(upper_variable_bounds(x._current_node) -
-                           lower_variable_bounds(x._current_node))
-    x._preprocess_feasibility = feas
+    m._final_volume = prod(upper_variable_bounds(m._current_node) -
+                           lower_variable_bounds(m._current_node))
+    m._preprocess_feasibility = feas
     #println("preprocess feasibility: $(x._preprocess_feasibility)")
 
     return
@@ -393,14 +391,14 @@ Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
 `xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
 optimizer.
 """
-function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
+function update_relaxed_problem_box!(m::Optimizer, y::NodeBB)
 
-    opt = x.relaxed_optimizer
+    opt = m.relaxed_optimizer
     lower_node_bnd = y.lower_variable_bounds
     upper_node_bnd = y.upper_variable_bounds
 
-    lower_variable_et = x._lower_variable_et
-    lower_variable_et_indx = x._lower_variable_et_indx
+    lower_variable_et = m._lower_variable_et
+    lower_variable_et_indx = m._lower_variable_et_indx
     for i = 1:length(lower_variable_et_indx)
         @inbounds ci = lower_variable_et[i]
         @inbounds ni = lower_variable_et_indx[i]
@@ -408,8 +406,8 @@ function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
         MOI.set(opt, MOI.ConstraintSet(), ci, ET(vb))
     end
 
-    lower_variable_lt = x._lower_variable_lt
-    lower_variable_lt_indx = x._lower_variable_lt_indx
+    lower_variable_lt = m._lower_variable_lt
+    lower_variable_lt_indx = m._lower_variable_lt_indx
     for i = 1:length(lower_variable_lt_indx)
         @inbounds ci = lower_variable_lt[i]
         @inbounds ni = lower_variable_lt_indx[i]
@@ -417,8 +415,8 @@ function update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
         MOI.set(opt, MOI.ConstraintSet(), ci, LT(vb))
     end
 
-    lower_variable_gt = x._lower_variable_gt
-    lower_variable_gt_indx = x._lower_variable_gt_indx
+    lower_variable_gt = m._lower_variable_gt
+    lower_variable_gt_indx = m._lower_variable_gt_indx
     for i = 1:length(x._lower_variable_gt_indx)
         @inbounds ci = lower_variable_gt[i]
         @inbounds ni = lower_variable_gt_indx[i]
