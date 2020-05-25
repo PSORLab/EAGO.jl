@@ -317,15 +317,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
     _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
-    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
-    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
-
-    _lower_nlp_affine_indx::Vector{Int64} = Int64[]
-    _upper_nlp_affine_indx::Vector{Int64} = Int64[]
-
-    _lower_nlp_sparsity::Vector{Vector{Int64}} = Vector{Int64}[]
-    _upper_nlp_sparsity::Vector{Vector{Int64}} = Vector{Int64}[]
-
     _global_lower_bound::Float64 = -Inf
     _global_upper_bound::Float64 = Inf
     _maximum_node_id::Int64 = 0

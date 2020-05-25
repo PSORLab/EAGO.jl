@@ -50,6 +50,5 @@ function add_buffered_quadratic!(m::Optimizer, func::SQF, set::ET, indx::Int)
         term = @inbounds cfunc2.affine_terms[i]
         @inbounds cfunc2.affine_terms[i] = SAT(-term.coefficient, term.variable_index)
     end
-    push!(m._inner_constraints._sqf_leq, BufferQuadratic(cfunc1, QD_LT, buffer_a, saf1_a, saf2_a, nx_a))
-    push!(m._inner_constraints._sqf_leq, BufferQuadratic(cfunc2, QD_GT, buffer_b, saf1_b, saf2_b, nx_b))
+    push!(m._inner_constraints._sqf_eq, BufferedQuadraticEq(cfunc1, QD_LT, buffer_a, saf1, nx_a))
 end

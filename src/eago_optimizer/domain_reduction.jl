@@ -18,12 +18,12 @@ $(FUNCTIONNAME)
 Tightens the bounds of the `_current_node` using the current global upper bound
 and the duality information obtained from the relaxation.
 """
-function variable_dbbt!(x::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Float64},
+function variable_dbbt!(n::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Float64},
                         LBD::Float64, UBD::Float64, nx::Int64)
 
     delta = UBD - LBD
-    lvbs = x.lower_variable_bounds
-    uvbs = x.upper_variable_bounds
+    lvbs = n.lower_variable_bounds
+    uvbs = n.upper_variable_bounds
     if LBD <= UBD
         for i = 1:nx
             ml = @inbounds mult_lo[i]
@@ -358,469 +358,119 @@ function obbt(d::Optimizer)
     return feasibility
 end
 
+
 """
-$(FUNCTIONNAME)
 
-Performs the linear bound tightening.
+Performs feasibility-based bound tightening on a back-end constraint and returns `true` if it is feasible or
+`false` if it is infeasible.
 """
-function lp_bound_tighten(m::Optimizer)
+function fbbt! end
 
-    feas = true
-    n = m._current_node
-    lvb = n.lower_variable_bounds
-    uvb = n.upper_variable_bounds
+function fbbt!(f::AffineFunctionIneq, n::NodeBB)
 
-    for i = 1:m.lp_repetitions
+    # compute full sum
+    lower_bounds = n.lower_variable_bounds
+    upper_bounds = n.upper_variable_bounds
+    terms = f.terms
 
-        # Runs Poor Man LP on constraints of form ax >= b
-        for (func, constr) in m._linear_geq_constraints
-            if feas
-                temp_value = -(constr.lower - func.constant)
-                for term in func.terms
-                    indx = term.variable_index.value
-                    coeff = term.coefficient
-                    @inbounds li = lvb[indx]
-                    @inbounds ui = uvb[indx]
-                    temp_value += max(coeff*ui, coeff*li)
-                end
-                for term in func.terms
-                    if feas
-                        indx = term.variable_index.value
-                        coeff = term.coefficient
-                        @inbounds li = lvb[indx]
-                        @inbounds ui = uvb[indx]
-                        term_value = max(coeff*ui, coeff*li)
-                        cut_value = -(temp_value - term_value)/coeff
-                        if (-coeff > 0.0)
-                            if (li < cut_value)
-                                if (cut_value < ui)
-                                    @inbounds uvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        else
-                            if (ui > cut_value)
-                                if (cut_value > li)
-                                    @inbounds lvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        end
-                    end
-                end
+    temp_sum = f.constant
+    for k = 1:f.len
+        aik, indx_k = @inbounds terms[k]
+        if aik !== 0.0
+            aik_xL = aik*(@inbounds lower_bounds[indx_k])
+            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            temp_sum -= min(aik_xL, aik_xU)
+        end
+    end
+
+    # subtract extra term, check to see if implied bound is better, if so update the node and
+    # the working sum if the node is now empty then break
+    for k = 1:f.len
+        aik, indx_k = @inbounds terms[k]
+        if aik !== 0.0
+            aik_xL = aik*(@inbounds lower_bounds[indx_k])
+            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            temp_sum += min(aik_xL, aik_xU)
+            xh = temp_sum/aik
+            if aik > 0.0
+                (xh > xU) && return false
+                (xh > xL) && (@inbounds lower_bounds[indx_k] = xh)
+            elseif aik < 0.0
+                (xh < xL) && return false
+                (xh < xU) && (@inbounds upper_bounds[indx_k] = xh)
             else
-                break
+                temp_sum -= min(aik_xL, aik_xU)
+                continue
             end
+            aik_xL = aik*(@inbounds lower_bounds[indx_k])
+            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            temp_sum -= min(aik_xL, aik_xU)
         end
+    end
 
-        # Runs Poor Man LP on constraints of form ax <= b
-        for (func, constr) in m._linear_leq_constraints
-            if feas
-                temp_value = (constr.upper - func.constant)
-                for term in func.terms
-                    indx = term.variable_index.value
-                    coeff = term.coefficient
-                    @inbounds li = lvb[indx]
-                    @inbounds ui = uvb[indx]
-                    temp_value -= min(coeff*ui, coeff*li)
+    return true
+end
+
+function fbbt!(f::AffineFunctionEq, n::NodeBB)
+    # compute full sum
+    lower_bounds = n.lower_variable_bounds
+    upper_bounds = n.upper_variable_bounds
+    terms = f.terms
+
+    temp_sum_leq = f.constant
+    temp_sum_geq = -f.constant
+    for k = 1:f.len
+        aik, indx_k = @inbounds terms[k]
+        if aik !== 0.0
+            aik_xL = aik*(@inbounds lower_bounds[indx_k])
+            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            temp_sum_leq -= min(aik_xL, aik_xU)
+            temp_sum_geq += max(aik_xL, aik_xU)
+        end
+    end
+
+    # subtract extra term, check to see if implied bound is better, if so update the node and
+    # the working sum if the node is now empty then break
+    for k = 1:f.len
+        aik, indx_k = @inbounds terms[k]
+        if aik !== 0.0
+            xL = @inbounds lower_bounds[indx_k]
+            xU = @inbounds upper_bounds[indx_k]
+            aik_xL = aik*xL
+            aik_xU = aik*xU
+            temp_sum_leq += min(aik_xL, aik_xU)
+            xh_leq = temp_sum_leq/aik
+            if aik > 0.0
+                (xh_leq > xU) && return false
+                if xh_leq > xL
+                    @inbounds lower_bounds[indx_k] = xh_leq
+                    aik_xL = aik*xh_leq
                 end
-                for term in func.terms
-                    if feas
-                        indx = term.variable_index.value
-                        coeff = term.coefficient
-                        @inbounds li = lvb[indx]
-                        @inbounds ui = uvb[indx]
-                        term_value = min(coeff*ui, coeff*li)
-                        cut_value = (temp_value + term_value)/coeff
-                        if (coeff > 0.0)
-                            if (li < cut_value)
-                                if (cut_value < ui)
-                                    @inbounds uvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        else
-                            if (ui > cut_value)
-                                if (cut_value > li)
-                                    @inbounds lvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        end
-                    end
+                temp_sum_geq -= max(aik_xL, aik_xU)
+                xh_geq = -temp_sum_geq/aik
+                (xh_geq < xL) && return false
+                (xh_geq > xU) && (@inbounds lower_bounds[indx_k] = xh_leq)
+            elseif aik < 0.0
+                (xh_leq < xL) && return false
+                if xh_leq < xU
+                    @inbounds upper_bounds[indx_k] = xh_leq
+                    aik_xU = aik*xh_leq
                 end
+                temp_sum_geq -= max(aik_xL, aik_xU)
+                xh_geq = -temp_sum_geq/aik
+                (xh_geq > xU) && return false
+                (xh_geq > xL) && (@inbounds lower_bounds[indx_k] = xh_geq)
             else
-                break
+                temp_sum_leq -= min(aik_xL, aik_xU)
+                temp_sum_geq += max(aik_xL, aik_xU)
+                continue
             end
-        end
-
-        for (func, constr) in m._linear_eq_constraints
-            if feas
-                temp_value = (constr.value - func.constant)
-                for term in func.terms
-                    indx = term.variable_index.value
-                    coeff = term.coefficient
-                    @inbounds li = lvb[indx]
-                    @inbounds ui = uvb[indx]
-                    temp_value -= min(coeff*ui, coeff*li)
-                end
-                for term in func.terms
-                    if feas
-                        indx = term.variable_index.value
-                        coeff = term.coefficient
-                        @inbounds li = lvb[indx]
-                        @inbounds ui = uvb[indx]
-                        term_value = min(coeff*ui, coeff*li)
-                        cut_value = (temp_value + term_value)/coeff
-                        if (coeff > 0.0)
-                            if (li < cut_value)
-                                if (cut_value < ui)
-                                    @inbounds uvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        else
-                            if (ui > cut_value)
-                                if (cut_value > li)
-                                    @inbounds lvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        end
-                    end
-                end
-            else
-                break
-            end
-
-            if feas
-                temp_value = -(constr.value - func.constant)
-                for term in func.terms
-                    indx = term.variable_index.value
-                    coeff = term.coefficient
-                    @inbounds li = lvb[indx]
-                    @inbounds ui = uvb[indx]
-                    temp_value += max(coeff*ui, coeff*li)
-                end
-                for term in func.terms
-                    if feas
-                        indx = term.variable_index.value
-                        coeff = term.coefficient
-                        @inbounds li = lvb[indx]
-                        @inbounds ui = uvb[indx]
-                        term_value = max(coeff*ui, coeff*li)
-                        cut_value = -(temp_value - term_value)/coeff
-                        if (-coeff > 0.0)
-                            if (li < cut_value)
-                                if (cut_value < ui)
-                                    @inbounds uvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        else
-                            if (ui > cut_value)
-                                if (cut_value > li)
-                                    @inbounds lvb[indx] = cut_value
-                                end
-                            else
-                                feas = false
-                                break
-                            end
-                        end
-                    end
-                end
-            else
-                break
-            end
-        end
-
-        (~feas) && (break)
-    end
-
-    m._current_node = NodeBB(lvb, uvb, n.lower_bound, n.upper_bound, n.depth, n.id)
-
-    return feas
-end
-
-function check_univariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
-    (length(f.affine_terms) == 1) &&
-    (length(f.quadratic_terms) == 1) &&
-    (f.affine_terms[1].variable_index == f.quadratic_terms[1].variable_index_1 == f.quadratic_terms[1].variable_index_2)
-end
-
-get_value(set::MOI.LessThan{Float64}) = set.upper
-get_value(set::MOI.GreaterThan{Float64}) = set.lower
-get_value(set::MOI.EqualTo{Float64}) = set.value
-
-function get_univariate_coeff(func::MOI.ScalarQuadraticFunction{Float64}, set::T) where {T<:MOI.AbstractScalarSet}
-    a = func.quadratic_terms[1].coefficient
-    b = (length(func.affine_terms) > 0) ?  func.affine_terms[1].coefficient : 0.0
-    c = get_value(set) - func.constant
-    vi = func.quadratic_terms[1].variable_index_1.value
-    a,b,c,vi
-end
-
-# Checks to see if constraint is a bivariant quadratic term
-#=
-function check_bivariate_quad(f::MOI.ScalarQuadraticFunction{Float64})
-    vIndx = Int64[]
-    (length(f.quadratic_terms) > 3) && (return false)
-    (length(f.affine_terms) > 2) && (return false)
-    for i in f.affine_terms push!(vIndx,i.variable_index.value) end
-    for i in f.quadratic_terms push!(vIndx,i.variable_index_1.value, i.variable_index_2.value) end
-    vIndx = Int64[]
-    unique_vIndx = unique(vIndx)
-    unique_cnt = length(unique_vIndx)
-    if (unique_cnt == 2)
-        return true, unique_vIndx[1], unique_vIndx[2]
-    else
-        return false, nothing, nothing
-    end
-end
-function get_bivariate_coeff(func::MOI.ScalarQuadraticFunction{Float64},set::T,vxvalue::Int,vyvalue::Int) where {T<:MOI.AbstractScalarSet}
-    acnt = length(func.affine_terms)
-    (vxvalue != nothing) && (vx = MOI.VariableIndex(vxvalue))
-    (vyvalue != nothing) && (vy = MOI.VariableIndex(vyvalue))
-    for qd_term in func.quadratic_terms
-        if (qd_term.variable_index1 == vx && qd_term.variable_index2 == vx)
-            ax = qd_term.coefficient
-        elseif (qd_term.variable_index1 == vy && qd_term.variable_index2 == vy)
-            ay = qd_term.coefficient
-        else
-            axy = qd_term.coefficient
-        end
-    end
-    affine_coefficient_1 = func.affine_terms[1].coefficient
-    affine_coefficient_2 = func.affine_terms[2].coefficient
-    if acnt == 2
-        if (func.affine_terms[1].variable_index1 == vx)
-            bx = affine_coefficient_1
-            by = affine_coefficient_2
-        else
-            bx = affine_coefficient_2
-            by = affine_coefficient_1
-        end
-    else
-        if (func.affine_terms[1].variable_index1 == vx)
-            bx = affine_coefficient_1
-            by = 0.0
-        else
-            bx = 0.0
-            by = affine_coefficient_1
-        end
-    end
-    c = get_value(set) - func.constant
-end
-=#
-
-"""
-$(FUNCTIONNAME)
-Classifies constraints as univariate or bivariate and adds
-them to storage vectors.
-"""
-function classify_quadratics!(m::Optimizer)
-    a = 0.0
-    b = 0.0
-    c = 0.0
-    # Check for Univariate and Bivariate Lesser Constraints
-    for (func,set) in m._quadratic_leq_constraints
-        if check_univariate_quad(func)
-            a,b,c,vi = get_univariate_coeff(func,set)
-            a_neg = -1.0*a
-            b_neg = -1.0*b
-            c_neg = -1.0*c
-            push!(m._univariate_quadratic_leq_constraints,(a_neg,b_neg,c_neg,vi))
-        #=
-        else
-             flag,vxi,vyi = check_bivariate_quad(func)
-             if flag
-                ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
-                push!(m._bivariate_quadratic_geq_constraints,(-ax,-ay,-axy,-bx,-by,c,vxi,vyi))
-            end
-            =#
+            aik_xL = aik*(@inbounds lower_bounds[indx_k])
+            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            temp_sum_leq -= min(aik_xL, aik_xU)
+            temp_sum_geq += max(aik_xL, aik_xU)
         end
     end
 
-    # Check for Univariate and Bivariate Greater Constraints
-    for (func,set) in m._quadratic_geq_constraints
-        if check_univariate_quad(func)
-            a,b,c,vi = get_univariate_coeff(func,set)
-            push!(m._univariate_quadratic_geq_constraints,(a,b,c,vi))
-        #=
-        else
-            flag,vxi,vyi = check_bivariate_quad(func)
-            if flag
-               ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
-               push!(m._bivariate_quadratic_geq_constraints,(ax,ay,axy,bx,by,-c,vxi,vyi))
-           end
-           =#
-        end
-    end
-
-    # Check for Univariate and Bivariate Equality Constraints
-    for (func,set) in m._quadratic_eq_constraints
-        if check_univariate_quad(func)
-            a,b,c,vi = get_univariate_coeff(func,set)
-            push!(m._univariate_quadratic_eq_constraints,(a,b,c,vi))
-        #=
-        else
-            flag,vxi,vyi = check_bivariate_quad(func)
-            if flag
-               ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
-               push!(m._bivariate_quadratic_geq_constraints,(ax,ay,axy,bx,by,-c,vxi,vyi))
-           end
-           flag,vxi,vyi = check_bivariate_quad(func)
-           if flag
-              ax,ay,axy,bx,by,c = get_bivariate_coeff(func,set)
-              push!(m._bivariate_quadratic_geq_constraints,(-ax,-ay,-axy,-bx,-by,c,vxi,vyi))
-          end
-          =#
-        end
-    end
-    return
-end
-
-"""
-$(FUNCTIONNAME)
-Kernel of the bound tightening operation on univariant qudaratic functions.
-Called for each univariate function.
-"""
-function univariate_kernel(m::Optimizer,a::Float64,b::Float64,c::Float64,vi::Int)
-        flag = true
-        term1 = c + (b^2)/(4.0*a)
-        term2 = term1/a
-        if ((term1 > 0.0) && (a < 0.0)) # No solution, fathom node
-            flag = false
-        elseif (term2 >= 0.0)
-            xlo = m._current_node.lower_variable_bounds[vi]
-            xhi = m._current_node.upper_variable_bounds[vi]
-            chk1 = -sqrt(term2)-b/(2.0*a)
-            chk2 = sqrt(term2)-b/(2.0*a)
-            if (a > 0.0)
-                (chk1 < xlo) && (m._current_node.lower_variable_bounds[vi] = max(xlo,chk2))
-                (chk2 > xhi) && (m._current_node.upper_variable_bounds[vi] = min(xhi,chk1))
-            else
-                m._current_node.lower_variable_bounds[vi] = max(xlo,chk1)
-                m._current_node.upper_variable_bounds[vi] = min(xhi,chk2)
-            end
-            if (m._current_node.lower_variable_bounds[vi] <= m._current_node.upper_variable_bounds[vi])
-                flag = true
-            end
-        else
-            flag = true
-        end
-        return flag
-end
-
-"""
-$(FUNCTIONNAME)
-Performs bound tightening on all univariate quadratic functions.
-"""
-function univariate_quadratic(m::Optimizer)
-    feas = true
-    # fathom ax^2 + bx + c > l quadratics
-    for (a, b, c, vi) in m._univariate_quadratic_geq_constraints
-        if ~feas
-            break
-        end
-        feas = univariate_kernel(m, a, b, c , vi)
-    end
-    # fathom ax^2 + bx + c < u quadratics
-    for (a, b, c, vi) in m._univariate_quadratic_leq_constraints
-        if ~feas
-            break
-        end
-        feas = univariate_kernel(m, -a, -b, -c, vi)
-    end
-    # fathom ax^2 + bx + c = v quadratics
-    for (a, b, c, vi) in m._univariate_quadratic_eq_constraints
-        if ~feas
-            break
-        end
-        feas = univariate_kernel(m, a, b, c, vi)
-        if ~feas
-            break
-        end
-        feas = univariate_kernel(m, -a, -b, -c, vi)
-     end
-     return feas
-end
-
-#=
-"""
-$(FUNCTIONNAME)
-Kernel of the bound tightening operation on bivariate qudaratic functions.
-Called for each bivariate function.
-"""
-function bivariate_kernel(m::Optimizer,n::NodeBB,ax::Float64,ay::Float64,axy::Float64,
-                         bx::Float64,by::Float64,vi1::Int,vi2)
-        # Case distinction from Vigerske disseration (TO DO)
-end
-"""
-$(FUNCTIONNAME)
-Performs bound tightening on all bivariate quadratic functions.
-"""
-function bivariate_quadratic(m::Optimizer,n::NodeBB)
-    feas = true
-    # fathom ax^2 + bx + c > l quadratics
-    for (ax,ay,axy,bx,by,vi) in m.bivariate_quadratic_geq_constraints
-        feas = bivariate_kernel(m,n,ax,ay,axy,bx,by,vi)
-        (~feas) && return feas
-    end
-    return feas
-end
-=#
-
-"""
-$(FUNCTIONNAME)
-
-Performs forward-reverse pass on directed graph as
-part of constraint propagation.
-"""
-function cpwalk(x::Optimizer)
-
-    n = x._current_node
-    evaluator = x._relaxed_evaluator
-
-    # runs at midpoint bound
-    midx = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
-    unsafe_check_fill!(isnan, midx, 0.0, length(midx))
-
-    # set working node to n, copies pass parameters from EAGO optimizer
-    prior_sg_tighten = evaluator.subgrad_tighten
-    evaluator.current_node = n
-    println("evaluator.current_node = $(evaluator.current_node)")
-    evaluator.has_reverse = true
-    evaluator.subgrad_tighten = false
-    evaluator.cp_repetitions = x.cp_repetitions
-    evaluator.cp_tolerance = x.cp_tolerance
-
-    # Run forward-reverse pass and retreive node for interval forward-reverse pass
-    evaluator.subgrad_tighten = ~x.cp_interval_only
-
-    feas = forward_reverse_pass(evaluator, midx)
-    @inbounds n.lower_variable_bounds[:] = evaluator.current_node.lower_variable_bounds
-    @inbounds n.upper_variable_bounds[:] = evaluator.current_node.upper_variable_bounds
-
-    # resets forward reverse scheme for lower bounding problem
-    evaluator.has_reverse = false
-    evaluator.subgrad_tighten = prior_sg_tighten
-
-    #println("cp feasibility: $(feas)")
-
-    return feas
+    return true
 end

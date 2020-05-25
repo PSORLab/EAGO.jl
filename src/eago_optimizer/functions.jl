@@ -1,22 +1,70 @@
+"""
+$(TYPEDEF)
+
+An abstract super-type used for representing constraints built by EAGO's backend.
+"""
+abstract type AbstractEAGOConstraint end
+
+"""
+$(TYPEDEF)
+
+"""
+struct AffineFunctionIneq <: AbstractEAGOConstraint
+    terms::Vector{SAF}
+    constant::Float64
+end
+
+
+"""
+$(TYPEDEF)
+
+"""
+struct AffineFunctionEq <: AbstractEAGOConstraint
+    terms::Vector{SAF}
+    constant::Float64
+end
+
 @enum(QUAD_TYPE, QD_LT, QD_GT, QD_ET)
 
 ####
 #### Quadratic Storage
 ####
+"""
+$(TYPEDEF)
 
+Stores a general quadratic function with a buffer.
+"""
+mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
+    func::SQF
+    qd_type::QUAD_TYPE
+    buffer::OrderedDict{Int, Float64}
+    saf::SAF
+    nx::Int
+end
+
+"""
+$(TYPDEF)
+
+Stores a general quadratic function with a buffer.
+"""
+mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
+    func::SQF
+    qd_type::QUAD_TYPE
+    buffer::OrderedDict{Int, Float64}
+    saf::SAF
+    nx::Int
+end
+
+#=
 """
 $(FUNCTIONAME)
 
 Stores a general quadratic function with a buffer.
 """
-mutable struct BufferedQuadratic
-    func::SQF
-    qd_type::QUAD_TYPE
-    buffer::OrderedDict{Int, Float64}
-    saf1::SAF
-    saf2::SAF
-    nx::Int
+mutable struct BufferedNonlinear <: AbstractEAGOConstraint
+    func
 end
+=#
 
 ####
 #### Nonlinear Storage
@@ -108,7 +156,10 @@ end
 Holds specialized constraint functions used by EAGO to generate cuts
 =#
 Base.@kwdef mutable struct ParsedProblem
-    _sqf_leq::Vector{BufferedQuadratic{LT}} = Vector{BufferedQuadratic{LT}}[]
+    _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
+    _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
+    _sqf_leq::Vector{BufferedQuadraticIneq} = Vector{BufferedQuadraticIneq}[]
+    _sqf_eq::Vector{BufferedQuadraticEq} = Vector{BufferedQuadraticEq}[]
 end
 
 @enum(CI_ENUM, CI_UNSET, CI_QDLT, CI_QDET, CI_NLLT, CI_NLET, CI_SOC)
