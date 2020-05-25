@@ -6,12 +6,49 @@ An abstract super-type used for representing constraints built by EAGO's backend
 abstract type AbstractEAGOConstraint end
 
 """
+
+Computes the lower interval bound for `AbstractEAGOConstraint` representing an
+inequality constraint.
+"""
+function lower_interval_bound end
+
+"""
+
+Computes a tuple representing the lower and upper interval bounds for a
+`AbstractEAGOConstraint` representing an equality constraint.
+"""
+function interval_bound end
+
+
+"""
 $(TYPEDEF)
 
 """
 struct AffineFunctionIneq <: AbstractEAGOConstraint
-    terms::Vector{SAF}
+    terms::Vector{Tuple{Float64,Int}}
     constant::Float64
+    len::Int
+end
+
+function lower_interval_bound(f::AffineFunctionIneq, y::NodeBB)
+
+    terms = f.terms
+    lo_bnds = y.lower_variable_bounds
+    up_bnds = y.upper_variable_bounds
+
+    lower_interval_bound = f.constant
+    for i = 1:f.len
+        coeff, indx = @inbounds terms[k]
+        if coeff > 0.0
+            lvb = @inbounds lo_bnds[indx]
+            lower_interval_bound += coeff*lvb
+        else
+            uvb = @inbounds up_bnds[indx]
+            lower_interval_bound += coeff*uvb
+        end
+    end
+
+    return lower_interval_bound
 end
 
 
@@ -20,11 +57,33 @@ $(TYPEDEF)
 
 """
 struct AffineFunctionEq <: AbstractEAGOConstraint
-    terms::Vector{SAF}
+    terms::Vector{Tuple{Float64,Int}}
     constant::Float64
 end
 
-@enum(QUAD_TYPE, QD_LT, QD_GT, QD_ET)
+function interval_bound(s::SAF, y::NodeBB, flag::Bool)
+    terms = f.terms
+    lo_bnds = y.lower_variable_bounds
+    up_bnds = y.upper_variable_bounds
+
+    lower_interval_bound = f.constant
+    upper_interval_bound = f.constant
+    for i = 1:f.len
+        coeff, indx = @inbounds terms[k]
+        lvb = @inbounds lo_bnds[indx]
+        uvb = @inbounds up_bnds[indx]
+        if coeff > 0.0
+            lower_interval_bound += coeff*lvb
+            upper_interval_bound += coeff*uvb
+        else
+            lower_interval_bound += coeff*uvb
+            upper_interval_bound += coeff*lvb
+        end
+    end
+
+    return lower_interval_bound, upper_interval_bound
+end
+
 
 ####
 #### Quadratic Storage
@@ -36,7 +95,6 @@ Stores a general quadratic function with a buffer.
 """
 mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
     func::SQF
-    qd_type::QUAD_TYPE
     buffer::OrderedDict{Int, Float64}
     saf::SAF
     nx::Int
@@ -49,7 +107,6 @@ Stores a general quadratic function with a buffer.
 """
 mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     func::SQF
-    qd_type::QUAD_TYPE
     buffer::OrderedDict{Int, Float64}
     saf::SAF
     nx::Int

@@ -149,16 +149,8 @@ Checks to see if current node should be reprocessed.
 """
 repeat_check(t::ExtensionType, m::Optimizer) = false
 
-function relative_gap(L::Float64, U::Float64)
-    gap = Inf
-    if (L > -Inf) & (U < Inf)
-        gap = abs(U - L)/(max(abs(L), abs(U)))
-    end
-    return gap
-end
-function relative_tolerance(L::Float64, U::Float64, tol::Float64)
-    return (relative_gap(L, U)  > tol) || ~(L > -Inf)
-end
+relative_gap(L::Float64, U::Float64) = ((L > -Inf) && (U < Inf)) ?  abs(U - L)/(max(abs(L), abs(U))) : Inf
+relative_tolerance(L::Float64, U::Float64, tol::Float64) = relative_gap(L, U)  > tol || ~(L > -Inf)
 
 """
 $(SIGNATURES)
@@ -344,42 +336,34 @@ constraint programming walk up to tolerances specified in
 function preprocess!(t::ExtensionType, m::Optimizer)
 
     # Sets initial feasibility
-    feas = true
+    feasible_flag = true
     rept = 0
 
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
 
     # runs poor man's LP contractor
-    if ((m._parameters.lp_depth >= m._iteration_count) & feas)
-        feas = lp_bound_tighten(m)
-    end
-
-    # runs univariate quadratic contractor
-    if (m._parameters.quad_uni_depth >= m._iteration_count) & feas
-        for i = 1:m._parameters.quad_uni_repetitions
-            feas = univariate_quadratic(m)
-            !feas && break
+    if (m._parameters.lp_depth >= m._iteration_count) && feasible_flag
+        for func in
         end
     end
 
     m._obbt_performed_flag = false
-    if (m._parameters.obbt_depth >= m._iteration_count) & feas
+    if (m._parameters.obbt_depth >= m._iteration_count) && feasible_flag
         m._obbt_performed_flag = true
         for i = 1:m._parameters.obbt_repetitions
-            feas = obbt(m)
-            !feas && break
+            feasible_flag = obbt(m)
+            !feasible_flag && break
         end
     end
 
-    if (m._parameters.cp_depth >= m._iteration_count) & feas
-        feas = cpwalk(m)
+    if (m._parameters.cp_depth >= m._iteration_count) && feasible_flag
+        feasible_flag = cpwalk(m)
     end
 
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
                            lower_variable_bounds(m._current_node))
-    m._preprocess_feasibility = feas
-    #println("preprocess feasibility: $(x._preprocess_feasibility)")
+    m._preprocess_feasibility = feasible_flag
 
     return
 end
@@ -474,8 +458,8 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
         vi2 = term.variable_index_2.value
         @inbounds il1b = lo_bnds[vi1]
         @inbounds iu1b = up_bnds[vi1]
-        if vi1 == vi2
-            val_intv += coeff*Interval(il1b, iu1b)^2
+        if vi1 === vi2
+            val_intv += coeff*pow(Interval(il1b, iu1b), 2)
         else
             @inbounds il2b = lo_bnds[vi2]
             @inbounds iu2b = up_bnds[vi2]
@@ -487,12 +471,6 @@ function interval_bound(s::SQF, y::NodeBB, flag::Bool)
     end
     return val_intv.hi
 end
-
-#function lower_interval_obj(obj::SV, y::NodeBB)
-#    @inbounds y.lower_variable_bounds[x._objective_sv.variable.value]
-#end
-#lower_interval_objective(obj::SAF, y::NodeBB) = interval_bound(obj, y, true)
-#lower_interval_objective(obj::SQF, y::NodeBB) = interval_bound(obj, y, true)
 
 """
 $(SIGNATURES)
