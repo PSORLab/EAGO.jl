@@ -283,10 +283,60 @@ end
 Holds specialized constraint functions used by EAGO to generate cuts
 =#
 Base.@kwdef mutable struct ParsedProblem
+
+    # objectives
+    _objective_sv::SV = SV(-1)
+    _objective_saf::SAF = SAF(SAT[], 0.0)
+    _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
+    _objective_nl = nothing
+    _objective_type::ObjectiveType = UNSET
+
     _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
     _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
     _sqf_leq::Vector{BufferedQuadraticIneq} = Vector{BufferedQuadraticIneq}[]
     _sqf_eq::Vector{BufferedQuadraticEq} = Vector{BufferedQuadraticEq}[]
+
+    _saf_leq_count::Int = 0
+    _saf_eq_count::Int = 0
+    _sqf_leq_count::Int = 0
+    _sqf_eq_count::Int = 0
+end
+
+function bound_objective(m::Optimizer)
+    d = x._relaxed_evaluator
+
+    if x._objective_type === NONLINEAR
+
+        objective_lo = eval_objective_lo(d)
+        constraints = d.constraints
+        constr_num = d.constraint_number
+        constraints_intv_lo = zeros(Float64, constr_num)
+        constraints_intv_hi = zeros(Float64, constr_num)
+        eval_constraint_lo!(d, constraints_intv_lo)
+        eval_constraint_hi!(d, constraints_intv_hi)
+        constraints_bnd_lo = d.constraints_lbd
+        constraints_bnd_hi = d.constraints_ubd
+
+        for i = 1:d.constraint_number
+            @inbounds constraints_intv_lo = constraints_bnd_lo[i]
+            @inbounds constraints_intv_hi = constraints_bnd_hi[i]
+            if (constraints_intv_lo > constraints_intv_hi) || (constraints_intv_hi < constraints_intv_lo)
+                feas = false
+                break
+            end
+        end
+    elseif x._objective_type ===  SINGLE_VARIABLE
+        obj_indx = x._objective_sv.variable.value
+        objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
+    elseif x._objective_type === SCALAR_AFFINE
+        objective_lo = interval_bound(x._objective_saf, y, true)
+    elseif x._objective_type === SCALAR_QUADRATIC
+        objective_lo = interval_bound(x._objective_sqf, y, true)
+    end
+
+    if objective_lo > x._lower_objective_value
+        x._lower_objective_value = objective_lo
+    end
 end
 
 @enum(CI_ENUM, CI_UNSET, CI_QDLT, CI_QDET, CI_NLLT, CI_NLET, CI_SOC)

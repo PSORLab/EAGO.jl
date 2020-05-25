@@ -403,6 +403,18 @@ function update_relaxed_problem_box!(m::Optimizer, y::NodeBB)
     return
 end
 
+function interval_objective_bound(m::Optimizer, n::NodeBB)
+    interval_objective_bound = bound_objective(m)
+    if interval_objective_bound > m._lower_objective_value
+        m._lower_objective_value = interval_objective_bound
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
+        m._cut_add_flag = false
+        return true
+    end
+    return false
+end
+
 """
 $(SIGNATURES)
 
@@ -411,87 +423,50 @@ calculation. This is called when the optimizer used to compute the lower bound
 does not return a termination and primal status code indicating that it
 successfully solved the relaxation to a globally optimal point.
 """
-function interval_lower_bound!(x::Optimizer, y::NodeBB)
+function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
-    feas = true
+    feasible_flag = true
 
-    d = x._relaxed_evaluator
+    if !cp_condition(m)
+        for i = 1:m._working_problem._saf_leq_count
+            saf_leq = @inbounds m._working_problem._saf_leq[i]
+            feasible_flag &= (lower_interval_bound(saf_leq, n) <= 0.0)
+            !feasible_flag && break
+        end
 
-    if x._objective_type === NONLINEAR
-
-        objective_lo = eval_objective_lo(d)
-        constraints = d.constraints
-        constr_num = d.constraint_number
-        constraints_intv_lo = zeros(Float64, constr_num)
-        constraints_intv_hi = zeros(Float64, constr_num)
-        eval_constraint_lo!(d, constraints_intv_lo)
-        eval_constraint_hi!(d, constraints_intv_hi)
-        constraints_bnd_lo = d.constraints_lbd
-        constraints_bnd_hi = d.constraints_ubd
-
-        for i = 1:d.constraint_number
-            @inbounds constraints_intv_lo = constraints_bnd_lo[i]
-            @inbounds constraints_intv_hi = constraints_bnd_hi[i]
-            if (constraints_intv_lo > constraints_intv_hi) || (constraints_intv_hi < constraints_intv_lo)
-                feas = false
-                break
+        if feasible_flag
+            for i = 1:m._working_problem._saf_eq_count
+                saf_eq = @inbounds m._working_problem._saf_eq[i]
+                lower_value, upper_value = interval_bound(saf_eq, n)
+                feasible_flag &= (lower_value <= 0.0 <= upper_value)
+                !feasible_flag && break
             end
         end
-    elseif x._objective_type ===  SINGLE_VARIABLE
-            obj_indx = x._objective_sv.variable.value
-            objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-    elseif x._objective_type === SCALAR_AFFINE
-            objective_lo = interval_bound(x._objective_saf, y, true)
-    elseif x._objective_type === SCALAR_QUADRATIC
-            objective_lo = interval_bound(x._objective_sqf, y, true)
-    end
 
-    for (func, set) in x._linear_leq_constraints
-        (~feas) && break
-        if interval_bound(func, y, true) > set.upper
-            feas = false
+        if feasible_flag
+            for i = 1:m._working_problem._sqf_leq_count
+                sqf_leq = @inbounds m._working_problem._saf_leq[i]
+                feasible_flag &= (lower_interval_bound(sqf_leq, n) <= 0.0)
+                !feasible_flag && break
+            end
         end
-    end
-    for (func, set) in x._linear_geq_constraints
-        (~feas) && break
-        if interval_bound(func, y, false) < set.lower
-            feas = false
-        end
-    end
-    for (func, set) in x._linear_eq_constraints
-        (~feas) && break
-        if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
-            feas = false
+
+        if feasible_flag
+            for i = 1:m._working_problem._sqf_eq_count
+                sqf_eq = @inbounds m._working_problem._sqf_eq[i]
+                lower_value, upper_value = interval_bound(sqf_eq, n)
+                feasible_flag &= (lower_value <= 0.0 <= upper_value)
+                !feasible_flag && break
+            end
         end
     end
 
-    for (func, set) in x._quadratic_leq_constraints
-        (~feas) && break
-        if interval_bound(func, y, true) > set.upper
-            feas = false
-        end
-    end
-    for (func, set) in x._quadratic_geq_constraints
-        (~feas) && break
-        if interval_bound(func, y, false) < set.lower
-            feas = false
-        end
-    end
-    for (func, set) in x._quadratic_eq_constraints
-        (~feas) && break
-        if (interval_bound(func, y, true) > set.value) || (interval_bound(func, y, false) < set.value)
-            feas = false
-        end
-    end
-
-    x._lower_feasibility = feas
-    if feas
-        if objective_lo > x._lower_objective_value
-            x._lower_objective_value = objective_lo
-        end
+    if feasible_flag
+        interval_objective_used = interval_objective_bound(m, n)
     else
         x._lower_objective_value = -Inf
     end
+    x._lower_feasibility = feasible_flag
 
     return
 end
@@ -504,12 +479,12 @@ and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, m::Optimizer)
 
-    y = m._current_node
+    n = m._current_node
 
     if ~m._obbt_performed_flag
-        @. m._current_xref = 0.5*(y.lower_variable_bounds + y.upper_variable_bounds)
+        @. m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
-        update_relaxed_problem_box!(m, y)
+        update_relaxed_problem_box!(m, n)
         relax_problem!(m, m._current_xref, 1)
     end
 
@@ -531,16 +506,18 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
             m._lower_feasibility = true
             m._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
             @inbounds m._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), m._lower_variable_index)
-            m._cut_add_flag = m._lower_feasibility
-            set_dual!(m)
+            interval_objective_used = interval_objective_bound(m, n)
+            if !interval_objective_used
+                set_dual!(m)
+                m._cut_add_flag = true
+            end
         else
             m._cut_add_flag = false
             m._lower_feasibility  = false
             m._lower_objective_value = -Inf
         end
     else
-        interval_lower_bound!(m, y)
-        m._cut_add_flag = false
+        fallback_interval_lower_bound!(m, n)
     end
     return
 end
@@ -851,7 +828,7 @@ Default postprocess perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, x::Optimizer)
 
-    if x.dbbt_depth > x._iteration_count
+    if x._parameters.dbbt_depth > x._iteration_count
         variable_dbbt!(x._current_node, x._lower_lvd, x._lower_uvd,
                        x._lower_objective_value, x._global_upper_bound,
                        x._variable_number)
