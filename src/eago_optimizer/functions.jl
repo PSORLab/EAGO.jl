@@ -61,7 +61,7 @@ struct AffineFunctionEq <: AbstractEAGOConstraint
     constant::Float64
 end
 
-function interval_bound(s::SAF, y::NodeBB, flag::Bool)
+function interval_bound(f::AffineFunctionEq, y::NodeBB)
     terms = f.terms
     lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
@@ -100,6 +100,42 @@ mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
     nx::Int
 end
 
+function lower_interval_bound(f::BufferedQuadraticIneq, n::NodeBB)
+
+    lo_bnds = n.lower_variable_bounds
+    up_bnds = n.upper_variable_bounds
+    lower_interval_bound = Interval{Float64}(f.func.constant)
+
+    for aff_term in f.func.affine_terms
+        coeff = aff_term.coefficient
+        vi = aff_term.variable_index.value
+        @inbounds xL = lo_bnds[vi]
+        @inbounds xU = up_bnds[vi]
+        lower_interval_bound += coeff > 0.0 ? coeff*xL : coeff*xU
+    end
+
+    for quad_term in f.func.quadratic_terms
+        coeff = quad_term.coefficient
+        vi1 = quad_term.variable_index_1.value
+        vi2 = quad_term.variable_index_2.value
+        @inbounds xL = lo_bnds[vi1]
+        @inbounds xU = up_bnds[vi1]
+        if vi1 === vi2
+            if coeff > 0.0
+                lower_interval_bound += (0.0 < xL) ? coeff*xL*xL : ((xU <= 0.0) ? coeff*xU*xU : 0.0)
+            else
+                lower_interval_bound += (xL < xU) ? coeff*xU*xU : coeff*xL*xL
+            end
+        else
+            @inbounds il2b = lo_bnds[vi2]
+            @inbounds iu2b = up_bnds[vi2]
+            lower_interval_bound += coeff*Interval{Float64}(xL, xU)*Interval{Float64}(il2b, iu2b)
+        end
+    end
+
+    return val_intv.lo, val_intv.hi
+end
+
 """
 $(TYPDEF)
 
@@ -111,6 +147,40 @@ mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     saf::SAF
     nx::Int
 end
+
+function interval_bound(f::BufferedQuadraticEq, n::NodeBB)
+
+    lo_bnds = n.lower_variable_bounds
+    up_bnds = n.upper_variable_bounds
+    val_intv = Interval(f.func.constant)
+
+    for aff_term in f.func.affine_terms
+        coeff = aff_term.coefficient
+        vi = aff_term.variable_index.value
+        @inbounds il1b = lo_bnds[vi]
+        @inbounds iu1b = up_bnds[vi]
+        val_intv += coeff*Interval(il1b, iu1b)
+    end
+
+    for quad_term in f.func.quadratic_terms
+        coeff = quad_term.coefficient
+        vi1 = quad_term.variable_index_1.value
+        vi2 = quad_term.variable_index_2.value
+        @inbounds il1b = lo_bnds[vi1]
+        @inbounds iu1b = up_bnds[vi1]
+        if vi1 === vi2
+            val_intv += coeff*pow(Interval(il1b, iu1b), 2)
+        else
+            @inbounds il2b = lo_bnds[vi2]
+            @inbounds iu2b = up_bnds[vi2]
+            val_intv += coeff*Interval(il1b, iu1b)*Interval(il2b, iu2b)
+        end
+    end
+
+    return val_intv.lo, val_intv.hi
+end
+
+
 
 #=
 """

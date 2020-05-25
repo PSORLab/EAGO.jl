@@ -230,14 +230,6 @@ function convergence_check(t::ExtensionType, m::Optimizer)
   if (U < Inf) & (L > Inf)
       t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
   end
-  if t && contains_optimimum(x)
-      println("----------------------------------------------------------")
-      println("----------------------------------------------------------")
-      println("--------- TRUE OPTIMUM FATHOMED BY CONVERGENCE -----------")
-      println("----------------------------------------------------------")
-      println("----------------------------------------------------------")
-  end
-
   return t
 end
 
@@ -412,67 +404,6 @@ function update_relaxed_problem_box!(m::Optimizer, y::NodeBB)
 end
 
 """
-$(FUNCTIONNAME)
-
-Computes the natural interval extension of a MathOptInterface function `s` or
-ScalarQuadaraticFunction on a node `y`. Returns the lower bound if flag
-is true and the upper bound if flag is false.
-"""
-function interval_bound(s::SAF, y::NodeBB, flag::Bool)
-    val_lo = s.constant
-    lo_bnds = y.lower_variable_bounds
-    up_bnds = y.upper_variable_bounds
-    @inbounds for term in s.terms
-        vi = term.variable_index.value
-        coeff = term.coefficient
-        if coeff > 0.0
-            if flag
-                val_lo += coeff*lo_bnds[vi]
-            else
-                val_lo += coeff*up_bnds[vi]
-            end
-        else
-            if flag
-                val_lo += coeff*up_bnds[vi]
-            else
-                val_lo += coeff*lo_bnds[vi]
-            end
-        end
-    end
-    return val_lo
-end
-function interval_bound(s::SQF, y::NodeBB, flag::Bool)
-    lo_bnds = y.lower_variable_bounds
-    up_bnds = y.upper_variable_bounds
-    val_intv = Interval(s.constant)
-    for term in s.affine_terms
-        coeff = term.coefficient
-        vi = term.variable_index.value
-        @inbounds il1b = lo_bnds[vi]
-        @inbounds iu1b = up_bnds[vi]
-        val_intv += coeff*Interval(il1b, iu1b)
-    end
-    for term in s.quadratic_terms
-        coeff = term.coefficient
-        vi1 = term.variable_index_1.value
-        vi2 = term.variable_index_2.value
-        @inbounds il1b = lo_bnds[vi1]
-        @inbounds iu1b = up_bnds[vi1]
-        if vi1 === vi2
-            val_intv += coeff*pow(Interval(il1b, iu1b), 2)
-        else
-            @inbounds il2b = lo_bnds[vi2]
-            @inbounds iu2b = up_bnds[vi2]
-            val_intv += coeff*Interval(il1b, iu1b)*Interval(il2b, iu2b)
-        end
-    end
-    if flag
-        return val_intv.lo
-    end
-    return val_intv.hi
-end
-
-"""
 $(SIGNATURES)
 
 A fallback lower bounding problem that consists of an natural interval extension
@@ -611,7 +542,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         interval_lower_bound!(m, y)
         m._cut_add_flag = false
     end
-    #println("lower feasibility: $(m._lower_feasibility)")
     return
 end
 
@@ -644,18 +574,6 @@ function cut_update(x::Optimizer)
     return
 end
 
-#=
-delete_objective_cuts!(obj::SV, x::Optimizer) = nothing
-for i in (SAF, SQF, Nothing)
-    @eval function delete_objective_cuts!(obj::$i, x::Optimizer)
-        for i=2:x._cut_iterations
-            ci = x._objective_cut_ci_saf[i]
-            MOI.delete(x.relaxed_optimizer, ci)
-        end
-        nothing
-    end
-end
-=#
 
 """
 $(SIGNATURES)
@@ -770,9 +688,6 @@ function add_cut!(t::ExtensionType, x::Optimizer)
     else
         x._cut_add_flag = false
     end
-    #println("cut_termination_status: $(x._cut_termination_status)")
-    #println("cut_result_status: $(x._cut_result_status)")
-    #println("cut feasibility: $(x._lower_feasibility)")
 
     return
 end
@@ -793,13 +708,6 @@ function default_nlp_heurestic(x::Optimizer, y::NodeBB)
     bool |= (rand() < 0.5^(depth - x._parameters.upper_bounding_depth))
     return bool
 end
-
-#=
-function set_objective!(obj::S, upper_optimizer::T) where {S, T <: MOI.AbstractOptimizer}
-    MOI.set(upper_optimizer, MOI.ObjectiveFunction{S}(), x._objective)
-    nothing
-end
-=#
 
 """
 $(SIGNATURES)
