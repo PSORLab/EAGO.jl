@@ -46,11 +46,21 @@ module EAGO
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
            get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap
 
+    # map/reduce nonallocating no bounds checking map-reduce like utilities
     include("eago_optimizer/unsafe_utilities.jl")
+
+    # creates a context that removes domain violations when constructing bounds
     include("eago_optimizer/guarded_context.jl")
+
+    # defines structure used to store node in stack
     include("eago_optimizer/node_bb.jl")
-    include("eago_optimizer/functions.jl")
+
+    # load internal storage functions
+    include("eago_optimizer/functions/functions.jl")
+
     include("eago_optimizer/evaluator/evaluator.jl")
+
+    # structure
     include("eago_optimizer/logging/log.jl")
     include("eago_optimizer/optimizer.jl")
     include("eago_optimizer/variables.jl")
