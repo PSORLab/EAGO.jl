@@ -357,7 +357,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
                            lower_variable_bounds(m._current_node))
     m._preprocess_feasibility = feasible_flag
 
-    return
+    return nothing
 end
 
 """
@@ -375,29 +375,25 @@ function update_relaxed_problem_box!(m::Optimizer, n::NodeBB)
     lower_bound = n.lower_variable_bounds
     upper_bound = n.upper_variable_bounds
 
-    node_map = wp._relaxed_variable_node_map
     relaxed_variable_eq = wp._relaxed_variable_eq
     for i = 1:wp._var_eq_count
-        ci = @inbounds relaxed_variable_eq[i]
-        ni = node_map[ci]
-        MOI.set(opt, MOI.ConstraintSet(), ci, ET(@inbounds lower_bound[ni]))
+        constr_indx, node_indx = @inbounds relaxed_variable_eq[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, ET(@inbounds lower_bound[node_indx]))
     end
 
     relaxed_variable_lt = wp._relaxed_variable_lt
     for i = 1:wp._var_leq_count
-        ci = @inbounds relaxed_variable_lt[i]
-        ni = node_map[ci]
-        MOI.set(opt, MOI.ConstraintSet(), ci, LT(@inbounds upper_bound[ni]))
+        constr_indx, node_indx = @inbounds relaxed_variable_lt[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, LT(@inbounds upper_bound[node_indx]))
     end
 
     relaxed_variable_gt = wp._relaxed_variable_gt
     for i = 1:wp._var_geq_count
-        ci = @inbounds relaxed_variable_gt[i]
-        ni = node_map[ci]
-        MOI.set(opt, MOI.ConstraintSet(), ci, GT(@inbounds lower_bound[ni]))
+        constr_indx, node_indx = @inbounds relaxed_variable_gt[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT(@inbounds lower_bound[node_indx]))
     end
 
-    return
+    return nothing
 end
 
 function interval_objective_bound(m::Optimizer, n::NodeBB)

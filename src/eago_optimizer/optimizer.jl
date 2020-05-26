@@ -13,6 +13,8 @@
 # functions.
 #############################################################################
 
+@enum(BRANCH_VARIABLE, UNSPEC_BRANCH, NO_BRANCH, BRANCH)
+
 """
 $(TYPEDEF)
 
@@ -34,8 +36,10 @@ mutable struct VariableInfo
     has_upper_bound::Bool
     "Boolean indicating variable is fixed to a finite value."
     is_fixed::Bool
+    "Is variable used for branching (unset in input model)"
+    branch_on::BRANCH_VARIABLE
 end
-VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false)
+VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false, UNSPEC_BRANCH)
 lower_bound(x::VariableInfo) = x.lower_bound
 upper_bound(x::VariableInfo) = x.upper_bound
 
@@ -266,22 +270,6 @@ end
 """
 $(TYPEDEF)
 """
-Base.@kwdef mutable struct VariableNodeMap
-    eq_variable_indx::OrderedDict{CI{SV, ET}, Int} = OrderedDict{CI{SV, ET}, Int}()
-    leq_variable_indx::OrderedDict{CI{SV, LT}, Int} = OrderedDict{CI{SV, LT}, Int}()
-    geq_variable_indx::OrderedDict{CI{SV, GT}, Int} = OrderedDict{CI{SV, GT}, Int}()
-end
-getindex(v::VariableNodeMap, i::CI{SV, ET}) = v.eq_variable_indx[i]
-getindex(v::VariableNodeMap, i::CI{SV, LT}) = v.leq_variable_indx[i]
-getindex(v::VariableNodeMap, i::CI{SV, GT}) = v.geq_variable_indx[i]
-
-setindex!(v::VariableNodeMap, i::CI{SV, ET}, val) = (v.eq_variable_indx[i] = val)
-setindex!(v::VariableNodeMap, i::CI{SV, LT}, val) = (v.leq_variable_indx[i] = val)
-setindex!(v::VariableNodeMap, i::CI{SV, GT}, val) = (v.geq_variable_indx[i] = val)
-
-"""
-$(TYPEDEF)
-"""
 Base.@kwdef mutable struct ParsedProblem
 
     # Problem classification
@@ -320,11 +308,10 @@ Base.@kwdef mutable struct ParsedProblem
     _var_eq_count::Int = 0
 
     # need to retreive primal _relaxed_variable_index
-    _relaxed_variable_node_map::VariableNodeMap
     _relaxed_variable_index::Vector{VI} = VI[]
-    _relaxed_variable_eq::Vector{CI{SV, ET}} = CI{SV, ET}[]
-    _relaxed_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
-    _relaxed_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
+    _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
+    _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
+    _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
 end
 
 export Optimizer

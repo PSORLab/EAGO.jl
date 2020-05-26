@@ -30,30 +30,45 @@ quadratic cut.
 function load_relaxed_problem!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
 
-    # add variables and indices
-    variable_count = m._working_problem._variable_count
-    for i = 1:variable_count
-        push!(x._working_problem._relaxed_variable_index, MOI.add_variable(opt))
-    end
+    # add variables and indices and constraints
+    wp = m._working_problem
+    variable_count = wp._variable_count
+    node_count = 1
 
-    # add variables
     for i = 1:variable_count
-        @inbounds vinfo = x._variable_info[i]
-        single_variable = SV(x._working_problem._relaxed_variable_index[i])
+
+        relaxed_variable_indx = MOI.add_variable(relaxed_optimizer)
+        relaxed_variable = SV(relaxed_variable_indx)
+        push!(wp._relaxed_variable_index, relaxed_variable_indx)
+
+        vinfo = @inbounds wp._variable_info[i]
+        is_branch_variable = vinfo.branch_on === BRANCH
+
         if vinfo.is_integer
         elseif vinfo.is_fixed
-            ci_sv_et = MOI.add_constraint(relaxed_optimizer, single_variable, ET(vinfo.lower_bound))
-            m._relaxed_variable_node_map[ci_sv_et] = i
+            ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
+            if is_branch_variable
+                push!(wp._relaxed_variable_eq, (ci_sv_et, node_count))
+                wp._var_eq_count += 1
+            end
         else
             if vinfo.has_lower_bound
-                ci_sv_gt = MOI.add_constraint(relaxed_optimizer, single_variable, GT(vinfo.lower_bound))
-                m._relaxed_variable_node_map[ci_sv_gt] = i
+                ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
+                if is_branch_variable
+                    push!(wp._relaxed_variable_gt, (ci_sv_gt, node_count))
+                    wp._var_geq_count += 1
+                end
             end
             if vinfo.has_upper_bound
-                ci_sv_lt = MOI.add_constraint(relaxed_optimizer, single_variable, LT(vinfo.upper_bound))
-                m._relaxed_variable_node_map[ci_sv_lt] = i
+                ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
+                if is_branch_variable
+                    push!(wp._relaxed_variable_lt, (ci_sv_lt, node_count))
+                    wp._var_leq_count += 1
+                end
             end
         end
+
+        is_branch_variable && (node_count += 1)
     end
 
     # add linear constraints
