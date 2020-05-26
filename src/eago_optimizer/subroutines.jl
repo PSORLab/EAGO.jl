@@ -375,19 +375,19 @@ function update_relaxed_problem_box!(m::Optimizer, n::NodeBB)
     lower_bound = n.lower_variable_bounds
     upper_bound = n.upper_variable_bounds
 
-    relaxed_variable_eq = wp._relaxed_variable_eq
+    relaxed_variable_eq = m._relaxed_variable_eq
     for i = 1:wp._var_eq_count
         constr_indx, node_indx = @inbounds relaxed_variable_eq[i]
         MOI.set(opt, MOI.ConstraintSet(), constr_indx, ET(@inbounds lower_bound[node_indx]))
     end
 
-    relaxed_variable_lt = wp._relaxed_variable_lt
+    relaxed_variable_lt = m._relaxed_variable_lt
     for i = 1:wp._var_leq_count
         constr_indx, node_indx = @inbounds relaxed_variable_lt[i]
         MOI.set(opt, MOI.ConstraintSet(), constr_indx, LT(@inbounds upper_bound[node_indx]))
     end
 
-    relaxed_variable_gt = wp._relaxed_variable_gt
+    relaxed_variable_gt = m._relaxed_variable_gt
     for i = 1:wp._var_geq_count
         constr_indx, node_indx = @inbounds relaxed_variable_gt[i]
         MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT(@inbounds lower_bound[node_indx]))
@@ -397,14 +397,18 @@ function update_relaxed_problem_box!(m::Optimizer, n::NodeBB)
 end
 
 function interval_objective_bound(m::Optimizer, n::NodeBB)
+
     interval_objective_bound = bound_objective(m)
+
     if interval_objective_bound > m._lower_objective_value
         m._lower_objective_value = interval_objective_bound
-        fill!(m._lower_lvd, 0.0)
-        fill!(m._lower_uvd, 0.0)
+        unsafe_check_fill!(m._lower_lvd, 0.0, m._relaxed_variable_number)
+        unsafe_check_fill!(m._lower_uvd, 0.0, m._relaxed_variable_number)
         m._cut_add_flag = false
         return true
+
     end
+
     return false
 end
 
@@ -474,37 +478,41 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
 
-    if ~m._obbt_performed_flag
-        @. m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
-        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+    if !m._obbt_performed_flag
+        @__dot__ m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
+        unsafe_check_fill!(isnan, m._current_xref, 0.0, m._relaxed_variable_number)
         update_relaxed_problem_box!(m, n)
         relax_problem!(m, m._current_xref, 1)
     end
-
     relax_objective!(m, m._current_xref)
 
     # Optimizes the object
-    opt = m.relaxed_optimizer
-    MOI.optimize!(opt)
+    relaxed_optimizer = m.relaxed_optimizer
+    MOI.optimize!(relaxed_optimizer)
 
-    m._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
-    m._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
+    m._lower_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
+    m._lower_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
     if valid_flag && feasible_flag
         set_dual!(m)
         m._cut_add_flag = true
         m._lower_feasibility = true
-        m._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
-        @inbounds m._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), m._lower_variable_index)
+        m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
+        for i = 1:m._relaxed_variable_number
+            @inbounds m._lower_solution[i] = MOI.get(opt, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+        end
+
     elseif valid_flag
         m._cut_add_flag = false
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
+
     else
         fallback_interval_lower_bound!(m, n)
     end
-    return
+
+    return nothing
 end
 
 """

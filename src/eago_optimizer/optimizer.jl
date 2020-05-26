@@ -306,12 +306,6 @@ Base.@kwdef mutable struct ParsedProblem
     _var_leq_count::Int = 0
     _var_geq_count::Int = 0
     _var_eq_count::Int = 0
-
-    # need to retreive primal _relaxed_variable_index
-    _relaxed_variable_index::Vector{VI} = VI[]
-    _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
-    _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
-    _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
 end
 
 export Optimizer
@@ -450,6 +444,14 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
     _objective_cut_ci_saf::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
+
+    # need to retreive primal _relaxed_variable_index
+    "Number of variables actively branched on in B&B routine (exludes linear and fixed)"
+    _relaxed_variable_number::Int = 0
+    _relaxed_variable_index::Vector{VI} = VI[]
+    _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
+    _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
+    _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
 
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
