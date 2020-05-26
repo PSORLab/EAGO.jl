@@ -25,7 +25,7 @@ function print_solution!(m::Optimizer)
         println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         println("Solution is :")
         if m._feasible_solution_found
-            for i = 1:m._variable_number
+            for i = 1:m._input_problem._variable_number
                 println("    X[$i] = $(m._continuous_solution[i])")
             end
         end
@@ -186,49 +186,4 @@ function print_results_post_cut!(m::Optimizer)
         println(" ")
     end
     return
-end
-
-
-function in_tol(x::Float64, y::Float64, z::Float64)
-    IN_TOL = 5E-6
-    #println("x = $x, y = $y, z = $z")
-    #println("x - y = $(x - y)")
-    #println("z - x = $(z - x)")
-    if x - y <= -IN_TOL
-        return false
-    elseif z - x <= -IN_TOL
-        return false
-    end
-    return true
-end
-
-function contains_optimimum(d::Optimizer)
-    flag = false
-    x = [#-1161.336602364920054,
-         1728.920894729280008,
-         16000.000000000000000,
-         98.160663611844598,
-         3056.492536663350165,
-         2000.000000000000000, # fail
-         90.616089787108706,
-         94.187764478426800,
-         10.411118319452401,
-         2.616948857367740,
-         149.563293435280002]
-    copied_stack = deepcopy(d._stack)
-    while !isempty(copied_stack)
-        node = pop!(copied_stack)
-        temp_flag = true
-        for i = 1:length(node.lower_variable_bounds)
-            if !in_tol(x[i], node.lower_variable_bounds[i], node.upper_variable_bounds[i])
-                temp_flag = false
-                break
-            end
-        end
-        if temp_flag
-            flag = true
-            break
-        end
-    end
-    return flag
 end

@@ -51,15 +51,18 @@ module EAGO
     include("eago_optimizer/node_bb.jl")
     include("eago_optimizer/functions.jl")
     include("eago_optimizer/evaluator/evaluator.jl")
-    include("eago_optimizer/logging.jl")
+    include("eago_optimizer/logging/log.jl")
     include("eago_optimizer/optimizer.jl")
     include("eago_optimizer/variables.jl")
-    include("eago_optimizer/constraints.jl")
+    include("eago_optimizer/moi_constraints.jl")
     include("eago_optimizer/translate_constraints.jl")
     include("eago_optimizer/display.jl")
+
     include("eago_optimizer/relax.jl")
     include("eago_optimizer/domain_reduction.jl")
+
     include("eago_optimizer/subroutines.jl")
+    include("eago_optimizer/logging/log_iteration.jl")
     include("eago_optimizer/optimize.jl")
 
     # Import the script solving utilities
