@@ -150,11 +150,12 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 
-function bound_objective(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
-    d = x._relaxed_evaluator
+function bound_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
 
-    if x._objective_type === NONLINEAR
-
+    wp = m._working_problem
+    obj_type = wp._objective_type
+    if obj_type === NONLINEAR
+        #=
         objective_lo = eval_objective_lo(d)
         constraints = d.constraints
         constr_num = d.constraint_number
@@ -173,47 +174,53 @@ function bound_objective(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
                 break
             end
         end
-    elseif x._objective_type ===  SINGLE_VARIABLE
-        obj_indx = x._objective_sv.variable.value
-        objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-    elseif x._objective_type === SCALAR_AFFINE
-        objective_lo = interval_bound(x._objective_saf, y, true)
-    elseif x._objective_type === SCALAR_QUADRATIC
-        objective_lo = interval_bound(x._objective_sqf, y, true)
+        =#
+    elseif obj_type === SINGLE_VARIABLE
+        obj_indx = wp._objective_sv.variable.value
+        objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
+
+    elseif obj_type === SCALAR_AFFINE
+        objective_lo = lower_interval_bound(wp._objective_saf_parsed, n)
+
+    elseif obj_type === SCALAR_QUADRATIC
+        objective_lo = lower_interval_bound(wp._objective_sqf, n)
+
     end
 
     if objective_lo > x._lower_objective_value
-        x._lower_objective_value = objective_lo
+        m._lower_objective_value = objective_lo
     end
-end
 
-#=
+    return nothing
+end
+bound_objective!(m::Optimizer, x::Vector{Float64}) = bound_objective!(m.ext_type, m, x)
+
 """
 $(TYPEDSIGNATURES)
 
 A rountine that only relaxes the objective.
 """
-function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
+function relax_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
 
-    nx = x._variable_number
-    opt = x.relaxed_optimizer
-    @inbounds vi = x._lower_variable_index[1:nx]
+    relaxed_optimizer = m.relaxed_optimizer
 
     # Add objective
-    if x._input_problem._objective_type === SINGLE_VARIABLE
-        MOI.set(opt, MOI.ObjectiveFunction{SV}(), x._input_problem._objective_sv)
-        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    obj_type = m._working_problem._objective_type
 
-    elseif x._input_problem._objective_type === SCALAR_AFFINE
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), x._input_problem._objective_saf)
-        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    if obj_type === SINGLE_VARIABLE
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), m._working_problem._objective_sv)
+        MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    elseif x._input_problem._objective_type === SCALAR_QUADRATIC
+    elseif obj_type === SCALAR_AFFINE
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
+        MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
+    elseif obj_type === SCALAR_QUADRATIC
         # TODO: ADD QUADRATIC RELAXATION HERE
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), saf)
-        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
+        MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
+    #=
     elseif x._objective_type === NONLINEAR
 
             evaluator = x._relaxed_evaluator
@@ -239,11 +246,11 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
             end
             MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SConsC(saf_const))
             MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+                =#
     end
-    return
+    return nothing
 end
 relax_objective!(m::Optimizer, x::Vector{Float64}) = relax_objective!(m.ext_type, m, x)
-=#
 
 #=
 """

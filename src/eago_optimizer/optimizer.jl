@@ -292,6 +292,7 @@ Base.@kwdef mutable struct ParsedProblem
     "_objective_saf stores the objective and is used for constructing linear affine cuts
      of any ObjectiveType"
     _objective_saf::SAF = SAF(SAT[], 0.0)
+    _objective_saf_parsed::AffineFunctionIneq = AffineFunctionIneq()
     _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
     _objective_nl = nothing
     _objective_type::ObjectiveType = UNSET
@@ -459,6 +460,10 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Log
     _log::Log = Log()
+
+    _buffered_quadratic_ineq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
+    _buffered_quadratic_eq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
+    _objective_cut_ci_saf::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
 
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
