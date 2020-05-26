@@ -237,7 +237,6 @@ Base.@kwdef mutable struct InputProblem
 
     # variables
     _variable_info::Vector{VariableInfo} = VariableInfo[]
-
     _variable_count::Int64 = 0
 
     # last constraint index added
@@ -291,6 +290,7 @@ Base.@kwdef mutable struct ParsedProblem
     _objective_nl = nothing
     _objective_type::ObjectiveType = UNSET
 
+    # constraints
     _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
     _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
     _sqf_leq::Vector{BufferedQuadraticIneq} = Vector{BufferedQuadraticIneq}[]
@@ -300,6 +300,14 @@ Base.@kwdef mutable struct ParsedProblem
     _saf_eq_count::Int = 0
     _sqf_leq_count::Int = 0
     _sqf_eq_count::Int = 0
+
+    # variables
+    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _variable_count::Int = 0
+
+    _var_leq_count::Int = 0
+    _var_geq_count::Int = 0
+    _var_eq_count::Int = 0
 end
 
 function bound_objective(m::Optimizer)

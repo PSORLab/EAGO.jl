@@ -1,3 +1,53 @@
+
+function label_nonlinear_variables!(m::Optimizer)
+    _nlpdata = m._nlp_data
+    x = _nlpdata.evaluator
+
+    # scans subexpressions, objective, and constraints for nonlinear terms
+    if ~isa(x, EmptyNLPEvaluator)
+        if x.has_nlobj
+            if (x.objective.linearity != JuMP._Derivatives.LINEAR) &&
+               (x.objective.linearity != JuMP._Derivatives.CONSTANT)
+                for i in 1:length(x.objective.nd)
+                    nd = x.objective.nd[i]
+                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
+                        m.branch_variable[nd.index] = true
+                        m.obbt_variable_values[nd.index] = true
+                    end
+                end
+            end
+        end
+        for i in 1:length(x.constraints)
+            if (x.constraints[i].linearity != JuMP._Derivatives.LINEAR) &&
+               (x.constraints[i].linearity != JuMP._Derivatives.CONSTANT)
+                for j in 1:length(x.constraints[i].nd)
+                    nd = x.constraints[i].nd[j]
+                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
+                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
+                        m.branch_variable[nd.index] = true
+                        m.obbt_variable_values[nd.index] = true
+                    end
+                end
+            end
+        end
+        for i in 1:length(x.subexpressions)
+            if (x.subexpressions[i].linearity != JuMP._Derivatives.LINEAR) &&
+               (x.subexpressions[i].linearity != JuMP._Derivatives.CONSTANT)
+                for j in 1:length(x.subexpressions[i].nd)
+                    nd = x.subexpressions[i].nd[j]
+                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
+                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
+                        m.branch_variable[nd.index] = true
+                        m.obbt_variable_values[nd.index] = true
+                    end
+                end
+            end
+        end
+    end
+    return
+end
+
+
 """
 $(TYPEDSIGNATURES)
 
@@ -383,80 +433,6 @@ and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
     map!(x -> (x.is_fixed |= (x.lower_bound == x.upper_bound)), m._fixed_variable, m._variable_info)
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Returns true if `func` < 0  based on eigenvalue tests, false otherwise.
-"""
-
-# Dictionary free convexity test
-function is_convex_quadratic(func::SQF, mult::Float64, cvx_dict::ImmutableDict{Int64,Int64})
-    flag = false
-    row = Int64[]
-    column = Int64[]
-    value = Float64[]
-    for term in func.quadratic_terms
-        coeff = term.coefficient
-        if coeff != 0.0
-            value1 = cvx_dict[term.variable_index_1.value]
-            value2 = cvx_dict[term.variable_index_2.value]
-            mcoeff = mult*coeff
-            push!(row, value1)
-            push!(column, value2)
-            push!(value, mcoeff)
-            push!(row, value2)
-            push!(column, value1)
-            push!(value, mcoeff)
-        end
-    end
-    Q = sparse(row, column, value)
-    s1, s2 = size(Q)
-    if length(Q.nzval) > 1
-        flag = try
-               F = cholesky(Symmetric(Q))
-               true
-        catch err
-            false
-        end
-    else
-        if (length(Q.nzval) == 1) && (Q.nzval[1] > 0.0)
-            flag = true
-        end
-    end
-    flag
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Assigns boolean value to constraint_convexity dictionary entry corresponding to
-constraint index that is true if constraint is shown to be convex and false
-otherwise.
-"""
-function label_quadratic_convexity!(x::Optimizer)
-
-    for i = 1:length(x._quadratic_leq_constraints)
-        @inbounds func, set = x._quadratic_leq_constraints[i]
-        @inbounds cvx_dict = x._quadratic_leq_dict[i]
-        push!(x._quadratic_leq_convexity, is_convex_quadratic(func, 1.0, cvx_dict))
-    end
-
-    for i = 1:length(x._quadratic_geq_constraints)
-        @inbounds func, set = x._quadratic_geq_constraints[i]
-        @inbounds cvx_dict = x._quadratic_geq_dict[i]
-        push!(x._quadratic_geq_convexity, is_convex_quadratic(func, -1.0, cvx_dict))
-    end
-
-    for i = 1:length(x._quadratic_eq_constraints)
-        @inbounds func, set = x._quadratic_eq_constraints[i]
-        @inbounds cvx_dict = x._quadratic_eq_dict[i]
-        push!(x._quadratic_eq_convexity_1, is_convex_quadratic(func, 1.0, cvx_dict))
-        push!(x._quadratic_eq_convexity_2, is_convex_quadratic(func, -1.0, cvx_dict))
-    end
-
-    return
 end
 
 """

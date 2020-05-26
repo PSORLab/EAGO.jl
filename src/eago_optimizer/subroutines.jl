@@ -367,37 +367,39 @@ Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
 `xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
 optimizer.
 """
-function update_relaxed_problem_box!(m::Optimizer, y::NodeBB)
+function update_relaxed_problem_box!(m::Optimizer, n::NodeBB)
 
     opt = m.relaxed_optimizer
-    lower_node_bnd = y.lower_variable_bounds
-    upper_node_bnd = y.upper_variable_bounds
+    working_problem = m._working_problem
 
-    lower_variable_et = m._lower_variable_et
-    lower_variable_et_indx = m._lower_variable_et_indx
-    for i = 1:length(lower_variable_et_indx)
-        @inbounds ci = lower_variable_et[i]
-        @inbounds ni = lower_variable_et_indx[i]
-        @inbounds vb = lower_node_bnd[ni]
-        MOI.set(opt, MOI.ConstraintSet(), ci, ET(vb))
+    lower_bound = n.lower_variable_bounds
+    upper_bound = n.upper_variable_bounds
+
+    relaxed_variable_et = working_problem._relaxed_variable_et
+    relaxed_variable_et_indx = working_problem._relaxed_variable_et_indx
+
+    relaxed_variable_lt = working_problem._relaxed_variable_lt
+    relaxed_variable_lt_indx = working_problem._relaxed_variable_lt_indx
+
+    relaxed_variable_gt = working_problem._relaxed_variable_gt
+    relaxed_variable_gt_indx = working_problem._relaxed_variable_gt_indx
+
+    for i = 1:working_problem._var_eq_count
+        ci = @inbounds relaxed_variable_et[i]
+        ni = @inbounds relaxed_variable_et_indx[i]
+        MOI.set(opt, MOI.ConstraintSet(), ci, ET(@inbounds lower_bound[ni]))
     end
 
-    lower_variable_lt = m._lower_variable_lt
-    lower_variable_lt_indx = m._lower_variable_lt_indx
-    for i = 1:length(lower_variable_lt_indx)
-        @inbounds ci = lower_variable_lt[i]
-        @inbounds ni = lower_variable_lt_indx[i]
-        @inbounds vb = upper_node_bnd[ni]
-        MOI.set(opt, MOI.ConstraintSet(), ci, LT(vb))
+    for i = 1:working_problem._var_leq_count
+        ci = @inbounds relaxed_variable_lt[i]
+        ni = @inbounds relaxed_variable_lt_indx[i]
+        MOI.set(opt, MOI.ConstraintSet(), ci, LT(@inbounds upper_bound[ni]))
     end
 
-    lower_variable_gt = m._lower_variable_gt
-    lower_variable_gt_indx = m._lower_variable_gt_indx
-    for i = 1:length(x._lower_variable_gt_indx)
-        @inbounds ci = lower_variable_gt[i]
-        @inbounds ni = lower_variable_gt_indx[i]
-        @inbounds vb = lower_node_bnd[ni]
-        MOI.set(opt, MOI.ConstraintSet(), ci, GT(vb))
+    for i = 1:working_problem._var_geq_count
+        ci = @inbounds relaxed_variable_gt[i]
+        ni = @inbounds relaxed_variable_gt_indx[i]
+        MOI.set(opt, MOI.ConstraintSet(), ci, GT(@inbounds lower_bound[ni]))
     end
 
     return
@@ -503,14 +505,11 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     if valid_flag
         if feas_flag
+            set_dual!(m)
+            m._cut_add_flag = true
             m._lower_feasibility = true
             m._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
             @inbounds m._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), m._lower_variable_index)
-            interval_objective_used = interval_objective_bound(m, n)
-            if !interval_objective_used
-                set_dual!(m)
-                m._cut_add_flag = true
-            end
         else
             m._cut_add_flag = false
             m._lower_feasibility  = false

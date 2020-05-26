@@ -410,62 +410,9 @@ function check_inbounds!(m::Optimizer, vov::VECOFVAR)
     return
 end
 =#
-##### Access variable information from MOI variable index
-has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
-has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
-is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
-is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
 
 function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
     return MOI.Utilities.default_copy_to(model, src, copy_names)
-end
-
-function label_nonlinear_variables!(m::Optimizer)
-    _nlpdata = m._nlp_data
-    x = _nlpdata.evaluator
-
-    # scans subexpressions, objective, and constraints for nonlinear terms
-    if ~isa(x, EmptyNLPEvaluator)
-        if x.has_nlobj
-            if (x.objective.linearity != JuMP._Derivatives.LINEAR) &&
-               (x.objective.linearity != JuMP._Derivatives.CONSTANT)
-                for i in 1:length(x.objective.nd)
-                    nd = x.objective.nd[i]
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-        for i in 1:length(x.constraints)
-            if (x.constraints[i].linearity != JuMP._Derivatives.LINEAR) &&
-               (x.constraints[i].linearity != JuMP._Derivatives.CONSTANT)
-                for j in 1:length(x.constraints[i].nd)
-                    nd = x.constraints[i].nd[j]
-                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-        for i in 1:length(x.subexpressions)
-            if (x.subexpressions[i].linearity != JuMP._Derivatives.LINEAR) &&
-               (x.subexpressions[i].linearity != JuMP._Derivatives.CONSTANT)
-                for j in 1:length(x.subexpressions[i].nd)
-                    nd = x.subexpressions[i].nd[j]
-                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-    end
-    return
 end
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
@@ -529,9 +476,9 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     if nlp_data.has_objective
-        m._objective_type = NONLINEAR
+        m._input_problem._objective_type = NONLINEAR
     end
-    m._nlp_data = nlp_data
+    m._input_problem._nlp_data = nlp_data
     return
 end
 
@@ -539,117 +486,24 @@ end
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV,SAF,SQF}} = true
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
-    m._objective_sv = func
-    m._objective_type = SINGLE_VARIABLE
+    m._input_problem._objective_sv = func
+    m._input_problem._objective_type = SINGLE_VARIABLE
     return
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
-    m._objective_saf = func
-    m._objective_type = SCALAR_AFFINE
+    m._input_problem._objective_saf = func
+    m._input_problem._objective_type = SCALAR_AFFINE
     return
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
-    m._objective_sqf = func
-    m._objective_type = SCALAR_QUADRATIC
-    for term in func.quadratic_terms
-        @inbounds m.branch_variable[term.variable_index_1.value] = true
-        @inbounds m.branch_variable[term.variable_index_1.value] = true
-    end
-    #for term in func.affine_terms
-    #    m.branch_variable[term.variable_index] = true
-    #end
+    m._input_problem._objective_sqf = func
+    m._input_problem._objective_type = SCALAR_QUADRATIC
     return
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
     m._input_problem._optimization_sense = sense
-    return
-end
-
-# Defines single variable objective function
-eval_function(var::SV, x) = x[var.variable.value]
-
-function eval_function(aff::SAF, x)
-    function_value = aff.constant
-    for term in aff.terms
-        @inbounds function_value += term.coefficient*x[term.variable_index.value]
-    end
-    return function_value
-end
-
-function eval_function(quad::SQF, x)
-    function_value = quad.constant
-    for term in quad.affine_terms
-        @inbounds function_value += term.coefficient*x[term.variable_index.value]
-    end
-    for term in quad.quadratic_terms
-        row_idx = term.variable_index_1
-        col_idx = term.variable_index_2
-        coefficient = term.coefficient
-        function_value += 0.5*coefficient*x[row_idx.value]*x[col_idx.value]
-    end
-    return function_value
-end
-
-function eval_objective(m::Optimizer, x)
-    if m._objective_type === NONLINEAR
-        return MOI.eval_objective(m._nlp_data.evaluator, x)
-    elseif m._objective_type === SINGLE_VARIABLE
-        return eval_function(m._objective_sv, x)
-    elseif m._objective_type === SCALAR_AFFINE
-        return eval_function(m._objective_saf, x)
-    elseif m._objective_type === SCALAR_QUADRATIC
-        return eval_function(m._objective_sqf, x)
-    end
-    return 0.0
-end
-
-
-"""
-    log_iteration!(x::Optimizer)
-
-If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
-'run_time', and 'node_count' are stored every 'log_interval'. If
-'log_subproblem_info' then the lower bound, feasibility and run times of the
-subproblems are logged every 'log_interval'.
-"""
-function log_iteration!(x::Optimizer)
-
-    if x._parameters.log_on
-        log = x._log
-        if (mod(x._iteration_count, x._parameters.log_interval) == 0 || x._iteration_count == 1)
-            if x._parameters.log_subproblem_info
-                if x._input_problem._optimization_sense === MOI.MIN_SENSE
-                    push!(log.current_lower_bound, x._lower_objective_value)
-                    push!(log.current_upper_bound, x._upper_objective_value)
-                else
-                    push!(log.current_lower_bound, -x._upper_objective_value)
-                    push!(log.current_upper_bound, -x._lower_objective_value)
-                end
-
-                push!(log.preprocessing_time, x._last_preprocess_time)
-                push!(log.lower_problem_time, x._last_lower_problem_time)
-                push!(log.upper_problem_time, x._last_upper_problem_time)
-                push!(log.postprocessing_time, x._last_postprocessing_time)
-
-                push!(log.preprocess_feasibility, x._preprocess_feasibility)
-                push!(log.lower_problem_feasibility, x._lower_feasibility)
-                push!(log.upper_problem_feasibility, x._upper_feasibility)
-                push!(log.postprocess_feasibility, x._postprocess_feasibility)
-            end
-
-            if x._input_problem._optimization_sense === MOI.MIN_SENSE
-                push!(log.global_lower_bound, x._global_lower_bound)
-                push!(log.global_upper_bound, x._global_upper_bound)
-            else
-                push!(log.global_lower_bound, -x._global_upper_bound)
-                push!(log.global_upper_bound, -x._global_lower_bound)
-            end
-            push!(log.run_time, x._run_time)
-            push!(log.node_count, x._node_count)
-        end
-    end
     return
 end

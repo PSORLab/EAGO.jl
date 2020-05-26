@@ -12,6 +12,12 @@
 # Defines single variable constraints supported by optimizer and how to store.
 #############################################################################
 
+##### Access variable information from MOI variable index
+has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
+has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
+is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
+is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
+
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
     m._variable_number += 1
