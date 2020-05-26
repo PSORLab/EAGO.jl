@@ -51,31 +51,31 @@ $(FUNCTIONNAME)
 
 Excludes OBBT on variable indices that are tight for the solution of the relaxation.
 """
-function trivial_filtering!(x::Optimizer, y::NodeBB)
+function trivial_filtering!(m::Optimizer, n::NodeBB)
 
-    x._preprocess_termination_status = MOI.get(x.relaxed_optimizer, MOI.TerminationStatus())
-    x._preprocess_result_status = MOI.get(x.relaxed_optimizer, MOI.PrimalStatus())
-    valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
-                                                    x._preprocess_result_status)
+    m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+    m._preprocess_result_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+    valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
+                                                    m._preprocess_result_status)
 
     if valid_flag && feasible_flag
-        for j = 1:length(x._obbt_working_lower_index)
-            if @inbounds x._obbt_working_lower_index[j]
-                vi = @inbounds x._lower_variable_index[j]
-                diff = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), vi)
-                diff -= @inbounds y.lower_variable_bounds[j]
-                if abs(diff) <= x.obbt_tolerance
-                    @inbounds x._obbt_working_lower_index[j] = false
+        for j = 1:length(m._obbt_working_lower_index)
+            if @inbounds m._obbt_working_lower_index[j]
+                vi = @inbounds m._relaxed_variable_index[j]
+                diff = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), vi)
+                diff -= @inbounds n.lower_variable_bounds[j]
+                if abs(diff) <= m.obbt_tolerance
+                    @inbounds m._obbt_working_lower_index[j] = false
                 end
             end
         end
-        for j = 1:length(x._obbt_working_upper_index)
-            if @inbounds x._obbt_working_upper_index[j]
-                vi = @inbounds x._lower_variable_index[j]
-                diff = -MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), vi)
-                diff += @inbounds y.upper_variable_bounds[j]
-                if abs(diff) <= x.obbt_tolerance
-                    @inbounds x._obbt_working_upper_index[j] = false
+        for j = 1:length(m._obbt_working_upper_index)
+            if @inbounds m._obbt_working_upper_index[j]
+                vi = @inbounds m._relaxed_variable_index[j]
+                diff = -MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), vi)
+                diff += @inbounds n.upper_variable_bounds[j]
+                if abs(diff) <= m.obbt_tolerance
+                    @inbounds m._obbt_working_upper_index[j] = false
                 end
             end
         end
@@ -102,92 +102,86 @@ $(FUNCTIONNAME)
 
 Excludes OBBT on variable indices after a search in a filtering direction.
 """
-function aggressive_filtering!(x::Optimizer, y::NodeBB)
+function aggressive_filtering!(m::Optimizer, n::NodeBB)
 
     # Initial filtering vector (negative one direction per remark in Gleixner2017)
-    variable_number = x._variable_number
+    variable_number = m._variable_number
     v = -ones(variable_number)
 
     # Copy prior index set (ignores linear and binary terms)
-    obbt_var_len = length(x.obbt_variable_values)
-    copyto!(x._old_low_index, x._obbt_working_lower_index)
-    copyto!(x._old_upp_index, x._obbt_working_upper_index)
-    copyto!(x._new_low_index, x._obbt_working_lower_index)
-    copyto!(x._new_upp_index, x._obbt_working_upper_index)
+    obbt_var_len = length(m.obbt_variable_values)
+    copyto!(m._old_low_index, m._obbt_working_lower_index)
+    copyto!(m._old_upp_index, m._obbt_working_upper_index)
+    copyto!(m._new_low_index, m._obbt_working_lower_index)
+    copyto!(m._new_upp_index, m._obbt_working_upper_index)
 
     # Exclude unbounded directions
     for i = 1:obbt_var_len
-        if @inbounds x._new_low_index[i] && @inbounds y.lower_variable_bounds[i] == -Inf
-            @inbounds x._new_low_index[i] = false
+        if @inbounds m._new_low_index[i] && @inbounds n.lower_variable_bounds[i] == -Inf
+            @inbounds m._new_low_index[i] = false
         end
-    end
-    for i = 1:obbt_var_len
-        if @inbounds x._new_low_index[i] && @inbounds y.upper_variable_bounds[i] == Inf
-            @inbounds x._new_low_index[i] = false
+        if @inbounds m._new_low_index[i] && @inbounds n.upper_variable_bounds[i] == Inf
+            @inbounds m._new_low_index[i] = false
         end
     end
 
     # Begin the main algorithm
-    for k = 1:x.obbt_aggressive_max_iteration
+    for k = 1:m.obbt_aggressive_max_iteration
 
         # Set index differences and vector for filtering direction
-        bool_indx_diff(x._lower_indx_diff, x._old_low_index, x._new_low_index)
-        bool_indx_diff(x._upper_indx_diff, x._old_upp_index, x._new_upp_index)
+        bool_indx_diff(m._lower_indx_diff, m._old_low_index, m._new_low_index)
+        bool_indx_diff(m._upper_indx_diff, m._old_upp_index, m._new_upp_index)
 
         for i = 1:obbt_var_len
-            if @inbounds x._lower_indx_diff[i] && @inbounds v[i] < 0.0
+            vi = @inbounds v[i]
+            if @inbounds m._lower_indx_diff[i] && vi < 0.0
                 @inbounds v[i] = 0.0
             end
-        end
-        for i = 1:obbt_var_len
-            if @inbounds x._upper_indx_diff[i] && @inbounds v[i] > 0.0
+            if @inbounds m._upper_indx_diff[i] && vi > 0.0
                 @inbounds v[i] = 0.0
             end
         end
 
         # Termination Condition
-        ((~any(x._new_low_index) & ~any(x._new_upp_index)) || (iszero(v))) && break
+        ((~any(m._new_low_index) & ~any(m._new_upp_index)) || (iszero(v))) && break
         if k >= 2
-            if (count(x._lower_indx_diff) + count(x._upper_indx_diff)) < x.obbt_aggressive_min_dimension
+            if (count(m._lower_indx_diff) + count(m._upper_indx_diff)) < m.obbt_aggressive_min_dimension
                 break
             end
         end
 
         # Set objective in OBBT problem to filtering vector
-        MOI.set(x.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-        saf = SAF(SAT.(v, x._lower_variable_index), 0.0)
-        MOI.set(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
+        MOI.set(m.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+        saf = SAF(SAT.(v, m._relaxed_variable_index), 0.0)
+        MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
 
         # Optimizes the problem and if successful filter additional bounds
-        MOI.optimize!(x.relaxed_optimizer)
+        MOI.optimize!(m.relaxed_optimizer)
 
-        x._preprocess_termination_status = MOI.get(x.relaxed_optimizer, MOI.TerminationStatus())
-        x._preprocess_result_status = MOI.get(x.relaxed_optimizer, MOI.PrimalStatus())
-        valid_flag, feasible_flag = is_globally_optimal(x._preprocess_termination_status,
-                                                        x._preprocess_result_status)
+        m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+        m._preprocess_result_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+        valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
+                                                        m._preprocess_result_status)
 
-        if valid_flag
-            if feasible_flag
-                variable_primal = MOI.get(x.relaxed_optimizer, MOI.VariablePrimal(), x._lower_variable_index)
-                copyto!(x._new_low_index, x._old_low_index)
-                copyto!(x._new_upp_index, x._old_upp_index)
-                for i = 1:obbt_var_len
-                    if @inbounds x._old_low_index[i] && @inbounds variable_primal[i] == @inbounds y.lower_variable_bounds[i]
-                        @inbounds x._new_low_index[i] = false
-                    end
+        if valid_flag && feasible_flag
+            variable_primal = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+            copyto!(x._new_low_index, x._old_low_index)
+            copyto!(x._new_upp_index, x._old_upp_index)
+            for i = 1:obbt_var_len
+                vp_value =  @inbounds variable_primal[i]
+                if @inbounds m._old_low_index[i] && vp_value == @inbounds n.lower_variable_bounds[i]
+                    @inbounds m._new_low_index[i] = false
                 end
-                for i = 1:obbt_var_len
-                    if @inbounds x._old_upp_index[i] && @inbounds variable_primal[i] == @inbounds y.upper_variable_bounds[i]
-                        @inbounds x._new_upp_index[i] = false
-                    end
+                if @inbounds m._old_upp_index[i] && vp_value == @inbounds n.upper_variable_bounds[i]
+                    @inbounds m._new_upp_index[i] = false
                 end
             end
         else
             return false
         end
     end
-    copyto!(x._obbt_working_lower_index, x._new_low_index)
-    copyto!(x._obbt_working_upper_index, x._new_upp_index)
+    copyto!(m._obbt_working_lower_index, m._new_low_index)
+    copyto!(m._obbt_working_upper_index, m._new_upp_index)
     return true
 end
 
@@ -198,65 +192,56 @@ Performs OBBT with filtering and greedy ordering as detailed in:
 Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731.
 https://doi.org/10.1007/s10898-016-0450-4
 """
-function obbt(d::Optimizer)
+function obbt(m::Optimizer)
 
     feasibility = true
 
-    y = d._current_node
+    n = m._current_node
+    relaxed_optimizer = m.relaxed_optimizer
 
-    println(" ")
-    println("start obbt")
-    println("y.lower_variable_bounds = $(y.lower_variable_bounds)")
-    println("y.upper_variable_bounds = $(y.upper_variable_bounds)")
-
-    @. d._current_xref = 0.5*(y.upper_variable_bounds + y.lower_variable_bounds)
-    unsafe_check_fill!(isnan, d._current_xref, 0.0, length(d._current_xref))
-
-    println(" ")
-    println("d._current_xref = $(d._current_xref)")
+    @. m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
 
     # solve initial problem to feasibility
-    update_relaxed_problem_box!(d, y)
-    relax_problem!(d, d._current_xref, 1)
-    relax_objective!(d, d._current_xref)
-    if d.objective_cut_on
-        objective_cut_linear!(d, 1)
-    end
-    MOI.set(d.relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
-    MOI.optimize!(d.relaxed_optimizer)
+    update_relaxed_problem_box!(m, y)
+    relax_problem!(m, m._current_xref, 1)
+    relax_objective!(m, m._current_xref)
+
+    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
+    MOI.optimize!(relaxed_optimizer)
 
     # Sets indices to attempt OBBT on (full set...)
-    obbt_variables = d.obbt_variable_values
-    copyto!(d._obbt_working_lower_index, obbt_variables)
-    copyto!(d._obbt_working_upper_index, obbt_variables)
+    obbt_variables = m.obbt_variable_values
+    copyto!(m._obbt_working_lower_index, obbt_variables)
+    copyto!(m._obbt_working_upper_index, obbt_variables)
 
     # Prefiltering steps && and sets initial LP values
-    trivial_filtering!(d, y)
-    if d.obbt_aggressive_on
-        feasibility = aggressive_filtering!(d, y)
+    trivial_filtering!(m, n)
+    if m.obbt_aggressive_on
+        feasibility = aggressive_filtering!(m, n)
     end
 
-    d._preprocess_termination_status = MOI.get(d.relaxed_optimizer, MOI.TerminationStatus())
-    d._preprocess_result_status = MOI.get(d.relaxed_optimizer, MOI.PrimalStatus())
-    valid_flag, feasible_flag = is_globally_optimal(d._preprocess_termination_status,
-                                                    d._preprocess_result_status)
+    m._preprocess_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
+    m._preprocess_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
+    valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
+                                                    m._preprocess_result_status)
 
     if valid_flag && feasible_flag
-        xLP = MOI.get(d.relaxed_optimizer, MOI.VariablePrimal(), d._lower_variable_index)
+        xLP = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
     else
         return false
     end
 
-    while (any(d._obbt_working_lower_index) || any(d._obbt_working_upper_index)) & ~isempty(y)
+    while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) & ~isempty(n)
 
         # Get lower value
         lower_indx = -1;     upper_indx = -1
         lower_value = Inf;   upper_value = Inf
 
         # min of xLP - yL on active
-        if any(d._obbt_working_lower_index)
-            for i = 1:length(d._obbt_working_lower_index)
-                if @inbounds d._obbt_working_lower_index[i]
+        if any(m._obbt_working_lower_index)
+            for i = 1:length(m._obbt_working_lower_index)
+                if @inbounds m._obbt_working_lower_index[i]
                     temp_value = @inbounds xLP[i] - y.lower_variable_bounds[i]
                     # Need less than or equal to handle unbounded cases
                     if temp_value <= lower_value
@@ -268,10 +253,10 @@ function obbt(d::Optimizer)
         end
 
         # min of yU - xLP on active
-        if any(d._obbt_working_upper_index)
-            for i = 1:length(d._obbt_working_upper_index)
-                if @inbounds d._obbt_working_upper_index[i]
-                    temp_value = @inbounds y.upper_variable_bounds[i] - xLP[i]
+        if any(m._obbt_working_upper_index)
+            for i = 1:length(m._obbt_working_upper_index)
+                if @inbounds m._obbt_working_upper_index[i]
+                    temp_value = @inbounds n.upper_variable_bounds[i] - xLP[i]
                     if temp_value <= upper_value
                         upper_value = temp_value
                         upper_indx = i
@@ -283,64 +268,58 @@ function obbt(d::Optimizer)
         # default to upper bound if no lower bound is found, use maximum distance otherwise
         if lower_value <= upper_value && lower_indx > 0
 
-            @inbounds d._obbt_working_lower_index[lower_indx] = false
-            @inbounds var = d._lower_variable[lower_indx]
-            MOI.set(d.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-            MOI.set(d.relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
-            MOI.optimize!(d.relaxed_optimizer)
-            d._preprocess_termination_status = MOI.get(d.relaxed_optimizer, MOI.TerminationStatus())
-            d._preprocess_result_status = MOI.get(d.relaxed_optimizer, MOI.PrimalStatus())
-            valid_flag, feasible_flag = is_globally_optimal(d._preprocess_termination_status,
-                                                            d._preprocess_result_status)
+            @inbounds m._obbt_working_lower_index[lower_indx] = false
+            var = SV(m._relaxed_variable_index[lower_indx])
+            MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
+            MOI.optimize!(m.relaxed_optimizer)
+            m._preprocess_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
+            m._preprocess_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
+            valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
+                                                            m._preprocess_result_status)
 
-            if valid_flag
-                if feasible_flag
-                    xLP .= MOI.get(d.relaxed_optimizer, MOI.VariablePrimal(), d._lower_variable_index)
-                    #(lower_indx === 1) && println("lower xLP[$lower_indx] = $(xLP[lower_indx])")
-                    if is_integer_variable(d, lower_indx)
-                        @inbounds y.lower_variable_bounds[lower_indx] = ceil(xLP[lower_indx])
-                    else
-                        @inbounds y.lower_variable_bounds[lower_indx] = xLP[lower_indx]
-                    end
-                    if isempty(y)
-                        feasibility = false
-                        break
-                    end
+            if valid_flag && feasible_flag
+                xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+                if is_integer_variable(d, lower_indx)
+                    @inbounds n.lower_variable_bounds[lower_indx] = ceil(xLP[lower_indx])
                 else
-                    feasibility = false
+                    @inbounds n.lower_variable_bounds[lower_indx] = xLP[lower_indx]
                 end
+                if isempty(y)
+                    feasibility = false
+                    break
+                end
+            elseif valid_flag
+                feasibility = false
             else
                 break
             end
 
         elseif upper_indx > 0
 
-            d._obbt_working_upper_index[upper_indx] = false
-            @inbounds var = d._lower_variable[upper_indx]
-            MOI.set(d.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-            MOI.set(d.relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
-            MOI.optimize!(d.relaxed_optimizer)
-            d._preprocess_termination_status = MOI.get(d.relaxed_optimizer, MOI.TerminationStatus())
-            d._preprocess_result_status = MOI.get(d.relaxed_optimizer, MOI.PrimalStatus())
-            valid_flag, feasible_flag = is_globally_optimal(d._preprocess_termination_status,
-                                                            d._preprocess_result_status)
+            m._obbt_working_upper_index[upper_indx] = false
+            var = SV(m._relaxed_variable_index[upper_indx])
+            MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
+            MOI.optimize!(relaxed_optimizer)
+            m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+            m._preprocess_result_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+            valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
+                                                            m._preprocess_result_status)
 
-            if valid_flag
-                if feasible_flag
-                    xLP .= MOI.get(d.relaxed_optimizer, MOI.VariablePrimal(), d._lower_variable_index)
-                    #(upper_indx === 1) && println("upper xLP[$upper_indx] = $(xLP[upper_indx])")
-                    if is_integer_variable(d, upper_indx)
-                        @inbounds y.upper_variable_bounds[upper_indx] = ceil(xLP[upper_indx])
-                    else
-                        @inbounds y.upper_variable_bounds[upper_indx] = min(xLP[upper_indx], y.upper_variable_bounds[upper_indx])
-                    end
-                    if isempty(y)
-                        feasibility = false
-                        break
-                    end
+            if valid_flag && feasible_flag
+                xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+                if is_integer_variable(m, upper_indx)
+                    @inbounds n.upper_variable_bounds[upper_indx] = ceil(xLP[upper_indx])
                 else
-                    feasibility = false
+                    @inbounds n.upper_variable_bounds[upper_indx] = min(xLP[upper_indx], n.upper_variable_bounds[upper_indx])
                 end
+                if isempty(n)
+                    feasibility = false
+                    break
+                end
+            elseif valid_flag
+                feasibility = false
             else
                 break
             end
@@ -350,10 +329,6 @@ function obbt(d::Optimizer)
         end
         trivial_filtering!(d, y)
     end
-    println("end obbt")
-    println("y.lower_variable_bounds = $(y.lower_variable_bounds)")
-    println("y.upper_variable_bounds = $(y.upper_variable_bounds)")
-    println(" ")
 
     return feasibility
 end

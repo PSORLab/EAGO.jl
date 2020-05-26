@@ -1,4 +1,3 @@
-
 function label_nonlinear_variables!(m::Optimizer)
     _nlpdata = m._nlp_data
     x = _nlpdata.evaluator
@@ -125,8 +124,10 @@ function load_relaxed_problem!(m::Optimizer)
         push!(x._lower_nlp_affine, fill(CI{SAF,LT}(-1), (len_la,)))
         push!(x._upper_nlp_affine, fill(CI{SAF,LT}(-1), (len_ua,)))
     end
+    =#
 
     # checks to see if a one-sided constraint leq already exists
+    #=
     if x._objective_type === SINGLE_VARIABLE
         for (i, z) in enumerate(x._lower_variable_lt)
             if x._objective_sv.variable.value == x._lower_variable_lt_indx[i]
@@ -142,6 +143,8 @@ function load_relaxed_problem!(m::Optimizer)
     for i = 1:x.cut_max_iterations
         push!(x._objective_cut_ci_saf, CI{SAF,LT}(-1))
     end
+    =#
+
     MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     return
@@ -171,37 +174,6 @@ function linear_solve!(m::Optimizer)
     return
 end
 
-#=
-function convert_to_min!(obj::SV, x::Optimizer)
-    x._objective = SAF(SAT[SAT(-1.0, x._objective.variable)], 0.0)
-    nothing
-end
-function convert_to_min!(obj::SAF, x::Optimizer)
-    @__dot__ x._objective.terms = SAT(-getfield(x._objective.terms, :coefficient),
-                                       getfield(x._objective.terms, :variable_index))
-    x._objective.constant *= -1.0
-    nothing
-end
-function convert_to_min!(obj::SQF, x::Optimizer)
-    @__dot__ x._objective.affine_terms = SAT(-getfield(x._objective.affine_terms, :coefficient),
-                                              getfield(x._objective.affine_terms, :variable_index))
-    @__dot__ x._objective.quadratic_terms = SQT(-getfield(x._objective.quadratic_terms, :coefficient),
-                                                 getfield(x._objective.quadratic_terms, :variable_index_1),
-                                                 getfield(x._objective.quadratic_terms, :variable_index_2))
-    x._objective.constant *= -1.0
-    nothing
-end
-function convert_to_min!(obj::Nothing, x::Optimizer)
-    nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
-    pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-    nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-    for i = 3:length(nd)
-        @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
-    end
-    nothing
-end
-=#
-
 """
 $(TYPEDSIGNATURES)
 
@@ -209,14 +181,18 @@ Converts MOI.MAX_SENSE objective to equivalent MOI.MIN_SENSE objective
 max(f) = - min(-f).
 """
 function convert_to_min!(x::Optimizer)
+
     if x._input_problem._optimization_sense === MOI.MAX_SENSE
+
         if x._objective_type === SINGLE_VARIABLE
             x._objective_type = SCALAR_AFFINE
             x._objective_saf = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
+
         elseif x._objective_type === SCALAR_AFFINE
             @__dot__ x._objective_saf.terms = SAT(-getfield(x._objective_saf.terms, :coefficient),
                                                    getfield(x._objective_saf.terms, :variable_index))
             x._objective_saf.constant *= -1.0
+
         elseif x._objective_type === SCALAR_QUADRATIC
             @__dot__ x._objective_sqf.affine_terms = SAT(-getfield(x._objective_sqf.affine_terms, :coefficient),
                                                           getfield(x._objective_sqf.affine_terms, :variable_index))
@@ -224,19 +200,21 @@ function convert_to_min!(x::Optimizer)
                                                              getfield(x._objective_sqf.quadratic_terms, :variable_index_1),
                                                              getfield(x._objective_sqf.quadratic_terms, :variable_index_2))
             x._objective_sqf.constant *= -1.0
+
         else
+            #=
             nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
             pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
             nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
             for i = 3:length(nd)
                 @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
             end
+            =#
         end
-        #convert_to_min!(x._objective, x)::Nothing
     end
     return
 end
-
+#=
 function has_evaluator(x::MOI.NLPBlockData)
     flag = x.evaluator !== nothing
     flag &= ~isa(x.evaluator, EmptyNLPEvaluator)
@@ -296,7 +274,7 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
 
     return
 end
-
+=#
 """
 $(TYPEDSIGNATURES)
 
@@ -467,6 +445,7 @@ function build_nlp_evaluator(N::Int64, s::T, src::JuMP.NLPEvaluator, x::Optimize
 
     return d
 end
+=#
 
 function parse_problem!(m::Optimizer)
 
@@ -488,9 +467,9 @@ function parse_problem!(m::Optimizer)
     # Get various other sizes
     m._continuous_solution = zeros(Float64, _variable_len)
 
-    m.presolve_flatten_flag && Script.dag_flattening!(m)
+    #m.presolve_flatten_flag && Script.dag_flattening!(m)
     convert_to_min!(m)
-    initialize_evaluators!(m, false)               # initializes the EAGO and JuMP NLP evaluators
+    #initialize_evaluators!(m, false)               # initializes the EAGO and JuMP NLP evaluators
 
     new_time = time() - m._start_time
     m._parse_time = new_time

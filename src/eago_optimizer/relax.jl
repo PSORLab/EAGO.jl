@@ -38,7 +38,7 @@ end
 """
 $(FUNCTIONNAME)
 
-Relaxs the constraint adding an affine function.
+Relaxs the constraint by adding an affine constraint to the model.
 """
 function relax! end
 
@@ -147,23 +147,6 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     m.relaxed_to_problem_map[ci] = indx
 
     return nothing
-end
-
-function relax_midpoint!(m::Optimizer)
-
-    # set midpoint
-    set_reference_midpoint!(m)
-
-    # adds a cut for each scalar quadratic function at the midpoint
-    for i = 1:m._sqf_leq_count
-        relax_midpoint!(m, m._sqf_leq, i)
-    end
-
-        relax_midpoint!.(m, m_sqf_eq)
-
-    # adds a cut for each nonlinear function at the midpoint
-    relax!.(m._nl_leq)
-    relax!.(m._nl_geq)
 end
 
 #=
@@ -377,14 +360,16 @@ function objective_cut!(m::Optimizer, q::Int64)
             wp._objective_saf.constant += UBD
 
         elseif obj_type === SCALAR_QUADRATIC
-            relax(XXX)
-            copyto!(m._objective_saf.terms, XXX)
-            m._objective_saf.constant = XXX - UBD
+            buffered_sqf = wp._objective_sqf
+            affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
+                                    m._current_node, m._current_xref, true)
+            copyto!(m._objective_saf.terms, buffered_sqf.saf.terms)
+            m._objective_saf.constant = buffered_sqf.saf.constant - UBD
             if check_safe && is_safe_cut!(m, wp._objective_saf)
                 ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
                 push!(m._objective_cut_ci_saf, ci_saf)
             end
-
+        #=
         elseif obj_type === NONLINEAR
             relax(XXX)
             copyto!(m._objective_saf.terms, XXX)
@@ -393,7 +378,7 @@ function objective_cut!(m::Optimizer, q::Int64)
                 ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
                 push!(m._objective_cut_ci_saf, ci_saf)
             end
-
+        =#
         end
     end
     return nothing

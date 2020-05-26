@@ -269,15 +269,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _continuous_solution::Vector{Float64} = Float64[]
     _upper_variables::Vector{VI} =  VI[]
 
-    _relaxed_variable::Vector{SV} = SV[]
-    _relaxed_variable_index::Vector{VI} = VI[]
-    _relaxed_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
-    _relaxed_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
-    _relaxed_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
-    _relaxed_variable_et_indx::Vector{Int64} = Int64[]
-    _relaxed_variable_lt_indx::Vector{Int64} = Int64[]
-    _relaxed_variable_gt_indx::Vector{Int64} = Int64[]
-
     _preprocess_feasibility::Bool = true
     _preprocess_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _preprocess_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
@@ -359,7 +350,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     _relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
-    _relaxed_eval_has_objective::Bool = false
 end
 
 function MOI.empty!(m::Optimizer)

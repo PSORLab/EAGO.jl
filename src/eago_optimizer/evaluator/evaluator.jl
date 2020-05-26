@@ -22,13 +22,13 @@ subgradient size used in the MC object.
 
 $(TYPEDFIELDS)
 """
-mutable struct FunctionSetStorage{N,T<:RelaxTag}
+mutable struct FunctionSetStorage{N, T<:RelaxTag}
     "List of nodes in nonlinear expression"
-    nd::Vector{JuMP.NodeData}
+    #nd::Vector{JuMP.NodeData}
     "Adjacency Matrix for the expression"
     adj::SparseMatrixCSC{Bool,Int64}
-    const_values::Vector{Float64}
-    setstorage::Vector{MC{N,T}}
+    #const_values::Vector{Float64}
+    #setstorage::Vector{MC{N,T}}
     numberstorage::Vector{Float64}
     numvalued::Vector{Bool}
     tp1storage::Vector{Float64}
@@ -37,7 +37,7 @@ mutable struct FunctionSetStorage{N,T<:RelaxTag}
     tp4storage::Vector{Float64}
     tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
     grad_sparsity::Vector{Int64}
-    dependent_subexpressions::Vector{Int64}
+    #dependent_subexpressions::Vector{Int64}
 end
 
 FunctionSetStorage(N,T) = FunctionSetStorage{N,T}(JuMP.NodeData[],spzeros(Bool,1),

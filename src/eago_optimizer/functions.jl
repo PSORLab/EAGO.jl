@@ -20,6 +20,10 @@ Computes a tuple representing the lower and upper interval bounds for a
 function interval_bound end
 
 
+####
+#### Affine Storage
+####
+
 """
 $(TYPEDEF)
 
@@ -180,9 +184,49 @@ function interval_bound(f::BufferedQuadraticEq, n::NodeBB)
     return val_intv.lo, val_intv.hi
 end
 
-
-
 #=
+NodeType convention is defined to parallel JuMP's nonlinear evaluator
+@enum NodeType: CALL CALLUNIVAR VARIABLE VALUE SUBEXPRESSION PARAMETER
+
+const OPERATORS = [:+, :-, :*, :^, :/, :ifelse, :max, :min]
+const USER_OPERATOR_ID_START = length(operators) + 1
+const OPERATOR_TO_ID = Dict{Symbol,Int}()
+for i = 1:length(OPERATORS)
+    OPERATOR_TO_ID[OPERATORS[i]] = i
+end
+
+const UNIVARIATE_OPERATORS = Symbol[:+, :-, :abs]
+const UNIVARIATE_OPERATOR_TO_ID = Dict{Symbol,Int}(:+ => 1, :- => 2, :abs => 3)
+const UNIVARIATE_OPERATOR_DERIV = Any[:(one(x)), :(-one(x)), :(ifelse(x >= 0, one(x), -one(x)))]
+for (op, deriv) in Calculus.symbolic_derivatives_1arg()
+    push!(UNIVARIATE_OPERATORS, op)
+    push!(UNIVARIATE_OPERATOR_DERIV, deriv)
+    UNIVARIATE_OPERATOR_TO_ID[op] = length(UNIVARIATE_OPERATORS)
+end
+const USER_UNIVAR_OPERATOR_ID_START = length(UNIVARIATE_OPERATORS) + 1
+
+"""
+$(TYPDEF)
+
+Stores a general nonlinear function with a buffer.
+"""
+mutable struct BufferedNonlinearEq{N, T<:RelaxTag} <: AbstractEAGOConstraint
+    "Main evaluator"
+    evaluator::Evaluator
+    "List of nodes in nonlinear expression"
+    node_list::NodeData
+    const_values::Vector{Float64}
+    set_storage::Vector{MC{N,T}}
+    grad_sparsity::Vector{Int64}
+    dependent_subexpressions::Vector{Int64}
+end
+
+function interval_bound(f::BufferedNonlinearEq{N,T}, n::NodeBB) where {N, T<:RelaxTag}
+end
+
+function relax!(m::Optimizer, f::BufferedNonlinearEq{N,T}, indx::Int, check_safe::Bool) where {N, T<:RelaxTag}
+end
+
 """
 $(FUNCTIONAME)
 
@@ -278,6 +322,19 @@ Base.@kwdef mutable struct InputProblem
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
 end
 
+Base.@kwdef mutable struct VariableNodeMap
+    eq_variable_indx::OrderDict{CI{SV, ET}, Int} = OrderDict{CI{SV, ET}, Int}()
+    leq_variable_indx::OrderDict{CI{SV, LT}, Int} = OrderDict{CI{SV, LT}, Int}()
+    geq_variable_indx::OrderDict{CI{SV, GT}, Int} = OrderDict{CI{SV, GT}, Int}()
+end
+getindex(v::VariableNodeMap, i::CI{SV, ET}) = v.eq_variable_indx[i]
+getindex(v::VariableNodeMap, i::CI{SV, LT}) = v.leq_variable_indx[i]
+getindex(v::VariableNodeMap, i::CI{SV, GT}) = v.geq_variable_indx[i]
+
+setindex!(v::VariableNodeMap, i::CI{SV, ET}, val) = (v.eq_variable_indx[i] = val)
+setindex!(v::VariableNodeMap, i::CI{SV, LT}, val) = (v.leq_variable_indx[i] = val)
+setindex!(v::VariableNodeMap, i::CI{SV, GT}, val) = (v.geq_variable_indx[i] = val)
+
 #=
 Holds specialized constraint functions used by EAGO to generate cuts
 =#
@@ -288,7 +345,7 @@ Base.@kwdef mutable struct ParsedProblem
     "_objective_saf stores the objective and is used for constructing linear affine cuts
      of any ObjectiveType"
     _objective_saf::SAF = SAF(SAT[], 0.0)
-    _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
+    _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
     _objective_nl = nothing
     _objective_type::ObjectiveType = UNSET
 
@@ -303,6 +360,9 @@ Base.@kwdef mutable struct ParsedProblem
     _sqf_leq_count::Int = 0
     _sqf_eq_count::Int = 0
 
+    # nlp constraints
+    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+
     # variables
     _variable_info::Vector{VariableInfo} = VariableInfo[]
     _variable_count::Int = 0
@@ -310,6 +370,13 @@ Base.@kwdef mutable struct ParsedProblem
     _var_leq_count::Int = 0
     _var_geq_count::Int = 0
     _var_eq_count::Int = 0
+
+    # need to retreive primal _relaxed_variable_index
+    _relaxed_variable_node_map::VariableNodeMap
+    _relaxed_variable_index::Vector{VI} = VI[]
+    _relaxed_variable_eq::Vector{CI{SV, ET}} = CI{SV, ET}[]
+    _relaxed_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
+    _relaxed_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
 end
 
 function bound_objective(m::Optimizer)
@@ -348,47 +415,3 @@ function bound_objective(m::Optimizer)
         x._lower_objective_value = objective_lo
     end
 end
-
-@enum(CI_ENUM, CI_UNSET, CI_QDLT, CI_QDET, CI_NLLT, CI_NLET, CI_SOC)
-
-#=
-"""
-"""
-mutable struct ConstraintIndexMap
-    ineq_constraint_count::Int
-    ineq_constraints_added::Int
-    ci_added_type::Vector{CI_ENUM}
-    ci_added_value::Vector{Int}
-    ci_added_active::Vector{Bool}
-    quadratic_le::Dict{Tuple{CI{SQF,LT},1}, CI{SAF,LT}}
-    quadratic_ge::CI{SAF,LT}
-    ci_quadratic_eq::CI{SAF,ET}
-end
-
-# get CI using conditional statement need map i -> enumerate CI_type
-"""
-Deletes cutting inequalities from relaxed optimizer and labels them as unset.
-"""
-function delete_cuts!(m::Optimizer)
-
-    cmap = m._inner_constraints_map
-    ci_added_value = cmap.ci_added_value
-    ci_added_type = cmap.ci_added_type
-
-    for i = 1:cmap.ineq_constraints_added
-
-        ci_value = @inbounds ci_added_value[i]
-        ci_type = @inbounds ci_added_type[i]
-
-        if ci_type === CI_QDLT || ci_type === CI_QDET ||
-           ci_type === CI_NLLT || ci_type === CI_NLET ||
-           ci_type === CI_SOC
-
-            MOI.delete(m.relaxed_optimizer, CI{SAF,LT}(ci_value))
-            @inbounds ci_added_type[i] = CI_UNSET
-        end
-    end
-    cmap.ineq_constraints_added = 0
-    nothing
-end
-=#

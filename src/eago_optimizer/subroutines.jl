@@ -370,35 +370,30 @@ optimizer.
 function update_relaxed_problem_box!(m::Optimizer, n::NodeBB)
 
     opt = m.relaxed_optimizer
-    working_problem = m._working_problem
+    wp = m._working_problem
 
     lower_bound = n.lower_variable_bounds
     upper_bound = n.upper_variable_bounds
 
-    relaxed_variable_et = working_problem._relaxed_variable_et
-    relaxed_variable_et_indx = working_problem._relaxed_variable_et_indx
-
-    relaxed_variable_lt = working_problem._relaxed_variable_lt
-    relaxed_variable_lt_indx = working_problem._relaxed_variable_lt_indx
-
-    relaxed_variable_gt = working_problem._relaxed_variable_gt
-    relaxed_variable_gt_indx = working_problem._relaxed_variable_gt_indx
-
-    for i = 1:working_problem._var_eq_count
-        ci = @inbounds relaxed_variable_et[i]
-        ni = @inbounds relaxed_variable_et_indx[i]
+    node_map = wp._relaxed_variable_node_map
+    relaxed_variable_eq = wp._relaxed_variable_eq
+    for i = 1:wp._var_eq_count
+        ci = @inbounds relaxed_variable_eq[i]
+        ni = node_map[ci]
         MOI.set(opt, MOI.ConstraintSet(), ci, ET(@inbounds lower_bound[ni]))
     end
 
-    for i = 1:working_problem._var_leq_count
+    relaxed_variable_lt = wp._relaxed_variable_lt
+    for i = 1:wp._var_leq_count
         ci = @inbounds relaxed_variable_lt[i]
-        ni = @inbounds relaxed_variable_lt_indx[i]
+        ni = node_map[ci]
         MOI.set(opt, MOI.ConstraintSet(), ci, LT(@inbounds upper_bound[ni]))
     end
 
-    for i = 1:working_problem._var_geq_count
+    relaxed_variable_gt = wp._relaxed_variable_gt
+    for i = 1:wp._var_geq_count
         ci = @inbounds relaxed_variable_gt[i]
-        ni = @inbounds relaxed_variable_gt_indx[i]
+        ni = node_map[ci]
         MOI.set(opt, MOI.ConstraintSet(), ci, GT(@inbounds lower_bound[ni]))
     end
 
