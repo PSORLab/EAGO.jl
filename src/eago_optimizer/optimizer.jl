@@ -352,19 +352,34 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
 
+const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer, :upper_factory
+                                         :enable_optimize_hook, :ext, :ext_type, :_parameters]
+const EAGO_MODEL_ATTRIBUTES = setdiff(fieldnames(Optimizer), EAGO_OPTIMIZER_ATTRIBUTES)
+
 function MOI.empty!(m::Optimizer)
-    m = Optimizer()
-    nothing
+
+    # create a new empty optimizer and copy fields to m
+    new_optimizer = Optimizer()
+    for field in EAGO_MODEL_ATTRIBUTES
+        setfield!(m, field, getfield(new_optimizer, field)
+    end
+
+    return nothing
 end
 
 function MOI.is_empty(m::Optimizer)
 
-    flag = true
-    flag &= isempty(m._variable_info)
-    flag &= m._input_problem._optimization_sense === MOI.MIN_SENSE
-    flag &= m._termination_status_code === MOI.OPTIMIZE_NOT_CALLED
+    is_empty_flag = true
 
-    return flag
+    new_optimizer = Optimizer()
+    for field in EAGO_MODEL_ATTRIBUTES
+        if getfield!(m, field) !== getfield(new_optimizer, field)
+            is_empty_flag = false
+            break
+        end
+    end
+
+    return is_empty_flag
 end
 
 ##### Utilities for checking that JuMP model contains variables used in expression
@@ -372,7 +387,7 @@ function check_inbounds!(m::Optimizer, vi::VI)
     if !(1 <= vi.value <= m._variable_number)
         error("Invalid variable index $vi. ($(m._variable_numbe) variables in the model.)")
     end
-    return
+    return nothing
 end
 check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
 
@@ -380,7 +395,7 @@ function check_inbounds!(m::Optimizer, aff::SAF)
     for term in aff.terms
         check_inbounds!(m, term.variable_index)
     end
-    return
+    return nothing
 end
 function check_inbounds!(m::Optimizer, quad::SQF)
     for term in quad.affine_terms
@@ -390,7 +405,7 @@ function check_inbounds!(m::Optimizer, quad::SQF)
         check_inbounds!(m, term.variable_index_1)
         check_inbounds!(m, term.variable_index_2)
     end
-    return
+    return nothing
 end
 #=
 function check_inbounds!(m::Optimizer, vov::VECOFVAR)
@@ -408,7 +423,7 @@ end
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
      m.verbosity = 0
      m.log_on = false
-     return
+     return nothing
 end
 
 #=
@@ -469,7 +484,7 @@ function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
         m._input_problem._objective_type = NONLINEAR
     end
     m._input_problem._nlp_data = nlp_data
-    return
+    return nothing
 end
 
 ##### Support, set, and evaluate objective functions
@@ -478,22 +493,22 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
     m._input_problem._objective_sv = func
     m._input_problem._objective_type = SINGLE_VARIABLE
-    return
+    return nothing
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
     m._input_problem._objective_saf = func
     m._input_problem._objective_type = SCALAR_AFFINE
-    return
+    return nothing
 end
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
     m._input_problem._objective_sqf = func
     m._input_problem._objective_type = SCALAR_QUADRATIC
-    return
+    return nothing
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
     m._input_problem._optimization_sense = sense
-    return
+    return nothing
 end
