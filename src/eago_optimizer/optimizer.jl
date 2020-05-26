@@ -267,9 +267,9 @@ end
 $(TYPEDEF)
 """
 Base.@kwdef mutable struct VariableNodeMap
-    eq_variable_indx::OrderDict{CI{SV, ET}, Int} = OrderDict{CI{SV, ET}, Int}()
-    leq_variable_indx::OrderDict{CI{SV, LT}, Int} = OrderDict{CI{SV, LT}, Int}()
-    geq_variable_indx::OrderDict{CI{SV, GT}, Int} = OrderDict{CI{SV, GT}, Int}()
+    eq_variable_indx::OrderedDict{CI{SV, ET}, Int} = OrderedDict{CI{SV, ET}, Int}()
+    leq_variable_indx::OrderedDict{CI{SV, LT}, Int} = OrderedDict{CI{SV, LT}, Int}()
+    geq_variable_indx::OrderedDict{CI{SV, GT}, Int} = OrderedDict{CI{SV, GT}, Int}()
 end
 getindex(v::VariableNodeMap, i::CI{SV, ET}) = v.eq_variable_indx[i]
 getindex(v::VariableNodeMap, i::CI{SV, LT}) = v.leq_variable_indx[i]
@@ -418,9 +418,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _last_upper_problem_time::Float64 = 0.0
     _last_postprocessing_time::Float64 = 0.0
 
-    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
-    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
-
     _global_lower_bound::Float64 = -Inf
     _global_upper_bound::Float64 = Inf
     _maximum_node_id::Int64 = 0
@@ -463,6 +460,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _buffered_quadratic_ineq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
     _buffered_quadratic_eq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
+
+    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
     _objective_cut_ci_saf::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
 
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
@@ -484,7 +483,7 @@ function MOI.empty!(m::Optimizer)
     # create a new empty optimizer and copy fields to m
     new_optimizer = Optimizer()
     for field in EAGO_MODEL_ATTRIBUTES
-        setfield!(m, field, getfield(new_optimizer, field)
+        setfield!(m, field, getfield(new_optimizer, field))
     end
 
     return nothing

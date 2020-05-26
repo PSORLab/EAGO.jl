@@ -47,7 +47,7 @@ function lower_interval_bound(f::BufferedQuadraticIneq, n::NodeBB)
 end
 
 """
-$(TYPDEF)
+$(TYPEDEF)
 
 Stores a general quadratic function with a buffer.
 """

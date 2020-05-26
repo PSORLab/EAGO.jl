@@ -12,7 +12,7 @@ module EAGO
                              univariate_operator_to_id
     using Ipopt, GLPK
 
-    using DataStructures: BinaryMinMaxHeap, popmin!, popmax!, top
+    using DataStructures: OrderedDict, BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse
     using LinearAlgebra: eigmin, norm
 
@@ -58,27 +58,45 @@ module EAGO
     # load internal storage functions
     include("eago_optimizer/functions/functions.jl")
 
-    include("eago_optimizer/evaluator/evaluator.jl")
+    #include("eago_optimizer/evaluator/evaluator.jl")
 
-    # structure
+    # defines structure used to store information at each iteration of global optimize
     include("eago_optimizer/logging/log.jl")
+
+    # defines the optimizer structures
     include("eago_optimizer/optimizer.jl")
+
+    # defines routines to add variables and single variable constraints
     include("eago_optimizer/variables.jl")
+
+    # defines routines to add saf, sqf, and nlp block constraints
     include("eago_optimizer/moi_constraints.jl")
+
+    # defines routines which unpack constraints from the input model to the parsed model
     include("eago_optimizer/translate_constraints.jl")
+
+    # functions which print information to console
     include("eago_optimizer/display.jl")
 
+    #
     include("eago_optimizer/relax.jl")
+
+    #
     include("eago_optimizer/domain_reduction.jl")
 
+    #
     include("eago_optimizer/subroutines.jl")
+
+    #
     include("eago_optimizer/logging/log_iteration.jl")
+
+    #
     include("eago_optimizer/optimize.jl")
 
-    # Import the script solving utilities
+    # import the script solving utilities
     include("eago_script/script.jl")
 
-    # Routines for solving SIPs
+    # routines for solving SIPs
     export SIP_Options, SIP_Result, explicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
 

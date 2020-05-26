@@ -336,8 +336,8 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
     # runs poor man's LP contractor
     if (m._parameters.lp_depth >= m._iteration_count) && feasible_flag
-        for func in
-        end
+        #for func in
+        #end
     end
 
     m._obbt_performed_flag = false
