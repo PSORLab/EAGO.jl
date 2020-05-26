@@ -340,6 +340,9 @@ Holds specialized constraint functions used by EAGO to generate cuts
 =#
 Base.@kwdef mutable struct ParsedProblem
 
+    # Problem classification
+    _problem_type::ProblemType = UNCLASSIFIED
+
     # objectives
     _objective_sv::SV = SV(-1)
     "_objective_saf stores the objective and is used for constructing linear affine cuts

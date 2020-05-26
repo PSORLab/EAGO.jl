@@ -50,6 +50,7 @@ abstract type ExtensionType end
 struct DefaultExt <: ExtensionType end
 
 @enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
+@enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
 
 """
 $(TYPEDEF)
@@ -59,7 +60,6 @@ Storage for parameters that do not change during a global solve.
 $(TYPEDFIELDS)
 """
 Base.@kwdef struct EAGOParameters
-
 
     # Presolving options
     presolve_scrubber_flag::Bool = false

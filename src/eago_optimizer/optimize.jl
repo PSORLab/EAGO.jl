@@ -274,94 +274,94 @@ $(TYPEDSIGNATURES)
 
 Solves the branch and bound problem with the input EAGO optimizer object.
 """
-function global_solve!(x::Optimizer)
+function global_solve!(m::Optimizer)
 
-    x._iteration_count = 1
-    x._node_count = 1
+    m._iteration_count = 1
+    m._node_count = 1
 
     # terminates when max nodes or iteration is reach, or when node stack is empty
-    while !termination_check(x)
+    while !termination_check(m)
 
         # Selects node, deletes it from stack, prints based on verbosity
-        node_selection!(x)
-        (x.verbosity >= 3) && print_node!(x)
+        node_selection!(m)
+        (x.verbosity >= 3) && print_node!(m)
 
         # Performs prepocessing and times
-        x.log_on && (start_time = time())
-        preprocess!(x)
-        if x.log_on
-            x._last_preprocess_time = time() - start_time
+        m.log_on && (start_time = time())
+        preprocess!(m)
+        if m.log_on
+            m._last_preprocess_time = time() - start_time
         end
 
-        if x._preprocess_feasibility
+        if m._preprocess_feasibility
 
             # solves & times lower bounding problem
-            x.log_on && (start_time = time())
-            x._cut_iterations = 1
-            lower_problem!(x)
-            while cut_condition(x)
-                add_cut!(x)
+            m.log_on && (start_time = time())
+            m._cut_iterations = 1
+            lower_problem!(m)
+            while cut_condition(m)
+                add_cut!(m)
             end
-            if x.log_on
-                x._last_lower_problem_time = time() - start_time
+            if m.log_on
+                m._last_lower_problem_time = time() - start_time
             end
-            print_results!(x, true)
-            print_results_post_cut!(x)
+            print_results!(m, true)
+            print_results_post_cut!(m)
 
             # checks for infeasibility stores solution
-            if x._lower_feasibility
-                if ~convergence_check(x)
+            if m._lower_feasibility
+                if !convergence_check(m)
 
-                    x.log_on && (start_time = time())
-                    upper_problem!(x)
-                    if x.log_on
-                        x._last_upper_problem_time = time() - start_time
+                    m.log_on && (start_time = time())
+                    upper_problem!(m)
+                    if m.log_on
+                        m._last_upper_problem_time = time() - start_time
                     end
-                    print_results!(x, false)
-                    store_candidate_solution!(x)
-                    if x._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
-                        if ~x.feasible_local_continue || x.local_solve_only
+                    print_results!(m, false)
+                    store_candidate_solution!(m)
+                    if m._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
+                        if !m.feasible_local_continue || m.local_solve_only
                             break
                         end
                     end
 
                     # Performs and times post processing
-                    x.log_on && (start_time = time())
-                    postprocess!(x)
-                    if x.log_on
-                        x._last_postprocessing_time = time() - start_time
+                    m.log_on && (start_time = time())
+                    postprocess!(m)
+                    if m.log_on
+                        m._last_postprocessing_time = time() - start_time
                     end
 
                     # Checks to see if the node
-                    if (x._postprocess_feasibility)
-                        if repeat_check(x)
-                            single_storage!(x)
+                    if m._postprocess_feasibility
+                        if repeat_check(m)
+                            single_storage!(m)
                         else
-                            branch_node!(x)
+                            branch_node!(m)
                         end
                     end
                 else
                     #x._global_lower_bound = x._lower_objective_value
                 end
             end
-            fathom!(x)
+            fathom!(m)
         else
-            x._lower_objective_value = -Inf
-            x._lower_feasibility = false
-            x._upper_feasibility = false
+            m._lower_objective_value = -Inf
+            m._lower_feasibility = false
+            m._upper_feasibility = false
         end
-        set_global_lower_bound!(x)
-        x._run_time = time() - x._start_time
-        x._time_left = x.time_limit - x._run_time
-        log_iteration!(x)
-        print_iteration!(x)
-        x._iteration_count += 1
+        set_global_lower_bound!(m)
+        m._run_time = time() - m._start_time
+        m._time_left = m.time_limit - m._run_time
+        log_iteration!(m)
+        print_iteration!(m)
+        m._iteration_count += 1
     end
 
-    x._objective_value = x._global_upper_bound
+    m._objective_value = m._global_upper_bound
 
     # Prints the solution
-    print_solution!(x)
+    print_solution!(m)
     return
 end
 
@@ -369,18 +369,12 @@ throw_optimize_hook!(m::Optimizer) = optimize_hook!(m.ext_type, m)
 function MOI.optimize!(m::Optimizer)
 
     m._start_time = time()
-    presolve_problem!(m)
-    parse_problem!(m)
 
     # Runs the branch and bound routine
     if !m.enable_optimize_hook
-        if is_lp(m)
-            linear_solve!(m)
-        elseif m.local_solve_only
-            local_solve!(m)
-        else
-            global_solve!(m)
-        end
+        parse_problem!(m)
+        parse_classify_problem!(m)
+        optimize!(Val{m._problem_type}(), m)
     else
         throw_optimize_hook!(m)
     end
