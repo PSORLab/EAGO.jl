@@ -574,7 +574,8 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     end
 
     if !continue_cut_flag
-        delete_nl_relaxations!(m)
+        delete_nl_constraints!(m)
+        delete_obj_cuts!(m)
     end
 
     # check to see if interval bound is preferable

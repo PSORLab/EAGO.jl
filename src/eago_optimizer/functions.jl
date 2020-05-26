@@ -285,6 +285,8 @@ Base.@kwdef mutable struct ParsedProblem
 
     # objectives
     _objective_sv::SV = SV(-1)
+    "_objective_saf stores the objective and is used for constructing linear affine cuts
+     of any ObjectiveType"
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
     _objective_nl = nothing

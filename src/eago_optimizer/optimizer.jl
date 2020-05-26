@@ -216,7 +216,10 @@ $(TYPEDEF)
 
 The main optimizer object used by EAGO to solve problems during the optimization
 routine. The following commonly used options are described below and can be set
-via keyword arguments in the JuMP/MOI model:
+via keyword arguments in the JuMP/MOI model. The raw parameter interface however
+is likely preferable. The Optimizer is organized in the following manner. Parameters
+which are expected to be constant over the entire solve are stored in
+`_parameters::EAGOParameters` field,
 
 $(TYPEDFIELDS)
 """
@@ -227,7 +230,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
     "Keyword arguments for the relaxed optimizer."
     relaxed_optimizer_kwargs::Base.Iterators.Pairs = Base.Iterators.Pairs(NamedTuple(),())
-    relaxed_inplace_mod::Bool = true
 
     "Variables to perform OBBT on (default: all variables in nonlinear expressions)."
     obbt_variable_values::Vector{Bool} = Bool[]
@@ -240,7 +242,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
                                                           acceptable_iter = 300, constr_viol_tol = 1E-8,
                                                           acceptable_constr_viol_tol = 1E-8, print_level = 0)
 
-    # Debug
+    # Extensions
     "Specifies that the optimize_hook! function should be called rather than
     throw the problem to the standard B&B routine (default = false)."
     enable_optimize_hook::Bool = false
@@ -262,21 +264,19 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _current_xref::Vector{Float64} = Float64[]
     _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
 
-    _variable_number::Int = 0
-
     _user_branch_variables::Bool = false
     _fixed_variable::Vector{Bool} = Bool[]
     _continuous_solution::Vector{Float64} = Float64[]
     _upper_variables::Vector{VI} =  VI[]
 
-    _lower_variable::Vector{SV} = SV[]
-    _lower_variable_index::Vector{VI} = VI[]
-    _lower_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
-    _lower_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
-    _lower_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
-    _lower_variable_et_indx::Vector{Int64} = Int64[]
-    _lower_variable_lt_indx::Vector{Int64} = Int64[]
-    _lower_variable_gt_indx::Vector{Int64} = Int64[]
+    _relaxed_variable::Vector{SV} = SV[]
+    _relaxed_variable_index::Vector{VI} = VI[]
+    _relaxed_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
+    _relaxed_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
+    _relaxed_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
+    _relaxed_variable_et_indx::Vector{Int64} = Int64[]
+    _relaxed_variable_lt_indx::Vector{Int64} = Int64[]
+    _relaxed_variable_gt_indx::Vector{Int64} = Int64[]
 
     _preprocess_feasibility::Bool = true
     _preprocess_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
@@ -314,7 +314,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _last_upper_problem_time::Float64 = 0.0
     _last_postprocessing_time::Float64 = 0.0
 
-    _objective_cut_set::Int64 = -1
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
     _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 

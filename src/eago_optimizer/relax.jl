@@ -358,27 +358,41 @@ Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
 function objective_cut!(m::Optimizer, q::Int64)
 
+    UBD = m._global_upper_bound
     if m.objective_cut_on && m._global_upper_bound < Inf
 
-        set = LT(m._global_upper_bound)
+        wp = m._working_problem
+        obj_type = wp._objective_type
 
-        if m._objective_type === SINGLE_VARIABLE
+        if obj_type === SINGLE_VARIABLE
+            MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), wp._objective_sv_cut_ci, LT(UBD))
 
-            ci_sv = m._objective_cut_ci_sv
-            MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
+        elseif obj_type === SCALAR_AFFINE
+            wp._objective_saf.constant -= UBD
+            relax!(wp._objective_saf)
+            if check_safe && is_safe_cut!(m, wp._objective_saf)
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
+                push!(m._objective_cut_ci_saf, ci_saf)
+            end
+            wp._objective_saf.constant += UBD
 
-        elseif m._objective_type === SCALAR_AFFINE
+        elseif obj_type === SCALAR_QUADRATIC
+            relax(XXX)
+            copyto!(m._objective_saf.terms, XXX)
+            m._objective_saf.constant = XXX - UBD
+            if check_safe && is_safe_cut!(m, wp._objective_saf)
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
+                push!(m._objective_cut_ci_saf, ci_saf)
+            end
 
-            ci_saf = MOI.add_constraint(m.relaxed_optimizer, m._objective_saf, set)
-            m._objective_cut_ci_saf[q] = ci_saf
-
-        elseif m._objective_type === SCALAR_QUADRATIC || m._objective_type === NONLINEAR
-
-            saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-            set = LT(m._global_upper_bound - saf.constant)
-            saf.constant = 0.0
-            ci_saf = MOI.add_constraint(m.relaxed_optimizer, saf, set)
-            m._objective_cut_ci_saf[q] = ci_saf
+        elseif obj_type === NONLINEAR
+            relax(XXX)
+            copyto!(m._objective_saf.terms, XXX)
+            m._objective_saf.constant = XXX - UBD
+            if check_safe && is_safe_cut!(m, wp._objective_saf)
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
+                push!(m._objective_cut_ci_saf, ci_saf)
+            end
 
         end
     end
@@ -404,7 +418,11 @@ function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::I
 end
 relax_problem!(m::Optimizer, x::Vector{Float64}, q::Int64) = relax_problem!(m.ext_type, m, x, q)
 
-function delete_nl_relaxations!(m::Optimizer)
+"""
+
+Deletes all nonlinear constraints added to the relaxed optimizer.
+"""
+function delete_nl_constraints!(m::Optimizer)
 
     # delete affine relaxations added from quadatic inequality
     for ci in m._buffered_quadratic_ineq_ci
@@ -416,5 +434,15 @@ function delete_nl_relaxations!(m::Optimizer)
         MOI.delete(m.relaxed_optimizer, ci)
     end
 
+    return nothing
+end
+
+"""
+Deletes all scalar-affine objective cuts added to the relaxed optimizer.
+"""
+function delete_objective_cuts!(m::Optimizer)
+    for ci in m._objective_cut_ci_saf
+        MOI.delete(m.relaxed_optimizer, ci)
+    end
     return nothing
 end
