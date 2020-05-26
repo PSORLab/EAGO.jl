@@ -47,181 +47,53 @@ function label_nonlinear_variables!(m::Optimizer)
     return
 end
 
-
-"""
-$(TYPEDSIGNATURES)
-
-Generate the list of variables (1,...,n) that are included in the func.
-"""
-function gen_quad_vals(func::SQF)
-    list = Int64[]
-    for term in func.affine_terms
-        val = term.variable_index.value
-        push!(list, val)
-    end
-    for term in func.quadratic_terms
-        val1 = term.variable_index_1.value
-        val2 = term.variable_index_2.value
-        push!(list, val1, val2)
-    end
-    sort!(list); unique!(list)
-    return list
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Generate the storage for the affine relaxations of quadratic functions.
-"""
-function gen_quadratic_storage!(x::Optimizer)
-
-    opt = x.relaxed_optimizer
-    variable_index = x._lower_variable_index
-
-    temp_leq_ci = CI{SAF,LT}[]
-    for (func, set) in x._quadratic_leq_constraints
-
-        v = gen_quad_vals(func)
-        nv = length(v)
-        @inbounds nzvar = variable_index[v]
-        push!(x._quadratic_leq_sparsity, nzvar)
-        push!(x._quadratic_leq_gradnz, nv)
-
-        d = ImmutableDict{Int64,Int64}()
-        for (i, val) in enumerate(v)
-            d = ImmutableDict(d, val => i)
-        end
-        push!(x._quadratic_leq_dict, d)
-
-        func = SAF(SAT.(zeros(nv), nzvar), 0.0)
-        ci = MOI.add_constraint(opt, func, LT(0.0))
-        push!(temp_leq_ci, ci)
-    end
-
-    len_leq_ci = length(temp_leq_ci)
-    push!(x._quadratic_ci_leq, temp_leq_ci)
-    for i in 2:x.cut_max_iterations
-        push!(x._quadratic_ci_leq, fill(CI{SAF,LT}(-1), (len_leq_ci,)))
-    end
-
-    temp_geq_ci = CI{SAF,LT}[]
-    for (func, set) in x._quadratic_geq_constraints
-
-        v = gen_quad_vals(func)
-        nv = length(v)
-        @inbounds nzvar = variable_index[v]
-        push!(x._quadratic_geq_sparsity, nzvar)
-        push!(x._quadratic_geq_gradnz, nv)
-
-        d = ImmutableDict{Int64,Int64}()
-        for (i, val) in enumerate(v)
-            d = ImmutableDict(d, val => i)
-        end
-        push!(x._quadratic_geq_dict, d)
-
-        func = SAF(SAT.(zeros(nv), nzvar), 0.0)
-        ci = MOI.add_constraint(opt, func, LT(0.0))
-        push!(temp_geq_ci, ci)
-    end
-
-    len_geq_ci = length(temp_geq_ci)
-    push!(x._quadratic_ci_geq, temp_geq_ci)
-    for i in 2:x.cut_max_iterations
-        push!(x._quadratic_ci_geq, fill(CI{SAF,LT}(-1), (len_geq_ci,)))
-    end
-
-    temp_eq_ci = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
-    for (func, set) in x._quadratic_eq_constraints
-
-        v = gen_quad_vals(func)
-        nv = length(v)
-        @inbounds nzvar = variable_index[v]
-        push!(x._quadratic_eq_sparsity, nzvar)
-        push!(x._quadratic_eq_gradnz, nv)
-
-        d = ImmutableDict{Int64,Int64}()
-        for (i, val) in enumerate(v)
-            d = ImmutableDict(d, val => i)
-        end
-        push!(x._quadratic_eq_dict, d)
-
-        func = SAF(SAT.(zeros(nv), nzvar), 0.0)
-        c1 = MOI.add_constraint(opt, func, LT(0.0))
-        c2 = MOI.add_constraint(opt, func, LT(0.0))
-        push!(temp_eq_ci, (c1, c2))
-    end
-
-    len_eq_ci = length(temp_eq_ci)
-    push!(x._quadratic_ci_eq, temp_eq_ci)
-    for i in 2:x.cut_max_iterations
-        push!(x._quadratic_ci_eq, fill((CI{SAF,LT}(-1), CI{SAF,LT}(-1)), (len_eq_ci,)))
-    end
-
-    if x._objective_type === SCALAR_QUADRATIC
-        v = gen_quad_vals(x._objective_sqf)
-        d = ImmutableDict{Int64,Int64}()
-        for (i, val) in enumerate(v)
-            d = ImmutableDict(d, val => i)
-        end
-        x._quadratic_obj_dict = d
-    end
-
-    return
-end
-
 """
 $(TYPEDSIGNATURES)
 
 Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
 """
-function load_relaxed_problem!(x::Optimizer)
-    opt = x.relaxed_optimizer
+function load_relaxed_problem!(m::Optimizer)
+    relaxed_optimizer = m.relaxed_optimizer
 
     # add variables and indices
-    variable_number = x._variable_number
-    for i=1:variable_number
-        variable_index = MOI.add_variable(opt)
-        push!(x._lower_variable_index, variable_index)
-        push!(x._lower_variable, SV(variable_index))
+    variable_number = m._working_problem._variable_count
+    for i = 1:variable_number
+        push!(x._working_problem._relaxed_variable_index, MOI.add_variable(opt))
     end
 
     # add variables
-    variable = x._lower_variable
-    for i=1:variable_number
-        @inbounds var = x._variable_info[i]
-        @inbounds var_i = variable[i]
-        if var.is_integer
+    for i = 1:variable_number
+        @inbounds vinfo = x._variable_info[i]
+        single_variable = SV(x._working_problem._relaxed_variable_index[i])
+        if vinfo.is_integer
+        elseif vinfo.is_fixed
+            ci_sv_et = MOI.add_constraint(relaxed_optimizer, single_variable, ET(vinfo.lower_bound))
+            m._relaxed_variable_node_map[ci_sv_et] = i
         else
-            if var.is_fixed
-                push!(x._lower_variable_et, MOI.add_constraint(opt, var_i, ET(var.lower_bound)))
-                push!(x._lower_variable_et_indx, i)
-            else
-                if var.has_lower_bound
-                    push!(x._lower_variable_gt, MOI.add_constraint(opt, var_i, GT(var.lower_bound)))
-                    push!(x._lower_variable_gt_indx, i)
-                end
-                if var.has_upper_bound
-                    push!(x._lower_variable_lt, MOI.add_constraint(opt, var_i, LT(var.upper_bound)))
-                    push!(x._lower_variable_lt_indx, i)
-                end
+            if vinfo.has_lower_bound
+                ci_sv_gt = MOI.add_constraint(relaxed_optimizer, single_variable, GT(vinfo.lower_bound))
+                m._relaxed_variable_node_map[ci_sv_gt] = i
+            end
+            if vinfo.has_upper_bound
+                ci_sv_lt = MOI.add_constraint(relaxed_optimizer, single_variable, LT(vinfo.upper_bound))
+                m._relaxed_variable_node_map[ci_sv_lt] = i
             end
         end
     end
 
     # add linear constraints
-    for (func, set) in x._linear_leq_constraints
+    for (func, set) in m._input_problem._linear_leq_constraints
          MOI.add_constraint(opt, func, set)
     end
-    for (func, set) in x._linear_geq_constraints
+    for (func, set) in m._input_problem._linear_geq_constraints
         MOI.add_constraint(opt, func, set)
     end
-    for (func, set) in x._linear_eq_constraints
+    for (func, set) in m._input_problem._linear_eq_constraints
         MOI.add_constraint(opt, func, set)
     end
 
-    gen_quadratic_storage!(x)
-
+    #=
     # add a linear constraint for each nonlinear constraint
     evaluator = x._relaxed_evaluator
     constraint_bounds = x._relaxed_constraint_bounds
@@ -432,7 +304,7 @@ Detects any variables set to a fixed value by equality or inequality constraints
 and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
-    map!(x -> (x.is_fixed |= (x.lower_bound == x.upper_bound)), m._fixed_variable, m._variable_info)
+    map!(m -> (m.is_fixed |= (m.lower_bound == m.upper_bound)), m._fixed_variable, m._variable_info)
 end
 
 """
@@ -440,28 +312,28 @@ $(TYPEDSIGNATURES)
 
 Performs a single local solve of problem.
 """
-function local_solve!(x::Optimizer)
+function local_solve!(m::Optimizer)
 
-    node_selection!(x)
-    solve_local_nlp!(x)
+    node_selection!(m)
+    solve_local_nlp!(m)
 
-    if x._upper_feasibility
-        x._feasible_solution_found = true
-        x._first_solution_node = x._maximum_node_id
-        x._solution_value = x._upper_objective_value
-        x._continuous_solution .= x._upper_solution
-        x._objective_value = x._upper_objective_value
-        x._termination_status_code = MOI.LOCALLY_SOLVED
-        x._result_status_code = MOI.FEASIBLE_POINT
+    if m._upper_feasibility
+        m._feasible_solution_found = true
+        m._first_solution_node = m._maximum_node_id
+        m._solution_value = m._upper_objective_value
+        m._continuous_solution .= m._upper_solution
+        m._objective_value = m._upper_objective_value
+        m._termination_status_code = MOI.LOCALLY_SOLVED
+        m._result_status_code = MOI.FEASIBLE_POINT
     else
-        x._feasible_solution_found = false
-        x._first_solution_node = x._maximum_node_id
-        x._termination_status_code = MOI.LOCALLY_INFEASIBLE
-        x._result_status_code = MOI.INFEASIBLE_POINT
+        m._feasible_solution_found = false
+        m._first_solution_node = m._maximum_node_id
+        m._termination_status_code = MOI.LOCALLY_INFEASIBLE
+        m._result_status_code = MOI.INFEASIBLE_POINT
     end
     return
 end
-
+#=
 function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool) where {N,T<:RelaxTag}
 
     m = src.m::Model
@@ -739,42 +611,42 @@ function presolve_problem!(m::Optimizer)
     return
 end
 
-function store_candidate_solution!(x::Optimizer)
-    if x._upper_feasibility &&  (x._upper_objective_value < x._global_upper_bound)
-            x._feasible_solution_found = true
-            x._first_solution_node = x._maximum_node_id
-            x._solution_value = x._upper_objective_value
-            x._global_upper_bound = x._upper_objective_value
-            @__dot__ x._continuous_solution = x._upper_solution
+function store_candidate_solution!(m::Optimizer)
+    if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
+            m._feasible_solution_found = true
+            m._first_solution_node = m._maximum_node_id
+            m._solution_value = m._upper_objective_value
+            m._global_upper_bound = m._upper_objective_value
+            @__dot__ m._continuous_solution = m._upper_solution
     end
     return
 end
 
-function set_global_lower_bound!(x::Optimizer)
-    if ~isempty(x._stack)
-        min_node = minimum(x._stack)
+function set_global_lower_bound!(m::Optimizer)
+    if !isempty(m._stack)
+        min_node = minimum(m._stack)
         lower_bound = min_node.lower_bound
-        if x._global_lower_bound < lower_bound
-            x._global_lower_bound = lower_bound
+        if m._global_lower_bound < lower_bound
+            m._global_lower_bound = lower_bound
         end
     end
     return
 end
 
 # wraps subroutine call to isolate ExtensionType
-termination_check(x::Optimizer) = termination_check(x.ext_type, x)
-cut_condition(x::Optimizer) = cut_condition(x.ext_type, x)
-convergence_check(x::Optimizer) = convergence_check(x.ext_type, x)
-repeat_check(x::Optimizer) = repeat_check(x.ext_type, x)
-node_selection!(x::Optimizer) = node_selection!(x.ext_type, x)
-preprocess!(x::Optimizer) = preprocess!(x.ext_type, x)
-lower_problem!(x::Optimizer) = lower_problem!(x.ext_type, x)
-add_cut!(x::Optimizer) = add_cut!(x.ext_type, x)
-upper_problem!(x::Optimizer) = upper_problem!(x.ext_type, x)
-postprocess!(x::Optimizer) = postprocess!(x.ext_type, x)
-single_storage!(x::Optimizer) = single_storage!(x.ext_type, x)
-branch_node!(x::Optimizer) = branch_node!(x.ext_type, x)
-fathom!(x::Optimizer) = fathom!(x.ext_type, x)
+termination_check(m::Optimizer) = termination_check(m.ext_type, m)
+cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
+convergence_check(m::Optimizer) = convergence_check(m.ext_type, m)
+repeat_check(m::Optimizer) = repeat_check(m.ext_type, m)
+node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
+preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
+lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
+add_cut!(m::Optimizer) = add_cut!(m.ext_type, m)
+upper_problem!(m::Optimizer) = upper_problem!(m.ext_type, m)
+postprocess!(m::Optimizer) = postprocess!(m.ext_type, m)
+single_storage!(m::Optimizer) = single_storage!(m.ext_type, m)
+branch_node!(m::Optimizer) = branch_node!(m.ext_type, m)
+fathom!(m::Optimizer) = fathom!(m.ext_type, m)
 
 """
 $(TYPEDSIGNATURES)
@@ -787,7 +659,7 @@ function global_solve!(x::Optimizer)
     x._node_count = 1
 
     # terminates when max nodes or iteration is reach, or when node stack is empty
-    while ~termination_check(x)
+    while !termination_check(x)
 
         if contains_optimimum(x)
             println("stack contains true optimimum start")

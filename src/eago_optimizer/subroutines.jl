@@ -466,9 +466,9 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
     if feasible_flag
         interval_objective_used = interval_objective_bound(m, n)
     else
-        x._lower_objective_value = -Inf
+        m._lower_objective_value = -Inf
     end
-    x._lower_feasibility = feasible_flag
+    m._lower_feasibility = feasible_flag
 
     return
 end
@@ -498,20 +498,18 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     m._lower_termination_status = MOI.get(opt, MOI.TerminationStatus())
     m._lower_result_status = MOI.get(opt, MOI.PrimalStatus())
-    valid_flag, feas_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
+    valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
-    if valid_flag
-        if feas_flag
-            set_dual!(m)
-            m._cut_add_flag = true
-            m._lower_feasibility = true
-            m._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
-            @inbounds m._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), m._lower_variable_index)
-        else
-            m._cut_add_flag = false
-            m._lower_feasibility  = false
-            m._lower_objective_value = -Inf
-        end
+    if valid_flag && feasible_flag
+        set_dual!(m)
+        m._cut_add_flag = true
+        m._lower_feasibility = true
+        m._lower_objective_value = MOI.get(opt, MOI.ObjectiveValue())
+        @inbounds m._lower_solution[:] = MOI.get(opt, MOI.VariablePrimal(), m._lower_variable_index)
+    elseif valid_flag
+        m._cut_add_flag = false
+        m._lower_feasibility  = false
+        m._lower_objective_value = -Inf
     else
         fallback_interval_lower_bound!(m, n)
     end
@@ -523,23 +521,25 @@ $(SIGNATURES)
 
 Updates the internal storage in the optimizer after a valid feasible cut is added.
 """
-function cut_update(x::Optimizer)
+function cut_update!(m::Optimizer)
 
-    x._cut_feasibility = true
+    m._cut_feasibility = true
 
-    opt = x.relaxed_optimizer
-    obj_val = MOI.get(opt, MOI.ObjectiveValue())
+    relaxed_optimizer = x.relaxed_optimizer
+    obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (x._cut_iterations == 2) ? x._lower_objective_value : x._cut_objective_value
 
     if prior_obj_val < obj_val
+
+        x._cut_add_flag = true
         x._cut_objective_value = obj_val
         x._lower_objective_value = obj_val
         x._lower_termination_status = x._cut_termination_status
         x._lower_result_status = x._cut_result_status
-        @inbounds x._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._lower_variable_index)
+
+        @inbounds x._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._relaxed_variable_index)
         copyto!(x._lower_solution, x._cut_solution)
         set_dual!(x)
-        x._cut_add_flag = true
     else
         x._cut_add_flag = false
     end
@@ -563,10 +563,9 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     n = m._current_node
 
     if continue_cut_flag
-        xprior = m._current_xref
         xsol = (m._cut_iterations > 1) ? m._cut_solution : m._lower_solution
         xnew = (1.0 - m.cut_cvx)*mid(n) + m.cut_cvx*xsol
-        if norm((xprior - xnew)./diam(n), 1) > m.cut_tolerance
+        if norm((m._current_xref - xnew)./diam(n), 1) > m.cut_tolerance
             m._current_xref = xnew
         else
             continue_cut_flag = false
@@ -606,29 +605,27 @@ $(SIGNATURES)
 
 Adds a cut for each constraint and the objective function to the subproblem.
 """
-function add_cut!(t::ExtensionType, x::Optimizer)
+function add_cut!(t::ExtensionType, m::Optimizer)
 
-    relax_problem!(x, x._current_xref, x._cut_iterations)
-    relax_objective!(x, x._current_xref)
+    relax_problem!(m, m._current_xref, m._cut_iterations)
+    relax_objective!(m, m._current_xref)
 
     # Optimizes the object
-    opt = x.relaxed_optimizer
+    relaxed_optimizer = m.relaxed_optimizer
     MOI.optimize!(opt)
 
-    x._cut_termination_status = MOI.get(opt, MOI.TerminationStatus())
-    x._cut_result_status = MOI.get(opt, MOI.PrimalStatus())
-    valid_flag, feas_flag = is_globally_optimal(x._cut_termination_status, x._cut_result_status)
+    m._cut_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
+    m._cut_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
+    valid_flag, feasible_flag = is_globally_optimal(m._cut_termination_status, m._cut_result_status)
 
-    if valid_flag
-        if feas_flag
-            cut_update(x)
-        else
-            x._cut_add_flag = false
-            x._lower_feasibility  = false
-            x._lower_objective_value = -Inf
-        end
+    if valid_flag && feasible_flag
+        cut_update!(m)
+    elseif valid_flag
+        m._cut_add_flag = false
+        m._lower_feasibility  = false
+        m._lower_objective_value = -Inf
     else
-        x._cut_add_flag = false
+        m._cut_add_flag = false
     end
 
     return
