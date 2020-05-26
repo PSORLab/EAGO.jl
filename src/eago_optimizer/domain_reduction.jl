@@ -450,6 +450,4 @@ function fbbt!(f::AffineFunctionEq, n::NodeBB)
     return true
 end
 
-
-function cp_condition(m::Optimizer)
-end
+cp_condition(m::Optimizer) = false

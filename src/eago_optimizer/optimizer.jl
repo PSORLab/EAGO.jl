@@ -59,7 +59,7 @@ Storage for parameters that do not change during a global solve.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct EAGOParameters
+Base.@kwdef mutable struct EAGOParameters
 
     # Presolving options
     presolve_scrubber_flag::Bool = false
@@ -348,6 +348,12 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
 
+#####
+#####
+##### General MOI utilities required
+#####
+#####
+
 const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
                                          :enable_optimize_hook, :ext, :ext_type, :_parameters]
 const EAGO_MODEL_ATTRIBUTES = setdiff(fieldnames(Optimizer), EAGO_OPTIMIZER_ATTRIBUTES)
@@ -378,7 +384,16 @@ function MOI.is_empty(m::Optimizer)
     return is_empty_flag
 end
 
+function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
+    return MOI.Utilities.default_copy_to(model, src, copy_names)
+end
+
+#####
+#####
 ##### Utilities for checking that JuMP model contains variables used in expression
+#####
+#####
+
 function check_inbounds!(m::Optimizer, vi::VI)
     if !(1 <= vi.value <= m._variable_number)
         error("Invalid variable index $vi. ($(m._variable_numbe) variables in the model.)")
@@ -412,9 +427,11 @@ function check_inbounds!(m::Optimizer, vov::VECOFVAR)
 end
 =#
 
-function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
-    return MOI.Utilities.default_copy_to(model, src, copy_names)
-end
+#####
+#####
+##### Set & get attributes of model
+#####
+#####
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
      m.verbosity = 0
@@ -422,7 +439,24 @@ function MOI.set(m::Optimizer, ::MOI.Silent, value)
      return nothing
 end
 
-#=
+function MOI.set(m::Optimizer, p::MOI.RawParameter, value)
+    if p.name isa String
+        psym = Symbol(p.name)
+    elseif p.name isa Symbol
+        psym = p.name
+    else
+        error("EAGO only supports raw parameters with Symbol or String names.")
+    end
+
+    if hasfield(EAGOParameters, psym)
+        setfield!(m._parameters, psym, value)
+    else
+        setfield!(m, psym, value)
+    end
+
+    return nothing
+end
+
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
     m.time_limit = Inf
     return
@@ -432,7 +466,6 @@ function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
     m.time_limit = value
     return
 end
-=#
 
 MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i = 1:length(m._variable_info)]
 
@@ -472,13 +505,37 @@ MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._maximum_node_id
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
+MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m.time_limit
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
     return model._continuous_solution[vi.value]
 end
 
+function MOI.get(m::Optimizer, p::MOI.RawParameter)
+    if p.name isa String
+        psym = Symbol(p.name)
+    elseif p.name isa Symbol
+        psym = p.name
+    else
+        error("EAGO only supports raw parameters with Symbol or String names.")
+    end
+
+    if hasfield(EAGOParameters, psym)
+        return getfield(m._parameters, psym, value)
+    else
+        return getfield!(m, psym, value)
+    end
+end
+
+#####
+#####
+##### Support, set, and evaluate objective functions
+#####
+#####
+
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     if nlp_data.has_objective
@@ -488,20 +545,20 @@ function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     return nothing
 end
 
-##### Support, set, and evaluate objective functions
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
     m._input_problem._objective_sv = func
     m._input_problem._objective_type = SINGLE_VARIABLE
     return nothing
 end
+
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
     m._input_problem._objective_saf = func
     m._input_problem._objective_type = SCALAR_AFFINE
     return nothing
 end
+
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
     m._input_problem._objective_sqf = func

@@ -573,24 +573,24 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     end
 
     # check to see if interval bound is preferable
-    if x._lower_feasibility
-        if x._objective_type === NONLINEAR
-            objective_lo = eval_objective_lo(x._relaxed_evaluator)
-        elseif x._objective_type === SINGLE_VARIABLE
-                obj_indx = x._objective_sv.variable.value
+    if m._lower_feasibility
+        if m._objective_type === NONLINEAR
+            objective_lo = eval_objective_lo(m._relaxed_evaluator)
+        elseif m._objective_type === SINGLE_VARIABLE
+                obj_indx = m._objective_sv.variable.value
                 objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-        elseif x._objective_type === SCALAR_AFFINE
-                objective_lo = interval_bound(x._objective_saf, y, true)
-        elseif x._objective_type === SCALAR_QUADRATIC
-                objective_lo = interval_bound(x._objective_sqf, y, true)
+        elseif m._objective_type === SCALAR_AFFINE
+                objective_lo = interval_bound(v._objective_saf, y, true)
+        elseif m._objective_type === SCALAR_QUADRATIC
+                objective_lo = interval_bound(m._objective_sqf, y, true)
         end
-        if objective_lo > x._lower_objective_value
-            x._lower_objective_value = objective_lo
-            fill!(x._lower_lvd, 0.0)
-            fill!(x._lower_uvd, 0.0)
+        if objective_lo > m._lower_objective_value
+            m._lower_objective_value = objective_lo
+            fill!(v._lower_lvd, 0.0)
+            fill!(m._lower_uvd, 0.0)
         end
     end
-    x._cut_iterations += 1
+    m._cut_iterations += 1
 
     return continue_cut_flag
 end
