@@ -491,9 +491,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     end
 
     relax_objective!(m, m._current_xref)
-    if m.objective_cut_on
-        objective_cut_linear!(m, 1)
-    end
 
     # Optimizes the object
     opt = m.relaxed_optimizer
@@ -559,54 +556,25 @@ cut at. If no cut should be added the constraints not modified in place are
 deleted from the relaxed optimizer and the solution is compared with the
 interval lower bound. The best lower bound is then used.
 """
-function cut_condition(t::ExtensionType, x::Optimizer)
+function cut_condition(t::ExtensionType, m::Optimizer)
 
-    flag = x._cut_add_flag
-    flag &= (x._cut_iterations < x.cut_max_iterations)
-    y = x._current_node
+    continue_cut_flag = m._cut_add_flag
+    continue_cut_flag &= (m._cut_iterations < m.cut_max_iterations)
+    n = m._current_node
 
-    if flag
-        xprior = x._current_xref
-        xsol = (x._cut_iterations > 1) ? x._cut_solution : x._lower_solution
-        xnew = (1.0 - x.cut_cvx)*mid(y) + x.cut_cvx*xsol
-        if norm((xprior - xnew)./diam(y), 1) > x.cut_tolerance
-            x._current_xref = xnew
-            flag &= true
+    if continue_cut_flag
+        xprior = m._current_xref
+        xsol = (m._cut_iterations > 1) ? m._cut_solution : m._lower_solution
+        xnew = (1.0 - m.cut_cvx)*mid(n) + m.cut_cvx*xsol
+        if norm((xprior - xnew)./diam(n), 1) > m.cut_tolerance
+            m._current_xref = xnew
         else
-            flag &= false
+            continue_cut_flag = false
         end
     end
 
-    if ~flag
-        # if not further cuts then empty the added cuts
-        for i in 2:x._cut_iterations
-            for ci in x._quadratic_ci_leq[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-            for ci in x._quadratic_ci_geq[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-            for (ci1,ci2) in x._quadratic_ci_eq[i]
-                MOI.delete(x.relaxed_optimizer, ci1)
-                MOI.delete(x.relaxed_optimizer, ci2)
-            end
-            for ci in x._lower_nlp_affine[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-            for ci in x._upper_nlp_affine[i]
-                MOI.delete(x.relaxed_optimizer, ci)
-            end
-        end
-        if x._objective_cut_set !== -1
-            if x._objective_type === SINGLE_VARIABLE
-                obj_indx = x._objective_sv.variable.value
-                objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-            elseif x._objective_type === SCALAR_AFFINE
-                objective_lo = interval_bound(x._objective_saf, y, true)
-            elseif x._objective_type === SCALAR_QUADRATIC
-                    objective_lo = interval_bound(x._objective_sqf, y, true)
-            end
-        end
+    if !continue_cut_flag
+        delete_nl_relaxations!(m)
     end
 
     # check to see if interval bound is preferable
@@ -629,7 +597,7 @@ function cut_condition(t::ExtensionType, x::Optimizer)
     end
     x._cut_iterations += 1
 
-    return flag
+    return continue_cut_flag
 end
 
 """
@@ -641,9 +609,6 @@ function add_cut!(t::ExtensionType, x::Optimizer)
 
     relax_problem!(x, x._current_xref, x._cut_iterations)
     relax_objective!(x, x._current_xref)
-    if x.objective_cut_on
-        objective_cut_linear!(x, x._cut_iterations)
-    end
 
     # Optimizes the object
     opt = x.relaxed_optimizer

@@ -36,6 +36,8 @@ function is_safe_cut!(m::Optimizer, f::SAF)
 end
 
 """
+$(FUNCTIONNAME)
+
 Relaxs the constraint adding an affine function.
 """
 function relax! end
@@ -116,48 +118,36 @@ function affine_relax_quadratic!(func::SQF, buffer::OrderedDict{Int,Float64}, sa
 end
 
 const LT_ZERO = LT(0.0)
-macro define_relax_ineq(function_type, ci_array_name)
-    quote
-        function relax!(m::Optimizer, f::$function_type, indx::Int, check_safe::Bool)
+function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
 
-            affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._current_xref, true)
-            if check_safe && is_safe_cut!(m, f.saf)
-                ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
-                push!(m.$(ci_array_name), ci)
-            end
-            m.relaxed_to_problem_map[ci] = indx
-
-            nothing
-        end
+    affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._current_xref, true)
+    if check_safe && is_safe_cut!(m, f.saf)
+        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
+        push!(m._buffered_quadratic_ineq_ci, ci)
     end
+    m.relaxed_to_problem_map[ci] = indx
+
+    return nothing
 end
 
-@define_relax_ineq BufferedQuadraticIneq _buffered_quadratic_ineq_ci
+function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
-macro define_relax_eq(function_type, ci_array_name)
-    quote
-        function relax!(m::Optimizer, f::$function_type, indx::Int, check_safe::Bool)
-
-            affine_relax_quadratic!(f.func, f.buffer, f.saf1, m._current_node, m._current_xref, true)
-            if check_safe && is_safe_cut!(m, f.saf1)
-                ci = MOI.add_constraint(m.relaxed_optimizer, f.saf1, LT_ZERO)
-                push!(m.$(ci_array_name), ci)
-            end
-            m.relaxed_to_problem_map[ci] = indx
-
-            affine_relax_quadratic!(f.function, f.buffer, f.saf2, m._current_node, m._current_xref, false)
-            if check_safe && is_safe_cut!(m, f.saf2)
-                ci = MOI.add_constraint(m.relaxed_optimizer, f.saf2, LT_ZERO)
-                push!(m.$(ci_array_name), ci)
-            end
-            m.relaxed_to_problem_map[ci] = indx
-
-            nothing
-        end
+    affine_relax_quadratic!(f.func, f.buffer, f.saf1, m._current_node, m._current_xref, true)
+    if check_safe && is_safe_cut!(m, f.saf1)
+        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf1, LT_ZERO)
+        push!(m._buffered_quadratic_eq_ci, ci)
     end
-end
+    m.relaxed_to_problem_map[ci] = indx
 
-@define_relax_ineq BufferedQuadraticEq _buffered_quadratic_eq_ci
+    affine_relax_quadratic!(f.function, f.buffer, f.saf2, m._current_node, m._current_xref, false)
+    if check_safe && is_safe_cut!(m, f.saf2)
+        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf2, LT_ZERO)
+        push!(m._buffered_quadratic_eq_ci, ci)
+    end
+    m.relaxed_to_problem_map[ci] = indx
+
+    return nothing
+end
 
 function relax_midpoint!(m::Optimizer)
 
@@ -176,6 +166,7 @@ function relax_midpoint!(m::Optimizer)
     relax!.(m._nl_geq)
 end
 
+#=
 """
 $(TYPEDSIGNATURES)
 
@@ -230,7 +221,10 @@ function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
     end
     return
 end
+relax_objective!(m::Optimizer, x::Vector{Float64}) = relax_objective!(m.ext_type, m, x)
+=#
 
+#=
 """
 $(FUNCTIONNAME)
 
@@ -353,7 +347,42 @@ function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
             end
         end
     end
-    return
+    return nothing
+end
+=#
+
+"""
+$(FUNCTIONNAME)
+
+Adds linear objective cut constraint to the `x.relaxed_optimizer`.
+"""
+function objective_cut!(m::Optimizer, q::Int64)
+
+    if m.objective_cut_on && m._global_upper_bound < Inf
+
+        set = LT(m._global_upper_bound)
+
+        if m._objective_type === SINGLE_VARIABLE
+
+            ci_sv = m._objective_cut_ci_sv
+            MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
+
+        elseif m._objective_type === SCALAR_AFFINE
+
+            ci_saf = MOI.add_constraint(m.relaxed_optimizer, m._objective_saf, set)
+            m._objective_cut_ci_saf[q] = ci_saf
+
+        elseif m._objective_type === SCALAR_QUADRATIC || m._objective_type === NONLINEAR
+
+            saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
+            set = LT(m._global_upper_bound - saf.constant)
+            saf.constant = 0.0
+            ci_saf = MOI.add_constraint(m.relaxed_optimizer, saf, set)
+            m._objective_cut_ci_saf[q] = ci_saf
+
+        end
+    end
+    return nothing
 end
 
 """
@@ -368,70 +397,24 @@ function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::I
     if q == 1
         set_current_node!(evaluator, x._current_node)
     end
-    relax_quadratic!(x, v, q)
     relax_nlp!(x, v, q)
+    objective_cut!(x, q)
 
-    return
+    return nothing
 end
-
-"""
-$(FUNCTIONNAME)
-
-Adds linear objective cut constraint to the `x.relaxed_optimizer`.
-"""
-function objective_cut_linear!(m::Optimizer, q::Int64)
-    if m._global_upper_bound < Inf
-        if (m._objective_cut_set == -1) || (q > 1) ||  ~m.relaxed_inplace_mod
-            z = (m._objective_cut_set == -1) ? 1 : q
-            set = LT(m._global_upper_bound)
-            if m._objective_type === SINGLE_VARIABLE
-                ci_sv = m._objective_cut_ci_sv
-                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
-            elseif m._objective_type === SCALAR_AFFINE
-                ci_saf = MOI.add_constraint(m.relaxed_optimizer, m._objective_saf, set)
-                m._objective_cut_ci_saf[z] = ci_saf
-            elseif m._objective_type === SCALAR_QUADRATIC || m._objective_type === NONLINEAR
-                saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                set = LT(m._global_upper_bound - saf.constant)
-                saf.constant = 0.0
-                ci_saf = MOI.add_constraint(m.relaxed_optimizer, saf, set)
-                m._objective_cut_ci_saf[z] = ci_saf
-            end
-            m._objective_cut_set = m._iteration_count
-        elseif q == 1
-            if m._objective_type !== SINGLE_VARIABLE
-                ci_saf = m._objective_cut_ci_saf[1]
-                saf = MOI.get(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                for term in saf.terms
-                    term_coeff = term.coefficient
-                    term_indx = term.variable_index
-                    MOI.modify(m.relaxed_optimizer, ci_saf, SCoefC(term_indx, term_coeff))
-                end
-                #MOI.modify(x.relaxed_optimizer, ci_saf, SConsC(0.0))
-                set = LT(m._global_upper_bound - saf.constant)
-                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
-            else
-                ci_sv = m._objective_cut_ci_sv
-                set = LT(m._global_upper_bound)
-                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
-            end
-        end
-    end
-    return
-end
-
 relax_problem!(m::Optimizer, x::Vector{Float64}, q::Int64) = relax_problem!(m.ext_type, m, x, q)
-relax_objective!(m::Optimizer, x::Vector{Float64}) = relax_objective!(m.ext_type, m, x)
 
 function delete_nl_relaxations!(m::Optimizer)
 
     # delete affine relaxations added from quadatic inequality
     for ci in m._buffered_quadratic_ineq_ci
-        MOI.delete(m, ci)
+        MOI.delete(m.relaxed_optimizer, ci)
     end
 
     # delete affine relaxations added from quadratic equality
     for ci in m._buffered_quadratic_eq_ci
-        MOI.delete(m, ci)
+        MOI.delete(m.relaxed_optimizer, ci)
     end
+
+    return nothing
 end

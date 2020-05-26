@@ -20,20 +20,7 @@ is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
 
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
-    m._variable_number += 1
-    if ~m._user_branch_variables
-        push!(m.branch_variable, false)
-    end
-    push!(m.obbt_variable_values, false)
-    push!(m._obbt_working_lower_index, false)
-    push!(m._obbt_working_upper_index, false)
-    push!(m._lower_indx_diff, false)
-    push!(m._upper_indx_diff, false)
-    push!(m._old_low_index, false)
-    push!(m._old_upp_index, false)
-    push!(m._new_low_index, false)
-    push!(m._new_upp_index, false)
-    push!(m._fixed_variable, false)
+    m._input_problem._variable_number += 1
     push!(m._input_problem._variable_info, VariableInfo())
     return VI(m._variable_number)
 end

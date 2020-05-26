@@ -9,7 +9,8 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/optimizer.jl
-# Defines optimizer structure used by EAGO, storage functions, and access functions.
+# Defines optimizer structure used by EAGO, storage functions, and access
+# functions.
 #############################################################################
 
 """
