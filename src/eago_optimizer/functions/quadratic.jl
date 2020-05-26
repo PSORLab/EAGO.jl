@@ -7,7 +7,7 @@ mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
     func::SQF
     buffer::OrderedDict{Int, Float64}
     saf::SAF
-    nx::Int
+    len::Int
 end
 
 function lower_interval_bound(f::BufferedQuadraticIneq, n::NodeBB)
@@ -55,7 +55,7 @@ mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     func::SQF
     buffer::OrderedDict{Int, Float64}
     saf::SAF
-    nx::Int
+    len::Int
 end
 
 function interval_bound(f::BufferedQuadraticEq, n::NodeBB)
@@ -88,4 +88,24 @@ function interval_bound(f::BufferedQuadraticEq, n::NodeBB)
     end
 
     return val_intv.lo, val_intv.hi
+end
+
+function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Union{BufferedQuadraticIneq,
+                                                                                    BufferedQuadraticIneq}
+    deleted_count = 0
+    index = 1
+    while i + deleted_count <= f.len
+        term = @inbounds f.sqf.terms[i]
+        variable_info_1 = @inbounds v[term.variable_index_1.value]
+        variable_info_2 = @inbounds v[term.variable_index_2.value]
+        if variable_info_1.is_fixed && variable_index_2.is_fixed
+            f.sqf.constant += coeff*variable_index.lower_bound
+            deleteat!(f.sqf.terms, i)
+            deleted_count += 1
+        else
+            i += 1
+        end
+    end
+    f.len -= deleted_count
+    return nothing
 end

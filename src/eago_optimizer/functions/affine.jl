@@ -2,7 +2,7 @@
 $(TYPEDEF)
 
 """
-struct AffineFunctionIneq <: AbstractEAGOConstraint
+mutable struct AffineFunctionIneq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
     constant::Float64
     len::Int
@@ -29,12 +29,11 @@ function lower_interval_bound(f::AffineFunctionIneq, y::NodeBB)
     return lower_interval_bound
 end
 
-
 """
 $(TYPEDEF)
 
 """
-struct AffineFunctionEq <: AbstractEAGOConstraint
+mutable struct AffineFunctionEq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
     constant::Float64
 end
@@ -60,4 +59,23 @@ function interval_bound(f::AffineFunctionEq, y::NodeBB)
     end
 
     return lower_interval_bound, upper_interval_bound
+end
+
+function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Union{AffineFunctionIneq,
+                                                                                    AffineFunctionEq}
+    deleted_count = 0
+    index = 1
+    while i + deleted_count <= f.len
+        coeff, indx = @inbounds f.terms[i]
+        variable_index = @inbounds v[indx]
+        if variable_index.is_fixed
+            f.constant += coeff*variable_index.lower_bound
+            deleteat!(f.terms, i)
+            deleted_count += 1
+        else
+            i += 1
+        end
+    end
+    f.len -= deleted_count
+    return nothing
 end
