@@ -210,6 +210,122 @@ Base.@kwdef mutable struct EAGOParameters
     domain_violation_ϵ::Float64 = 1E-9
 end
 
+"""
+$(TYPEDEF)
+
+A structure used to hold objectives and constraints added to EAGO model.
+The constraints generally aren't used for relaxations.
+
+$(TYPEDFIELDS)
+"""
+Base.@kwdef mutable struct InputProblem
+
+    # variables
+    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _variable_count::Int64 = 0
+
+    # last constraint index added
+    _last_constraint_index::Int = 0
+
+    # linear constraints
+    _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
+    _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
+    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
+
+    _linear_leq_count::Int = 0
+    _linear_geq_count::Int = 0
+    _linear_eq_count::Int = 0
+
+    # quadratic constraints
+    _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
+    _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
+    _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
+
+    _quadratic_leq_count::Int = 0
+    _quadratic_geq_count::Int = 0
+    _quadratic_eq_count::Int = 0
+
+    # conic constraints
+    _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
+
+    _conic_second_order_count::Int = 0
+
+    # objectives
+    _objective_sv::SV = SV(-1)
+    _objective_saf::SAF = SAF(SAT[], 0.0)
+    _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
+    _objective_type::ObjectiveType = UNSET
+
+    # nlp constraints
+    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+
+    # attributes
+    _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
+end
+
+"""
+$(TYPEDEF)
+"""
+Base.@kwdef mutable struct VariableNodeMap
+    eq_variable_indx::OrderDict{CI{SV, ET}, Int} = OrderDict{CI{SV, ET}, Int}()
+    leq_variable_indx::OrderDict{CI{SV, LT}, Int} = OrderDict{CI{SV, LT}, Int}()
+    geq_variable_indx::OrderDict{CI{SV, GT}, Int} = OrderDict{CI{SV, GT}, Int}()
+end
+getindex(v::VariableNodeMap, i::CI{SV, ET}) = v.eq_variable_indx[i]
+getindex(v::VariableNodeMap, i::CI{SV, LT}) = v.leq_variable_indx[i]
+getindex(v::VariableNodeMap, i::CI{SV, GT}) = v.geq_variable_indx[i]
+
+setindex!(v::VariableNodeMap, i::CI{SV, ET}, val) = (v.eq_variable_indx[i] = val)
+setindex!(v::VariableNodeMap, i::CI{SV, LT}, val) = (v.leq_variable_indx[i] = val)
+setindex!(v::VariableNodeMap, i::CI{SV, GT}, val) = (v.geq_variable_indx[i] = val)
+
+"""
+$(TYPEDEF)
+"""
+Base.@kwdef mutable struct ParsedProblem
+
+    # Problem classification
+    _problem_type::ProblemType = UNCLASSIFIED
+
+    # objectives
+    _objective_sv::SV = SV(-1)
+    "_objective_saf stores the objective and is used for constructing linear affine cuts
+     of any ObjectiveType"
+    _objective_saf::SAF = SAF(SAT[], 0.0)
+    _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
+    _objective_nl = nothing
+    _objective_type::ObjectiveType = UNSET
+
+    # constraints
+    _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
+    _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
+    _sqf_leq::Vector{BufferedQuadraticIneq} = Vector{BufferedQuadraticIneq}[]
+    _sqf_eq::Vector{BufferedQuadraticEq} = Vector{BufferedQuadraticEq}[]
+
+    _saf_leq_count::Int = 0
+    _saf_eq_count::Int = 0
+    _sqf_leq_count::Int = 0
+    _sqf_eq_count::Int = 0
+
+    # nlp constraints
+    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+
+    # variables
+    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _variable_count::Int = 0
+
+    _var_leq_count::Int = 0
+    _var_geq_count::Int = 0
+    _var_eq_count::Int = 0
+
+    # need to retreive primal _relaxed_variable_index
+    _relaxed_variable_node_map::VariableNodeMap
+    _relaxed_variable_index::Vector{VI} = VI[]
+    _relaxed_variable_eq::Vector{CI{SV, ET}} = CI{SV, ET}[]
+    _relaxed_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
+    _relaxed_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
+end
+
 export Optimizer
 """
 $(TYPEDEF)

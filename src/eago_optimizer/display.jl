@@ -10,6 +10,8 @@
 #############################################################################
 # src/eago_optimizer/display.jl
 # Functions used to print information about solution routine to console.
+# Printing is done with reference to the input problem is there is any
+# ambiguity.
 #############################################################################
 
 """
