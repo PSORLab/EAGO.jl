@@ -67,9 +67,9 @@ function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Un
     index = 1
     while i + deleted_count <= f.len
         coeff, indx = @inbounds f.terms[i]
-        variable_index = @inbounds v[indx]
-        if variable_index.is_fixed
-            f.constant += coeff*variable_index.lower_bound
+        variable_info = @inbounds v[indx]
+        if variable_info.is_fixed
+            f.constant += coeff*variable_info.lower_bound
             deleteat!(f.terms, i)
             deleted_count += 1
         else
