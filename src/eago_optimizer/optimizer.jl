@@ -238,10 +238,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
                                                              acceptable_iter = 300, constr_viol_tol = 1E-8,
                                                              acceptable_constr_viol_tol = 1E-8, print_level = 0)
-    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, max_iter = 3000, acceptable_tol = 1E30,
-                                                          acceptable_iter = 300, constr_viol_tol = 1E-8,
-                                                          acceptable_constr_viol_tol = 1E-8, print_level = 0)
-
     # Extensions
     "Specifies that the optimize_hook! function should be called rather than
     throw the problem to the standard B&B routine (default = false)."
@@ -352,7 +348,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
 
-const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer, :upper_factory
+const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
                                          :enable_optimize_hook, :ext, :ext_type, :_parameters]
 const EAGO_MODEL_ATTRIBUTES = setdiff(fieldnames(Optimizer), EAGO_OPTIMIZER_ATTRIBUTES)
 
@@ -439,6 +435,7 @@ end
 =#
 
 MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i = 1:length(m._variable_info)]
+
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     mult = 1.0
     if m._input_problem._optimization_sense === MOI.MAX_SENSE
@@ -446,7 +443,9 @@ function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     end
     return mult*m._objective_value
 end
+
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._variable_number
+
 function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
     if m._input_problem._optimization_sense === MOI.MAX_SENSE
         bound = -m._global_lower_bound
@@ -455,6 +454,7 @@ function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
     end
     return bound
 end
+
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
     LBD = m._global_lower_bound
     UBD = m._global_upper_bound
@@ -465,6 +465,7 @@ function MOI.get(m::Optimizer, ::MOI.RelativeGap)
     end
     return gap
 end
+
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
@@ -488,7 +489,7 @@ function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
 end
 
 ##### Support, set, and evaluate objective functions
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV,SAF,SQF}} = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
     m._input_problem._objective_sv = func

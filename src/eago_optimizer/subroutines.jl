@@ -669,100 +669,102 @@ solution informaton in the optimizer.
 """
 function solve_local_nlp!(x::Optimizer)
 
-    y = x._current_node
+    n = m._current_node
 
-    if default_nlp_heurestic(x,y)
-
-        x.upper_optimizer = x.upper_factory()
-        upper_optimizer = x.upper_optimizer
-        upper_vars = MOI.add_variables(upper_optimizer, x._variable_number)
-
-        lower_variable_bounds = y.lower_variable_bounds
-        upper_variable_bounds = y.upper_variable_bounds
-        variable_info = x._input_problem._variable_info
-
-        lvb = 0.0
-        uvb = 0.0
-        x0 = 0.0
-        for i = 1:x._variable_number
-            var = @inbounds variable_info[i]
-            sv = MOI.SingleVariable(@inbounds upper_vars[i])
-            if var.is_integer
-            else
-                lvb = @inbounds lower_variable_bounds[i]
-                uvb = @inbounds upper_variable_bounds[i]
-                if var.is_fixed
-                    MOI.add_constraint(upper_optimizer, sv, ET(lvb))
-                elseif var.has_lower_bound
-                    if var.has_upper_bound
-                        MOI.add_constraint(upper_optimizer, sv, LT(uvb))
-                        MOI.add_constraint(upper_optimizer, sv, GT(lvb))
-                    else
-                        MOI.add_constraint(upper_optimizer, sv, GT(lvb))
-                    end
-                elseif var.has_upper_bound
-                    MOI.add_constraint(upper_optimizer, sv, LT(uvb))
-                end
-                x0 = 0.5*(lvb + uvb)
-                MOI.set(upper_optimizer, MOI.VariablePrimalStart(), @inbounds upper_vars[i], x0)
-            end
-        end
-
-        # Add linear and quadratic constraints to model
-        for (func, set) in x._input_problem._linear_leq_constraints
-             MOI.add_constraint(upper_optimizer, func, set)
-        end
-        for (func, set) in x._input_problem._linear_geq_constraints
-            MOI.add_constraint(upper_optimizer, func, set)
-        end
-        for (func, set) in x._input_problem._linear_eq_constraints
-            MOI.add_constraint(upper_optimizer, func, set)
-        end
-
-        for (func, set) in x._input_problem._quadratic_leq_constraints
-            MOI.add_constraint(upper_optimizer, func, set)
-        end
-        for (func, set) in x._input_problem._quadratic_geq_constraints
-            MOI.add_constraint(upper_optimizer, func, set)
-        end
-        for (func, set) in x._input_problem._quadratic_eq_constraints
-            MOI.add_constraint(upper_optimizer, func, set)
-        end
-
-        # Add nonlinear evaluation block
-        MOI.set(upper_optimizer, MOI.NLPBlock(), x._input_problem._nlp_data)
-        MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-        if x._input_problem._objective_type === SINGLE_VARIABLE
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), x._input_problem._objective_sv)
-        elseif x._input_problem._objective_type === SCALAR_AFFINE
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), x._input_problem._objective_saf)
-        elseif x._input_problem._objective_type === SCALAR_QUADRATIC
-            MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), x._input_problem._objective_sqf)
-        end
-
-        # Optimizes the object
-        MOI.optimize!(upper_optimizer)
-
-        # Process output info and save to CurrentUpperInfo object
-        x._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
-        x._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
-
-        if is_feasible_solution(x._upper_termination_status, x._upper_result_status)
-            x._upper_feasibility = true
-            value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-            stored_adjusted_upper_bound!(x, value)
-            x._best_upper_value = min(value, x._best_upper_value)
-            x._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
-        else
-            x._upper_feasibility = false
-            x._upper_objective_value = Inf
-        end
-    else
-        x._upper_feasibility = false
-        x._upper_objective_value = Inf
+    if !default_nlp_heurestic(m, n)
+        m._upper_feasibility = false
+        m._upper_objective_value = Inf
+        return nothing
     end
-    return
+
+    upper_optimizer = m.upper_optimizer
+    MOI.empty!(upper_optimizer)
+
+    upper_variables = MOI.add_variables(upper_optimizer, m._variable_number)
+
+    lower_variable_bounds = n.lower_variable_bounds
+    upper_variable_bounds = n.upper_variable_bounds
+    variable_info = m._input_problem._variable_info
+
+    lvb = 0.0
+    uvb = 0.0
+    x0 = 0.0
+    for i = 1:m._input_problem._variable_number
+        vinfo = @inbounds variable_info[i]
+        single_variable = MOI.SingleVariable(@inbounds upper_variables[i])
+        if vinfo.is_integer
+        else
+            lvb = @inbounds lower_variable_bounds[i]
+            uvb = @inbounds upper_variable_bounds[i]
+            if vinfo.is_fixed
+                MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
+            elseif vinfo.has_lower_bound
+                if vinfo.has_upper_bound
+                    MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+                    MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+                else
+                    MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+                end
+            elseif vinfo.has_upper_bound
+                MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+            end
+            x0 = 0.5*(lvb + uvb)
+            MOI.set(upper_optimizer, MOI.VariablePrimalStart(), @inbounds upper_variables[i], x0)
+        end
+    end
+
+    # Add linear and quadratic constraints to model
+    for (func, set) in m._input_problem._linear_leq_constraints
+         MOI.add_constraint(upper_optimizer, func, set)
+    end
+    for (func, set) in m._input_problem._linear_geq_constraints
+        MOI.add_constraint(upper_optimizer, func, set)
+    end
+    for (func, set) in m._input_problem._linear_eq_constraints
+        MOI.add_constraint(upper_optimizer, func, set)
+    end
+
+    for (func, set) in m._input_problem._quadratic_leq_constraints
+        MOI.add_constraint(upper_optimizer, func, set)
+    end
+    for (func, set) in m._input_problem._quadratic_geq_constraints
+        MOI.add_constraint(upper_optimizer, func, set)
+    end
+    for (func, set) in m._input_problem._quadratic_eq_constraints
+        MOI.add_constraint(upper_optimizer, func, set)
+    end
+
+    # Add nonlinear evaluation block
+    MOI.set(upper_optimizer, MOI.NLPBlock(), m._input_problem._nlp_data)
+    MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+    if x._input_problem._objective_type === SINGLE_VARIABLE
+        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), m._input_problem._objective_sv)
+    elseif x._input_problem._objective_type === SCALAR_AFFINE
+        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), m._input_problem._objective_saf)
+    elseif x._input_problem._objective_type === SCALAR_QUADRATIC
+        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), m._input_problem._objective_sqf)
+    end
+
+    # Optimizes the object
+    MOI.optimize!(upper_optimizer)
+
+    # Process output info and save to CurrentUpperInfo object
+    m._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
+    m._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
+
+    if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
+        m._upper_feasibility = true
+        value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
+        stored_adjusted_upper_bound!(m, value)
+        m._best_upper_value = min(value, m._best_upper_value)
+        m._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
+    else
+        m._upper_feasibility = false
+        m._upper_objective_value = Inf
+    end
+
+    return nothing
 end
 
 """
