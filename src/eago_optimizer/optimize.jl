@@ -128,6 +128,12 @@ function convert_to_min!(x::Optimizer)
     return
 end
 
+
+function check_set_is_fixed(v::VariableInfo)
+    v.is_fixed && return true
+    v.is_fixed = x.lower_bound === x.upper_bound
+    return v.is_fixed
+end
 """
 $(TYPEDSIGNATURES)
 
@@ -135,7 +141,7 @@ Detects any variables set to a fixed value by equality or inequality constraints
 and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
-    map!(m -> (m.is_fixed |= (m.lower_bound == m.upper_bound)), m._fixed_variable, m._variable_info)
+    map!(x -> check_set_is_fixed(x), m._fixed_variable, m._variable_info)
 end
 
 """
@@ -168,15 +174,58 @@ function local_solve!(m::Optimizer)
     return nothing
 end
 
+function label_branch_variables!(m::Optimizer)
+
+    m._user_branch_variables = !isempty(m.parameters.branch_variable)
+    if m._user_branch_variables
+        copyto!(m._branch_variables, m.parameters.branch_variable)
+    end
+
+    # adds nonlinear terms in quadratic constraints
+    sqf_leq = m._working_problem._sqf_leq
+    for i = 1:m._working_problem._sqf_leq_count
+        quad_ineq = @inbounds sqf_leq[i]
+        for term in quad_ineq.sqf
+            variable_index_1 = term.variable_index_1.value
+            variable_index_2 = term.variable_index_2.value
+            @inbounds m._branch_variables[variable_index_1] = true
+            @inbounds m._branch_variables[variable_index_2] = true
+        end
+    end
+
+    sqf_eq = m._working_problem._sqf_eq
+    for i = 1:m._working_problem._sqf_eq_count
+        quad_eq = @inbounds sqf_eq[i]
+        for term in quad_eq.sqf
+            variable_index_1 = term.variable_index_1.value
+            variable_index_2 = term.variable_index_2.value
+            @inbounds m._branch_variables[variable_index_1] = true
+            @inbounds m._branch_variables[variable_index_2] = true
+        end
+    end
+
+    # adds nonlinear terms in objectives if
+    if m._working_problem.objective_type === SCALAR_QUADRATIC
+        for term in m._working_problem._objective_sqf
+            variable_index_1 = term.variable_index_1.value
+            variable_index_2 = term.variable_index_2.value
+            @inbounds m._branch_variables[variable_index_1] = true
+            @inbounds m._branch_variables[variable_index_2] = true
+        end
+    end
+
+    return
+end
+
 """
 Translates input problem to working problem. Routines and checks and optional manipulation is left to the presolve stage.
 """
 function parse_problem!(m::Optimizer)
 
-    m._user_branch_variables = ~isempty(m.branch_variable)
     m._time_left = m.time_limit
-
     ip = m._input_problem
+
+    # add linear constraints to the working problem
     for i = 1:ip._linear_leq_count
         add_to_working_problem!(m._working_problem, @inbounds ip._linear_leq_constraints[i])
     end
@@ -187,6 +236,7 @@ function parse_problem!(m::Optimizer)
         add_to_working_problem!(m._working_problem, @inbounds ip._linear_eq_constraints[i])
     end
 
+    # add quadratic constraints to the working problem
     for i = 1:ip._quadratic_leq_count
         add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_leq_constraints[i])
     end
@@ -197,9 +247,14 @@ function parse_problem!(m::Optimizer)
         add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_eq_constraints[i])
     end
 
+    # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)
+
+    # labels the variable info and the _fixed_variable vector for each fixed variable
     label_fixed_variables!(m)
-    label_nonlinear_variables!(m)
+
+    # labels variables to branch on
+    label_branch_variables!(m)
 
     new_time = time() - m._start_time
     m._parse_time = new_time
@@ -398,53 +453,6 @@ function MOI.optimize!(m::Optimizer)
 end
 
 #=
-function label_nonlinear_variables!(m::Optimizer)
-    _nlpdata = m._nlp_data
-    x = _nlpdata.evaluator
-
-    # scans subexpressions, objective, and constraints for nonlinear terms
-    if ~isa(x, EmptyNLPEvaluator)
-        if x.has_nlobj
-            if (x.objective.linearity != JuMP._Derivatives.LINEAR) &&
-               (x.objective.linearity != JuMP._Derivatives.CONSTANT)
-                for i in 1:length(x.objective.nd)
-                    nd = x.objective.nd[i]
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-        for i in 1:length(x.constraints)
-            if (x.constraints[i].linearity != JuMP._Derivatives.LINEAR) &&
-               (x.constraints[i].linearity != JuMP._Derivatives.CONSTANT)
-                for j in 1:length(x.constraints[i].nd)
-                    nd = x.constraints[i].nd[j]
-                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-        for i in 1:length(x.subexpressions)
-            if (x.subexpressions[i].linearity != JuMP._Derivatives.LINEAR) &&
-               (x.subexpressions[i].linearity != JuMP._Derivatives.CONSTANT)
-                for j in 1:length(x.subexpressions[i].nd)
-                    nd = x.subexpressions[i].nd[j]
-                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-    end
-    return
-end
 =#
 
 #=
