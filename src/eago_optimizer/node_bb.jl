@@ -44,6 +44,17 @@ Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
                               copy(x.upper_variable_bounds),
                               x.lower_bound, x.upper_bound, x.depth, x.id)
 
+# using alternative name as to not interfere with ordering...
+function uninitialized(x::NodeBB)
+    flag = isempty(x.lower_variable_bounds)
+    flag &= isempty(x.upper_variable_bounds)
+    flag &= x.lower_bound === -Inf
+    flag &= x.upper_bound === Inf
+    flag &= x.depth === 0
+    flag &= x.id === 1
+    return flag
+end
+
 # Access functions for broadcasting data easily
 lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
 upper_variable_bounds(x::NodeBB) = x.upper_variable_bounds

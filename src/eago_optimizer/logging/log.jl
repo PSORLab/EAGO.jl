@@ -20,7 +20,7 @@ for generating convergence plots and other analysis.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef struct Log
+Base.@kwdef mutable struct Log
     "Storage for lower bound calculated for current node."
     current_lower_bound::Vector{Float64} = Float64[]
     "Storage for upper bound calculated for current node."
@@ -49,4 +49,13 @@ Base.@kwdef struct Log
     node_count::Vector{Int64} = Int64[]
     "Run time at each iteration."
     run_time::Vector{Float64} = Float64[]
+end
+
+function Base.isempty(x::Log)
+    for field in fieldnames(Log)
+        if !isempty(getfield(x, field))
+            return false
+        end
+    end
+    return true
 end

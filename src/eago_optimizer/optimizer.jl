@@ -237,6 +237,40 @@ Base.@kwdef mutable struct InputProblem
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
 end
 
+function Base.isempty(x::InputProblem)
+
+    is_empty_flag = true
+
+    new_input_problem = InputProblem()
+    for field in fieldnames(InputProblem)
+        field_value = getfield(x, field)
+        if field_value isa Array
+            if !isempty(field_value)
+                is_empty_flag = false
+                break
+            end
+        elseif field_value isa Number
+            if getfield(new_input_problem, field) !== field_value
+                is_empty_flag = false
+                break
+            end
+        end
+    end
+
+    is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
+    is_empty_flag &= !x._nlp_data.has_objective
+    is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
+
+    is_empty_flag &= isempty(x._objective_saf.terms)
+    is_empty_flag &= x._objective_saf.constant === 0.0
+
+    is_empty_flag &= isempty(x._objective_sqf.quadratic_terms)
+    is_empty_flag &= isempty(x._objective_sqf.affine_terms)
+    is_empty_flag &= x._objective_sqf.constant === 0.0
+
+    return is_empty_flag
+end
+
 """
 $(TYPEDEF)
 """
@@ -278,6 +312,51 @@ Base.@kwdef mutable struct ParsedProblem
     _var_leq_count::Int = 0
     _var_geq_count::Int = 0
     _var_eq_count::Int = 0
+end
+
+function Base.isempty(x::ParsedProblem)
+
+    is_empty_flag = true
+
+    new_input_problem = ParsedProblem()
+    for field in fieldnames(ParsedProblem)
+        field_value = getfield(x, field)
+        if field_value isa Array
+            if !isempty(field_value)
+                is_empty_flag = false
+                break
+            end
+        elseif field_value isa Number
+            if getfield(new_input_problem, field) !== field_value
+                is_empty_flag = false
+                break
+            end
+        end
+    end
+
+    is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
+    is_empty_flag &= !x._nlp_data.has_objective
+    is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
+
+    is_empty_flag &= isempty(x._objective_saf.terms)
+    is_empty_flag &= x._objective_saf.constant === 0.0
+
+    is_empty_flag &= isempty(x._objective_saf.terms)
+    is_empty_flag &= x._objective_saf.constant === 0.0
+    is_empty_flag &= isempty(x._objective_saf_parsed.terms)
+    is_empty_flag &= x._objective_saf_parsed.constant === 0.0
+    is_empty_flag &= x._objective_saf_parsed.len === 0
+
+    is_empty_flag &= isempty(x._objective_sqf.func.quadratic_terms)
+    is_empty_flag &= isempty(x._objective_sqf.func.affine_terms)
+    is_empty_flag &= x._objective_sqf.func.constant === 0.0
+
+    is_empty_flag &= isempty(x._objective_sqf.buffer)
+    is_empty_flag &= isempty(x._objective_sqf.saf.terms)
+    is_empty_flag &= x._objective_sqf.saf.constant === 0.0
+    is_empty_flag &= x._objective_sqf.len === 0
+
+    return is_empty_flag
 end
 
 export Optimizer
@@ -476,13 +555,15 @@ end
 
 const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
                                          :enable_optimize_hook, :ext, :ext_type, :_parameters]
-const EAGO_MODEL_ATTRIBUTES = setdiff(fieldnames(Optimizer), EAGO_OPTIMIZER_ATTRIBUTES)
+const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem]
+const EAGO_MODEL_NOT_STRUCT_ATTRIBUTES = setdiff(fieldnames(Optimizer), union(EAGO_OPTIMIZER_ATTRIBUTES,
+                                                                              EAGO_MODEL_STRUCT_ATTRIBUTES))
 
 function MOI.empty!(m::Optimizer)
 
     # create a new empty optimizer and copy fields to m
     new_optimizer = Optimizer()
-    for field in EAGO_MODEL_ATTRIBUTES
+    for field in union(EAGO_MODEL_STRUCT_ATTRIBUTES, EAGO_MODEL_NOT_STRUCT_ATTRIBUTES)
         setfield!(m, field, getfield(new_optimizer, field))
     end
 
@@ -491,11 +572,15 @@ end
 
 function MOI.is_empty(m::Optimizer)
 
-    is_empty_flag = true
+    is_empty_flag = uninitialized(m._current_node)
+    is_empty_flag &= isempty(m._stack)
+    is_empty_flag &= isempty(m._log)
+    is_empty_flag &= isempty(m._input_problem)
+    is_empty_flag &= isempty(m._working_problem)
 
     new_optimizer = Optimizer()
-    for field in EAGO_MODEL_ATTRIBUTES
-        if getfield!(m, field) !== getfield(new_optimizer, field)
+    for field in EAGO_MODEL_NOT_STRUCT_ATTRIBUTES
+        if getfield(m, field) != getfield(new_optimizer, field)
             is_empty_flag = false
             break
         end
