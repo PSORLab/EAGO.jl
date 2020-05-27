@@ -1,4 +1,4 @@
-function create_inner_functions!(m::Optimizer)
+function create_working_functions!(m::Optimizer)
 
     # add buffered quadratic constraints
     for i = 1:m._input_problem._quadratic_leq_count
@@ -24,95 +24,29 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Loads variables, linear constraints, and empty storage for first nlp and
-quadratic cut.
-"""
-function load_relaxed_problem!(m::Optimizer)
-    relaxed_optimizer = m.relaxed_optimizer
-
-    # add variables and indices and constraints
-    wp = m._working_problem
-    variable_count = wp._variable_count
-    node_count = 1
-
-    for i = 1:variable_count
-
-        relaxed_variable_indx = MOI.add_variable(relaxed_optimizer)
-        relaxed_variable = SV(relaxed_variable_indx)
-        push!(wp._relaxed_variable_index, relaxed_variable_indx)
-
-        vinfo = @inbounds wp._variable_info[i]
-        is_branch_variable = vinfo.branch_on === BRANCH
-
-        if vinfo.is_integer
-        elseif vinfo.is_fixed
-            ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
-            if is_branch_variable
-                push!(wp._relaxed_variable_eq, (ci_sv_et, node_count))
-                wp._var_eq_count += 1
-            end
-        else
-            if vinfo.has_lower_bound
-                ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
-                if is_branch_variable
-                    push!(wp._relaxed_variable_gt, (ci_sv_gt, node_count))
-                    wp._var_geq_count += 1
-                end
-            end
-            if vinfo.has_upper_bound
-                ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
-                if is_branch_variable
-                    push!(wp._relaxed_variable_lt, (ci_sv_lt, node_count))
-                    wp._var_leq_count += 1
-                end
-            end
-        end
-
-        is_branch_variable && (node_count += 1)
-    end
-
-    # add linear constraints
-    for (func, set) in m._input_problem._linear_leq_constraints
-         MOI.add_constraint(opt, func, set)
-    end
-    for (func, set) in m._input_problem._linear_geq_constraints
-        MOI.add_constraint(opt, func, set)
-    end
-    for (func, set) in m._input_problem._linear_eq_constraints
-        MOI.add_constraint(opt, func, set)
-    end
-
-    MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-    return
-end
-
-"""
-$(TYPEDSIGNATURES)
-
 Converts MOI.MAX_SENSE objective to equivalent MOI.MIN_SENSE objective
 max(f) = - min(-f).
 """
-function convert_to_min!(x::Optimizer)
+function convert_to_min!(m::Optimizer)
 
-    if x._input_problem._optimization_sense === MOI.MAX_SENSE
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
 
-        if x._objective_type === SINGLE_VARIABLE
-            x._objective_type = SCALAR_AFFINE
-            x._objective_saf = SAF(SAT[SAT(-1.0, x._objective_sv.variable)], 0.0)
+        if m._objective_type === SINGLE_VARIABLE
+            m._objective_type = SCALAR_AFFINE
+            m._objective_saf = SAF(SAT[SAT(-1.0, m._objective_sv.variable)], 0.0)
 
-        elseif x._objective_type === SCALAR_AFFINE
-            @__dot__ x._objective_saf.terms = SAT(-getfield(x._objective_saf.terms, :coefficient),
-                                                   getfield(x._objective_saf.terms, :variable_index))
-            x._objective_saf.constant *= -1.0
+        elseif m._objective_type === SCALAR_AFFINE
+            @__dot__ m._objective_saf.terms = SAT(-getfield(m._objective_saf.terms, :coefficient),
+                                                   getfield(m._objective_saf.terms, :variable_index))
+            m._objective_saf.constant *= -1.0
 
-        elseif x._objective_type === SCALAR_QUADRATIC
-            @__dot__ x._objective_sqf.affine_terms = SAT(-getfield(x._objective_sqf.affine_terms, :coefficient),
-                                                          getfield(x._objective_sqf.affine_terms, :variable_index))
-            @__dot__ x._objective_sqf.quadratic_terms = SQT(-getfield(x._objective_sqf.quadratic_terms, :coefficient),
-                                                             getfield(x._objective_sqf.quadratic_terms, :variable_index_1),
-                                                             getfield(x._objective_sqf.quadratic_terms, :variable_index_2))
-            x._objective_sqf.constant *= -1.0
+        elseif m._objective_type === SCALAR_QUADRATIC
+            @__dot__ m._objective_sqf.affine_terms = SAT(-getfield(m._objective_sqf.affine_terms, :coefficient),
+                                                          getfield(m._objective_sqf.affine_terms, :variable_index))
+            @__dot__ m._objective_sqf.quadratic_terms = SQT(-getfield(m._objective_sqf.quadratic_terms, :coefficient),
+                                                             getfield(m._objective_sqf.quadratic_terms, :variable_index_1),
+                                                             getfield(m._objective_sqf.quadratic_terms, :variable_index_2))
+            m._objective_sqf.constant *= -1.0
 
         else
             #=
@@ -128,12 +62,12 @@ function convert_to_min!(x::Optimizer)
     return
 end
 
-
 function check_set_is_fixed(v::VariableInfo)
     v.is_fixed && return true
     v.is_fixed = x.lower_bound === x.upper_bound
     return v.is_fixed
 end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -142,36 +76,6 @@ and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
     map!(x -> check_set_is_fixed(x), m._fixed_variable, m._variable_info)
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Performs a single local solve of problem.
-"""
-function local_solve!(m::Optimizer)
-
-    node_selection!(m)
-    solve_local_nlp!(m)
-
-    if m._upper_feasibility
-        m._feasible_solution_found = true
-        m._first_solution_node = m._maximum_node_id
-        m._solution_value = m._upper_objective_value
-        m._continuous_solution .= m._upper_solution
-        m._objective_value = m._upper_objective_value
-        m._termination_status_code = MOI.LOCALLY_SOLVED
-        m._result_status_code = MOI.FEASIBLE_POINT
-
-    else
-        m._feasible_solution_found = false
-        m._first_solution_node = m._maximum_node_id
-        m._termination_status_code = MOI.LOCALLY_INFEASIBLE
-        m._result_status_code = MOI.INFEASIBLE_POINT
-
-    end
-
-    return nothing
 end
 
 function label_branch_variables!(m::Optimizer)
@@ -205,7 +109,8 @@ function label_branch_variables!(m::Optimizer)
     end
 
     # adds nonlinear terms in objectives if
-    if m._working_problem.objective_type === SCALAR_QUADRATIC
+    obj_type = m._working_problem._objective_type
+    if obj_type === SCALAR_QUADRATIC
         for term in m._working_problem._objective_sqf
             variable_index_1 = term.variable_index_1.value
             variable_index_2 = term.variable_index_2.value
@@ -263,19 +168,6 @@ function parse_problem!(m::Optimizer)
     return nothing
 end
 
-"""
-$(TYPEDSIGNATURES)
-
-Creates an initial node with initial box constraints and adds it to the stack.
-"""
-function create_initial_node!(m::Optimizer)
-    n = NodeBB(lower_bound.(m._variable_info), upper_bound.(m._variable_info), -Inf, Inf, 1, 1)
-    push!(m._stack, n)
-    m._node_count = 1
-    m._maximum_node_id += 1
-    return nothing
-end
-
 function presolve_problem!(m::Optimizer)
 
     ########### Reformulate DAG using auxilliary variables ###########
@@ -302,151 +194,83 @@ function presolve_problem!(m::Optimizer)
     return
 end
 
-function store_candidate_solution!(m::Optimizer)
-    if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
-        m._feasible_solution_found = true
-        m._first_solution_node = m._maximum_node_id
-        m._solution_value = m._upper_objective_value
-        m._global_upper_bound = m._upper_objective_value
-        @__dot__ m._continuous_solution = m._upper_solution
-    end
-    return
-end
-
-function set_global_lower_bound!(m::Optimizer)
-    if !isempty(m._stack)
-        min_node = minimum(m._stack)
-        lower_bound = min_node.lower_bound
-        if m._global_lower_bound < lower_bound
-            m._global_lower_bound = lower_bound
+### Routines for parsing the full nonconvex problem
+"""
+Reformulates quadratic terms in SOC constraints if possible. For <= or >=,
+the quadratic term is deleted if an SOCP is detected. For ==, the SOC check
+is done for each >= and <=, the convex constraint is reformulated to a SOC,
+the concave constraint is keep as a quadratic.
+"""
+function parse_classify_quadratic!(m::Optimizer)
+    #=
+    for (id, cinfo) in m._quadratic_constraint
+        is_soc, add_concave, cfunc, cset, qfunc, qset = check_convexity(cinfo.func, cinfo.set)
+        if is_soc
+            MOI.add_constraint(m, cfunc, cset)
+            deleteat!(m._quadratic_constraint, id)
+            if add_concave
+                MOI.add_constraint(m, qfunc, qset)
+            end
         end
     end
-    return
+    =#
+    nothing
 end
 
-# wraps subroutine call to isolate ExtensionType
-termination_check(m::Optimizer) = termination_check(m.ext_type, m)
-cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
-convergence_check(m::Optimizer) = convergence_check(m.ext_type, m)
-repeat_check(m::Optimizer) = repeat_check(m.ext_type, m)
-node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
-preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
-lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
-add_cut!(m::Optimizer) = add_cut!(m.ext_type, m)
-upper_problem!(m::Optimizer) = upper_problem!(m.ext_type, m)
-postprocess!(m::Optimizer) = postprocess!(m.ext_type, m)
-single_storage!(m::Optimizer) = single_storage!(m.ext_type, m)
-branch_node!(m::Optimizer) = branch_node!(m.ext_type, m)
-fathom!(m::Optimizer) = fathom!(m.ext_type, m)
+"""
+"""
+function parse_classify_nlp(m)
+    nothing
+end
 
 """
-$(TYPEDSIGNATURES)
-
-Solves the branch and bound problem with the input EAGO optimizer object.
+Classifies the problem type
 """
-function global_solve!(m::Optimizer)
+function parse_classify_problem!(m::Optimizer)
 
-    m._iteration_count = 1
-    m._node_count = 1
+    ip = m._input_problem
+    integer_variable_number = count(is_integer.(ip._variable_info))
+    cone_constraint_number = ip._conic_second_order_count
+    quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
-    # terminates when max nodes or iteration is reach, or when node stack is empty
-    while !termination_check(m)
-
-        # Selects node, deletes it from stack, prints based on verbosity
-        node_selection!(m)
-        (x.verbosity >= 3) && print_node!(m)
-
-        # Performs prepocessing and times
-        m.log_on && (start_time = time())
-        preprocess!(m)
-        if m.log_on
-            m._last_preprocess_time = time() - start_time
-        end
-
-        if m._preprocess_feasibility
-
-            # solves & times lower bounding problem
-            m.log_on && (start_time = time())
-            m._cut_iterations = 1
-            lower_problem!(m)
-            while cut_condition(m)
-                add_cut!(m)
-            end
-            if m.log_on
-                m._last_lower_problem_time = time() - start_time
-            end
-            print_results!(m, true)
-            print_results_post_cut!(m)
-
-            # checks for infeasibility stores solution
-            if m._lower_feasibility
-                if !convergence_check(m)
-
-                    m.log_on && (start_time = time())
-                    upper_problem!(m)
-                    if m.log_on
-                        m._last_upper_problem_time = time() - start_time
-                    end
-                    print_results!(m, false)
-                    store_candidate_solution!(m)
-                    if m._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
-                        if !m.feasible_local_continue || m.local_solve_only
-                            break
-                        end
-                    end
-
-                    # Performs and times post processing
-                    m.log_on && (start_time = time())
-                    postprocess!(m)
-                    if m.log_on
-                        m._last_postprocessing_time = time() - start_time
-                    end
-
-                    # Checks to see if the node
-                    if m._postprocess_feasibility
-                        if repeat_check(m)
-                            single_storage!(m)
-                        else
-                            branch_node!(m)
-                        end
-                    end
-                else
-                    #x._global_lower_bound = x._lower_objective_value
-                end
-            end
-            fathom!(m)
+    if integer_variable_number === 0
+        if cone_constraint_number === 0 && quad_constraint_number === 0
+            # && iszero(m._input_nonlinear_constraint_number)
+            m._working_problem._problem_type = LP
+        elseif quad_constraint_number === 0
+            # && iszero(m._input_nonlinear_constraint_number)
+            m._working_problem = SOCP
         else
-            m._lower_objective_value = -Inf
-            m._lower_feasibility = false
-            m._upper_feasibility = false
+            #parse_classify_quadratic!(m)
+            #if iszero(m._input_nonlinear_constraint_number)
+            #    if isempty(m._quadratic_constraint)
+            #        m._problem_type = SOCP
+            #    end
+            #else
+            #    # Check if DIFF_CVX, NS_CVX, DIFF_NCVX, OR NS_NCVX
+            #    m._problem_type = parse_classify_nlp(m)
+            #end
+            m._problem_type = NS_NCVX
         end
-        set_global_lower_bound!(m)
-        m._run_time = time() - m._start_time
-        m._time_left = m.time_limit - m._run_time
-        log_iteration!(m)
-        print_iteration!(m)
-        m._iteration_count += 1
-    end
-
-    m._objective_value = m._global_upper_bound
-
-    # Prints the solution
-    print_solution!(m)
-    return
-end
-
-throw_optimize_hook!(m::Optimizer) = optimize_hook!(m.ext_type, m)
-function MOI.optimize!(m::Optimizer)
-
-    m._start_time = time()
-
-    # Runs the branch and bound routine
-    if !m.enable_optimize_hook
-        parse_problem!(m)
-        parse_classify_problem!(m)
-        optimize!(Val{m._problem_type}(), m)
     else
-        throw_optimize_hook!(m)
+        if cone_constraint_number === 0 && quad_constraint_number === 0
+            m._problem_type = MILP
+        elseif quad_constraint_number === 0
+            m._problem_type = MISOCP
+        else
+            parse_classify_quadratic!(m)
+            #=
+            if iszero(m._nonlinear_constraint_number)
+                if iszero(m._quadratic_constraint_number)
+                    m._problem_type = MISOCP
+                end
+            else
+                # Performs parsing
+                _ = parse_classify_nlp(m)
+            end
+            =#
+            m._problem_type = MINCVX
+        end
     end
 
     return nothing
@@ -709,27 +533,3 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
     return
 end
 =#
-
-is_lp(m::Optimizer) = ~in(true, m.branch_variable)
-
-function linear_solve!(m::Optimizer)
-
-    opt = m.relaxed_optimizer
-    if m._objective_type === SINGLE_VARIABLE
-        MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective_sv)
-    elseif  m._objective_type === SCALAR_AFFINE
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._objective_saf)
-    end
-
-    MOI.optimize!(opt)
-    m._objective_value = MOI.get(opt, MOI.ObjectiveValue())
-    m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
-    m._global_lower_bound = MOI.get(opt, MOI.ObjectiveValue())
-    m._global_upper_bound = MOI.get(opt, MOI.ObjectiveValue())
-    m._termination_status_code = MOI.get(opt, MOI.TerminationStatus())
-    m._result_status_code = MOI.get(opt, MOI.PrimalStatus())
-    m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)
-    #m._run_time = MOI.get(opt, MOI.SolveTime())
-
-    return
-end

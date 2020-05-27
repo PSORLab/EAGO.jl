@@ -339,7 +339,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _lower_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _lower_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _lower_feasibility::Bool = false
+    _lower_feasibility::Bool = true
     _lower_objective_value::Float64 = -Inf
     _lower_solution::Vector{Float64} = Float64[]
     _lower_lvd::Vector{Float64} = Float64[]
@@ -349,15 +349,15 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _cut_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _cut_solution::Vector{Float64} = Float64[]
     _cut_objective_value::Float64 = -Inf
-    _cut_feasibility::Bool = false
+    _cut_feasibility::Bool = true
 
     _upper_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _upper_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _upper_feasibility::Bool = false
+    _upper_feasibility::Bool = true
     _upper_objective_value::Float64 = Inf
     _upper_solution::Vector{Float64} = Float64[]
 
-    _postprocess_feasibility::Bool = false
+    _postprocess_feasibility::Bool = true
 
     _start_time::Float64 = 0.0
     _run_time::Float64 = 0.0
@@ -481,6 +481,7 @@ function check_inbounds!(m::Optimizer, vi::VI)
     end
     return nothing
 end
+
 check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
 
 function check_inbounds!(m::Optimizer, aff::SAF)
@@ -489,6 +490,7 @@ function check_inbounds!(m::Optimizer, aff::SAF)
     end
     return nothing
 end
+
 function check_inbounds!(m::Optimizer, quad::SQF)
     for term in quad.affine_terms
         check_inbounds!(m, term.variable_index)
