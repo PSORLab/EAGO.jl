@@ -424,7 +424,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _obbt_performed_flag::Bool = false
 
     # Feasibility-Based Bound Tightening Options
-    # set in set_constraint_propagation_fbbt in domain_reduction.jl 
+    # set in set_constraint_propagation_fbbt in domain_reduction.jl
     _cp_improvement::Float64 = 0.0
     _cp_evaluation_reverse::Bool = false
 
@@ -444,8 +444,12 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _buffered_quadratic_ineq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
     _buffered_quadratic_eq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
 
-    # set in TODO
+    # set initially in TODO, reset in objective_cut in relax.jl
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
+
+    # initialized to empty in constructor (or via MOI.empty), filled in objective_cut in relax.jl
+    # called by obbt in domain_reduction.jl, lower_problem, and add_cut in optimize_nonconvex.jl,
+    # emptied in delete_objective_cuts! in relax.jl
     _objective_cut_ci_saf::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
 
     # need to retreive primal _relaxed_variable_index

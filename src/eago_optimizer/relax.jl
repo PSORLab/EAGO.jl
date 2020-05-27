@@ -406,7 +406,7 @@ function objective_cut!(m::Optimizer, q::Int64)
         obj_type = wp._objective_type
 
         if obj_type === SINGLE_VARIABLE
-            MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), wp._objective_sv_cut_ci, LT(UBD))
+            MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), wp._objective_cut_ci_sv, LT(UBD))
 
         elseif obj_type === SCALAR_AFFINE
             wp._objective_saf.constant -= UBD
