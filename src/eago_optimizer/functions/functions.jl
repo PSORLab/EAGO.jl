@@ -67,6 +67,7 @@ end
 VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false, UNSPEC_BRANCH)
 lower_bound(x::VariableInfo) = x.lower_bound
 upper_bound(x::VariableInfo) = x.upper_bound
+is_integer(x::VariableInfo) = x.is_integer
 
 include("affine.jl")
 include("quadratic.jl")

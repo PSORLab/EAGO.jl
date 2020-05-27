@@ -289,6 +289,9 @@ Base.@kwdef mutable struct ParsedProblem
     _objective_nl = nothing
     _objective_type::ObjectiveType = UNSET
 
+    # objective sense information (set by convert_to_min in parse.jl)
+    _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
+
     # non-single variable constraints (set in initial_parse)
     _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
     _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
@@ -600,8 +603,8 @@ end
 #####
 
 function check_inbounds!(m::Optimizer, vi::VI)
-    if !(1 <= vi.value <= m._variable_number)
-        error("Invalid variable index $vi. ($(m._variable_numbe) variables in the model.)")
+    if !(1 <= vi.value <= m._input_problem._variable_count)
+        error("Invalid variable index $vi. ($(m._input_problem._variable_count) variables in the model.)")
     end
     return nothing
 end
@@ -640,12 +643,15 @@ end
 #####
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
+
      m.verbosity = 0
      m.log_on = false
      return nothing
+
 end
 
 function MOI.set(m::Optimizer, p::MOI.RawParameter, value)
+
     if p.name isa String
         psym = Symbol(p.name)
     elseif p.name isa Symbol
@@ -665,15 +671,17 @@ end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
     m.time_limit = Inf
-    return
+    return nothing
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
     m.time_limit = value
-    return
+    return nothing
 end
 
-MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i = 1:length(m._variable_info)]
+function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
+    return [MOI.VariableIndex(i) for i = 1:length(m._input_problem._variable_info)]
+end
 
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     mult = 1.0
@@ -683,7 +691,7 @@ function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     return mult*m._objective_value
 end
 
-MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._variable_number
+MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
 
 function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
     if m._input_problem._optimization_sense === MOI.MAX_SENSE

@@ -23,16 +23,17 @@ function convert_to_min!(m::Optimizer)
 
     if m._input_problem._optimization_sense === MOI.MAX_SENSE
 
-        if m._objective_type === SINGLE_VARIABLE
-            m._objective_type = SCALAR_AFFINE
+        obj_type = m._input_problem._objective_type
+        if obj_type === SINGLE_VARIABLE
+            m._working_problem._objective_type = SCALAR_AFFINE
             m._working_problem._objective_saf = MOIU.operate(-, Float64, m._working_problem._objective_sv)
-            m._working_problem._objective_saf_parsed = AffineFunctionIneq(m._working_problem._objective_saf)
+            m._working_problem._objective_saf_parsed = AffineFunctionIneq(m._working_problem._objective_saf, LT_ZERO)
 
-        elseif m._objective_type === SCALAR_AFFINE
+        elseif obj_type === SCALAR_AFFINE
             m._working_problem._objective_saf = MOIU.operate(-, Float64, m._working_problem._objective_saf)
-            m._working_problem._objective_saf_parsed = AffineFunctionIneq(m._working_problem._objective_saf)
+            m._working_problem._objective_saf_parsed = AffineFunctionIneq(m._working_problem._objective_saf, LT_ZERO)
 
-        elseif m._objective_type === SCALAR_QUADRATIC
+        elseif obj_type === SCALAR_QUADRATIC
             sqf = m._working_problem._objective_sqf.sqf
             m._working_problem._objective_sqf.sqf = MOIU.operate(-, Float64, sqf)
 
@@ -56,7 +57,7 @@ Detects any variables set to a fixed value by equality or inequality constraints
 and populates the _fixed_variable storage array.
 """
 function label_fixed_variables!(m::Optimizer)
-    map!(x -> check_set_is_fixed(x), m._fixed_variable, m._variable_info)
+    map!(x -> check_set_is_fixed(x), m._fixed_variable, m._working_problem._variable_info)
 end
 
 """
@@ -67,11 +68,8 @@ _branch_variables storage array.
 """
 function label_branch_variables!(m::Optimizer)
 
-    m._user_branch_variables = !isempty(m.parameters.branch_variable)
-    if m._user_branch_variables
-        copyto!(m._branch_variables, m.parameters.branch_variable)
-        return nothing
-    end
+    m._user_branch_variables = !isempty(m._branch_variables)
+    m._user_branch_variables && (return nothing)
 
     # adds nonlinear terms in quadratic constraints
     sqf_leq = m._working_problem._sqf_leq
@@ -116,7 +114,7 @@ Translates input problem to working problem. Routines and checks and optional ma
 function initial_parse!(m::Optimizer)
 
     # reset initial time and solution statistics
-    m._time_left = m.time_limit
+    m._time_left = m._parameters.time_limit
 
     # add variables to working model
     ip = m._input_problem
@@ -239,12 +237,13 @@ function parse_classify_problem!(m::Optimizer)
     cone_constraint_number = ip._conic_second_order_count
     quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
+    linear_or_sv_objective = (ip._objective_type === SINGLE_VARIABLE || ip._objective_type === SCALAR_AFFINE)
     relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
     if integer_variable_number === 0
-        if cone_constraint_number === 0 && quad_constraint_number === 0
+        if cone_constraint_number === 0 && quad_constraint_number === 0 && linear_or_sv_objective
             # && iszero(m._input_nonlinear_constraint_number)
             m._working_problem._problem_type = LP
-        elseif quad_constraint_number === 0 && relaxed_supports_soc
+        elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
             # && iszero(m._input_nonlinear_constraint_number)
             m._working_problem = SOCP
         else
@@ -260,9 +259,8 @@ function parse_classify_problem!(m::Optimizer)
             m._problem_type = NS_NCVX
         end
     else
-        if cone_constraint_number === 0 && quad_constraint_number === 0
-            m._problem_type = MILP
-        elseif quad_constraint_number === 0 && relaxed_supports_soc
+        if cone_constraint_number === 0 && quad_constraint_number === 0 && linear_or_sv_objective
+        elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
             m._problem_type = MISOCP
         else
             #parse_classify_quadratic!(m)

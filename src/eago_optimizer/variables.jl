@@ -13,16 +13,16 @@
 #############################################################################
 
 ##### Access variable information from MOI variable index
-has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
-has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
-is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
-is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
+has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_upper_bound
+has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_lower_bound
+is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].is_fixed
+is_integer(m::Optimizer, i::Int64) = is_integer(m._input_problem._variable_info[i])
 
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
-    m._input_problem._variable_number += 1
+    m._input_problem._variable_count += 1
     push!(m._input_problem._variable_info, VariableInfo())
-    return VI(m._variable_number)
+    return VI(m._input_problem._variable_count)
 end
 MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
 

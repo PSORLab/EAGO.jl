@@ -75,15 +75,7 @@ function load_relaxed_problem!(m::Optimizer)
     end
 
     # add linear constraints
-    for (func, set) in m._input_problem._linear_leq_constraints
-         MOI.add_constraint(opt, func, set)
-    end
-    for (func, set) in m._input_problem._linear_geq_constraints
-        MOI.add_constraint(opt, func, set)
-    end
-    for (func, set) in m._input_problem._linear_eq_constraints
-        MOI.add_constraint(opt, func, set)
-    end
+    add_linear_constraints!(m, opt)
 
     MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 

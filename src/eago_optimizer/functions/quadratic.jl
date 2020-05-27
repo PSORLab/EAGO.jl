@@ -73,7 +73,7 @@ function BufferedQuadraticIneq(func::SQF, set::LT)
     len = length(buffer)
     cfunc = copy(func)
     cfunc.constant -= set.upper
-    return BufferQuadraticIneq(cfunc, buffer, saf, len)
+    return BufferedQuadraticIneq(cfunc, buffer, saf, len)
 end
 
 function BufferedQuadraticIneq(func::SQF, set::GT)
@@ -82,7 +82,7 @@ function BufferedQuadraticIneq(func::SQF, set::GT)
     len = length(buffer)
     cfunc = MOIU.operate(-, Float64, func)
     cfunc.constant += set.lower
-    BufferQuadraticIneq(cfunc, buffer, saf, len)
+    BufferedQuadraticIneq(cfunc, buffer, saf, len)
 end
 
 BufferedQuadraticEq() = BufferedQuadraticEq(SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
@@ -95,7 +95,7 @@ function BufferedQuadraticEq(func::SQF, set::ET)
     cfunc1.constant -= set.value
     cfunc2 = MOIU.operate(-, Float64, func)
     cfunc2.constant += set.value
-    BufferQuadratic(cfunc1, cfunc2, buffer, saf, len)
+    BufferedQuadraticEq(cfunc1, cfunc2, buffer, saf, len)
 end
 
 #=
