@@ -40,6 +40,7 @@ end
 ###
 ### Constructor definitions
 ###
+AffineFunctionIneq() = AffineFunctionIneq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionIneq(func::SAF, set::LT)
     terms = map(x -> (x.coefficient, x.variable_index.value), func.terms)
     return AffineFunctionIneq(terms, func.constant - set.upper, length(func.terms))
@@ -50,6 +51,8 @@ function AffineFunctionIneq(func::SAF, set::GT)
     return AffineFunctionIneq(terms, set.lower - func.constant, length(func.terms))
 end
 
+
+AffineFunctionEq() = AffineFunctionEq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionEq(func::SAF, set::ET)
     terms = map(x -> (x.coefficient, x.variable_index.value), func.terms)
     return AffineFunctionEq(terms, func.constant - set.value, length(func.terms))

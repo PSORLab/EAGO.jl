@@ -225,7 +225,7 @@ Base.@kwdef mutable struct InputProblem
     _conic_second_order_count::Int = 0
 
     # objective information (set by MOI.set(m, ::ObjectiveFunction...) in optimizer.jl)
-    _objective_sv::SV = SV(-1)
+    _objective_sv::SV = SV(VI(-1))
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
     _objective_type::ObjectiveType = UNSET
@@ -246,7 +246,7 @@ Base.@kwdef mutable struct ParsedProblem
     _problem_type::ProblemType = UNCLASSIFIED
 
     # objectives (set in initial_parse)
-    _objective_sv::SV = SV(-1)
+    _objective_sv::SV = SV(VI(-1))
     "_objective_saf stores the objective and is used for constructing linear affine cuts
      of any ObjectiveType"
     _objective_saf::SAF = SAF(SAT[], 0.0)

@@ -49,7 +49,6 @@ mutable struct BufferedConvexQuadratic <: AbstractEAGOConstraint
 end
 =#
 
-
 ###
 ### Constructor definitions
 ###
@@ -65,6 +64,8 @@ function create_buffer_dict(func::SQF)
     end
     return buffer
 end
+
+BufferedQuadraticIneq() = BufferedQuadraticIneq(SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
 
 function BufferedQuadraticIneq(func::SQF, set::LT)
     buffer = create_buffer_dict(func)
@@ -84,6 +85,8 @@ function BufferedQuadraticIneq(func::SQF, set::GT)
     BufferQuadraticIneq(cfunc, buffer, saf, len)
 end
 
+BufferedQuadraticEq() = BufferedQuadraticEq(SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
+
 function BufferedQuadraticEq(func::SQF, set::ET)
     buffer = create_buffer_dict(func)
     saf = SAF([SAT(0.0, VI(k)) for k in keys(buffer)], 0.0)
@@ -94,6 +97,12 @@ function BufferedQuadraticEq(func::SQF, set::ET)
     cfunc2.constant += set.value
     BufferQuadratic(cfunc1, cfunc2, buffer, saf, len)
 end
+
+#=
+function BufferedConvexQuadratic(f::BufferedQuadraticIneq)
+    BufferedConvexQuadratic(copy(f.func), copy(f.buffer), copy(f.saf), f.len)
+end
+=#
 
 ###
 ### Interval bounding definitions
