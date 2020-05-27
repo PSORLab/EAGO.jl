@@ -40,11 +40,6 @@ macro define_addconstraint_quadratic(function_type, set_type, array_name, count_
     quote
         function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
             check_inbounds!(m, func)
-            for i in func.affine_terms m.branch_variable[i.variable_index.value] = true end
-            for i in func.quadratic_terms
-                m.branch_variable[i.variable_index_1.value] = true
-                m.branch_variable[i.variable_index_2.value] = true
-            end
             push!(m._input_problem.$(array_name), (func, set))
             m._input_problem._last_constraint_index += 1
             m._input_problem.$(count_name) += 1

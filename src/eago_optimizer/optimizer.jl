@@ -224,6 +224,10 @@ Base.@kwdef mutable struct InputProblem
 
     _conic_second_order_count::Int = 0
 
+    # nonlinear constraint storage
+    _nonlinear_leq_count::Int = 0
+    _nonlinear_eq_count::Int = 0
+
     # objective information (set by MOI.set(m, ::ObjectiveFunction...) in optimizer.jl)
     _objective_sv::SV = SV(VI(-1))
     _objective_saf::SAF = SAF(SAT[], 0.0)
@@ -308,6 +312,10 @@ Base.@kwdef mutable struct ParsedProblem
 
     # nlp constraints (set in initial_parse)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+
+    # nonlinear constraint storage
+    _nonlinear_leq_count::Int = 0
+    _nonlinear_eq_count::Int = 0
 
     # variables (set in initial_parse)
     _variable_info::Vector{VariableInfo} = VariableInfo[]

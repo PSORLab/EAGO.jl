@@ -240,18 +240,24 @@ function parse_classify_problem!(m::Optimizer)
 
     ip = m._input_problem
     integer_variable_number = count(is_integer.(ip._variable_info))
+
+    nl_constraint_number = ip._nonlinear_leq_count + ip._nonlinear_eq_count
     cone_constraint_number = ip._conic_second_order_count
     quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
     linear_or_sv_objective = (ip._objective_type === SINGLE_VARIABLE || ip._objective_type === SCALAR_AFFINE)
     relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
+
     if integer_variable_number === 0
-        if cone_constraint_number === 0 && quad_constraint_number === 0 && linear_or_sv_objective
-            # && iszero(m._input_nonlinear_constraint_number)
+
+        if cone_constraint_number === 0 && quad_constraint_number === 0 &&
+            nl_constraint_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = LP
-        elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
-            # && iszero(m._input_nonlinear_constraint_number)
+
+        elseif quad_constraint_number === 0 && relaxed_supports_soc &&
+               nl_constraint_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = SOCP
+
         else
             #parse_classify_quadratic!(m)
             #if iszero(m._input_nonlinear_constraint_number)
@@ -262,9 +268,11 @@ function parse_classify_problem!(m::Optimizer)
             #    # Check if DIFF_CVX, NS_CVX, DIFF_NCVX, OR NS_NCVX
             #    m._problem_type = parse_classify_nlp(m)
             #end
-            m._problem_type = NS_NCVX
+            m._problem_type = MINCVX
+
         end
     else
+        #=
         if cone_constraint_number === 0 && quad_constraint_number === 0 && linear_or_sv_objective
         elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
             m._working_problem._problem_type = MISOCP
@@ -282,6 +290,7 @@ function parse_classify_problem!(m::Optimizer)
             =#
             m._problem_type = MINCVX
         end
+        =#
     end
 
     return nothing
