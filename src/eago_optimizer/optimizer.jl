@@ -335,6 +335,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _continuous_solution::Vector{Float64} = Float64[]
     _upper_variables::Vector{VI} =  VI[]
 
+    # all subproblem immutable subproblem status are set in global_solve in corresponding routines
+    # in optimize_nonconvex.jl
     _preprocess_feasibility::Bool = true
     _preprocess_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _preprocess_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
@@ -343,27 +345,36 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _lower_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _lower_feasibility::Bool = true
     _lower_objective_value::Float64 = -Inf
+
+    # set in TODO
     _lower_solution::Vector{Float64} = Float64[]
     _lower_lvd::Vector{Float64} = Float64[]
     _lower_uvd::Vector{Float64} = Float64[]
 
     _cut_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _cut_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _cut_solution::Vector{Float64} = Float64[]
     _cut_objective_value::Float64 = -Inf
     _cut_feasibility::Bool = true
+
+    # set in TODO
+    _cut_solution::Vector{Float64} = Float64[]
 
     _upper_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _upper_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _upper_feasibility::Bool = true
     _upper_objective_value::Float64 = Inf
+
+    # set in TODO
     _upper_solution::Vector{Float64} = Float64[]
 
     _postprocess_feasibility::Bool = true
 
+    # set to time limit in initial_parse! in parse.jl, decremented throughout global_solve in optimize_nonconvex.jl
+    _time_left::Float64 = 1000.0
+
+    # set constructor reset on empty! and  to zero in initial parse! in parse.jl
     _start_time::Float64 = 0.0
     _run_time::Float64 = 0.0
-    _time_left::Float64 = 1000.0
     _parse_time::Float64 = 0.0
     _presolve_time::Float64 = 0.0
     _last_preprocess_time::Float64 = 0.0
@@ -371,13 +382,14 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _last_upper_problem_time::Float64 = 0.0
     _last_postprocessing_time::Float64 = 0.0
 
+    # reset in initial_parse! in parse.jl
     _global_lower_bound::Float64 = -Inf
     _global_upper_bound::Float64 = Inf
     _maximum_node_id::Int64 = 0
     _iteration_count::Int64 = 0
     _node_count::Int64 = 0
 
-    # Storage for output
+    # Storage for output, reset in initial_parse! in parse.jl
     _solution_value::Float64 = 0.0
     _feasible_solution_found::Bool = false
     _first_solution_node::Int64 = -1

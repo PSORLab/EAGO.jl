@@ -127,7 +127,7 @@ Translates input problem to working problem. Routines and checks and optional ma
 """
 function initial_parse!(m::Optimizer)
 
-    # set initial time
+    # reset initial time and solution statistics
     m._time_left = m.time_limit
 
     # add variables to working model
