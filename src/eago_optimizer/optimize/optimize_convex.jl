@@ -40,7 +40,9 @@ function single_nlp_solve!(m::Optimizer)
     upper_optimizer = m.upper_optimizer
     MOI.empty!(upper_optimizer)
 
-    upper_variables = MOI.add_variables(upper_optimizer, m._variable_number)
+    for i = 1:m._variable_number
+        @inbounds m._upper_variables[i] = MOI.add_variable(upper_optimizer)
+    end
 
     n = m._current_node
     lower_variable_bounds = n.lower_variable_bounds

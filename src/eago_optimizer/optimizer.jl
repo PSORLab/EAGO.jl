@@ -375,8 +375,10 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _upper_feasibility::Bool = true
     _upper_objective_value::Float64 = Inf
 
-    # set in TODO
+    # array is initialized to correct size in TODO, reset in single_nlp_solve! in optimize_convex.jl
     _upper_variables::Vector{VI} =  VI[]
+
+    # set in
     _upper_solution::Vector{Float64} = Float64[]
 
     _postprocess_feasibility::Bool = true
@@ -430,7 +432,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _cut_add_flag::Bool = false
 
     # Options for Repetition (If DBBT Performed Well)
-    # set in TODO
+    # set in within preprocess in optimize_nonconvex.jl
     _node_repetitions::Int64 = 0
     _initial_volume::Float64 = 0.0
     _final_volume::Float64 = 0.0
