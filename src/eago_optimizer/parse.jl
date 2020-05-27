@@ -96,6 +96,7 @@ function label_branch_variables!(m::Optimizer)
     m._user_branch_variables = !isempty(m.parameters.branch_variable)
     if m._user_branch_variables
         copyto!(m._branch_variables, m.parameters.branch_variable)
+        return nothing
     end
 
     # adds nonlinear terms in quadratic constraints
@@ -132,7 +133,7 @@ function label_branch_variables!(m::Optimizer)
         end
     end
 
-    return
+    return nothing
 end
 
 """

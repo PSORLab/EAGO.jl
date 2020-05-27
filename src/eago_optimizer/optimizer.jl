@@ -296,19 +296,22 @@ $(TYPEDFIELDS)
 Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Options for optimality-based bound tightening
+    # set as a user-specified option
     "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
     relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
     "Keyword arguments for the relaxed optimizer."
     relaxed_optimizer_kwargs::Base.Iterators.Pairs = Base.Iterators.Pairs(NamedTuple(),())
 
+    # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     "Variables to perform OBBT on (default: all variables in nonlinear expressions)."
     obbt_variable_values::Vector{Bool} = Bool[]
 
-    # Upper bounding options
+    # Upper bounding options (set as a user-specified option)
     upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
                                                              acceptable_iter = 300, constr_viol_tol = 1E-8,
                                                              acceptable_constr_viol_tol = 1E-8, print_level = 0)
-    # Extensions
+
+    # Extensions (set as user-specified option)
     "Specifies that the optimize_hook! function should be called rather than
     throw the problem to the standard B&B routine (default = false)."
     enable_optimize_hook::Bool = false
@@ -319,8 +322,13 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     new custom subroutines (default = DefaultExt())."
     ext_type::ExtensionType = DefaultExt()
 
+    # set as user-specified option
     _parameters::EAGOParameters = EAGOParameters()
+
+    # set by MOI manipulations (see Input problem structure)
     _input_problem::InputProblem = InputProblem()
+
+    # loaded from _input_problem by TODO
     _working_problem::ParsedProblem = ParsedProblem()
 
     _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
@@ -332,10 +340,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _current_node::NodeBB = NodeBB()
     _current_xref::Vector{Float64} = Float64[]
 
-    # set in label_branch_variables in parse.jl
+    # set in label_branch_variables! and label_fixed_variables! respectively in parse.jl
     _user_branch_variables::Bool = false
-
-    # set in label_fixed_variables in parse.jl
     _fixed_variable::Vector{Bool} = Bool[]
 
     _continuous_solution::Vector{Float64} = Float64[]
@@ -449,6 +455,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
     _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
 
+    # set as user-input
     _branch_variables::Vector{Bool} = Bool[]
 
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
