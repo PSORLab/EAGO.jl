@@ -194,14 +194,14 @@ $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct InputProblem
 
-    # variables
+    # variables (set by MOI.add_variable in variables.jl)
     _variable_info::Vector{VariableInfo} = VariableInfo[]
     _variable_count::Int64 = 0
 
     # last constraint index added
     _last_constraint_index::Int = 0
 
-    # linear constraints
+    # linear constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
     _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
     _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
     _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
@@ -210,7 +210,7 @@ Base.@kwdef mutable struct InputProblem
     _linear_geq_count::Int = 0
     _linear_eq_count::Int = 0
 
-    # quadratic constraints
+    # quadratic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
     _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
     _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
     _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
@@ -219,21 +219,21 @@ Base.@kwdef mutable struct InputProblem
     _quadratic_geq_count::Int = 0
     _quadratic_eq_count::Int = 0
 
-    # conic constraints
+    # conic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
     _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
 
     _conic_second_order_count::Int = 0
 
-    # objectives
+    # objective information (set by MOI.set(m, ::ObjectiveFunction...) in optimizer.jl)
     _objective_sv::SV = SV(-1)
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
     _objective_type::ObjectiveType = UNSET
 
-    # nlp constraints
+    # nlp constraints (set by MOI.set(m, ::NLPBlockData...) in optimizer.jl)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
-    # attributes
+    # objective sense information (set by MOI.set(m, ::ObjectiveSense...) in optimizer.jl)
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
 end
 
@@ -242,10 +242,10 @@ $(TYPEDEF)
 """
 Base.@kwdef mutable struct ParsedProblem
 
-    # Problem classification
+    # Problem classification (set in parse_classify_problem!)
     _problem_type::ProblemType = UNCLASSIFIED
 
-    # objectives
+    # objectives (set in initial_parse)
     _objective_sv::SV = SV(-1)
     "_objective_saf stores the objective and is used for constructing linear affine cuts
      of any ObjectiveType"

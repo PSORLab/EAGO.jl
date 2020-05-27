@@ -157,6 +157,9 @@ function initial_parse!(m::Optimizer)
         add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_eq_constraints[i])
     end
 
+    # set objective function
+
+
     # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)
 
