@@ -67,7 +67,6 @@ end
 ### LP and MILP routines
 function add_soc_constraints!(m::Optimizer, opt::T) where T
 
-    # add linear constraints
     for (func, set) in m._input_problem._conic_second_order
          MOI.add_constraint(opt, func, set)
     end
@@ -146,12 +145,14 @@ optimize!(::Val{MILP}, m::Optimizer) = optimize!(Val{LP}(), m)
 
 function optimize!(::Val{SOCP}, m::Optimizer)
 
-    relaxed_optimizer = m.relaxed_optimizer()
-    m._relaxed_variable_index = add_variables(m, relaxed_optimizer, m._input_variable_number)
+    relaxed_optimizer = m.relaxed_optimizer
+    MOI.empty!(relaxed_optimizer)
+
+    m._relaxed_variable_index = add_variables(m, relaxed_optimizer, m._input_problem._variable_count)
     add_linear_constraints!(m, relaxed_optimizer)
     add_soc_constraints!(m, relaxed_optimizer)
     add_sv_or_aff_obj!(m, relaxed_optimizer)
-    MOI.set(opt, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
+    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
 
     if m._parameters.verbosity < 5
         MOI.set(relaxed_optimizer, MOI.Silent(), true)

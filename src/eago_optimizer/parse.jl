@@ -168,7 +168,10 @@ function initial_parse!(m::Optimizer)
     # add conic constraints to the working problem
     soc_vec = m._input_problem._conic_second_order
     for i = 1:ip._conic_second_order_count
-        soc_func, soc_set = soc_vec
+        soc_func, soc_set = @inbounds soc_vec[i]
+        first_variable_loc = soc_func.variables[1].value
+        prior_lbnd = m._working_problem._variable_info[first_variable_loc].lower_bound
+        m._working_problem._variable_info[first_variable_loc].lower_bound = max(prior_lbnd, 0.0)
         push!(m._working_problem._conic_second_order, BufferedSOC(soc_func, soc_set))
         m._working_problem._conic_second_order_count += 1
     end
@@ -248,7 +251,7 @@ function parse_classify_problem!(m::Optimizer)
             m._working_problem._problem_type = LP
         elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
             # && iszero(m._input_nonlinear_constraint_number)
-            m._working_problem = SOCP
+            m._working_problem._problem_type = SOCP
         else
             #parse_classify_quadratic!(m)
             #if iszero(m._input_nonlinear_constraint_number)
@@ -264,7 +267,7 @@ function parse_classify_problem!(m::Optimizer)
     else
         if cone_constraint_number === 0 && quad_constraint_number === 0 && linear_or_sv_objective
         elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
-            m._problem_type = MISOCP
+            m._working_problem._problem_type = MISOCP
         else
             #parse_classify_quadratic!(m)
             #=

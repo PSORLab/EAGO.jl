@@ -33,7 +33,7 @@ end
 ### Constructor definitions
 ###
 function BufferedSOC(func::VECOFVAR, set::SOC)
-    len = length(func)
+    len = length(func.variables)
     buffer = Dict{Int, Float64}([(variable.value, 0.0) for variable in func.variables])
     saf = SAF(fill(SAT(0.0, VI(1)), len), 0.0)
     return BufferedSOC(copy(func), buffer, saf, len)
