@@ -11,29 +11,6 @@
 # TODO
 #############################################################################
 
-function create_working_functions!(m::Optimizer)
-
-    # add buffered quadratic constraints
-    for i = 1:m._input_problem._quadratic_leq_count
-        sqf, lt = m._input_problem._quadratic_leq_constraints
-        add_buffered_quadratic!(m, sqf, lt)
-    end
-
-    # add buffered quadratic constraints
-    for i = 1:m._input_problem._quadratic_geq_count
-        sqf, gt = m._input_problem._quadratic_geq_constraints
-        add_buffered_quadratic!(m, sqf, gt)
-    end
-
-    # add buffered quadratic constraints
-    for i = 1:m._input_problem._quadratic_eq_count
-        sqf, et = m._input_problem._quadratic_eq_constraints
-        add_buffered_quadratic!(m, sqf, et)
-    end
-
-    nothing
-end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -42,34 +19,25 @@ max(f) = - min(-f).
 """
 function convert_to_min!(m::Optimizer)
 
+    m._working_problem._optimization_sense = MOI.MIN_SENSE
+
     if m._input_problem._optimization_sense === MOI.MAX_SENSE
 
         if m._objective_type === SINGLE_VARIABLE
             m._objective_type = SCALAR_AFFINE
-            m._objective_saf = SAF(SAT[SAT(-1.0, m._objective_sv.variable)], 0.0)
+            m._working_problem._objective_saf = MOIU.operate(-, Float64, m._working_problem._objective_sv)
+            m._working_problem._objective_saf_parsed = AffineFunctionIneq(m._working_problem._objective_saf)
 
         elseif m._objective_type === SCALAR_AFFINE
-            @__dot__ m._objective_saf.terms = SAT(-getfield(m._objective_saf.terms, :coefficient),
-                                                   getfield(m._objective_saf.terms, :variable_index))
-            m._objective_saf.constant *= -1.0
+            m._working_problem._objective_saf = MOIU.operate(-, Float64, m._working_problem._objective_saf)
+            m._working_problem._objective_saf_parsed = AffineFunctionIneq(m._working_problem._objective_saf)
 
         elseif m._objective_type === SCALAR_QUADRATIC
-            @__dot__ m._objective_sqf.affine_terms = SAT(-getfield(m._objective_sqf.affine_terms, :coefficient),
-                                                          getfield(m._objective_sqf.affine_terms, :variable_index))
-            @__dot__ m._objective_sqf.quadratic_terms = SQT(-getfield(m._objective_sqf.quadratic_terms, :coefficient),
-                                                             getfield(m._objective_sqf.quadratic_terms, :variable_index_1),
-                                                             getfield(m._objective_sqf.quadratic_terms, :variable_index_2))
-            m._objective_sqf.constant *= -1.0
+            sqf = m._working_problem._objective_sqf.sqf
+            m._working_problem._objective_sqf.sqf = MOIU.operate(-, Float64, sqf)
 
         else
-            #=
-            nd = x._nlp_data.evaluator.m.nlp_data.nlobj.nd
-            pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-            nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-            for i = 3:length(nd)
-                @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
-            end
-            =#
+            # TODO NONLINEAR CASE
         end
     end
     return
@@ -214,9 +182,6 @@ function initial_parse!(m::Optimizer)
 
     # set nlp data structure
     m._working_problem._nlp_data =  ip._nlp_data
-
-    # set working sense
-    m._working_problem._optimization_sense =  ip._optimization_sens
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)
