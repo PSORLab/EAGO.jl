@@ -24,19 +24,25 @@ module EAGO
     import Base: ImmutableDict, isless, isempty, eltype, copy, length
 
     const MOI = MathOptInterface
-    const SAF = MOI.ScalarAffineFunction{Float64}
-    const SAT = MOI.ScalarAffineTerm{Float64}
-    const SQF = MOI.ScalarQuadraticFunction{Float64}
-    const SQT = MOI.ScalarQuadraticTerm{Float64}
+
     const SV = MOI.SingleVariable
+    const SAF = MOI.ScalarAffineFunction{Float64}
+    const SQF = MOI.ScalarQuadraticFunction{Float64}
     const VECOFVAR = MOI.VectorOfVariables
+
+    const SQT = MOI.ScalarQuadraticTerm{Float64}
+    const SAT = MOI.ScalarAffineTerm{Float64}
+
     const LT = MOI.LessThan{Float64}
     const GT = MOI.GreaterThan{Float64}
     const ET = MOI.EqualTo{Float64}
     const IT = MOI.Interval{Float64}
     const ZO = MOI.ZeroOne
+    const SOC = MOI.SecondOrderCone
+
     const VI = MOI.VariableIndex
     const CI = MOI.ConstraintIndex
+
     const SCoefC = MOI.ScalarCoefficientChange
     const SConsC = MOI.ScalarConstantChange
     const MOIU = MOI.Utilities

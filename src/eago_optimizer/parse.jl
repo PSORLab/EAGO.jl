@@ -230,11 +230,12 @@ function parse_classify_problem!(m::Optimizer)
     cone_constraint_number = ip._conic_second_order_count
     quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
+    relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
     if integer_variable_number === 0
         if cone_constraint_number === 0 && quad_constraint_number === 0
             # && iszero(m._input_nonlinear_constraint_number)
             m._working_problem._problem_type = LP
-        elseif quad_constraint_number === 0
+        elseif quad_constraint_number === 0 && relaxed_supports_soc
             # && iszero(m._input_nonlinear_constraint_number)
             m._working_problem = SOCP
         else
@@ -252,7 +253,7 @@ function parse_classify_problem!(m::Optimizer)
     else
         if cone_constraint_number === 0 && quad_constraint_number === 0
             m._problem_type = MILP
-        elseif quad_constraint_number === 0
+        elseif quad_constraint_number === 0 && relaxed_supports_soc
             m._problem_type = MISOCP
         else
             parse_classify_quadratic!(m)

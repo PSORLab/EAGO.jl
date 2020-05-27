@@ -59,9 +59,7 @@ end
 @define_addconstraint_quadratic SQF ET _quadratic_eq_constraints _quadratic_eq_constraints
 
 ##### Supports function and add_constraint for conic functions
-const CONE_SETS = Union{MOI.NormInfinityCone, MOI.NormOneCone, MOI.SecondOrderCone, MOI.RotatedSecondOrderCone,
-                        MOI.GeometricMeanCone, MOI.ExponentialCone, MOI.DualExponentialCone, MOI.PowerCone,
-                        MOI.DualPowerCone, MOI.RelativeEntropyCone, MOI.NormSpectralCone, MOI.NormNuclearCone}
+const CONE_SETS = Union{SOC}
 MOI.supports_constraint(::Optimizer, ::Type{VECOFVAR}, ::Type{S}) where {S <: CONE_SETS} = true
 
 macro define_addconstraint_cone(set_type, array_name, count_name)
@@ -79,4 +77,4 @@ macro define_addconstraint_cone(set_type, array_name, count_name)
     end
 end
 
-@define_addconstraint_cone MOI.SecondOrderCone _conic_second_order _conic_second_order_count
+@define_addconstraint_cone SOC _conic_second_order _conic_second_order_count
