@@ -11,15 +11,54 @@
 # TODO
 #############################################################################
 
+###
+### Structure definitions
+###
+
 """
 $(TYPEDEF)
 
+Current only used for bound tightening...
 """
 mutable struct AffineFunctionIneq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
     constant::Float64
     len::Int
 end
+
+"""
+$(TYPEDEF)
+
+Current only used for bound tightening...
+"""
+mutable struct AffineFunctionEq <: AbstractEAGOConstraint
+    terms::Vector{Tuple{Float64,Int}}
+    constant::Float64
+    len::Int
+end
+
+###
+### Constructor definitions
+###
+function AffineFunctionIneq(func::SAF, set::LT)
+    terms = map(x -> (x.coefficient, x.variable_index.value), func.terms)
+    return AffineFunctionIneq(terms, func.constant - set.upper, length(func.terms))
+end
+
+function AffineFunctionIneq(func::SAF, set::GT)
+    terms = map(x -> (-x.coefficient, x.variable_index.value), func.terms)
+    return AffineFunctionIneq(terms, set.lower - func.constant, length(func.terms))
+end
+
+function AffineFunctionEq(func::SAF, set::ET)
+    terms = map(x -> (x.coefficient, x.variable_index.value), func.terms)
+    return AffineFunctionEq(terms, func.constant - set.value, length(func.terms))
+end
+
+
+###
+### Interval bounding definitions
+###
 
 function lower_interval_bound(f::AffineFunctionIneq, y::NodeBB)
 
@@ -40,15 +79,6 @@ function lower_interval_bound(f::AffineFunctionIneq, y::NodeBB)
     end
 
     return lower_interval_bound
-end
-
-"""
-$(TYPEDEF)
-
-"""
-mutable struct AffineFunctionEq <: AbstractEAGOConstraint
-    terms::Vector{Tuple{Float64,Int}}
-    constant::Float64
 end
 
 function interval_bound(f::AffineFunctionEq, y::NodeBB)
@@ -73,6 +103,10 @@ function interval_bound(f::AffineFunctionEq, y::NodeBB)
 
     return lower_interval_bound, upper_interval_bound
 end
+
+###
+### Parsing definitions
+###
 
 function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Union{AffineFunctionIneq,
                                                                                     AffineFunctionEq}
