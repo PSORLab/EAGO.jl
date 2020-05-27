@@ -27,16 +27,18 @@ mutable struct BufferedSOC <: AbstractEAGOConstraint
 end
 
 
+
+
 ###
 ### Constructor definitions
 ###
-#=
 function BufferedSOC(func::VECOFVAR, set::SOC)
-    buffer =
-    saf = SAF(SAT(), 0.0)
-    return BufferedSOC(copy(func), )
+    len = length(func)
+    buffer = Dict{Int, Float64}([(variable.value, 0.0) for variable in func.variables])
+    saf = SAF(fill(SAT(0.0, VI(1)), len), 0.0)
+    return BufferedSOC(copy(func), buffer, saf, len)
 end
-=#
+
 ###
 ### Interval bounding definitions
 ###

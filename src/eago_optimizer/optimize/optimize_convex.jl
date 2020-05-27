@@ -77,15 +77,7 @@ function single_nlp_solve!(m::Optimizer)
     end
 
     # Add linear and quadratic constraints to model
-    for (func, set) in m._input_problem._linear_leq_constraints
-         MOI.add_constraint(upper_optimizer, func, set)
-    end
-    for (func, set) in m._input_problem._linear_geq_constraints
-        MOI.add_constraint(upper_optimizer, func, set)
-    end
-    for (func, set) in m._input_problem._linear_eq_constraints
-        MOI.add_constraint(upper_optimizer, func, set)
-    end
+    add_linear_constraints!(m, upper_optimizer)
 
     for (func, set) in m._input_problem._quadratic_leq_constraints
         MOI.add_constraint(upper_optimizer, func, set)
@@ -101,11 +93,8 @@ function single_nlp_solve!(m::Optimizer)
     MOI.set(upper_optimizer, MOI.NLPBlock(), m._input_problem._nlp_data)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    if x._input_problem._objective_type === SINGLE_VARIABLE
-        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SV}(), m._input_problem._objective_sv)
-    elseif x._input_problem._objective_type === SCALAR_AFFINE
-        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), m._input_problem._objective_saf)
-    elseif x._input_problem._objective_type === SCALAR_QUADRATIC
+    add_sv_or_aff_obj!(m, upper_optimizer)
+    if x._input_problem._objective_type === SCALAR_QUADRATIC
         MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), m._input_problem._objective_sqf)
     end
 

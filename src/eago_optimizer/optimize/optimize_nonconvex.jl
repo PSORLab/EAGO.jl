@@ -215,7 +215,7 @@ upper bound.
 """
 function fathom!(t::ExtensionType, m::Optimizer)
     upper = m._global_upper_bound
-    continue_flag = ~isempty(m._stack)
+    continue_flag = !isempty(m._stack)
     while continue_flag
         max_node = maximum(m._stack)
         max_check = (max_node.lower_bound > upper)
@@ -321,7 +321,7 @@ function convergence_check(t::ExtensionType, m::Optimizer)
   L = m._lower_objective_value
   U = m._global_upper_bound
   t = (U - L) <= m._parameters.absolute_tolerance
-  if (U < Inf) & (L > Inf)
+  if (U < Inf) && (L > Inf)
       t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
   end
   return t

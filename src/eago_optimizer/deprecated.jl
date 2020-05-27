@@ -1,27 +1,3 @@
-is_lp(m::Optimizer) = ~in(true, m.branch_variable)
-
-function linear_solve!(m::Optimizer)
-
-    opt = m.relaxed_optimizer
-    if m._objective_type === SINGLE_VARIABLE
-        MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective_sv)
-    elseif  m._objective_type === SCALAR_AFFINE
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._objective_saf)
-    end
-
-    MOI.optimize!(opt)
-    m._objective_value = MOI.get(opt, MOI.ObjectiveValue())
-    m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
-    m._global_lower_bound = MOI.get(opt, MOI.ObjectiveValue())
-    m._global_upper_bound = MOI.get(opt, MOI.ObjectiveValue())
-    m._termination_status_code = MOI.get(opt, MOI.TerminationStatus())
-    m._result_status_code = MOI.get(opt, MOI.PrimalStatus())
-    m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)
-    #m._run_time = MOI.get(opt, MOI.SolveTime())
-
-    return
-end
-
 function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimizer, bool_flag::Bool) where {N,T<:RelaxTag}
 
     m = src.m::Model
@@ -274,3 +250,30 @@ function initialize_evaluators!(m::Optimizer, flag::Bool)
 
     return
 end
+
+#=
+is_lp(m::Optimizer) = ~in(true, m.branch_variable)
+
+function linear_solve!(m::Optimizer)
+
+    opt = m.relaxed_optimizer
+    if m._objective_type === SINGLE_VARIABLE
+        MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._objective_sv)
+    elseif  m._objective_type === SCALAR_AFFINE
+        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._objective_saf)
+    end
+
+    MOI.optimize!(opt)
+    m._objective_value = MOI.get(opt, MOI.ObjectiveValue())
+    m._solution_value = MOI.get(opt, MOI.ObjectiveValue())
+    m._global_lower_bound = MOI.get(opt, MOI.ObjectiveValue())
+    m._global_upper_bound = MOI.get(opt, MOI.ObjectiveValue())
+    m._termination_status_code = MOI.get(opt, MOI.TerminationStatus())
+    m._result_status_code = MOI.get(opt, MOI.PrimalStatus())
+    m._continuous_solution = MOI.get.(opt, MOI.VariablePrimal(), m._lower_variable_index)
+    #m._run_time = MOI.get(opt, MOI.SolveTime())
+
+    return
+end
+
+=#

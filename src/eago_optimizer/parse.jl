@@ -166,8 +166,11 @@ function initial_parse!(m::Optimizer)
     end
 
     # add conic constraints to the working problem
+    soc_vec = m._input_problem._conic_second_order
     for i = 1:ip._conic_second_order_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._conic_second_order[i])
+        soc_func, soc_set = soc_vec
+        push!(m._working_problem._conic_second_order, BufferedSOC(soc_func, soc_set))
+        m._working_problem._conic_second_order_count += 1
     end
 
     # set objective function

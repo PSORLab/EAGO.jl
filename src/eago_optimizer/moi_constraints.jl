@@ -62,19 +62,16 @@ end
 const CONE_SETS = Union{SOC}
 MOI.supports_constraint(::Optimizer, ::Type{VECOFVAR}, ::Type{S}) where {S <: CONE_SETS} = true
 
-macro define_addconstraint_cone(set_type, array_name, count_name)
-    quote
-        function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::$set_type)
-            if length(func.variables) !== dimension(set)
-                error("Dimension of $(s) does not match number of terms in $(f)")
-            end
-            check_inbounds!(m, func)
-            push!(m._input_problem.$(array_name), (func, set))
-            m._input_problem._last_constraint_index += 1
-            m._input_problem.$(count_name) += 1
-            return CI{VECOFVAR, $set_type}(m._input_problem._last_constraint_index)
-        end
-    end
-end
+function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::SOC)
 
-@define_addconstraint_cone SOC _conic_second_order _conic_second_order_count
+    if length(func.variables) !== set.dimension
+        error("Dimension of $(s) does not match number of terms in $(f)")
+    end
+
+    check_inbounds!(m, func)
+    push!(m._input_problem._conic_second_order, (func, set))
+    m._input_problem._last_constraint_index += 1
+    m._input_problem._conic_second_order_count += 1
+
+    return CI{VECOFVAR, SOC}(m._input_problem._last_constraint_index)
+end

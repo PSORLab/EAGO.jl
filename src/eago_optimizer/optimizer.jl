@@ -293,16 +293,18 @@ Base.@kwdef mutable struct ParsedProblem
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
 
     # non-single variable constraints (set in initial_parse)
-    _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
-    _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
-    _sqf_leq::Vector{BufferedQuadraticIneq} = Vector{BufferedQuadraticIneq}[]
-    _sqf_eq::Vector{BufferedQuadraticEq} = Vector{BufferedQuadraticEq}[]
+    _saf_leq::Vector{AffineFunctionIneq} = AffineFunctionIneq[]
+    _saf_eq::Vector{AffineFunctionEq} = AffineFunctionEq[]
+    _sqf_leq::Vector{BufferedQuadraticIneq} = BufferedQuadraticIneq[]
+    _sqf_eq::Vector{BufferedQuadraticEq} = BufferedQuadraticEq[]
+    _conic_second_order::Vector{BufferedSOC} = BufferedSOC[]
 
     # count of non-single variable constraints (set in initial_parse)
     _saf_leq_count::Int = 0
     _saf_eq_count::Int = 0
     _sqf_leq_count::Int = 0
     _sqf_eq_count::Int = 0
+    _conic_second_order_count::Int = 0
 
     # nlp constraints (set in initial_parse)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
