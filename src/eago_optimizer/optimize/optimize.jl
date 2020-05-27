@@ -15,11 +15,13 @@ function MOI.optimize!(m::Optimizer)
 
         # Need to eliminate fixed variables prior to checking
         # for convex quadratic constraints
-        parse_problem!(m)
+        initial_parse!(m)
 
         # Determines if the problem is an LP, MILP, SOCP, MISCOP,
         # CONVEX, OF MINCVX PROBLEM TYPE
         parse_classify_problem!(m)
+
+        m._parse_time = m._start_time - time()
 
         # Throws the problem to the appropriate solution routine
         optimize!(Val{m._problem_type}(), m)

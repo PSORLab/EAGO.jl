@@ -85,13 +85,13 @@ module EAGO
     include("eago_optimizer/domain_reduction.jl")
 
     #
-    include("eago_optimizer/subroutines.jl")
+    include("eago_optimizer/parse.jl")
 
     #
     include("eago_optimizer/logging/log_iteration.jl")
 
     #
-    include("eago_optimizer/optimize.jl")
+    include("eago_optimizer/optimize/optimize.jl")
 
     # import the script solving utilities
     include("eago_script/script.jl")

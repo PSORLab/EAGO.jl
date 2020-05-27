@@ -255,24 +255,26 @@ Base.@kwdef mutable struct ParsedProblem
     _objective_nl = nothing
     _objective_type::ObjectiveType = UNSET
 
-    # constraints
+    # non-single variable constraints (set in initial_parse)
     _saf_leq::Vector{AffineFunctionIneq} = Vector{AffineFunctionIneq}[]
     _saf_eq::Vector{AffineFunctionEq} = Vector{AffineFunctionEq}[]
     _sqf_leq::Vector{BufferedQuadraticIneq} = Vector{BufferedQuadraticIneq}[]
     _sqf_eq::Vector{BufferedQuadraticEq} = Vector{BufferedQuadraticEq}[]
 
+    # count of non-single variable constraints (set in initial_parse)
     _saf_leq_count::Int = 0
     _saf_eq_count::Int = 0
     _sqf_leq_count::Int = 0
     _sqf_eq_count::Int = 0
 
-    # nlp constraints
+    # nlp constraints (set in initial_parse)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
-    # variables
+    # variables (set in initial_parse)
     _variable_info::Vector{VariableInfo} = VariableInfo[]
     _variable_count::Int = 0
 
+    # count of single variable constraint types (set in load_relaxed_problem!)
     _var_leq_count::Int = 0
     _var_geq_count::Int = 0
     _var_eq_count::Int = 0

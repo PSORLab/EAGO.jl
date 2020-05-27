@@ -88,6 +88,5 @@ optimize!(::Val{MISOCP}, m::Optimizer) = optimize!(Val{SOCP}(), m)
 
 function optimize!(::Val{DIFF_CVX}, m::Optimizer)
     single_nlp_solve!(m)
-    nothing
+    return nothing
 end
-optimize!(::Val{MINCVX}, m::Optimizer) = global_solve!(m)

@@ -88,7 +88,31 @@ function load_relaxed_problem!(m::Optimizer)
 
     MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    return
+    return nothing
+end
+
+function presolve_global!(t::ExtensionType, m::Optimizer)
+    create_initial_node!(m)
+    load_relaxed_problem!(m)
+
+    _variable_len = length(m._variable_info)
+    m._variable_number = _variable_len
+
+    ########### Set Correct Size for Problem Storage #########
+    m._current_xref = fill(0.0, _variable_len)
+    m._cut_solution = fill(0.0, _variable_len)
+    m._lower_solution = fill(0.0, _variable_len)
+    m._upper_solution = fill(0.0, _variable_len)
+    m._lower_lvd = fill(0.0, _variable_len)
+    m._lower_uvd = fill(0.0, _variable_len)
+    m._continuous_solution = zeros(Float64, _variable_len)
+
+    create_initial_node!(m)                          # Create initial node and add it to the stack
+    load_relaxed_problem!(m)
+
+    m._presolve_time = time() - m._parse_time
+
+    return nothing
 end
 
 """
@@ -96,10 +120,10 @@ $(SIGNATURES)
 
 Selects node with the lowest lower bound in stack.
 """
-function node_selection!(t::ExtensionType, x::Optimizer)
-    x._node_count -= 1
-    x._current_node = popmin!(x._stack)
-    return
+function node_selection!(t::ExtensionType, M::Optimizer)
+    m._node_count -= 1
+    m._current_node = popmin!(m._stack)
+    return nothing
 end
 
 """
@@ -794,6 +818,8 @@ function set_global_lower_bound!(m::Optimizer)
 end
 
 # wraps subroutine call to isolate ExtensionType
+parse_global!(m::Optimizer) = parse_global!(m.ext_type, m)
+presolve_global!(m::Optimizer) = presolve_global!(m.ext_type, m)
 termination_check(m::Optimizer) = termination_check(m.ext_type, m)
 cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
 convergence_check(m::Optimizer) = convergence_check(m.ext_type, m)
@@ -817,6 +843,9 @@ function global_solve!(m::Optimizer)
 
     m._iteration_count = 1
     m._node_count = 1
+
+    parse_global!(m)
+    presolve_global!(m)
 
     # terminates when max nodes or iteration is reach, or when node stack is empty
     while !termination_check(m)
@@ -904,3 +933,5 @@ function global_solve!(m::Optimizer)
 
     return nothing
 end
+
+optimize!(::Val{MINCVX}, m::Optimizer) = global_solve!(m)

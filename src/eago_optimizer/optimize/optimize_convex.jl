@@ -22,7 +22,7 @@ $(SIGNATURES)
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
 """
-function solve_local_nlp!(m::Optimizer)
+function single_nlp_solve!(m::Optimizer)
 
     upper_optimizer = m.upper_optimizer
     MOI.empty!(upper_optimizer)
