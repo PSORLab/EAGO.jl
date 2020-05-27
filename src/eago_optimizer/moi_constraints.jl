@@ -49,9 +49,9 @@ macro define_addconstraint_quadratic(function_type, set_type, array_name, count_
     end
 end
 
-@define_addconstraint_quadratic SQF LT _quadratic_leq_constraints _quadratic_leq_constraints
-@define_addconstraint_quadratic SQF GT _quadratic_geq_constraints _quadratic_geq_constraints
-@define_addconstraint_quadratic SQF ET _quadratic_eq_constraints _quadratic_eq_constraints
+@define_addconstraint_quadratic SQF LT _quadratic_leq_constraints _quadratic_leq_count
+@define_addconstraint_quadratic SQF GT _quadratic_geq_constraints _quadratic_geq_count
+@define_addconstraint_quadratic SQF ET _quadratic_eq_constraints _quadratic_eq_count
 
 ##### Supports function and add_constraint for conic functions
 const CONE_SETS = Union{SOC}
