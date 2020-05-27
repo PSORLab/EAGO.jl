@@ -150,14 +150,25 @@ function initial_parse!(m::Optimizer)
     m._working_problem._variable_count = ip._variable_count
 
     # add linear constraints to the working problem
+    linear_leq = ip._linear_geq_constraints
     for i = 1:ip._linear_leq_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._linear_leq_constraints[i])
+        linear_func, leq_set = @inbounds linear_leq[i]
+        push!(m._working_problem._saf_leq, AffineFunctionEq(linear_func, leq_set))
+        m._working_problem._saf_leq_count += 1
     end
+
+    linear_geq = ip._linear_geq_constraints
     for i = 1:ip._linear_geq_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._linear_geq_constraints[i])
+        linear_func, geq_set = @inbounds linear_geq[i]
+        push!(m._working_problem._saf_leq, AffineFunctionEq(linear_func, geq_set))
+        m._working_problem._saf_leq_count += 1
     end
+
+    linear_eq = ip._linear_eq_constraints
     for i = 1:ip._linear_eq_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._linear_eq_constraints[i])
+        linear_func, eq_set = @inbounds linear_eq[i]
+        push!(m._working_problem._saf_eq, AffineFunctionEq(linear_func, eq_set))
+        m._working_problem._saf_eq_count += 1
     end
 
     # add quadratic constraints to the working problem
