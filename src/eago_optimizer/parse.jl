@@ -171,8 +171,24 @@ function initial_parse!(m::Optimizer)
         add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_eq_constraints[i])
     end
 
-    # set objective function
+    # add conic constraints to the working problem
+    for i = 1:ip._conic_second_order_count
+        add_to_working_problem!(m._working_problem, @inbounds ip._conic_second_order[i])
+    end
 
+    # set objective function
+    m._working_problem._objective_type = ip._objective_type
+    m._working_problem._objective_sv = ip._objective_sv
+    m._working_problem._objective_saf = ip._objective_saf
+    m._working_problem._objective_saf_parsed = AffineFunctionIneq(ip._objective_saf, LT_ZERO)
+    m._working_problem._objective_sqf = BufferedQuadraticIneq(ip._objective_sqf, LT_ZERO)
+    #_objective_nl = nothing  #TODO post nonlinear work
+
+    # set nlp data structure
+    m._working_problem._nlp_data =  ip._nlp_data
+
+    # set working sense
+    m._working_problem._optimization_sense =  ip._optimization_sens
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)
@@ -256,7 +272,7 @@ function parse_classify_problem!(m::Optimizer)
         elseif quad_constraint_number === 0 && relaxed_supports_soc
             m._problem_type = MISOCP
         else
-            parse_classify_quadratic!(m)
+            #parse_classify_quadratic!(m)
             #=
             if iszero(m._nonlinear_constraint_number)
                 if iszero(m._quadratic_constraint_number)

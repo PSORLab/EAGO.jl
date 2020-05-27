@@ -130,7 +130,6 @@ function affine_relax_quadratic!(func::SQF, buffer::OrderedDict{Int,Float64}, sa
     return
 end
 
-const LT_ZERO = LT(0.0)
 function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
 
     affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._current_xref, true)

@@ -47,6 +47,8 @@ module EAGO
     const SConsC = MOI.ScalarConstantChange
     const MOIU = MOI.Utilities
 
+    const LT_ZERO = LT(0.0)
+
     # Add storage types for EAGO optimizers
     export NodeBB, get_history, get_lower_bound, get_upper_bound, get_lower_time,
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
