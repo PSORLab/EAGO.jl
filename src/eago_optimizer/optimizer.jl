@@ -540,14 +540,13 @@ function check_inbounds!(m::Optimizer, quad::SQF)
     end
     return nothing
 end
-#=
+
 function check_inbounds!(m::Optimizer, vov::VECOFVAR)
     for vi in vov.variables
         check_inbounds!(m, vi)
     end
     return
 end
-=#
 
 #####
 #####
