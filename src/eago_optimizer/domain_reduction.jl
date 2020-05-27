@@ -451,3 +451,6 @@ function fbbt!(f::AffineFunctionEq, n::NodeBB)
 end
 
 cp_condition(m::Optimizer) = false
+
+function set_constraint_propagation_fbbt(m::Optimizer)
+end

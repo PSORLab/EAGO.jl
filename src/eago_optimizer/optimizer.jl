@@ -378,7 +378,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # array is initialized to correct size in TODO, reset in single_nlp_solve! in optimize_convex.jl
     _upper_variables::Vector{VI} =  VI[]
 
-    # set in
+    # set in TODO
     _upper_solution::Vector{Float64} = Float64[]
 
     _postprocess_feasibility::Bool = true
@@ -424,7 +424,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _obbt_performed_flag::Bool = false
 
     # Feasibility-Based Bound Tightening Options
-    # set in TODO
+    # set in set_constraint_propagation_fbbt in domain_reduction.jl 
     _cp_improvement::Float64 = 0.0
     _cp_evaluation_reverse::Bool = false
 
