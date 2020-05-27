@@ -144,16 +144,16 @@ end
 
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
-    affine_relax_quadratic!(f.func, f.buffer, f.saf1, m._current_node, m._current_xref, true)
-    if check_safe && is_safe_cut!(m, f.saf1)
-        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf1, LT_ZERO)
+    affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._current_xref, true)
+    if check_safe && is_safe_cut!(m, f.saf)
+        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
         push!(m._buffered_quadratic_eq_ci, ci)
     end
     m.relaxed_to_problem_map[ci] = indx
 
-    affine_relax_quadratic!(f.function, f.buffer, f.saf2, m._current_node, m._current_xref, false)
-    if check_safe && is_safe_cut!(m, f.saf2)
-        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf2, LT_ZERO)
+    affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._current_xref, false)
+    if check_safe && is_safe_cut!(m, f.saf)
+        ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
         push!(m._buffered_quadratic_eq_ci, ci)
     end
     m.relaxed_to_problem_map[ci] = indx
