@@ -80,9 +80,6 @@ module EAGO
     # defines routines to add saf, sqf, and nlp block constraints
     include("eago_optimizer/moi_constraints.jl")
 
-    # defines routines which unpack constraints from the input model to the parsed model
-    include("eago_optimizer/translate_constraints.jl")
-
     # functions which print information to console
     include("eago_optimizer/display.jl")
 

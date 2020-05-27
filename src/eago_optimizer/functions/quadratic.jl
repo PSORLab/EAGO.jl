@@ -22,7 +22,7 @@ Stores a general quadratic function with a buffer.
 """
 mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
     func::SQF
-    buffer::OrderedDict{Int, Float64}
+    buffer::Dict{Int, Float64}
     saf::SAF
     len::Int
 end
@@ -35,17 +35,27 @@ Stores a general quadratic function with a buffer.
 mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     func::SQF
     minus_func::SQF
-    buffer::OrderedDict{Int, Float64}
+    buffer::Dict{Int, Float64}
     saf::SAF
     len::Int
 end
+
+#=
+mutable struct BufferedConvexQuadratic <: AbstractEAGOConstraint
+    func::SQF
+    buffer::Dict{Int, Float64}
+    saf::SAF
+    len::Int
+end
+=#
+
 
 ###
 ### Constructor definitions
 ###
 
 function create_buffer_dict(func::SQF)
-    buffer = OrderedDict{Int, Float64}()
+    buffer = Dict{Int, Float64}()
     for term in func.quadratic_terms
         buffer[term.variable_index_1.value] = 0.0
         buffer[term.variable_index_2.value] = 0.0
