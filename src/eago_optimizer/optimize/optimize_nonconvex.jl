@@ -8,8 +8,7 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eago_optimizer/subroutines.jl
-# Default subroutines for EAGO's global optimizer.
+# TODO
 #############################################################################
 
 """

@@ -326,14 +326,19 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
 
-    _current_node::NodeBB = NodeBB()
-    _current_xref::Vector{Float64} = Float64[]
     _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
 
+    # set in TODO
+    _current_node::NodeBB = NodeBB()
+    _current_xref::Vector{Float64} = Float64[]
+
+    # set in label_branch_variables in parse.jl
     _user_branch_variables::Bool = false
+
+    # set in label_fixed_variables in parse.jl
     _fixed_variable::Vector{Bool} = Bool[]
+
     _continuous_solution::Vector{Float64} = Float64[]
-    _upper_variables::Vector{VI} =  VI[]
 
     # all subproblem immutable subproblem status are set in global_solve in corresponding routines
     # in optimize_nonconvex.jl
@@ -365,6 +370,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _upper_objective_value::Float64 = Inf
 
     # set in TODO
+    _upper_variables::Vector{VI} =  VI[]
     _upper_solution::Vector{Float64} = Float64[]
 
     _postprocess_feasibility::Bool = true
@@ -397,6 +403,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _best_upper_value::Float64 = Inf
 
     # Optimality-Based Bound Tightening (OBBT) Options
+    # set in TODO
     _obbt_working_lower_index::Vector{Bool} = Bool[]
     _obbt_working_upper_index::Vector{Bool} = Bool[]
     _lower_indx_diff::Vector{Bool} = Bool[]
@@ -409,6 +416,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _obbt_performed_flag::Bool = false
 
     # Feasibility-Based Bound Tightening Options
+    # set in TODO
     _cp_improvement::Float64 = 0.0
     _cp_evaluation_reverse::Bool = false
 
@@ -416,6 +424,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _cut_add_flag::Bool = false
 
     # Options for Repetition (If DBBT Performed Well)
+    # set in TODO
     _node_repetitions::Int64 = 0
     _initial_volume::Float64 = 0.0
     _final_volume::Float64 = 0.0
@@ -423,13 +432,16 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Log
     _log::Log = Log()
 
+    # set in TODO
     _buffered_quadratic_ineq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
     _buffered_quadratic_eq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
 
+    # set in TODO
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
     _objective_cut_ci_saf::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
 
     # need to retreive primal _relaxed_variable_index
+    # set in TODO
     "Number of variables actively branched on in B&B routine (exludes linear and fixed)"
     _relaxed_variable_number::Int = 0
     _relaxed_variable_index::Vector{VI} = VI[]

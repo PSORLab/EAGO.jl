@@ -8,8 +8,7 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eago_optimizer/problem_types.jl
-# Defines constraints supported Optimizer and how to store them.
+# TODO
 #############################################################################
 
 #=
