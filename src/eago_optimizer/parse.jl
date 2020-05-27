@@ -91,6 +91,12 @@ function label_fixed_variables!(m::Optimizer)
     map!(x -> check_set_is_fixed(x), m._fixed_variable, m._variable_info)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Detects any variables participating in nonconvex terms and populates the
+_branch_variables storage array.
+"""
 function label_branch_variables!(m::Optimizer)
 
     m._user_branch_variables = !isempty(m.parameters.branch_variable)
@@ -172,14 +178,25 @@ function initial_parse!(m::Optimizer)
     end
 
     # add quadratic constraints to the working problem
+    quad_leq = ip._quadratic_leq_constraints
     for i = 1:ip._quadratic_leq_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_leq_constraints[i])
+        quad_func, leq_set = @inbounds quad_leq[i]
+        push!(m._working_problem._sqf_leq, BufferedQuadraticIneq(quad_func, leq_set))
+        m._working_problem._sqf_leq_count += 1
     end
+
+    quad_geq = ip._quadratic_geq_constraints
     for i = 1:ip._quadratic_geq_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_geq_constraints[i])
+        quad_func, geq_set = @inbounds quad_geq[i]
+        push!(m._working_problem._sqf_leq, BufferedQuadraticIneq(quad_func, geq_set))
+        m._working_problem._sqf_leq_count += 1
     end
+
+    quad_eq = ip._quadratic_eq_constraints
     for i = 1:ip._quadratic_eq_count
-        add_to_working_problem!(m._working_problem, @inbounds ip._quadratic_eq_constraints[i])
+        quad_func, eq_set = @inbounds quad_eq[i]
+        push!(m._working_problem._sqf_eq, BufferedQuadraticEq(quad_func, eq_set))
+        m._working_problem._sqf_eq_count += 1
     end
 
     # add conic constraints to the working problem
