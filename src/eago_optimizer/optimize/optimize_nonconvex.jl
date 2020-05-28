@@ -134,18 +134,12 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     # add storage for obbt
     if isempty(m.obbt_variable_values)
-        println("ran obbt... set")
-        println("branch_variable_count = $branch_variable_count")
-        println("m._working_problem._variable_count = $(m._working_problem._variable_count)")
-        println("m._branch_variables = $(m._branch_variables)")
         m._obbt_variables = fill(VI(-1), branch_variable_count)
-        println(" m._obbt_variables = $( m._obbt_variables)")
         for i = 1:m._working_problem._variable_count
             if @inbounds m._branch_variables[i]
                 @inbounds m._obbt_variables[i] = VI(i)
             end
         end
-        println(" m._obbt_variables = $( m._obbt_variables)")
     else
         for i = 1:m._working_problem._variable_count
             if m.obbt_variable_values[i]
@@ -672,6 +666,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     # Optimizes the object
     relaxed_optimizer = m.relaxed_optimizer
 
+    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     MOI.optimize!(relaxed_optimizer)
 
     m._lower_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())

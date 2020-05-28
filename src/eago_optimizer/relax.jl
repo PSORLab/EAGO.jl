@@ -316,7 +316,6 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
                     copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
                     wp._objective_saf.constant = 0.0
                     ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant))
-                    println(" relax objective saf cut -- $(wp._objective_saf), set-- $(LT(UBD - buffered_sqf.saf.constant))")
                     push!(m._objective_cut_ci_saf, ci_saf)
                 end
             end

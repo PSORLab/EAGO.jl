@@ -122,8 +122,6 @@ function label_branch_variables!(m::Optimizer)
         j = m._branch_to_sol_map[i]
         m._sol_to_branch_map[j] = i
     end
-    println("m._sol_to_branch_map = $(m._sol_to_branch_map)")
-    println("m._branch_to_sol_map = $(m._branch_to_sol_map)")
 
     return nothing
 end
@@ -179,9 +177,7 @@ function initial_parse!(m::Optimizer)
     end
 
     quad_eq = ip._quadratic_eq_constraints
-    println("length(quad_eq) input = $(length(quad_eq))")
     for i = 1:ip._quadratic_eq_count
-        println("ip._quadratic_eq_count = $(ip._quadratic_eq_count)")
         quad_func, eq_set = @inbounds quad_eq[i]
         push!(m._working_problem._sqf_eq, BufferedQuadraticEq(quad_func, eq_set))
         m._working_problem._sqf_eq_count += 1
@@ -203,9 +199,7 @@ function initial_parse!(m::Optimizer)
     m._working_problem._objective_sv = ip._objective_sv
     m._working_problem._objective_saf = ip._objective_saf
     m._working_problem._objective_saf_parsed = AffineFunctionIneq(ip._objective_saf, LT_ZERO)
-    println("objective buffer")
     m._working_problem._objective_sqf = BufferedQuadraticIneq(ip._objective_sqf, LT_ZERO)
-    println("m._working_problem._objective_sqf.buffer = $(m._working_problem._objective_sqf.buffer)")
     #_objective_nl = nothing  #TODO post nonlinear work
 
     # set nlp data structure
