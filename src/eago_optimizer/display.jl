@@ -14,36 +14,141 @@
 # ambiguity.
 #############################################################################
 
+const PRINTING_IOFORMAT = :SCI
+const PRINTING_CHARSET = :ASCII
+
 """
 $(FUNCTIONNAME)
 """
-function display_relaxed_optimizer!(optimizer::T, note::String) where T
+function display_relaxed_optimizer!(m::Optimizer, optimizer::T, note::String) where T
+
+    println("------------------------------------------------------------------------------------------")
     println("                                           ")
-    println("           Displaying optimizer       "*note)
+    println("Displaying optimizer"*note)
     println("                                           ")
 
-    println("     Table of Variables                    ")
-    println("| Variable | Bounds Type | Value | Lower Bound | Upper Bound |")
-    println("--------------------------------------------------------------")
-    #for i = 1:variables
-        #var_type =
-        #xUstring =
-        #bnds_string = "LessThan   "
-        #bnds_string = "GreaterThan"
-        #bnds_string = "EqualTo    "
-        #bnds_string = "ZeroOne    "
-    #    println("| x[$i] | $constr_type | $xLstring     <= x[$i] <=          $xUstring      ")
-    #end
-    println("constant = $(saf.constant)")
-    str = "["
-    for term in saf.terms
-        coeff = term.coefficient
-        index = term.variable_index
-        str *= " ($coeff, $index) "
+    objective_function_type = MOI.get(optimizer, MOI.ObjectiveFunctionType())
+    if objective_function_type == SV
+        objective_function = MOI.get(optimizer, MOI.ObjectiveFunction{SV}())
+        variable_index_value = objective_function.variable.value
+        println("Objective function (Single Variable) = x[$(variable_index_value)]")
+    elseif objective_function_type == SAF
+        objective_function = MOI.get(optimizer, MOI.ObjectiveFunction{SAF}())
+        println("Objective function (Scalar Affine) = x[$(objective_function)]")
     end
-    str *= " ]"
-    println(str)
 
+    objective_sense = MOI.get(optimizer, MOI.ObjectiveSense())
+    println("Objective sense isa $(objective_sense) \n")
+
+    variable_number = MOI.get(optimizer, MOI.ListOfVariableIndices())
+    variable_info = Vector{Any}[Any[nothing for j = 1:5] for i in variable_number]
+    sv_lt = MOI.get(optimizer, MOI.ListOfConstraintIndices{SV, LT}())
+    for temp1 in sv_lt
+        sv_lt_func = MOI.get(optimizer, MOI.ConstraintFunction(), temp1)
+        sv_lt_set = MOI.get(optimizer, MOI.ConstraintSet(), temp1)
+        variable_info[sv_lt_func.variable.value][1] = sv_lt_func.variable.value
+        variable_info[sv_lt_func.variable.value][2] = "LessThan    "
+        variable_info[sv_lt_func.variable.value][5] = sv_lt_set.upper
+    end
+
+    sv_gt = MOI.get(optimizer, MOI.ListOfConstraintIndices{SV, GT}())
+    for temp2 in sv_gt
+        sv_gt_func = MOI.get(optimizer, MOI.ConstraintFunction(), temp2)
+        sv_gt_set = MOI.get(optimizer, MOI.ConstraintSet(), temp2)
+        variable_info[sv_gt_func.variable.value][1] = sv_gt_func.variable.value
+        if variable_info[sv_gt_func.variable.value][2] == "LessThan    "
+            variable_info[sv_gt_func.variable.value][2] = "Interval    "
+        else
+            variable_info[sv_gt_func.variable.value][2] = "GreaterThan "
+        end
+        variable_info[sv_gt_func.variable.value][4] = sv_gt_set.lower
+    end
+
+    sv_et = MOI.get(optimizer, MOI.ListOfConstraintIndices{SV, ET}())
+    for temp3 in sv_et
+        sv_et_func = MOI.get(optimizer, MOI.ConstraintFunction(), temp3)
+        sv_et_set = MOI.get(optimizer, MOI.ConstraintSet(), temp3)
+        variable_info[sv_et_func.variable.value][1] = sv_et_func.variable.value
+        variable_info[sv_et_func.variable.value][2] = "EqualTo     "
+        variable_info[sv_et_func.variable.value][4] = sv_et_set.value
+        variable_info[sv_et_func.variable.value][5] = sv_et_set.value
+    end
+
+    sv_zo = MOI.get(optimizer, MOI.ListOfConstraintIndices{SV, ZO}())
+    for temp4 in sv_zo
+        sv_zo_func = MOI.get(optimizer, MOI.ConstraintFunction(), temp4)
+        sv_zo_set = MOI.get(optimizer, MOI.ConstraintSet(), tem4)
+        variable_info[sv_et_func.variable.value][1] = sv_zo_func.variable.value
+        variable_info[sv_et_func.variable.value][2] = "ZeroOne     "
+    end
+
+    count = 1
+    for i = 1:length(variable_info)
+        if variable_info[i][1] == nothing
+            variable_info[i][1] = i
+            variable_info[i][2] = "            "
+            variable_info[i][4] = "            "
+            variable_info[i][5] = "            "
+        end
+        if m._branch_variables[i]
+            nindx = m._sol_to_branch_map[i]
+            variable_info[i][3] = m._current_xref[nindx]
+        else
+            variable_info[i][3] = "             "
+        end
+    end
+
+    println("------------------------------------------------------------------------------------------")
+    println("| Table of Variables                                                                     |")
+    println("------------------------------------------------------------------------------------------")
+    println("|    Variable   |     Bounds Type    |    Last Cut    |   Lower Bound   |   Upper Bound   |")
+    println("------------------------------------------------------------------------------------------")
+
+    for (i, var) in enumerate(variable_number)
+
+        print_str = "|     "
+        (i < 10) && (print_str = print_str*" ")
+        (i < 100) && (print_str = print_str*" ")
+        (i < 1000) && (print_str = print_str*" ")
+
+        print_str = print_str*"x[$(variable_info[i][1])]   |"   # Index number
+        print_str = print_str*"       $(variable_info[i][2]) |"  # Bounds type
+
+        if variable_info[i][3] isa Number
+            print_str = print_str*"       "*formatted(variable_info[i][3], PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)*" |"    # Lower bound if any
+        else
+            print_str = print_str*"                |"
+        end
+
+        if variable_info[i][4] isa Number
+            print_str = print_str*"       "*formatted(variable_info[i][4], PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)*" |"    # Lower bound if any
+        else
+            print_str = print_str*"               |"
+        end
+
+        if variable_info[i][5] isa Number
+            print_str = print_str*"       "*formatted(variable_info[i][5], PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)*"    |"    # Upper bound if any
+        else
+            print_str = print_str*"                  | "
+        end
+
+        println(print_str)
+
+    end
+    println("------------------------------------------------------------------------------------------\n")
+
+    println("------------------------------------------------------------------------------------------")
+    println("| Table of Variables                                                                     |")
+    #println("constant = $(saf.constant)")
+    #str = "["
+    #for term in saf.terms
+    #    coeff = term.coefficient
+    #    index = term.variable_index
+    #    str *= " ($coeff, $index) "
+    #end
+    #str *= " ]"
+    #println(str)
+    println("------------------------------------------------------------------------------------------")
     nothing
 end
 
@@ -83,9 +188,6 @@ function print_node!(m::Optimizer)
     println(" ")
     return
 end
-
-const PRINTING_IOFORMAT = :SCI
-const PRINTING_CHARSET = :ASCII
 
 """
 $(FUNCTIONNAME)

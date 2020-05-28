@@ -667,6 +667,10 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
 
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
+    if m._parameters.verbosity > 5
+        display_relaxed_optimizer!(m, relaxed_optimizer, " used in lower_problem!")
+    end
     MOI.optimize!(relaxed_optimizer)
 
     m._lower_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
