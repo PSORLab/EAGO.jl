@@ -63,7 +63,6 @@ function create_buffer_dict(func::SQF)
     end
 
     for term in func.affine_terms
-        println("term = $term")
         buffer[term.variable_index.value] = 0.0
     end
 
@@ -208,6 +207,6 @@ function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Un
         end
     end
     f.len -= deleted_count
-    
+
     return nothing
 end

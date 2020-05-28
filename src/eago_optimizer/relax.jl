@@ -11,21 +11,6 @@
 # TODO
 #############################################################################
 
-function pretty_print_saf!(saf::SAF, note::String = "")
-    println("Printing scalar affine function. "*note)
-    println("constant = $(saf.constant)")
-    str = "["
-    for term in saf.terms
-        coeff = term.coefficient
-        index = term.variable_index
-        str *= " ($coeff, $index) "
-    end
-    str *= " ]"
-    println(str)
-
-    nothing
-end
-
 """
 $(FUNCTIONNAME)
 
@@ -85,16 +70,11 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
 
     quadratic_constant = p1 ? func.constant : -func.constant
 
-    println("start quad terms")
     for term in func.quadratic_terms
-
-        println("term = $term")
 
         a = p1 ? term.coefficient : -term.coefficient
         idx1 = term.variable_index_1.value
-        println("idx1 = $idx1")
         idx2 = term.variable_index_2.value
-        println("idx2 = $idx2")
         x0_1 = x[idx1]
         xL_1 = lower_bounds[sol_to_branch_map[idx1]]
         xU_1 = upper_bounds[sol_to_branch_map[idx1]]
@@ -153,11 +133,7 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         end
     end
 
-
-    println("start affine terms")
     for term in func.affine_terms
-        println("term in $(term)")
-        println(" ")
         a = p1 ? term.coefficient : -term.coefficient
         idx = term.variable_index.value
         buffer[idx] += a
@@ -178,7 +154,9 @@ function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::B
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref, true)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
+            lt = LT(-f.saf.constant)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_quadratic_ineq_ci, ci)
         end
     end
@@ -215,10 +193,13 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 
-function bound_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
+function bound_objective(t::ExtensionType, m::Optimizer)
 
+    n = m._current_node
+    sb_map = m._sol_to_branch_map
     wp = m._working_problem
     obj_type = wp._objective_type
+
     if obj_type === NONLINEAR
         #=
         objective_lo = eval_objective_lo(d)
@@ -240,8 +221,9 @@ function bound_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
             end
         end
         =#
+
     elseif obj_type === SINGLE_VARIABLE
-        obj_indx = wp._objective_sv.variable.value
+        obj_indx = @inbounds sb_map[wp._objective_sv.variable.value]
         objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
 
     elseif obj_type === SCALAR_AFFINE
@@ -252,13 +234,9 @@ function bound_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
 
     end
 
-    if objective_lo > x._lower_objective_value
-        m._lower_objective_value = objective_lo
-    end
-
-    return nothing
+    return objective_lo
 end
-bound_objective!(m::Optimizer, x::Vector{Float64}) = bound_objective!(m.ext_type, m, x)
+bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
 
 """
 $(TYPEDSIGNATURES)
@@ -371,13 +349,13 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
 
     sqf_leq_list = m._working_problem._sqf_leq
-    for i = 1:m._working_problem._saf_leq_count
+    for i = 1:m._working_problem._sqf_leq_count
         sqf_leq = @inbounds sqf_leq_list[i]
         relax!(m, sqf_leq, i, check_safe)
     end
 
     sqf_eq_list = m._working_problem._sqf_eq
-    for i = 1:m._working_problem._saf_eq_count
+    for i = 1:m._working_problem._sqf_eq_count
         sqf_eq = @inbounds sqf_eq_list[i]
         relax!(m, sqf_eq, i, check_safe)
     end

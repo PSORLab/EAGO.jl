@@ -179,7 +179,9 @@ function initial_parse!(m::Optimizer)
     end
 
     quad_eq = ip._quadratic_eq_constraints
+    println("length(quad_eq) input = $(length(quad_eq))")
     for i = 1:ip._quadratic_eq_count
+        println("ip._quadratic_eq_count = $(ip._quadratic_eq_count)")
         quad_func, eq_set = @inbounds quad_eq[i]
         push!(m._working_problem._sqf_eq, BufferedQuadraticEq(quad_func, eq_set))
         m._working_problem._sqf_eq_count += 1

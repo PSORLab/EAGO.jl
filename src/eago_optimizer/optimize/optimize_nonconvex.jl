@@ -540,8 +540,8 @@ function interval_objective_bound(m::Optimizer, n::NodeBB)
 
     if interval_objective_bound > m._lower_objective_value
         m._lower_objective_value = interval_objective_bound
-        unsafe_check_fill!(m._lower_lvd, 0.0, m._relaxed_variable_number)
-        unsafe_check_fill!(m._lower_uvd, 0.0, m._relaxed_variable_number)
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
         m._cut_add_flag = false
         return true
 
@@ -580,7 +580,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
         if feasible_flag
             for i = 1:m._working_problem._sqf_leq_count
-                sqf_leq = @inbounds m._working_problem._saf_leq[i]
+                sqf_leq = @inbounds m._working_problem._sqf_leq[i]
                 feasible_flag &= (lower_interval_bound(sqf_leq, n) <= 0.0)
                 !feasible_flag && break
             end
@@ -603,7 +603,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
     end
     m._lower_feasibility = feasible_flag
 
-    return
+    return nothing
 end
 
 """

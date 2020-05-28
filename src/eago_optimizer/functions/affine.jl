@@ -92,7 +92,7 @@ function interval_bound(f::AffineFunctionEq, y::NodeBB)
     lower_interval_bound = f.constant
     upper_interval_bound = f.constant
     for i = 1:f.len
-        coeff, indx = @inbounds terms[k]
+        coeff, indx = @inbounds terms[i]
         lvb = @inbounds lo_bnds[indx]
         uvb = @inbounds up_bnds[indx]
         if coeff > 0.0
