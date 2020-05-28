@@ -117,10 +117,15 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._current_xref = fill(0.0, branch_variable_count)
     m._cut_solution = fill(0.0, branch_variable_count)
     m._lower_solution = fill(0.0, branch_variable_count)
-    m._upper_solution = fill(0.0, branch_variable_count)
     m._lower_lvd = fill(0.0, branch_variable_count)
     m._lower_uvd = fill(0.0, branch_variable_count)
     m._continuous_solution = zeros(Float64, branch_variable_count)
+
+    # populate in full space until local MOI nlp solves support constraint deletion
+    # uses input model for local nlp solves... may adjust this if a convincing reason
+    # to use a reformulated upper problem presents itself
+    m._upper_solution = fill(0.0, m._working_problem._variable_count)
+    m._upper_variables = fill(VI(-1), m._working_problem._variable_count)
 
     m._presolve_time = time() - m._parse_time
 
@@ -132,6 +137,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     if obj_type === SCALAR_QUADRATIC
         wp._objective_saf.terms = copy(wp._objective_sqf.saf.terms)
     end
+
 
     return nothing
 end
@@ -796,7 +802,7 @@ function upper_problem!(t::ExtensionType, m::Optimizer)
         m._upper_objective_value = Inf
 
     else
-        solve_local_nlp!(m)
+        single_nlp_solve!(m)
 
     end
 

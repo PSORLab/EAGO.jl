@@ -231,10 +231,6 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         buffered_sqf = wp._objective_sqf
         affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
                                 m._current_node, m._current_xref, true)
-
-        println("wp._objective_saf.terms: $(wp._objective_saf.terms)")
-        println("buffered_sqf.saf.terms: $(buffered_sqf.saf.terms)")
-
         copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
         if check_safe && is_safe_cut!(m, wp._objective_saf)
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)

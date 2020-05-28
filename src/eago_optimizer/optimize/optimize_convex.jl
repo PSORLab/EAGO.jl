@@ -54,8 +54,9 @@ function single_nlp_solve!(m::Optimizer)
     upper_optimizer = m.upper_optimizer
     MOI.empty!(upper_optimizer)
 
-    for i = 1:m._variable_number
-        @inbounds m._upper_variables[i] = MOI.add_variable(upper_optimizer)
+    upper_variables = m._upper_variables
+    for i = 1:m._working_problem._variable_count
+        @inbounds upper_variables[i] = MOI.add_variable(upper_optimizer)
     end
 
     n = m._current_node
@@ -66,7 +67,7 @@ function single_nlp_solve!(m::Optimizer)
     lvb = 0.0
     uvb = 0.0
     x0 = 0.0
-    for i = 1:m._input_problem._variable_number
+    for i = 1:m._input_problem._variable_count
         vinfo = @inbounds variable_info[i]
         single_variable = MOI.SingleVariable(@inbounds upper_variables[i])
         if vinfo.is_integer
@@ -86,7 +87,8 @@ function single_nlp_solve!(m::Optimizer)
                 MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
             end
             x0 = 0.5*(lvb + uvb)
-            MOI.set(upper_optimizer, MOI.VariablePrimalStart(), @inbounds upper_variables[i], x0)
+            upper_variable_index = @inbounds upper_variables[i]
+            MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
         end
     end
 
@@ -113,8 +115,9 @@ function single_nlp_solve!(m::Optimizer)
     MOI.set(upper_optimizer, MOI.NLPBlock(), m._input_problem._nlp_data)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
+    # set objective as NECESSARY
     add_sv_or_aff_obj!(m, upper_optimizer)
-    if x._input_problem._objective_type === SCALAR_QUADRATIC
+    if m._input_problem._objective_type === SCALAR_QUADRATIC
         MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), m._input_problem._objective_sqf)
     end
 
@@ -130,10 +133,12 @@ function single_nlp_solve!(m::Optimizer)
         value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
         stored_adjusted_upper_bound!(m, value)
         m._best_upper_value = min(value, m._best_upper_value)
-        m._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_vars)
+        m._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_variables)
+
     else
         m._upper_feasibility = false
         m._upper_objective_value = Inf
+
     end
 
     return nothing
