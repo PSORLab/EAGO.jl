@@ -435,6 +435,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # set in label_branch_variables! and label_fixed_variables! respectively in parse.jl
     _user_branch_variables::Bool = false
     _fixed_variable::Vector{Bool} = Bool[]
+    _branch_variable_count::Int = 0
 
     _continuous_solution::Vector{Float64} = Float64[]
 

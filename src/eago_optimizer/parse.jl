@@ -75,7 +75,7 @@ function label_branch_variables!(m::Optimizer)
     sqf_leq = m._working_problem._sqf_leq
     for i = 1:m._working_problem._sqf_leq_count
         quad_ineq = @inbounds sqf_leq[i]
-        for term in quad_ineq.sqf
+        for term in quad_ineq.func.quadratic_terms
             variable_index_1 = term.variable_index_1.value
             variable_index_2 = term.variable_index_2.value
             @inbounds m._branch_variables[variable_index_1] = true
@@ -86,7 +86,7 @@ function label_branch_variables!(m::Optimizer)
     sqf_eq = m._working_problem._sqf_eq
     for i = 1:m._working_problem._sqf_eq_count
         quad_eq = @inbounds sqf_eq[i]
-        for term in quad_eq.sqf
+        for term in quad_eq.func.quadratic_terms
             variable_index_1 = term.variable_index_1.value
             variable_index_2 = term.variable_index_2.value
             @inbounds m._branch_variables[variable_index_1] = true
@@ -97,7 +97,7 @@ function label_branch_variables!(m::Optimizer)
     # adds nonlinear terms in objectives if
     obj_type = m._working_problem._objective_type
     if obj_type === SCALAR_QUADRATIC
-        for term in m._working_problem._objective_sqf
+        for term in m._working_problem._objective_sqf.func.quadratic_terms
             variable_index_1 = term.variable_index_1.value
             variable_index_2 = term.variable_index_2.value
             @inbounds m._branch_variables[variable_index_1] = true
@@ -268,7 +268,7 @@ function parse_classify_problem!(m::Optimizer)
             #    # Check if DIFF_CVX, NS_CVX, DIFF_NCVX, OR NS_NCVX
             #    m._problem_type = parse_classify_nlp(m)
             #end
-            m._problem_type = MINCVX
+            m._working_problem._problem_type = MINCVX
 
         end
     else

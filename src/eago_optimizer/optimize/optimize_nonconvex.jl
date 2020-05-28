@@ -17,10 +17,27 @@ $(TYPEDSIGNATURES)
 Creates an initial node with initial box constraints and adds it to the stack.
 """
 function create_initial_node!(m::Optimizer)
-    n = NodeBB(lower_bound.(m._variable_info), upper_bound.(m._variable_info), -Inf, Inf, 1, 1)
+
+    branch_variable_count = m._branch_variable_count
+
+    variable_info = m._working_problem._variable_info
+    lower_bound = zeros(Float64, branch_variable_count)
+    upper_bound = zeros(Float64, branch_variable_count)
+    branch_count = 1
+    for i = 1:m._working_problem._variable_count
+        vi = @inbounds variable_info[i]
+        if vi.branch_on === BRANCH
+            @inbounds lower_bound[branch_count] = variable_info.lower_bound
+            @inbounds upper_bound[branch_count] = variable_info.upper_bound
+            branch_count += 1
+        end
+    end
+
+    n = NodeBB(lower_bound, upper_bound, -Inf, Inf, 1, 1)
     push!(m._stack, n)
     m._node_count = 1
     m._maximum_node_id += 1
+
     return nothing
 end
 
@@ -31,75 +48,79 @@ Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
 """
 function load_relaxed_problem!(m::Optimizer)
+
     relaxed_optimizer = m.relaxed_optimizer
 
     # add variables and indices and constraints
     wp = m._working_problem
     variable_count = wp._variable_count
-    node_count = 1
+    branch_variable_count = 1
 
     for i = 1:variable_count
 
         relaxed_variable_indx = MOI.add_variable(relaxed_optimizer)
         relaxed_variable = SV(relaxed_variable_indx)
-        push!(wp._relaxed_variable_index, relaxed_variable_indx)
+        push!(m._relaxed_variable_index, relaxed_variable_indx)
 
         vinfo = @inbounds wp._variable_info[i]
         is_branch_variable = vinfo.branch_on === BRANCH
 
         if vinfo.is_integer
+
         elseif vinfo.is_fixed
             ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
             if is_branch_variable
-                push!(wp._relaxed_variable_eq, (ci_sv_et, node_count))
+                push!(wp._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
                 wp._var_eq_count += 1
             end
+
         else
             if vinfo.has_lower_bound
                 ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
                 if is_branch_variable
-                    push!(wp._relaxed_variable_gt, (ci_sv_gt, node_count))
+                    push!(wp._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
                     wp._var_geq_count += 1
                 end
             end
+
             if vinfo.has_upper_bound
                 ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
                 if is_branch_variable
-                    push!(wp._relaxed_variable_lt, (ci_sv_lt, node_count))
+                    push!(wp._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
                     wp._var_leq_count += 1
                 end
             end
+
         end
 
-        is_branch_variable && (node_count += 1)
+        is_branch_variable && (branch_variable_count += 1)
+
     end
 
-    # add linear constraints
-    add_linear_constraints!(m, opt)
+    m._branch_variable_count = branch_variable_count
 
-    MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    # add linear constraints
+    add_linear_constraints!(m, relaxed_optimizer)
+
+    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     return nothing
 end
 
 function presolve_global!(t::ExtensionType, m::Optimizer)
+
+    load_relaxed_problem!(m)
     create_initial_node!(m)
-    load_relaxed_problem!(m)
 
-    _variable_len = length(m._variable_info)
-    m._variable_number = _variable_len
+    branch_variable_count = m._branch_variable_count
 
-    ########### Set Correct Size for Problem Storage #########
-    m._current_xref = fill(0.0, _variable_len)
-    m._cut_solution = fill(0.0, _variable_len)
-    m._lower_solution = fill(0.0, _variable_len)
-    m._upper_solution = fill(0.0, _variable_len)
-    m._lower_lvd = fill(0.0, _variable_len)
-    m._lower_uvd = fill(0.0, _variable_len)
-    m._continuous_solution = zeros(Float64, _variable_len)
-
-    create_initial_node!(m)                          # Create initial node and add it to the stack
-    load_relaxed_problem!(m)
+    m._current_xref = fill(0.0, branch_variable_count)
+    m._cut_solution = fill(0.0, branch_variable_count)
+    m._lower_solution = fill(0.0, branch_variable_count)
+    m._upper_solution = fill(0.0, branch_variable_count)
+    m._lower_lvd = fill(0.0, branch_variable_count)
+    m._lower_uvd = fill(0.0, branch_variable_count)
+    m._continuous_solution = zeros(Float64, branch_variable_count)
 
     m._presolve_time = time() - m._parse_time
 
@@ -111,7 +132,7 @@ $(SIGNATURES)
 
 Selects node with the lowest lower bound in stack.
 """
-function node_selection!(t::ExtensionType, M::Optimizer)
+function node_selection!(t::ExtensionType, m::Optimizer)
     m._node_count -= 1
     m._current_node = popmin!(m._stack)
     return nothing
@@ -838,30 +859,33 @@ function global_solve!(m::Optimizer)
     parse_global!(m)
     presolve_global!(m)
 
+    logging_on = m._parameters.log_on
+    verbosity = m._parameters.verbosity
+
     # terminates when max nodes or iteration is reach, or when node stack is empty
     while !termination_check(m)
 
         # Selects node, deletes it from stack, prints based on verbosity
         node_selection!(m)
-        (x.verbosity >= 3) && print_node!(m)
+        (verbosity >= 3) && print_node!(m)
 
         # Performs prepocessing and times
-        m.log_on && (start_time = time())
+        logging_on && (start_time = time())
         preprocess!(m)
-        if m.log_on
+        if logging_on
             m._last_preprocess_time = time() - start_time
         end
 
         if m._preprocess_feasibility
 
             # solves & times lower bounding problem
-            m.log_on && (start_time = time())
+            logging_on && (start_time = time())
             m._cut_iterations = 1
             lower_problem!(m)
             while cut_condition(m)
                 add_cut!(m)
             end
-            if m.log_on
+            if logging_on
                 m._last_lower_problem_time = time() - start_time
             end
             print_results!(m, true)
@@ -871,9 +895,9 @@ function global_solve!(m::Optimizer)
             if m._lower_feasibility
                 if !convergence_check(m)
 
-                    m.log_on && (start_time = time())
+                    logging_on && (start_time = time())
                     upper_problem!(m)
-                    if m.log_on
+                    if logging_on
                         m._last_upper_problem_time = time() - start_time
                     end
                     print_results!(m, false)
@@ -885,9 +909,9 @@ function global_solve!(m::Optimizer)
                     end
 
                     # Performs and times post processing
-                    m.log_on && (start_time = time())
+                    logging_on && (start_time = time())
                     postprocess!(m)
-                    if m.log_on
+                    if logging_on
                         m._last_postprocessing_time = time() - start_time
                     end
 
@@ -899,8 +923,6 @@ function global_solve!(m::Optimizer)
                             branch_node!(m)
                         end
                     end
-                else
-                    #x._global_lower_bound = x._lower_objective_value
                 end
             end
             fathom!(m)
