@@ -60,6 +60,7 @@ function single_nlp_solve!(m::Optimizer)
     end
 
     n = m._current_node
+    sol_to_branch_map = m._sol_to_branch_map
     lower_variable_bounds = n.lower_variable_bounds
     upper_variable_bounds = n.upper_variable_bounds
     variable_info = m._input_problem._variable_info
@@ -67,28 +68,38 @@ function single_nlp_solve!(m::Optimizer)
     lvb = 0.0
     uvb = 0.0
     x0 = 0.0
+
     for i = 1:m._input_problem._variable_count
         vinfo = @inbounds variable_info[i]
         single_variable = MOI.SingleVariable(@inbounds upper_variables[i])
+
         if vinfo.is_integer
+
         else
-            lvb = @inbounds lower_variable_bounds[i]
-            uvb = @inbounds upper_variable_bounds[i]
+            indx = @inbounds sol_to_branch_map[i]
+            lvb  = @inbounds lower_variable_bounds[indx]
+            uvb  = @inbounds upper_variable_bounds[indx]
             if vinfo.is_fixed
                 MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
+
             elseif vinfo.has_lower_bound
                 if vinfo.has_upper_bound
                     MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
                     MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+
                 else
                     MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+
                 end
             elseif vinfo.has_upper_bound
                 MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+
             end
+
             x0 = 0.5*(lvb + uvb)
             upper_variable_index = @inbounds upper_variables[i]
             MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
+
         end
     end
 

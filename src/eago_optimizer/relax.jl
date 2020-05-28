@@ -63,25 +63,29 @@ point `x0` and secant line bounds on concave parts.
 """
 function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
                                  n::NodeBB, sol_to_branch_map::Vector{Int},
-                                 x::Vector{Float64}, p1::Bool)
+                                 x::Vector{Float64})
 
     lower_bounds = n.lower_variable_bounds
     upper_bounds = n.upper_variable_bounds
-
-    quadratic_constant = p1 ? func.constant : -func.constant
+    quadratic_constant = func.constant
 
     for term in func.quadratic_terms
 
-        a = p1 ? term.coefficient : -term.coefficient
+        a = term.coefficient
         idx1 = term.variable_index_1.value
         idx2 = term.variable_index_2.value
-        x0_1 = x[idx1]
-        xL_1 = lower_bounds[sol_to_branch_map[idx1]]
-        xU_1 = upper_bounds[sol_to_branch_map[idx1]]
+        sol_idx1 = sol_to_branch_map[idx1]
+        sol_idx2 = sol_to_branch_map[idx2]
+    #    println("idx1 = $idx1")
+    #    println("sol idx1 = $(sol_to_branch_map[idx1])")
+        x0_1 = x[sol_idx1]
+        xL_1 = lower_bounds[sol_idx1]
+        xU_1 = upper_bounds[sol_idx1]
 
         if idx1 === idx2
 
             if a > 0.0
+                #println("quadratic a: $a")
                 buffer[idx1] += 2.0*a*x0_1
                 quadratic_constant -= a*x0_1*x0_1
 
@@ -95,13 +99,13 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
             end
 
         else
-            x0_2 = x[idx2]
-            xL_2 = lower_bounds[sol_to_branch_map[idx2]]
-            xU_2 = upper_bounds[sol_to_branch_map[idx2]]
+            x0_2 = x[sol_idx2]
+            xL_2 = lower_bounds[sol_idx2]
+            xU_2 = upper_bounds[sol_idx2]
 
             if a > 0.0
-                if ((xU_1 - xL_1)*x0_2 + (xU_2 - xL_2)*x0_1 <= xU_1*xU_2 - xL_1*xL_2) &&
-                   (!isinf(xL_1) && !isinf(xL_2))
+                if (!isinf(xL_1) && !isinf(xL_2)) &&
+                   ((xU_1 - xL_1)*x0_2 + (xU_2 - xL_2)*x0_1 <= xU_1*xU_2 - xL_1*xL_2)
                     buffer[idx1] += a*xL_2
                     buffer[idx2] += a*xL_1
                     quadratic_constant -= a*xL_1*xL_2
@@ -113,10 +117,12 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
 
                 else
                     return false
+
                 end
             else
-                if ((xU_1 - xL_1)*x0_2 - (xU_2 - xL_2)*x0_1 <= xU_1*xL_2 - xL_1*xU_2) &&
-                   (!isinf(xU_1) && !isinf(xL_2))
+                if (!isinf(xU_1) && !isinf(xL_2)) &&
+                   ((xU_1 - xL_1)*x0_2 - (xU_2 - xL_2)*x0_1 <= xU_1*xL_2 - xL_1*xU_2)
+
                     buffer[idx1] += a*xL_2
                     buffer[idx2] += a*xU_1
                     quadratic_constant -= a*xU_1*xL_2
@@ -134,24 +140,29 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     end
 
     for term in func.affine_terms
-        a = p1 ? term.coefficient : -term.coefficient
+        a0 = term.coefficient
         idx = term.variable_index.value
-        buffer[idx] += a
+        buffer[idx] += a0
     end
 
     count = 1
     for (key, value) in buffer
         saf.terms[count] = SAT(value, VI(key))
+        buffer[key] = 0.0
         count += 1
     end
     saf.constant = quadratic_constant
+
+    println(saf)
 
     return true
 end
 
 function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
 
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref, true)
+    #println("f.func: $(f.func)")
+    #println("f.buffer: $(f.buffer)")
+    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
@@ -167,7 +178,8 @@ end
 
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref, true)
+    println(" ------ start leq relax ------ ")
+    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
@@ -178,7 +190,8 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     end
     #m.relaxed_to_problem_map[ci] = indx
 
-    finite_cut_generated = affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref, false)
+    println(" ------ start geq relax ------ ")
+    finite_cut_generated = affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
@@ -199,6 +212,7 @@ function bound_objective(t::ExtensionType, m::Optimizer)
     sb_map = m._sol_to_branch_map
     wp = m._working_problem
     obj_type = wp._objective_type
+    println("bound objective")
 
     if obj_type === NONLINEAR
         #=
@@ -224,6 +238,8 @@ function bound_objective(t::ExtensionType, m::Optimizer)
 
     elseif obj_type === SINGLE_VARIABLE
         obj_indx = @inbounds sb_map[wp._objective_sv.variable.value]
+        println("sb_bound")
+        println("sb_bound: $(wp._objective_sv)")
         objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
 
     elseif obj_type === SCALAR_AFFINE
@@ -261,11 +277,11 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
     elseif obj_type === SCALAR_QUADRATIC
         buffered_sqf = wp._objective_sqf
         finite_cut_generated = affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
-                                m._current_node, m._sol_to_branch_map, m._current_xref, true)
+                                m._current_node, m._sol_to_branch_map, m._current_xref)
         if finite_cut_generated
-            copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
-            wp._objective_saf.constant = buffered_sqf.saf.constant
-            if !check_safe || is_safe_cut!(m, wp._objective_saf)
+            if !check_safe || is_safe_cut!(m, buffered_sqf.saf)
+                copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
+                wp._objective_saf.constant = buffered_sqf.saf.constant
                 MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
             end
         end
@@ -309,7 +325,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
             buffered_sqf = wp._objective_sqf
             finite_cut_generated =  affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer,
                                                             buffered_sqf.saf, m._current_node, m._sol_to_branch_map,
-                                                            m._current_xref, true)
+                                                            m._current_xref)
 
             if finite_cut_generated
                 if !check_safe || is_safe_cut!(m, buffered_sqf.saf)

@@ -93,7 +93,7 @@ function BufferedQuadraticIneq(func::SQF, set::GT)
     return BufferedQuadraticIneq(cfunc, buffer, saf, len)
 end
 
-BufferedQuadraticEq() = BufferedQuadraticEq(SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
+BufferedQuadraticEq() = BufferedQuadraticEq(SQF(SQT[], SAT[], 0.0), SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
 
 function BufferedQuadraticEq(func::SQF, set::ET)
 

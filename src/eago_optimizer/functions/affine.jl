@@ -71,7 +71,7 @@ function lower_interval_bound(f::AffineFunctionIneq, y::NodeBB)
 
     lower_interval_bound = f.constant
     for i = 1:f.len
-        coeff, indx = @inbounds terms[k]
+        coeff, indx = @inbounds terms[i]
         if coeff > 0.0
             lvb = @inbounds lo_bnds[indx]
             lower_interval_bound += coeff*lvb

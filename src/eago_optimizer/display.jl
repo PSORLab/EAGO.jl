@@ -138,7 +138,27 @@ function display_relaxed_optimizer!(m::Optimizer, optimizer::T, note::String) wh
     println("------------------------------------------------------------------------------------------\n")
 
     println("------------------------------------------------------------------------------------------")
-    println("| Table of Variables                                                                     |")
+    println("| Table of Affine Relaxations                                                            |")
+    println("------------------------------------------------------------------------------------------")
+    header_str = "| source type   | source loc   | affine relaxation     |"
+    println(header_str)
+
+    saf_lt = MOI.get(optimizer, MOI.ListOfConstraintIndices{SAF, LT}())
+    for temp5 in saf_lt
+        saf = " "
+        saf_lt_func = MOI.get(optimizer, MOI.ConstraintFunction(), temp5)
+        for temp6 in saf_lt_func.terms
+            saf = saf*"$(temp6.coefficient)*x[$(temp6.variable_index.value)] +"
+        end
+        saf_lt_set = MOI.get(optimizer, MOI.ConstraintSet(), temp5)
+        saf = saf*formatted(saf_lt_set.upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+        saf = saf*" <= 0.0"
+        println(saf)
+    end
+
+
+    println("------------------------------------------------------------------------------------------")
+
     #println("constant = $(saf.constant)")
     #str = "["
     #for term in saf.terms

@@ -179,6 +179,8 @@ Base.@kwdef mutable struct EAGOParameters
     cut_safe_u::Float64 = 1E8
     "Constant tolerance for safe-lp cut, Khajavirad 2018"
     cut_safe_b::Float64 = 1E9
+    #"A small value subtracted from b in the cut ax + b <= 0 to prevent numerical issues"
+    #cut_safe_off::Float64 = 1E-10
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"

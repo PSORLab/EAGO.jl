@@ -203,12 +203,16 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     temp_max = 0.0
 
     flag = true
+    #println("m._branch_variable_count = $(m._branch_variable_count)")
     for i = 1:m._branch_variable_count
         si = m._branch_to_sol_map[i]
         vi = m._working_problem._variable_info[si]
+        #println("vi = $vi")
         if vi.branch_on === BRANCH
             temp_max = @inbounds uvbs[i] - lvbs[i]
+            #println(" temp_max $(temp_max)")
             temp_max /= vi.upper_bound - vi.lower_bound
+            #println(" temp_max $(temp_max)")
             if temp_max > max_val
                 max_pos = i
                 max_val = temp_max
@@ -576,6 +580,7 @@ end
 
 function interval_objective_bound(m::Optimizer, n::NodeBB)
 
+    println("interval boun obj")
     interval_objective_bound = bound_objective(m)
 
     if interval_objective_bound > m._lower_objective_value
@@ -682,6 +687,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = true
         m._lower_feasibility = true
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
+        println("m._lower_objective_value: $(m._lower_objective_value)")
         for i = 1:m._relaxed_variable_number
             @inbounds m._lower_solution[i] = MOI.get(opt, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
@@ -695,6 +701,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         fallback_interval_lower_bound!(m, n)
     end
 
+    println("m._lower_objective_value 2: $(m._lower_objective_value)")
     return nothing
 end
 
@@ -734,6 +741,8 @@ function cut_update!(m::Optimizer)
         fill!(m._lower_uvd, 0.0)
     end
 
+
+    println("m._lower_objective_value 3: $(m._lower_objective_value)")
     return nothing
 end
 
@@ -748,6 +757,7 @@ interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
 
+    println("m._lower_objective_value 4_2: $(m._lower_objective_value)")
     continue_cut_flag = m._cut_add_flag
     continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
     n = m._current_node
@@ -776,17 +786,19 @@ function cut_condition(t::ExtensionType, m::Optimizer)
         delete_nl_constraints!(m)
         delete_objective_cuts!(m)
     end
+    println("m._lower_objective_value 4_1: $(m._lower_objective_value)")
 
     # check to see if interval bound is preferable
     if m._lower_feasibility && !continue_cut_flag
 
         obj_type = m._working_problem._objective_type
         if obj_type === SINGLE_VARIABLE
-            obj_indx = m._working_problem._objective_sv.variable.value
+            # TODO Make sure interval extension is bounded and referenced variable is in node....
+            obj_indx = m._sol_to_branch_map[m._working_problem._objective_sv.variable.value]
             objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
 
         elseif obj_type === SCALAR_AFFINE
-            objective_lo = lower_interval_bound(m._working_problem._objective_saf, n)
+            objective_lo = lower_interval_bound(m._working_problem._objective_saf_parsed, n)
 
         elseif obj_type === SCALAR_QUADRATIC
             objective_lo = lower_interval_bound(m._working_problem._objective_sqf, n)
@@ -803,6 +815,8 @@ function cut_condition(t::ExtensionType, m::Optimizer)
         end
     end
     m._cut_iterations += 1
+
+    println("m._lower_objective_value 4: $(m._lower_objective_value)")
 
     return continue_cut_flag
 end
