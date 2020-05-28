@@ -124,6 +124,9 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     m._presolve_time = time() - m._parse_time
 
+    # add storage for obbt
+
+
     return nothing
 end
 
@@ -482,11 +485,12 @@ Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
 `xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
 optimizer.
 """
-function update_relaxed_problem_box!(m::Optimizer, n::NodeBB)
+function update_relaxed_problem_box!(m::Optimizer)
 
     opt = m.relaxed_optimizer
     wp = m._working_problem
 
+    n = m._current_node
     lower_bound = n.lower_variable_bounds
     upper_bound = n.upper_variable_bounds
 
@@ -597,7 +601,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         @__dot__ m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, m._relaxed_variable_number)
         update_relaxed_problem_box!(m, n)
-        relax_problem!(m, m._current_xref, 1)
+        relax_constraints!(m, m._current_xref, 1)
     end
     relax_objective!(m, m._current_xref)
 
@@ -721,7 +725,7 @@ Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, m::Optimizer)
 
-    relax_problem!(m, m._current_xref, m._cut_iterations)
+    relax_constraints!(m, m._current_xref, m._cut_iterations)
     relax_objective!(m, m._current_xref)
 
     # Optimizes the object

@@ -169,6 +169,9 @@ Base.@kwdef mutable struct EAGOParameters
     cut_tolerance::Float64 = 0.05
     "Adds an objective cut to the relaxed problem (default = true)."
     objective_cut_on::Bool = true
+
+    "Use tolerances to determine safe cuts in a Khajavirad 2018 manner"
+    cut_safe_on::Bool = true
     "Lower tolerance for safe-lp cut, Khajavirad 2018"
     cut_safe_l::Float64 = 1E-8
     "Upper tolerance for safe-lp cut, Khajavirad 2018"

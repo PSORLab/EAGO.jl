@@ -203,8 +203,8 @@ function obbt(m::Optimizer)
     unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
 
     # solve initial problem to feasibility
-    update_relaxed_problem_box!(m, y)
-    relax_problem!(m, m._current_xref, 1)
+    update_relaxed_problem_box!(m)
+    relax_constraints!(m, m._current_xref, 1)
     relax_objective!(m, m._current_xref)
 
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
@@ -242,7 +242,7 @@ function obbt(m::Optimizer)
         if any(m._obbt_working_lower_index)
             for i = 1:length(m._obbt_working_lower_index)
                 if @inbounds m._obbt_working_lower_index[i]
-                    temp_value = @inbounds xLP[i] - y.lower_variable_bounds[i]
+                    temp_value = @inbounds xLP[i] - n.lower_variable_bounds[i]
                     # Need less than or equal to handle unbounded cases
                     if temp_value <= lower_value
                         lower_value = temp_value

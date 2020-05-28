@@ -277,3 +277,130 @@ function linear_solve!(m::Optimizer)
 end
 
 =#
+
+#=
+"""
+$(FUNCTIONNAME)
+
+A rountine that relaxes all nonlinear constraints excluding
+constraints specified as quadratic.
+"""
+function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
+
+    evaluator = x._relaxed_evaluator
+
+    if ~isempty(x.branch_variable)
+
+        if MOI.supports(x.relaxed_optimizer, MOI.NLPBlock())
+
+            _nlp_data = MOI.NLPBlockData(x._nlp_data.constraint_bounds,
+                                         evaluator,
+                                         x._nlp_data.has_objective)
+            MOI.set(x._relaxed_optimizer, MOI.NLPBlock(), _nlp_data)
+
+        else
+            # Add other affine constraints
+            constraint_bounds = x._relaxed_constraint_bounds
+            leng = length(constraint_bounds)
+            if leng > 0
+                nx = x._variable_number
+                vi = x._lower_variable_index
+
+                g = zeros(leng)
+                dg = zeros(leng, nx)
+
+                g_cc = zeros(leng)
+                dg_cc = zeros(leng, nx)
+
+                MOI.eval_constraint(evaluator, g, v)
+                MOI.eval_constraint_jacobian(evaluator, dg, v)
+
+                eval_constraint_cc(evaluator, g_cc, v)
+                eval_constraint_cc_grad(evaluator, dg_cc, v)
+
+                lower_nlp_affine = x._lower_nlp_affine[q]
+                upper_nlp_affine = x._upper_nlp_affine[q]
+                lower_nlp_sparsity = x._lower_nlp_sparsity
+                upper_nlp_sparsity = x._upper_nlp_sparsity
+                lower_nlp_affine_indx = x._lower_nlp_affine_indx
+                upper_nlp_affine_indx = x._upper_nlp_affine_indx
+                if (q == 1) & x.relaxed_inplace_mod
+                    for i = 1:length(lower_nlp_affine_indx)
+                        @inbounds g_indx = lower_nlp_affine_indx[i]
+                        @inbounds aff_ci = lower_nlp_affine[i]
+                        @inbounds nzidx = lower_nlp_sparsity[i]
+                        @inbounds nzvar = vi[nzidx]
+                        @inbounds constant = g[g_indx]
+                        dg_cv_val = 0.0
+                        for j in nzidx
+                            @inbounds dg_cv_val = dg[i,j]
+                            @inbounds vindx = vi[j]
+                            @inbounds constant -= v[j]*dg_cv_val
+                            MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cv_val))
+                        end
+                        set = LT(-constant)
+                        MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
+                    end
+                    for i = 1:length(upper_nlp_affine_indx)
+                        @inbounds g_indx = upper_nlp_affine_indx[i]
+                        @inbounds aff_ci = upper_nlp_affine[i]
+                        @inbounds nzidx = upper_nlp_sparsity[i]
+                        @inbounds nzvar = vi[nzidx]
+                        @inbounds constant = g_cc[g_indx]
+                        dg_cc_val = 0.0
+                        for j in nzidx
+                            @inbounds dg_cc_val = -dg_cc[i,j]
+                            @inbounds vindx = vi[j]
+                            @inbounds constant += v[j]*dg_cc_val
+                            MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cc_val))
+                        end
+                        set = LT(constant)
+                        MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
+                    end
+                else
+                    for i = 1:length(lower_nlp_affine_indx)
+                        @inbounds g_indx = lower_nlp_affine_indx[i]
+                        @inbounds aff_ci = lower_nlp_affine[i]
+                        @inbounds nzidx = lower_nlp_sparsity[i]
+                        @inbounds nzvar = vi[nzidx]
+                        @inbounds constant = g[g_indx]
+                        dg_cv_val = 0.0
+                        coeff = zeros(Float64,length(nzidx))
+                        vindices = vi[nzidx]
+                        for j in 1:length(nzidx)
+                            @inbounds indx = nzidx[j]
+                            @inbounds coeff[j] = dg[i,indx]
+                            @inbounds constant -= v[indx]*coeff[j]
+                        end
+                        set = LT(-constant)
+                        saf = SAF(SAT.(coeff,vindices), 0.0)
+                        x._lower_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
+                                                                   saf, set)
+                    end
+                    for i = 1:length(upper_nlp_affine_indx)
+                        @inbounds g_indx = upper_nlp_affine_indx[i]
+                        @inbounds aff_ci = upper_nlp_affine[i]
+                        @inbounds nzidx = upper_nlp_sparsity[i]
+                        @inbounds nzvar = vi[nzidx]
+                        @inbounds constant = g_cc[g_indx]
+                        dg_cc_val = 0.0
+                        coeff = zeros(Float64,length(nzidx))
+                        @inbounds vindices = vi[nzidx]
+                        for j in 1:length(nzidx)
+                            @inbounds indx = nzidx[j]
+                            @inbounds dg_cc_val = -dg_cc[i,indx]
+                            @inbounds coeff[j] = dg_cc_val
+                            @inbounds constant += v[indx]*dg_cc_val
+                        end
+                        set = LT(constant)
+                        saf = SAF(SAT.(coeff,vindices), 0.0)
+                        x._upper_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
+                                                                   saf, set)
+                    end
+                end
+            end
+        end
+    end
+    return nothing
+end
+=#
