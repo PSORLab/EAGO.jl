@@ -687,7 +687,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = true
         m._lower_feasibility = true
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-        println("m._lower_objective_value: $(m._lower_objective_value)")
         for i = 1:m._relaxed_variable_number
             @inbounds m._lower_solution[i] = MOI.get(opt, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
@@ -701,7 +700,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         fallback_interval_lower_bound!(m, n)
     end
 
-    println("m._lower_objective_value 2: $(m._lower_objective_value)")
     return nothing
 end
 
@@ -741,8 +739,6 @@ function cut_update!(m::Optimizer)
         fill!(m._lower_uvd, 0.0)
     end
 
-
-    println("m._lower_objective_value 3: $(m._lower_objective_value)")
     return nothing
 end
 
@@ -757,7 +753,6 @@ interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
 
-    println("m._lower_objective_value 4_2: $(m._lower_objective_value)")
     continue_cut_flag = m._cut_add_flag
     continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
     n = m._current_node
@@ -786,16 +781,20 @@ function cut_condition(t::ExtensionType, m::Optimizer)
         delete_nl_constraints!(m)
         delete_objective_cuts!(m)
     end
-    println("m._lower_objective_value 4_1: $(m._lower_objective_value)")
 
     # check to see if interval bound is preferable
     if m._lower_feasibility && !continue_cut_flag
-
+        objective_lo = -Inf
         obj_type = m._working_problem._objective_type
         if obj_type === SINGLE_VARIABLE
-            # TODO Make sure interval extension is bounded and referenced variable is in node....
-            obj_indx = m._sol_to_branch_map[m._working_problem._objective_sv.variable.value]
-            objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
+            var_index = m._working_problem._objective_sv.variable.value
+            if m._branch_variables[var_index]
+                obj_indx = m._sol_to_branch_map[var_index]
+                lower_variable_bnd = n.lower_variable_bounds[obj_indx]
+                if !isinf(lower_variable_bnd)
+                    objective_lo = lower_variable_bnd
+                end
+            end
 
         elseif obj_type === SCALAR_AFFINE
             objective_lo = lower_interval_bound(m._working_problem._objective_saf_parsed, n)
@@ -815,8 +814,6 @@ function cut_condition(t::ExtensionType, m::Optimizer)
         end
     end
     m._cut_iterations += 1
-
-    println("m._lower_objective_value 4: $(m._lower_objective_value)")
 
     return continue_cut_flag
 end
