@@ -114,18 +114,19 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     branch_variable_count = m._branch_variable_count
 
-    m._current_xref = fill(0.0, branch_variable_count)
-    m._cut_solution = fill(0.0, branch_variable_count)
-    m._lower_solution = fill(0.0, branch_variable_count)
-    m._lower_lvd = fill(0.0, branch_variable_count)
-    m._lower_uvd = fill(0.0, branch_variable_count)
-    m._continuous_solution = zeros(Float64, branch_variable_count)
+    m._current_xref   = fill(0.0, branch_variable_count)
+    m._candidate_xref = fill(0.0, branch_variable_count)
+    m._cut_solution   = fill(0.0, branch_variable_count)
+    m._lower_lvd      = fill(0.0, branch_variable_count)
+    m._lower_uvd      = fill(0.0, branch_variable_count)
 
     # populate in full space until local MOI nlp solves support constraint deletion
     # uses input model for local nlp solves... may adjust this if a convincing reason
     # to use a reformulated upper problem presents itself
-    m._upper_solution = fill(0.0, m._working_problem._variable_count)
-    m._upper_variables = fill(VI(-1), m._working_problem._variable_count)
+    m._lower_solution      = zeros(Float64, m._working_problem._variable_count)
+    m._continuous_solution = zeros(Float64, m._working_problem._variable_count)
+    m._upper_solution      = zeros(Float64, m._working_problem._variable_count)
+    m._upper_variables     = fill(VI(-1), m._working_problem._variable_count)
 
     m._presolve_time = time() - m._parse_time
 
@@ -166,20 +167,19 @@ from the bound.
 """
 function branch_node!(t::ExtensionType, m::Optimizer)
 
-    y = m._current_node
-    lvbs = y.lower_variable_bounds
-    uvbs = y.upper_variable_bounds
+    n = m._current_node
+    lvbs = n.lower_variable_bounds
+    uvbs = n.upper_variable_bounds
 
     max_pos = 0
     max_val = -Inf
     temp_max = 0.0
 
     flag = true
-    for i = 1:m._variable_number
-        flag = @inbounds ~m._fixed_variable[i]
-        flag &= @inbounds m.branch_variable[i]
-        if flag
-            vi = @inbounds m._variable_info[i]
+    for i = 1:m._branch_variable_count
+        si = m._branch_to_sol_map[i]
+        vi = m._working_problem._variable_info[si]
+        if vi.branch_on === BRANCH
             temp_max = @inbounds uvbs[i] - lvbs[i]
             temp_max /= vi.upper_bound - vi.lower_bound
             if temp_max > max_val
@@ -189,17 +189,21 @@ function branch_node!(t::ExtensionType, m::Optimizer)
         end
     end
 
-    lvb = @inbounds lvbs[max_pos]
-    uvb = @inbounds uvbs[max_pos]
-    lsol = @inbounds m._lower_solution[max_pos]
+    lvb  = lvbs[max_pos]
+    uvb  = uvbs[max_pos]
+    si   = m._branch_to_sol_map[max_pos]
+    lsol = m._lower_solution[si]
+
     cvx_f = m._parameters.branch_cvx_factor
     cvx_g = m._parameters.branch_offset
+
     branch_pnt = cvx_f*lsol + (1.0 - cvx_f)*(lvb + uvb)/2.0
     if branch_pnt < lvb*(1.0 - cvx_g) + cvx_g*uvb
         branch_pnt = (1.0 - cvx_g)*lvb + cvx_g*uvb
     elseif branch_pnt > cvx_g*lvb + (1.0 - cvx_g)*uvb
         branch_pnt = cvx_g*lvb + (1.0 - cvx_g)*uvb
     end
+
     N1::Interval{Float64} = Interval{Float64}(lvb, branch_pnt)
     N2::Interval{Float64} = Interval{Float64}(branch_pnt, uvb)
     lvb_1 = copy(lvbs)
@@ -211,12 +215,14 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     @inbounds lvb_2[max_pos] = N2.lo
     @inbounds uvb_2[max_pos] = N2.hi
 
-    lower_bound = max(y.lower_bound, m._lower_objective_value)
-    upper_bound = min(y.upper_bound, m._upper_objective_value)
+    lower_bound = max(n.lower_bound, m._lower_objective_value)
+    upper_bound = min(n.upper_bound, m._upper_objective_value)
+    new_depth = n.depth + 1
+
     m._maximum_node_id += 1
-    X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, y.depth + 1, m._maximum_node_id)
+    X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, new_depth, m._maximum_node_id)
     m._maximum_node_id += 1
-    X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, y.depth + 1, m._maximum_node_id)
+    X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, new_depth, m._maximum_node_id)
 
     push!(m._stack, X1)
     push!(m._stack, X2)
@@ -224,7 +230,7 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     m._node_repetitions = 1
     m._node_count += 2
 
-    return
+    return nothing
 end
 
 """
@@ -674,6 +680,7 @@ function cut_update!(m::Optimizer)
         set_dual!(m)
     else
         m._cut_add_flag = false
+
     end
 
     return nothing
@@ -696,11 +703,19 @@ function cut_condition(t::ExtensionType, m::Optimizer)
 
     if continue_cut_flag
         cvx_factor =  m._parameters.cut_cvx
-        # TODO: preallocate xnew and possible xsol, update xnew inplace then norm...
-        xsol = (m._cut_iterations > 1) ? m._cut_solution : m._lower_solution
-        xnew = (1.0 - cvx_factor)*mid(n) + cvx_factor*xsol
-        if norm((m._current_xref - xnew)./diam(n), 1) > m._parameters.cut_tolerance
-            m._current_xref = xnew
+        use_cut = m._cut_iterations > 1
+        for i = 1:m._branch_variable_count
+            si = m._branch_to_sol_map[i]
+            ni_diam = n.lower_variable_bounds[i] + n.upper_variable_bounds[i]
+            cvx_comb = cvx_factor*(use_cut ? (m._cut_solution[si]) : (m._lower_solution[si]))
+            cvx_comb += 0.5*(1.0 - cvx_factor)*ni_diam
+            m._candidate_xref[i] = cvx_comb
+            m._current_xref[i] -= m._candidate_xref[i]
+            m._current_xref[i] /= ni_diam
+        end
+
+        if norm(m._current_xref, 1) > m._parameters.cut_tolerance
+            copyto!(m._current_xref, m._candidate_xref)
         else
             continue_cut_flag = false
         end
@@ -820,7 +835,7 @@ function postprocess!(t::ExtensionType, m::Optimizer)
     if m._parameters.dbbt_depth > m._iteration_count
         variable_dbbt!(m._current_node, m._lower_lvd, m._lower_uvd,
                        m._lower_objective_value, m._global_upper_bound,
-                       m._variable_number)
+                       m._branch_variable_count)
     end
 
     return nothing
@@ -841,6 +856,7 @@ function store_candidate_solution!(m::Optimizer)
         m._solution_value = m._upper_objective_value
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
+
     end
     return nothing
 end
@@ -960,7 +976,7 @@ function global_solve!(m::Optimizer)
         end
         set_global_lower_bound!(m)
         m._run_time = time() - m._start_time
-        m._time_left = m.time_limit - m._run_time
+        m._time_left = m._parameters.time_limit - m._run_time
         log_iteration!(m)
         print_iteration!(m)
         m._iteration_count += 1

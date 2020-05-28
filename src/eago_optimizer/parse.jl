@@ -107,6 +107,15 @@ function label_branch_variables!(m::Optimizer)
         end
     end
 
+    # drop fixed variables from branching
+
+    # add a map of branch/node index to variables in the continuous solution
+    for i = 1:m._working_problem._variable_count
+        if m._branch_variables[i]
+            push!(m._branch_to_sol_map, i)
+        end
+    end
+
     return nothing
 end
 
