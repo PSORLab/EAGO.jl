@@ -116,6 +116,15 @@ function label_branch_variables!(m::Optimizer)
         end
     end
 
+    # creates reverse map
+    m._sol_to_branch_map = zeros(m._working_problem._variable_count)
+    for i = 1:length(m._branch_to_sol_map)
+        j = m._branch_to_sol_map[i]
+        m._sol_to_branch_map[j] = i
+    end
+    println("m._sol_to_branch_map = $(m._sol_to_branch_map)")
+    println("m._branch_to_sol_map = $(m._branch_to_sol_map)")
+
     return nothing
 end
 
@@ -192,7 +201,9 @@ function initial_parse!(m::Optimizer)
     m._working_problem._objective_sv = ip._objective_sv
     m._working_problem._objective_saf = ip._objective_saf
     m._working_problem._objective_saf_parsed = AffineFunctionIneq(ip._objective_saf, LT_ZERO)
+    println("objective buffer")
     m._working_problem._objective_sqf = BufferedQuadraticIneq(ip._objective_sqf, LT_ZERO)
+    println("m._working_problem._objective_sqf.buffer = $(m._working_problem._objective_sqf.buffer)")
     #_objective_nl = nothing  #TODO post nonlinear work
 
     # set nlp data structure
@@ -265,10 +276,11 @@ function parse_classify_problem!(m::Optimizer)
             nl_constraint_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = LP
 
+            println(" was lp")
         elseif quad_constraint_number === 0 && relaxed_supports_soc &&
                nl_constraint_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = SOCP
-
+            println(" was socp")
         else
             #parse_classify_quadratic!(m)
             #if iszero(m._input_nonlinear_constraint_number)
@@ -280,6 +292,7 @@ function parse_classify_problem!(m::Optimizer)
             #    m._problem_type = parse_classify_nlp(m)
             #end
             m._working_problem._problem_type = MINCVX
+            println(" was minlp")
 
         end
     else

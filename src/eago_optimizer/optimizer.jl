@@ -442,6 +442,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _fixed_variable::Vector{Bool} = Bool[]
     _branch_variable_count::Int = 0
     _branch_to_sol_map::Vector{Int} = Int[]
+    _sol_to_branch_map::Vector{Int} = Int[]
 
     _continuous_solution::Vector{Float64} = Float64[]
 
@@ -540,8 +541,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _log::Log = Log()
 
     # set in TODO
-    _buffered_quadratic_ineq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
-    _buffered_quadratic_eq_ci::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
+    _buffered_quadratic_ineq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+    _buffered_quadratic_eq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
     # set initially in TODO, reset in objective_cut in relax.jl
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
@@ -549,7 +550,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # initialized to empty in constructor (or via MOI.empty), filled in objective_cut in relax.jl
     # called by obbt in domain_reduction.jl, lower_problem, and add_cut in optimize_nonconvex.jl,
     # emptied in delete_objective_cuts! in relax.jl
-    _objective_cut_ci_saf::Vector{Tuple{SAF,LT}} = Tuple{SAF,LT}[]
+    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
     # need to retreive primal _relaxed_variable_index
     # set in TODO

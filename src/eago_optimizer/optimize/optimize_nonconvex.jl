@@ -620,7 +620,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         @__dot__ m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, m._relaxed_variable_number)
         update_relaxed_problem_box!(m)
-        #relax_constraints!(m, 1)
+        relax_constraints!(m, 1)
     end
     relax_objective!(m, 1)
 
@@ -666,6 +666,8 @@ function cut_update!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
+    println("obj_val = $(obj_val)")
+    println("prior_obj_val = $(prior_obj_val)")
 
     if prior_obj_val < obj_val
 

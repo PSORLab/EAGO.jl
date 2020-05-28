@@ -54,40 +54,50 @@ end
 ###
 
 function create_buffer_dict(func::SQF)
+
     buffer = Dict{Int, Float64}()
+
     for term in func.quadratic_terms
         buffer[term.variable_index_1.value] = 0.0
         buffer[term.variable_index_2.value] = 0.0
     end
+
     for term in func.affine_terms
+        println("term = $term")
         buffer[term.variable_index.value] = 0.0
     end
+
     return buffer
 end
 
 BufferedQuadraticIneq() = BufferedQuadraticIneq(SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
 
 function BufferedQuadraticIneq(func::SQF, set::LT)
+
     buffer = create_buffer_dict(func)
     saf = SAF([SAT(0.0, VI(k)) for k in keys(buffer)], 0.0)
     len = length(buffer)
     cfunc = copy(func)
     cfunc.constant -= set.upper
+
     return BufferedQuadraticIneq(cfunc, buffer, saf, len)
 end
 
 function BufferedQuadraticIneq(func::SQF, set::GT)
+
     buffer = create_buffer_dict(func)
     saf = SAF([SAT(0.0, VI(k)) for k in keys(buffer)], 0.0)
     len = length(buffer)
     cfunc = MOIU.operate(-, Float64, func)
     cfunc.constant += set.lower
-    BufferedQuadraticIneq(cfunc, buffer, saf, len)
+
+    return BufferedQuadraticIneq(cfunc, buffer, saf, len)
 end
 
 BufferedQuadraticEq() = BufferedQuadraticEq(SQF(SQT[], SAT[], 0.0), Dict{Int, Float64}(), SAF(SAT[], 0.0), 0)
 
 function BufferedQuadraticEq(func::SQF, set::ET)
+
     buffer = create_buffer_dict(func)
     saf = SAF([SAT(0.0, VI(k)) for k in keys(buffer)], 0.0)
     len = length(buffer)
@@ -95,7 +105,8 @@ function BufferedQuadraticEq(func::SQF, set::ET)
     cfunc1.constant -= set.value
     cfunc2 = MOIU.operate(-, Float64, func)
     cfunc2.constant += set.value
-    BufferedQuadraticEq(cfunc1, cfunc2, buffer, saf, len)
+
+    return BufferedQuadraticEq(cfunc1, cfunc2, buffer, saf, len)
 end
 
 #=
@@ -197,5 +208,6 @@ function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Un
         end
     end
     f.len -= deleted_count
+    
     return nothing
 end
