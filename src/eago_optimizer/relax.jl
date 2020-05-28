@@ -86,9 +86,9 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
                 quadratic_constant -= a*x0_1*x0_1
 
             else
-                if !isinf(xL_1) &&! isinf(xU_1)
+                if !isinf(xL_1) && !isinf(xU_1)
                     buffer[idx1] += a*(xL_1 + xU_1)
-                    quadratic_constant -=  a*xL_1*xU_1
+                    quadratic_constant -= a*xL_1*xU_1
                 else
                     return false
                 end
@@ -106,7 +106,7 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
                     buffer[idx2] += a*xL_1
                     quadratic_constant -= a*xL_1*xL_2
 
-                elseif (!isinf(xU_1) && !isinf(xU_2))
+                elseif !isinf(xU_1) && !isinf(xU_2)
                     buffer[idx1] += a*xU_2
                     buffer[idx2] += a*xU_1
                     quadratic_constant -= a*xU_1*xU_2
@@ -121,7 +121,7 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
                     buffer[idx2] += a*xU_1
                     quadratic_constant -= a*xU_1*xL_2
 
-                elseif (!isinf(xL_1) && !isinf(xU_2))
+                elseif !isinf(xL_1) && !isinf(xU_2)
                     buffer[idx1] += a*xU_2
                     buffer[idx2] += a*xL_1
                     quadratic_constant -= a*xL_1*xU_2
@@ -312,10 +312,11 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
                                                             m._current_xref, true)
 
             if finite_cut_generated
-                copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
-                wp._objective_saf.constant = 0.0
                 if !check_safe || is_safe_cut!(m, buffered_sqf.saf)
+                    copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
+                    wp._objective_saf.constant = 0.0
                     ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant))
+                    println(" relax objective saf cut -- $(wp._objective_saf), set-- $(LT(UBD - buffered_sqf.saf.constant))")
                     push!(m._objective_cut_ci_saf, ci_saf)
                 end
             end
@@ -425,6 +426,21 @@ function delete_objective_cuts!(m::Optimizer)
         MOI.delete(m.relaxed_optimizer, ci)
     end
     empty!(m._objective_cut_ci_saf)
+
+    return nothing
+end
+
+
+function set_first_relax_point!(m::Optimizer)
+
+    if !m._first_relax_point_set
+        m._first_relax_point_set = true
+
+        n = m._current_node
+        @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+
+    end
 
     return nothing
 end

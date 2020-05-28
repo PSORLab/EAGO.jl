@@ -16,6 +16,39 @@
 
 """
 $(FUNCTIONNAME)
+"""
+function display_relaxed_optimizer!(optimizer::T, note::String) where T
+    println("                                           ")
+    println("           Displaying optimizer       "*note)
+    println("                                           ")
+
+    println("     Table of Variables                    ")
+    println("| Variable | Bounds Type | Value | Lower Bound | Upper Bound |")
+    println("--------------------------------------------------------------")
+    #for i = 1:variables
+        #var_type =
+        #xUstring =
+        #bnds_string = "LessThan   "
+        #bnds_string = "GreaterThan"
+        #bnds_string = "EqualTo    "
+        #bnds_string = "ZeroOne    "
+    #    println("| x[$i] | $constr_type | $xLstring     <= x[$i] <=          $xUstring      ")
+    #end
+    println("constant = $(saf.constant)")
+    str = "["
+    for term in saf.terms
+        coeff = term.coefficient
+        index = term.variable_index
+        str *= " ($coeff, $index) "
+    end
+    str *= " ]"
+    println(str)
+
+    nothing
+end
+
+"""
+$(FUNCTIONNAME)
 
 Prints solution information for the B&B problem. Displays first node found, solution value,
 solution, and time spent solving subproblems.

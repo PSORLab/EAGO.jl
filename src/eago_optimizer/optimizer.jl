@@ -160,6 +160,7 @@ Base.@kwdef mutable struct EAGOParameters
     subgrad_tighten_reverse::Bool = false
 
     # Tolerance to add cuts and max number of cuts
+    cut_min_iterations::Int64 = 1
     cut_max_iterations::Int64 = 1
     "Convex coefficient used to select point for new added cuts. Branch point is
     given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
@@ -434,8 +435,13 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # set in node_selection!
     _current_node::NodeBB = NodeBB()
 
+    _first_relax_point_set::Bool = false
     _current_xref::Vector{Float64} = Float64[]
     _candidate_xref::Vector{Float64} = Float64[]
+
+    _use_prior_objective_xref::Bool = false
+    _current_objective_xref::Vector{Float64} = Float64[]
+    _prior_objective_xref::Vector{Float64} = Float64[]
 
     # set in label_branch_variables! and label_fixed_variables! respectively in parse.jl
     _user_branch_variables::Bool = false
@@ -521,6 +527,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _new_low_index::Vector{Bool} = Bool[]
     _new_upp_index::Vector{Bool} = Bool[]
     _obbt_variables::Vector{VI} = VI[]
+    _obbt_variable_count::Int = 0
     _obbt_performed_flag::Bool = false
 
     # Feasibility-Based Bound Tightening Options

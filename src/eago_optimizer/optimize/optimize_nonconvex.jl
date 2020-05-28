@@ -114,11 +114,13 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     branch_variable_count = m._branch_variable_count
 
-    m._current_xref   = fill(0.0, branch_variable_count)
-    m._candidate_xref = fill(0.0, branch_variable_count)
-    m._cut_solution   = fill(0.0, branch_variable_count)
-    m._lower_lvd      = fill(0.0, branch_variable_count)
-    m._lower_uvd      = fill(0.0, branch_variable_count)
+    m._current_xref             = fill(0.0, branch_variable_count)
+    m._candidate_xref           = fill(0.0, branch_variable_count)
+    m._current_objective_xref   = fill(0.0, branch_variable_count)
+    m._prior_objective_xref     = fill(0.0, branch_variable_count)
+    m._cut_solution             = fill(0.0, branch_variable_count)
+    m._lower_lvd                = fill(0.0, branch_variable_count)
+    m._lower_uvd                = fill(0.0, branch_variable_count)
 
     # populate in full space until local MOI nlp solves support constraint deletion
     # uses input model for local nlp solves... may adjust this if a convincing reason
@@ -131,6 +133,37 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._presolve_time = time() - m._parse_time
 
     # add storage for obbt
+    if isempty(m.obbt_variable_values)
+        println("ran obbt... set")
+        println("branch_variable_count = $branch_variable_count")
+        println("m._working_problem._variable_count = $(m._working_problem._variable_count)")
+        println("m._branch_variables = $(m._branch_variables)")
+        m._obbt_variables = fill(VI(-1), branch_variable_count)
+        println(" m._obbt_variables = $( m._obbt_variables)")
+        for i = 1:m._working_problem._variable_count
+            if @inbounds m._branch_variables[i]
+                @inbounds m._obbt_variables[i] = VI(i)
+            end
+        end
+        println(" m._obbt_variables = $( m._obbt_variables)")
+    else
+        for i = 1:m._working_problem._variable_count
+            if m.obbt_variable_values[i]
+                m._obbt_variables[i] = m.obbt_variable_values[i]
+            end
+        end
+    end
+    obbt_variable_count = length(m._obbt_variables)
+
+    m._obbt_working_lower_index = fill(false, obbt_variable_count)
+    m._obbt_working_upper_index = fill(false, obbt_variable_count)
+    m._old_low_index            = fill(false, obbt_variable_count)
+    m._old_upp_index            = fill(false, obbt_variable_count)
+    m._new_low_index            = fill(false, obbt_variable_count)
+    m._new_upp_index            = fill(false, obbt_variable_count)
+    m._lower_indx_diff          = fill(false, obbt_variable_count)
+    m._upper_indx_diff          = fill(false, obbt_variable_count)
+    m._obbt_variable_count      = obbt_variable_count
 
     # add storage for objective cut if quadratic or nonlinear
     wp = m._working_problem
@@ -256,23 +289,28 @@ Selects and deletes nodes from stack with lower bounds greater than global
 upper bound.
 """
 function fathom!(t::ExtensionType, m::Optimizer)
+
     upper = m._global_upper_bound
     continue_flag = !isempty(m._stack)
+
     while continue_flag
         max_node = maximum(m._stack)
         max_check = (max_node.lower_bound > upper)
+
         if max_check
             popmax!(m._stack)
             m._node_count -= 1
             if isempty(m._stack)
                 continue_flag = false
             end
+
         else
             if ~max_check
                 continue_flag = false
             elseif isempty(m._stack)
                 continue_flag = false
             end
+
         end
     end
     return
@@ -283,7 +321,10 @@ $(SIGNATURES)
 
 Checks to see if current node should be reprocessed.
 """
-repeat_check(t::ExtensionType, m::Optimizer) = false
+function repeat_check(t::ExtensionType, m::Optimizer)
+    m._first_relax_point_set = false
+    return false
+end
 
 relative_gap(L::Float64, U::Float64) = ((L > -Inf) && (U < Inf)) ?  abs(U - L)/(max(abs(L), abs(U))) : Inf
 relative_tolerance(L::Float64, U::Float64, tol::Float64) = relative_gap(L, U)  > tol || ~(L > -Inf)
@@ -386,16 +427,21 @@ function is_globally_optimal(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCo
 
     if (t === MOI.INFEASIBLE && r == MOI.INFEASIBILITY_CERTIFICATE)
         valid_result = true
+
     elseif (t === MOI.INFEASIBLE && r === MOI.NO_SOLUTION)
         valid_result = true
+
     elseif (t === MOI.INFEASIBLE && r === MOI.UNKNOWN_RESULT_STATUS)
         valid_result = true
+
     elseif (t === MOI.OPTIMAL && r === MOI.FEASIBLE_POINT)
         valid_result = true
         feasible = true
+
     elseif (t === MOI.INFEASIBLE_OR_UNBOUNDED && r === MOI.NO_SOLUTION)
         valid_result = true
         feasible = false
+
     end
 
     return valid_result, feasible
@@ -617,8 +663,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     n = m._current_node
 
     if !m._obbt_performed_flag
-        @__dot__ m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
-        unsafe_check_fill!(isnan, m._current_xref, 0.0, m._relaxed_variable_number)
+        set_first_relax_point!(m)
         update_relaxed_problem_box!(m)
         relax_constraints!(m, 1)
     end
@@ -666,24 +711,28 @@ function cut_update!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
-    println("obj_val = $(obj_val)")
-    println("prior_obj_val = $(prior_obj_val)")
 
-    if prior_obj_val < obj_val
-
+    if m._cut_iterations <= m._parameters.cut_min_iterations
         m._cut_add_flag = true
-        m._cut_objective_value = obj_val
-        m._lower_objective_value = obj_val
         m._lower_termination_status = m._cut_termination_status
         m._lower_result_status = m._cut_result_status
-
-        # TODO Drop [:] syntax
         @inbounds m._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._relaxed_variable_index)
         copyto!(m._lower_solution, m._cut_solution)
-        set_dual!(m)
-    else
-        m._cut_add_flag = false
 
+    end
+
+    if prior_obj_val < obj_val
+        m._cut_objective_value = obj_val
+        m._lower_objective_value = obj_val
+        set_dual!(m)
+
+    else
+        # disable lower dbbt since duals and objective may mismatch (update to store later)
+        m._cut_objective_value = prior_obj_val
+        m._lower_objective_value = prior_obj_val
+        m._cut_add_flag = false
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
     end
 
     return nothing
@@ -730,7 +779,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     end
 
     # check to see if interval bound is preferable
-    if m._lower_feasibility
+    if m._lower_feasibility && !continue_cut_flag
 
         obj_type = m._working_problem._objective_type
         if obj_type === SINGLE_VARIABLE
@@ -779,10 +828,12 @@ function add_cut!(t::ExtensionType, m::Optimizer)
 
     if valid_flag && feasible_flag
         cut_update!(m)
+
     elseif valid_flag
         m._cut_add_flag = false
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
+
     else
         m._cut_add_flag = false
     end

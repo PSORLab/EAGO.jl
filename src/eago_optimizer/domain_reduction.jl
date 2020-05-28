@@ -109,7 +109,7 @@ function aggressive_filtering!(m::Optimizer, n::NodeBB)
     v = -ones(variable_number)
 
     # Copy prior index set (ignores linear and binary terms)
-    obbt_var_len = length(m.obbt_variable_values)
+    obbt_var_len = length(m._obbt_variables)
     copyto!(m._old_low_index, m._obbt_working_lower_index)
     copyto!(m._old_upp_index, m._obbt_working_upper_index)
     copyto!(m._new_low_index, m._obbt_working_lower_index)
@@ -199,10 +199,8 @@ function obbt(m::Optimizer)
     n = m._current_node
     relaxed_optimizer = m.relaxed_optimizer
 
-    @. m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
-    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
-
     # solve initial problem to feasibility
+    set_first_relax_point!(m)
     update_relaxed_problem_box!(m)
     relax_constraints!(m, 1)
     relax_objective!(m, 1)
@@ -211,9 +209,13 @@ function obbt(m::Optimizer)
     MOI.optimize!(relaxed_optimizer)
 
     # Sets indices to attempt OBBT on (full set...)
-    obbt_variables = m.obbt_variable_values
-    copyto!(m._obbt_working_lower_index, obbt_variables)
-    copyto!(m._obbt_working_upper_index, obbt_variables)
+    obbt_variables = m._obbt_variables
+    fill!(m._obbt_working_lower_index, true)
+    fill!(m._obbt_working_upper_index, true)
+
+    println("obbt_variables = $(obbt_variables)")
+    println("m._obbt_working_lower_index = $(m._obbt_working_lower_index)")
+    println("m._obbt_working_upper_index = $(m._obbt_working_upper_index)")
 
     # Prefiltering steps && and sets initial LP values
     trivial_filtering!(m, n)
