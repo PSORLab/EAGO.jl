@@ -11,6 +11,21 @@
 # TODO
 #############################################################################
 
+function pretty_print_saf!(saf::SAF, note::String = "")
+    println("Printing scalar affine function. "*note)
+    println("constant = $(saf.constant)")
+    str = "["
+    for term in saf.terms
+        coeff = term.coefficient
+        index = term.variable_index
+        str *= " ($coeff, $index) "
+    end
+    str *= " ]"
+    println(str)
+
+    nothing
+end
+
 """
 $(FUNCTIONNAME)
 
@@ -127,13 +142,15 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     end
     saf.constant = quadratic_constant
 
-    return
+    pretty_print_saf!(saf, "In Affine Relax.")
+
+    return nothing
 end
 
 function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
 
     affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._current_xref, true)
-    if check_safe && is_safe_cut!(m, f.saf)
+    if !check_safe || is_safe_cut!(m, f.saf)
         ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
         push!(m._buffered_quadratic_ineq_ci, ci)
     end
@@ -145,14 +162,14 @@ end
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
     affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._current_xref, true)
-    if check_safe && is_safe_cut!(m, f.saf)
+    if !check_safe || is_safe_cut!(m, f.saf)
         ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
         push!(m._buffered_quadratic_eq_ci, ci)
     end
     m.relaxed_to_problem_map[ci] = indx
 
     affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._current_xref, false)
-    if check_safe && is_safe_cut!(m, f.saf)
+    if !check_safe || is_safe_cut!(m, f.saf)
         ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, LT_ZERO)
         push!(m._buffered_quadratic_eq_ci, ci)
     end
@@ -228,11 +245,20 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
 
     elseif obj_type === SCALAR_QUADRATIC
+        println("######objective calc ####")
+        println("######objective calc ####")
+        println("######objective calc ####")
         buffered_sqf = wp._objective_sqf
         affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
                                 m._current_node, m._current_xref, true)
+
+        pretty_print_saf!(buffered_sqf.saf, "Buffer in relax objective.")
         copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
-        if check_safe && is_safe_cut!(m, wp._objective_saf)
+        wp._objective_saf.constant = buffered_sqf.saf.constant
+        pretty_print_saf!(wp._objective_saf, "Buffer in relax objective.")
+        if !check_safe || is_safe_cut!(m, wp._objective_saf)
+            println("was safe")
+            pretty_print_saf!(wp._objective_saf, "Safe cut... ")
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
 
@@ -277,6 +303,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
 
     UBD = m._global_upper_bound
     if m._parameters.objective_cut_on && m._global_upper_bound < Inf
+        println("ran objective cut:")
 
         wp = m._working_problem
         obj_type = wp._objective_type
@@ -294,12 +321,15 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
             wp._objective_saf.constant += UBD
 
         elseif obj_type === SCALAR_QUADRATIC
+            println("######objective cut ####")
+            println("######objective cut ####")
+            println("######objective cut ####")
             buffered_sqf = wp._objective_sqf
             affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
                                     m._current_node, m._current_xref, true)
             copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
             m._objective_saf.constant = buffered_sqf.saf.constant - UBD
-            if check_safe && is_safe_cut!(m, wp._objective_saf)
+            if !check_safe || is_safe_cut!(m, wp._objective_saf)
                 ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
                 push!(m._objective_cut_ci_saf, ci_saf)
             end
