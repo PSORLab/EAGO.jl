@@ -71,6 +71,8 @@ function label_branch_variables!(m::Optimizer)
     m._user_branch_variables = !isempty(m._branch_variables)
     m._user_branch_variables && (return nothing)
 
+    append!(m._branch_variables, fill(false, m._working_problem._variable_count))
+
     # adds nonlinear terms in quadratic constraints
     sqf_leq = m._working_problem._sqf_leq
     for i = 1:m._working_problem._sqf_leq_count

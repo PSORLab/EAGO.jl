@@ -24,11 +24,12 @@ function create_initial_node!(m::Optimizer)
     lower_bound = zeros(Float64, branch_variable_count)
     upper_bound = zeros(Float64, branch_variable_count)
     branch_count = 1
+
     for i = 1:m._working_problem._variable_count
         vi = @inbounds variable_info[i]
         if vi.branch_on === BRANCH
-            @inbounds lower_bound[branch_count] = variable_info.lower_bound
-            @inbounds upper_bound[branch_count] = variable_info.upper_bound
+            @inbounds lower_bound[branch_count] = vi.lower_bound
+            @inbounds upper_bound[branch_count] = vi.upper_bound
             branch_count += 1
         end
     end
@@ -54,7 +55,7 @@ function load_relaxed_problem!(m::Optimizer)
     # add variables and indices and constraints
     wp = m._working_problem
     variable_count = wp._variable_count
-    branch_variable_count = 1
+    branch_variable_count = 0
 
     for i = 1:variable_count
 
@@ -63,14 +64,17 @@ function load_relaxed_problem!(m::Optimizer)
         push!(m._relaxed_variable_index, relaxed_variable_indx)
 
         vinfo = @inbounds wp._variable_info[i]
-        is_branch_variable = vinfo.branch_on === BRANCH
+
+        is_branch_variable = @inbounds m._branch_variables[i]
+        vinfo.branch_on = is_branch_variable ? BRANCH : NO_BRANCH
+        is_branch_variable && (branch_variable_count += 1)
 
         if vinfo.is_integer
 
         elseif vinfo.is_fixed
             ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
             if is_branch_variable
-                push!(wp._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
+                push!(m._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
                 wp._var_eq_count += 1
             end
 
@@ -78,7 +82,7 @@ function load_relaxed_problem!(m::Optimizer)
             if vinfo.has_lower_bound
                 ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
                 if is_branch_variable
-                    push!(wp._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
+                    push!(m._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
                     wp._var_geq_count += 1
                 end
             end
@@ -86,15 +90,11 @@ function load_relaxed_problem!(m::Optimizer)
             if vinfo.has_upper_bound
                 ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
                 if is_branch_variable
-                    push!(wp._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
+                    push!(m._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
                     wp._var_leq_count += 1
                 end
             end
-
         end
-
-        is_branch_variable && (branch_variable_count += 1)
-
     end
 
     m._branch_variable_count = branch_variable_count
