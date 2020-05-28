@@ -627,35 +627,17 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     # Optimizes the object
     relaxed_optimizer = m.relaxed_optimizer
 
-    println("number of variables in relaxed optimizer = $(MOI.get(relaxed_optimizer, MOI.NumberOfVariables()))")
-    println("list of variables in relaxed optimizer = $(MOI.get(relaxed_optimizer, MOI.ListOfVariableIndices()))")
-    println("number of saf constraints = $(MOI.get(relaxed_optimizer, MOI.NumberOfConstraints{SAF, LT}()))")
-    println("number of sv lt constraints = $(MOI.get(relaxed_optimizer, MOI.NumberOfConstraints{SV, LT}()))")
-    println("number of sv et constraints = $(MOI.get(relaxed_optimizer, MOI.NumberOfConstraints{SV, ET}()))")
-    println("number of sv gt constraints = $(MOI.get(relaxed_optimizer, MOI.NumberOfConstraints{SV, GT}()))")
-    println("sense = $(MOI.get(relaxed_optimizer, MOI.ObjectiveSense()))")
-
-    relaxed_obj_type_1 = MOI.get(relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-    println("relaxed_obj_type_1 = $(relaxed_obj_type_1)")
-
     MOI.optimize!(relaxed_optimizer)
 
     m._lower_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
     m._lower_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
-    println("m._lower_termination_status = $(m._lower_termination_status)")
-    println("m._lower_result_status = $(m._lower_result_status)")
-    println("valid_flag = $valid_flag")
-    println("feasible_flag = $feasible_flag")
-
     if valid_flag && feasible_flag
         set_dual!(m)
         m._cut_add_flag = true
         m._lower_feasibility = true
-        println("objective_value = $(MOI.get(relaxed_optimizer, MOI.ObjectiveValue()))")
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-        println("m._lower_objective_value = $(m._lower_objective_value)")
         for i = 1:m._relaxed_variable_number
             @inbounds m._lower_solution[i] = MOI.get(opt, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
@@ -754,7 +736,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
             objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
 
         elseif obj_type === SCALAR_AFFINE
-            objective_lo = interval_bound(m._working_problem._objective_saf, n)
+            objective_lo = lower_interval_bound(m._working_problem._objective_saf, n)
 
         elseif obj_type === SCALAR_QUADRATIC
             objective_lo = lower_interval_bound(m._working_problem._objective_sqf, n)
@@ -793,8 +775,6 @@ function add_cut!(t::ExtensionType, m::Optimizer)
     m._cut_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._cut_termination_status, m._cut_result_status)
 
-    println("valid_flag = $valid_flag")
-    println("feasible_flag = $feasible_flag")
     if valid_flag && feasible_flag
         cut_update!(m)
     elseif valid_flag

@@ -81,7 +81,7 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     lower_bounds = n.lower_variable_bounds
     upper_bounds = n.upper_variable_bounds
 
-    quadratic_constant = func.constant
+    quadratic_constant = p1 ? func.constant : -func.constant
 
     for term in func.quadratic_terms
 
@@ -95,8 +95,8 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
 
         if idx1 === idx2
 
-            @inbounds buffer[idx1] = (a > 0.0) ? 2.0*a*x0_1 : a*(xL_1 + xU_1)
-            quadratic_constant -= (a > 0.0) ? x0_1*x0_1 : a*xL_1*xU_1
+            @inbounds buffer[idx1] += (a > 0.0) ? 2.0*a*x0_1 : a*(xL_1 + xU_1)
+            quadratic_constant -= (a > 0.0) ? a*x0_1*x0_1 : a*xL_1*xU_1
 
         else
             x0_2 = @inbounds x[idx2]
@@ -104,8 +104,7 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
             xU_2 = @inbounds upper_bounds[idx2]
 
             if a > 0.0
-                check_ref = (xU_1 - xL_1)*x0_2 + (xU_2 - xL_2)*x0_1
-                if check_ref <= xU_1*xU_2 - xL_1*xL_2
+                if (xU_1 - xL_1)*x0_2 + (xU_2 - xL_2)*x0_1 <= xU_1*xU_2 - xL_1*xL_2
                     @inbounds buffer[idx1] += a*xL_2
                     @inbounds buffer[idx2] += a*xL_1
                     quadratic_constant -= a*xL_1*xL_2
@@ -115,8 +114,7 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
                     quadratic_constant -= a*xU_1*xU_2
                 end
             else
-                check_ref = (xU_1 - xL_1)*x0_2 - (xU_2 - xL_2)*x0_1
-                if check_ref <= xU_1*xL_2 - xL_1*xU_2
+                if (xU_1 - xL_1)*x0_2 - (xU_2 - xL_2)*x0_1 <= xU_1*xL_2 - xL_1*xU_2
                     @inbounds buffer[idx1] += a*xL_2
                     @inbounds buffer[idx2] += a*xU_1
                     quadratic_constant -= a*xU_1*xL_2
@@ -132,7 +130,9 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     for term in func.affine_terms
         a = p1 ? term.coefficient : -term.coefficient
         idx = term.variable_index.value
-        @inbounds buffer[idx] += a
+        x0 = @inbounds x[idx]
+        buffer[idx] += a
+        quadratic_constant += a*x0
     end
 
     count = 1
@@ -141,8 +141,6 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         count += 1
     end
     saf.constant = quadratic_constant
-
-    pretty_print_saf!(saf, "In Affine Relax.")
 
     return nothing
 end
@@ -245,20 +243,12 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
 
     elseif obj_type === SCALAR_QUADRATIC
-        println("######objective calc ####")
-        println("######objective calc ####")
-        println("######objective calc ####")
         buffered_sqf = wp._objective_sqf
         affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
                                 m._current_node, m._current_xref, true)
-
-        pretty_print_saf!(buffered_sqf.saf, "Buffer in relax objective.")
         copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
         wp._objective_saf.constant = buffered_sqf.saf.constant
-        pretty_print_saf!(wp._objective_saf, "Buffer in relax objective.")
         if !check_safe || is_safe_cut!(m, wp._objective_saf)
-            println("was safe")
-            pretty_print_saf!(wp._objective_saf, "Safe cut... ")
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
 
@@ -303,7 +293,6 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
 
     UBD = m._global_upper_bound
     if m._parameters.objective_cut_on && m._global_upper_bound < Inf
-        println("ran objective cut:")
 
         wp = m._working_problem
         obj_type = wp._objective_type
@@ -321,16 +310,13 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
             wp._objective_saf.constant += UBD
 
         elseif obj_type === SCALAR_QUADRATIC
-            println("######objective cut ####")
-            println("######objective cut ####")
-            println("######objective cut ####")
             buffered_sqf = wp._objective_sqf
             affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
                                     m._current_node, m._current_xref, true)
             copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
-            m._objective_saf.constant = buffered_sqf.saf.constant - UBD
+            wp._objective_saf.constant = 0.0
             if !check_safe || is_safe_cut!(m, wp._objective_saf)
-                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant))
                 push!(m._objective_cut_ci_saf, ci_saf)
             end
         #=

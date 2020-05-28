@@ -141,7 +141,7 @@ function lower_interval_bound(f::BufferedQuadraticIneq, n::NodeBB)
         end
     end
 
-    return lower_interval_bound
+    return lower_interval_bound.lo
 end
 
 function interval_bound(f::BufferedQuadraticEq, n::NodeBB)
