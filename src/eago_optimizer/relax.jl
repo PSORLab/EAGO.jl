@@ -30,14 +30,14 @@ function is_safe_cut!(m::Optimizer, f::SAF)
     term_count = length(f.terms)
     for i = 1:term_count
 
-        ai = @inbounds f.terms[i]
+        ai = (@inbounds f.terms[i]).coefficient
         if ai !== 0.0
 
             ai_abs = abs(ai)
             !(safe_l <= abs(ai) <= safe_u) && return false              # violates safe_l <= abs(ai) <= safe_u
 
             for j = i:term_count
-                aj = @inbounds f.terms[j]
+                aj = (@inbounds f.terms[j]).coefficient
                 if aj !== 0.0
                     !(safe_l <= abs(ai/aj) <= safe_u) && return false   # violates safe_l <= abs(ai/aj) <= safe_u
                 end

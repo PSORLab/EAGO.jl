@@ -217,7 +217,7 @@ function obbt(m::Optimizer)
 
     # Prefiltering steps && and sets initial LP values
     trivial_filtering!(m, n)
-    if m.obbt_aggressive_on
+    if m._parameters.obbt_aggressive_on
         feasibility = aggressive_filtering!(m, n)
     end
 
@@ -327,7 +327,7 @@ function obbt(m::Optimizer)
         else
             break
         end
-        trivial_filtering!(d, y)
+        trivial_filtering!(d, n)
     end
 
     return feasibility

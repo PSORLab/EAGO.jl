@@ -354,6 +354,7 @@ function convergence_check(t::ExtensionType, m::Optimizer)
   if (U < Inf) && (L > Inf)
       t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
   end
+
   return t
 end
 
@@ -426,20 +427,20 @@ Retrieves the lower and upper duals for variable bounds from the
 """
 function set_dual!(m::Optimizer)
 
-    opt = m.relaxed_optimizer
-    lower_variable_lt_indx = m._lower_variable_lt_indx
-    lower_variable_lt = m._lower_variable_lt
-    lower_variable_gt_indx = m._lower_variable_gt_indx
-    lower_variable_gt = m._lower_variable_gt
+    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_variable_lt = m._relaxed_variable_lt
+    relaxed_variable_gt = m._relaxed_variable_gt
 
-    for i = 1:length(lower_variable_lt_indx)
-        @inbounds m._lower_uvd[@inbounds lower_variable_lt_indx[i]] = MOI.get(opt, MOI.ConstraintDual(), @inbounds lower_variable_lt[i])
+    for i = 1:m._working_problem._var_leq_count
+        ci_lt, i_lt = @inbounds relaxed_variable_lt[i]
+        @inbounds m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
     end
-    for i = 1:length(lower_variable_gt_indx)
-        @inbounds m._lower_lvd[@inbounds lower_variable_gt_indx[i]] = MOI.get(opt, MOI.ConstraintDual(), @inbounds lower_variable_gt[i])
+    for i = 1:m._working_problem._var_geq_count
+        ci_gt, i_gt = @inbounds relaxed_variable_gt[i]
+        @inbounds m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
     end
 
-    return
+    return nothing
 end
 
 """
@@ -649,26 +650,27 @@ function cut_update!(m::Optimizer)
 
     m._cut_feasibility = true
 
-    relaxed_optimizer = x.relaxed_optimizer
+    relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-    prior_obj_val = (x._cut_iterations == 2) ? x._lower_objective_value : x._cut_objective_value
+    prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
 
     if prior_obj_val < obj_val
 
-        x._cut_add_flag = true
-        x._cut_objective_value = obj_val
-        x._lower_objective_value = obj_val
-        x._lower_termination_status = x._cut_termination_status
-        x._lower_result_status = x._cut_result_status
+        m._cut_add_flag = true
+        m._cut_objective_value = obj_val
+        m._lower_objective_value = obj_val
+        m._lower_termination_status = m._cut_termination_status
+        m._lower_result_status = m._cut_result_status
 
-        @inbounds x._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._relaxed_variable_index)
-        copyto!(x._lower_solution, x._cut_solution)
-        set_dual!(x)
+        # TODO Drop [:] syntax
+        @inbounds m._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._relaxed_variable_index)
+        copyto!(m._lower_solution, m._cut_solution)
+        set_dual!(m)
     else
-        x._cut_add_flag = false
+        m._cut_add_flag = false
     end
 
-    return
+    return nothing
 end
 
 
@@ -683,13 +685,15 @@ interval lower bound. The best lower bound is then used.
 function cut_condition(t::ExtensionType, m::Optimizer)
 
     continue_cut_flag = m._cut_add_flag
-    continue_cut_flag &= (m._cut_iterations < m.cut_max_iterations)
+    continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
     n = m._current_node
 
     if continue_cut_flag
+        cvx_factor =  m._parameters.cut_cvx
+        # TODO: preallocate xnew and possible xsol, update xnew inplace then norm...
         xsol = (m._cut_iterations > 1) ? m._cut_solution : m._lower_solution
-        xnew = (1.0 - m.cut_cvx)*mid(n) + m.cut_cvx*xsol
-        if norm((m._current_xref - xnew)./diam(n), 1) > m.cut_tolerance
+        xnew = (1.0 - cvx_factor)*mid(n) + cvx_factor*xsol
+        if norm((m._current_xref - xnew)./diam(n), 1) > m._parameters.cut_tolerance
             m._current_xref = xnew
         else
             continue_cut_flag = false
@@ -698,25 +702,32 @@ function cut_condition(t::ExtensionType, m::Optimizer)
 
     if !continue_cut_flag
         delete_nl_constraints!(m)
-        delete_obj_cuts!(m)
+        delete_objective_cuts!(m)
     end
 
     # check to see if interval bound is preferable
     if m._lower_feasibility
-        if m._objective_type === NONLINEAR
-            objective_lo = eval_objective_lo(m._relaxed_evaluator)
-        elseif m._objective_type === SINGLE_VARIABLE
-                obj_indx = m._objective_sv.variable.value
-                objective_lo = @inbounds y.lower_variable_bounds[obj_indx]
-        elseif m._objective_type === SCALAR_AFFINE
-                objective_lo = interval_bound(v._objective_saf, y, true)
-        elseif m._objective_type === SCALAR_QUADRATIC
-                objective_lo = interval_bound(m._objective_sqf, y, true)
+
+        obj_type = m._working_problem._objective_type
+        if obj_type === SINGLE_VARIABLE
+            obj_indx = m._working_problem._objective_sv.variable.value
+            objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
+
+        elseif obj_type === SCALAR_AFFINE
+            objective_lo = interval_bound(m._working_problem._objective_saf, n)
+
+        elseif obj_type === SCALAR_QUADRATIC
+            objective_lo = lower_interval_bound(m._working_problem._objective_sqf, n)
+
+        elseif obj_type === NONLINEAR
+                #objective_lo = eval_objective_lo(m._relaxed_evaluator)
         end
+
         if objective_lo > m._lower_objective_value
             m._lower_objective_value = objective_lo
-            fill!(v._lower_lvd, 0.0)
+            fill!(m._lower_lvd, 0.0)
             fill!(m._lower_uvd, 0.0)
+
         end
     end
     m._cut_iterations += 1
@@ -736,7 +747,7 @@ function add_cut!(t::ExtensionType, m::Optimizer)
 
     # Optimizes the object
     relaxed_optimizer = m.relaxed_optimizer
-    MOI.optimize!(opt)
+    MOI.optimize!(relaxed_optimizer)
 
     m._cut_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
     m._cut_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
