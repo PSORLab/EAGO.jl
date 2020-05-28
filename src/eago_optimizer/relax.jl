@@ -61,7 +61,7 @@ $(FUNCTIONNAME)
 Default routine for relaxing quadratic constraint `func` < `0.0` on node `n`. Takes affine bounds of convex part at
 point `x0` and secant line bounds on concave parts.
 """
-function affine_relax_quadratic!(func::SQF, buffer::OrderedDict{Int,Float64}, saf::SAF, n::NodeBB, x::Vector{Float64}, p1::Bool)
+function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF, n::NodeBB, x::Vector{Float64}, p1::Bool)
 
     lower_bounds = n.lower_variable_bounds
     upper_bounds = n.upper_variable_bounds
@@ -74,7 +74,7 @@ function affine_relax_quadratic!(func::SQF, buffer::OrderedDict{Int,Float64}, sa
         idx1 = term.variable_index_1.value
         idx2 = term.variable_index_2.value
 
-        x0_1 = @inbounds x0[idx1]
+        x0_1 = @inbounds x[idx1]
         xL_1 = @inbounds lower_bounds[idx1]
         xU_1 = @inbounds upper_bounds[idx1]
 
@@ -84,7 +84,7 @@ function affine_relax_quadratic!(func::SQF, buffer::OrderedDict{Int,Float64}, sa
             quadratic_constant -= (a > 0.0) ? x0_1*x0_1 : a*xL_1*xU_1
 
         else
-            x0_2 = @inbounds x0[idx2]
+            x0_2 = @inbounds x[idx2]
             xL_2 = @inbounds lower_bounds[idx2]
             xU_2 = @inbounds upper_bounds[idx2]
 
@@ -212,25 +212,33 @@ $(TYPEDSIGNATURES)
 
 A rountine that only relaxes the objective.
 """
-function relax_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
+function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
 
     relaxed_optimizer = m.relaxed_optimizer
 
     # Add objective
-    obj_type = m._working_problem._objective_type
+    wp = m._working_problem
+    obj_type = wp._objective_type
+    check_safe = (q === 1) ? false : m._parameters.cut_safe_on
 
     if obj_type === SINGLE_VARIABLE
-        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), m._working_problem._objective_sv)
-        MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), wp._objective_sv)
 
     elseif obj_type === SCALAR_AFFINE
-        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
-        MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
 
     elseif obj_type === SCALAR_QUADRATIC
-        # TODO: ADD QUADRATIC RELAXATION HERE
-        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
-        MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        buffered_sqf = wp._objective_sqf
+        affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
+                                m._current_node, m._current_xref, true)
+
+        println("wp._objective_saf.terms: $(wp._objective_saf.terms)")
+        println("buffered_sqf.saf.terms: $(buffered_sqf.saf.terms)")
+
+        copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
+        if check_safe && is_safe_cut!(m, wp._objective_saf)
+            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+        end
 
     #=
     elseif x._objective_type === NONLINEAR
@@ -262,7 +270,7 @@ function relax_objective!(t::ExtensionType, m::Optimizer, x0::Vector{Float64})
     end
     return nothing
 end
-relax_objective!(m::Optimizer, x::Vector{Float64}) = relax_objective!(m.ext_type, m, x)
+relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
 """
 $(FUNCTIONNAME)
@@ -293,7 +301,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
             buffered_sqf = wp._objective_sqf
             affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
                                     m._current_node, m._current_xref, true)
-            copyto!(m._objective_saf.terms, buffered_sqf.saf.terms)
+            copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
             m._objective_saf.constant = buffered_sqf.saf.constant - UBD
             if check_safe && is_safe_cut!(m, wp._objective_saf)
                 ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
@@ -321,7 +329,7 @@ $(TYPEDSIGNATURES)
 A rountine that updates the current node for the `Evaluator` and relaxes all
 nonlinear constraints and quadratic constraints.
 """
-function relax_all_constraints!(t::ExtensionType, m::Optimizer, v::Vector{Float64}, q::Int64)
+function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
 
@@ -341,8 +349,8 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, v::Vector{Float6
 
     return nothing
 end
-relax_constraints!(t::ExtensionType, m::Optimizer, v::Vector{Float64}, q::Int64) = relax_all_constraints!(t, m, v, q)
-relax_constraints!(m::Optimizer, x::Vector{Float64}, q::Int64) = relax_constraints!(m.ext_type, m, x, q)
+relax_constraints!(t::ExtensionType, m::Optimizer, q::Int64) = relax_all_constraints!(t, m, q)
+relax_constraints!(m::Optimizer, q::Int64) = relax_constraints!(m.ext_type, m, q)
 
 """
 

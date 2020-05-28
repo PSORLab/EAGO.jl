@@ -204,8 +204,8 @@ function obbt(m::Optimizer)
 
     # solve initial problem to feasibility
     update_relaxed_problem_box!(m)
-    relax_constraints!(m, m._current_xref, 1)
-    relax_objective!(m, m._current_xref)
+    relax_constraints!(m, 1)
+    relax_objective!(m, 1)
 
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(relaxed_optimizer)

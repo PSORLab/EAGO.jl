@@ -126,6 +126,12 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     # add storage for obbt
 
+    # add storage for objective cut if quadratic or nonlinear
+    wp = m._working_problem
+    obj_type = wp._objective_type
+    if obj_type === SCALAR_QUADRATIC
+        wp._objective_saf.terms = copy(wp._objective_sqf.saf.terms)
+    end
 
     return nothing
 end
@@ -600,10 +606,10 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     if !m._obbt_performed_flag
         @__dot__ m._current_xref = 0.5*(n.lower_variable_bounds + n.upper_variable_bounds)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, m._relaxed_variable_number)
-        update_relaxed_problem_box!(m, n)
-        relax_constraints!(m, m._current_xref, 1)
+        update_relaxed_problem_box!(m)
+        relax_constraints!(m, 1)
     end
-    relax_objective!(m, m._current_xref)
+    relax_objective!(m, 1)
 
     # Optimizes the object
     relaxed_optimizer = m.relaxed_optimizer
@@ -725,8 +731,8 @@ Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, m::Optimizer)
 
-    relax_constraints!(m, m._current_xref, m._cut_iterations)
-    relax_objective!(m, m._current_xref)
+    relax_constraints!(m, m._cut_iterations)
+    relax_objective!(m, m._cut_iterations)
 
     # Optimizes the object
     relaxed_optimizer = m.relaxed_optimizer
