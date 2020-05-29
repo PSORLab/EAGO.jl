@@ -76,8 +76,6 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         idx2 = term.variable_index_2.value
         sol_idx1 = sol_to_branch_map[idx1]
         sol_idx2 = sol_to_branch_map[idx2]
-    #    println("idx1 = $idx1")
-    #    println("sol idx1 = $(sol_to_branch_map[idx1])")
         x0_1 = x[sol_idx1]
         xL_1 = lower_bounds[sol_idx1]
         xU_1 = upper_bounds[sol_idx1]
@@ -85,7 +83,6 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         if idx1 === idx2
 
             if a > 0.0
-                #println("quadratic a: $a")
                 buffer[idx1] += 2.0*a*x0_1
                 quadratic_constant -= a*x0_1*x0_1
 
@@ -153,15 +150,11 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     end
     saf.constant = quadratic_constant
 
-    println(saf)
-
     return true
 end
 
 function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
 
-    #println("f.func: $(f.func)")
-    #println("f.buffer: $(f.buffer)")
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
@@ -178,7 +171,6 @@ end
 
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
-    println(" ------ start leq relax ------ ")
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
@@ -190,7 +182,6 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     end
     #m.relaxed_to_problem_map[ci] = indx
 
-    println(" ------ start geq relax ------ ")
     finite_cut_generated = affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
@@ -212,7 +203,6 @@ function bound_objective(t::ExtensionType, m::Optimizer)
     sb_map = m._sol_to_branch_map
     wp = m._working_problem
     obj_type = wp._objective_type
-    println("bound objective")
 
     if obj_type === NONLINEAR
         #=
@@ -238,8 +228,6 @@ function bound_objective(t::ExtensionType, m::Optimizer)
 
     elseif obj_type === SINGLE_VARIABLE
         obj_indx = @inbounds sb_map[wp._objective_sv.variable.value]
-        println("sb_bound")
-        println("sb_bound: $(wp._objective_sv)")
         objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
 
     elseif obj_type === SCALAR_AFFINE
@@ -310,8 +298,11 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
         obj_type = wp._objective_type
 
         if obj_type === SINGLE_VARIABLE
-            MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), wp._objective_cut_ci_sv, LT(UBD))
-
+            if !isinf(UBD) && (m._objective_cut_ci_sv.value === -1)
+                m._objective_cut_ci_sv = MOI.add_constraint(m.relaxed_optimizer, wp._objective_sv, LT_ZERO)
+            else
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
+            end
         elseif obj_type === SCALAR_AFFINE
             wp._objective_saf.constant -= UBD
             relax!(wp._objective_saf)
