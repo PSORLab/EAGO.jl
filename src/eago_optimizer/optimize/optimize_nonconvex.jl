@@ -517,46 +517,57 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     feasible_flag = true
     rept = 0
 
+    # compute initial volume
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
 
-    # runs poor man's LP contractor
-    if (params.lp_depth >= m._iteration_count)
-        load_fbbt_buffers!(m)
+    cp_walk_count = 0
+    obbt_count = 0
 
-        for i = 1:params.lp_repetitions
-
-            !feasible_flag && break
-
-            for i = 1:wp._saf_leq_count
+    if params.fbbt_lp_depth >= m._iteration_count
+        load_fbbt_buffer!(m)
+        for i = 1:m._parameters.fbbt_lp_repetitions
+            if feasible_flag
+                for i = 1:wp._saf_leq_count
+                    !feasible_flag && break
+                    saf_leq = @inbounds wp._saf_leq[i]
+                    feasible_flag &= fbbt!(m, saf_leq)
+                end
                 !feasible_flag && break
-                saf_leq = @inbounds wp._saf_leq[i]
-                feasible_flag &= fbbt!(m, saf_leq)
-            end
 
-            for i = 1:wp._saf_eq_count
+                for i = 1:wp._saf_eq_count
+                    !feasible_flag && break
+                    saf_eq = @inbounds wp._saf_eq[i]
+                    feasible_flag &= fbbt!(m, saf_eq)
+                end
                 !feasible_flag && break
-                saf_eq = @inbounds wp._saf_eq[i]
-                feasible_flag &= fbbt!(m, saf_eq)
             end
         end
-
-        unpack_fbbt_buffers!(m)
+        unpack_fbbt_buffer!(m)
     end
 
-    m._obbt_performed_flag = false
-    if (params.obbt_depth >= m._iteration_count)
+    perform_cp_walk_flag = (params.cp_depth >= m._iteration_count)
+    perfom_obbt_flag     = (params.obbt_depth >= m._iteration_count)
 
-        m._obbt_performed_flag = true
-        for i = 1:params.obbt_repetitions
+    perform_cp_walk_flag &= (cp_walk_count < m._parameters.cp_repetitions)
+    perfom_obbt_flag     &= (obbt_count < m._parameters.obbt_repetitions)
+
+    while perform_cp_walk_flag || perfom_obbt_flag
+
+        if feasible_flag && perform_cp_walk_flag
+            feasible_flag &= set_constraint_propagation_fbbt!(m)
             !feasible_flag && break
-            feasible_flag = obbt!(m)
-
+            cp_walk_count += 1
         end
-    end
 
-    if (params.cp_depth >= m._iteration_count) && feasible_flag
-        feasible_flag = cpwalk(m)
+        if feasible_flag && perfom_obbt_flag
+            feasible_flag &= obbt!(m)
+            !feasible_flag && break
+            obbt_count += 1
+        end
+
+        perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
+        perfom_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
     end
 
     m._final_volume = prod(upper_variable_bounds(m._current_node) -

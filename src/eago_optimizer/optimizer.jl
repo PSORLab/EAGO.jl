@@ -106,8 +106,10 @@ Base.@kwdef mutable struct EAGOParameters
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
     cp_depth::Int64 = 1000
-    "Number of repetitions of forward-reverse passes to perform in constraint propagation (default = 3)"
+    "Number of times to repeeat forward-reverse pass routine"
     cp_repetitions::Int64 = 4
+    "Number of repetitions of forward-reverse passes to perform in constraint propagation (default = 3)"
+    cp_forward_reverse_limit::Int64 = 3
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
     this number (default = 0.99)"
     cp_tolerance::Float64 = 0.99
@@ -130,9 +132,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Options for linear bound tightening
     "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
-    lp_depth::Int64  = 100000
+    fbbt_lp_depth::Int64  = 100000
     "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
-    lp_repetitions::Int64  = 3
+    fbbt_lp_repetitions::Int64  = 3
 
     # Options for quadratic bound tightening
     "Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
