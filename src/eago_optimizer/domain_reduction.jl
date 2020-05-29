@@ -342,9 +342,49 @@ end
 
 
 function load_fbbt_buffer!(m::Optimizer)
+
+    n = m._current_node
+    sol_to_branch = m._sol_to_branch_map
+    lower_variable_bounds = n.lower_variable_bounds
+    upper_variable_bounds = n.upper_variable_bounds
+
+    for i = 1:m._working_problem._variable_count
+        if @inbounds m._branch_variable[i]
+            indx = @inbounds sol_to_branch[i]
+            @inbounds m._lower_fbbt_buffer[i] = lower_variable_bounds[indx]
+            @inbounds m._upper_fbbt_buffer[i] = upper_variable_bounds[indx]
+
+        else
+            @inbounds m._lower_fbbt_buffer[i] = m._working_problem._variable_info[i].lower_bound
+            @inbounds m._upper_fbbt_buffer[i] = m._working_problem._variable_info[i].upper_bound
+
+        end
+    end
+
+    return nothing
 end
 
 function unpack_fbbt_buffer!(m::Optimizer)
+
+    n = m._current_node
+    sol_to_branch = m._sol_to_branch_map
+    lower_variable_bounds = n.lower_variable_bounds
+    upper_variable_bounds = n.upper_variable_bounds
+
+    for i = 1:m._working_problem._variable_count
+        if @inbounds m._branch_variable[i]
+            indx = @inbounds sol_to_branch[i]
+            @inbounds lower_variable_bounds[indx] = m._lower_fbbt_buffer[i]
+            @inbounds upper_variable_bounds[indx] = m._upper_fbbt_buffer[i]
+
+        else
+            @inbounds m._working_problem._variable_info[i].lower_bound = m._lower_fbbt_buffer[i]
+            @inbounds m._working_problem._variable_info[i].upper_bound = m._upper_fbbt_buffer[i]
+
+        end
+    end
+
+    return nothing
 end
 
 """
