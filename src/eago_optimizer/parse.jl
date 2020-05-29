@@ -253,8 +253,10 @@ function initial_parse!(m::Optimizer)
     m._working_problem._objective_sqf = BufferedQuadraticIneq(ip._objective_sqf, LT_ZERO)
 
     # add nonlinear constraints
-    add_nonlinear_functions!(m)
+    # the nonlinear evaluator loads with populated subexpressions which are then used
+    # to asssess the linearity of subexpressions
     add_nonlinear_evaluator!(m)
+    add_nonlinear_functions!(m)
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)

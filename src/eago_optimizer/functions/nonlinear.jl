@@ -116,7 +116,8 @@ mutable struct BufferedNonlinear{V} <: AbstractEAGOConstraint
     buffer::SAF
 end
 
-function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair, tag::T) where T <: RelaxTag
+function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
+                           subexpr_linearity::Vector{JuMP._Derivatives.Linearity}, tag::T) where T <: RelaxTag
 
     nd = copy(func.nd)
     adj = copy(func.adj)
@@ -148,22 +149,25 @@ function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
     tp4storage = zeros(tp2_count)
 
     dependent_variable_count = length(func.grad_sparsity)
-    grad_sparsity = copy(func.grad_sparsity)
-    sort!(grad_sparsity)
+    grad_sparsity = copy(func.grad_sparsity)                         # sorted by JUmp, _FunctionStorage
 
     dependent_subexpressions = copy(func.dependent_subexpressions)
 
+    linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
+
     saf_buffer = SAF(SAT[SAT(0.0, VI(-1)) for i=1:dependent_variable_count], 0.0)
 
-    return BufferedNonlinear{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage, isnumber,
-                                      grad_sparsity, dependent_variable_count, dependent_subexpressions,
-                                      bnds, saf_buffer)
+    return BufferedNonlinear{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage, isnumber, tp1storage, tp2storage,
+                                      tp3storage, tp4storage, tpdict, grad_sparsity, dependent_variable_count,
+                                      dependent_subexpressions,
+                                      bnds, linearity, saf_buffer)
 end
 
 function BufferedNonlinear{V}()
-    return BufferedNonlinear{MC{N,T}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], setstorage,
-                                      Float64[], Bool[], Int64[], 0, Int64[],
-                                      MOI.NLPBoundsPair(-Inf, Inf), SAF(SAT[], 0.0))
+    return BufferedNonlinear{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], V[],
+                                Float64[], Bool[], Float64[], Float64[], Float64[], Float64[],
+                                Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(), Int64[], 0, Int64[],
+                                MOI.NLPBoundsPair(-Inf, Inf), JuMP._Derivatives.CONSTANT, SAF(SAT[], 0.0))
 end
 
 """
@@ -177,13 +181,49 @@ mutable struct BufferedNonlinearSubexpression <: AbstractEAGOConstraint
     const_values::Vector{Float64}
     setstorage::Vector{MC{N,T}}
     numberstorage::Vector{Float64}
+    isnumber::Vector{Bool}
     tp1storage::Vector{Float64}
     tp2storage::Vector{Float64}
     tp3storage::Vector{Float64}
     tp4storage::Vector{Float64}
     tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
     linearity::JuMP._Derivatives.Linearity
+    sparsity::Vector{Int64}
 end
 
-function BufferedNonlinearSubexpression{V}(sub::JuMP._SubexpressionStorage)
+function BufferedNonlinearSubexpression{V}(sub::JuMP._SubexpressionStorage,
+                                           subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                                           tag::T) where T
+    nd = copy(func.nd)
+    adj = copy(func.adj)
+    const_values = copy(func.const_values)
+
+    setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
+    numberstorage = zeros(lenx)
+    isnumber = fill(false, lenx)
+
+    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
+    tp1_count = 0
+    tp2_count = 0
+    for i = 1:lenx
+        node = @inbounds nd[i]
+        op = node.index
+        if double_tp(op)
+            tp1_count += 1
+            tpdict[i] = (tp1_count, tp1_count, tp2_count, tp2_count)
+        elseif single_tp(op)
+            tp1_count += 1
+            tp2_count += 1
+            tpdict[i] = (tp1_count, tp1_count, -1, -1)
+        end
+    end
+    tp1storage = zeros(tp1_count)
+    tp2storage = zeros(tp1_count)
+    tp3storage = zeros(tp2_count)
+    tp4storage = zeros(tp2_count)
+
+    linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
+
+    grad_sparsity = #TODO DEFINE ME!
+    BufferedNonlinearSubexpression{MC{N,T}}()
 end
