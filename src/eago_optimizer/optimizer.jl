@@ -302,7 +302,7 @@ Base.@kwdef mutable struct ParsedProblem
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective_saf_parsed::AffineFunctionIneq = AffineFunctionIneq()
     _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
-    _objective_nl = nothing
+    _objective_nl::BufferedNonlinear = BufferedNonlinear{MC{1,NS}}()
     _objective_type::ObjectiveType = UNSET
 
     # objective sense information (set by convert_to_min in parse.jl)
@@ -326,12 +326,10 @@ Base.@kwdef mutable struct ParsedProblem
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
     # storage for nonlinear functions
-    _nonlinear_leq::Vector{BufferedNonlinearIneq} = BufferedNonlinearIneq[]
-    _nonlinear_eq::Vector{BufferedNonlinearIntv} = BufferedNonlinearEq[]
+    _nonlinear_constr::Vector{BufferedNonlinear} = BufferedNonlinear[]
 
     # nonlinear constraint storage
-    _nonlinear_leq_count::Int = 0
-    _nonlinear_eq_count::Int = 0
+    _nonlinear_count::Int = 0
 
     # variables (set in initial_parse)
     _variable_info::Vector{VariableInfo} = VariableInfo[]

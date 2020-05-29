@@ -20,7 +20,6 @@ max(f) = - min(-f).
 function convert_to_min!(m::Optimizer)
 
     m._working_problem._optimization_sense = MOI.MIN_SENSE
-
     if m._input_problem._optimization_sense === MOI.MAX_SENSE
 
         obj_type = m._input_problem._objective_type
@@ -37,7 +36,7 @@ function convert_to_min!(m::Optimizer)
             sqf = m._working_problem._objective_sqf.sqf
             m._working_problem._objective_sqf.sqf = MOIU.operate(-, Float64, sqf)
 
-        else
+        elseif obj_type === NONLINEAR
             # TODO NONLINEAR CASE
         end
     end
@@ -127,13 +126,16 @@ function label_branch_variables!(m::Optimizer)
 end
 
 
-function add_nonlinear_functions!(m::Optimizer)
+add_nonlinear_functions!(m::Optimizer) = add_nonlinear_functions!(m, m._input_problem._nlp_data.evaluator)
+
+add_nonlinear_functions!(m::Optimizer, evaluator::Nothing) = nothing
+add_nonlinear_functions!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
+function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     #_objective_nl = nothing  #TODO post nonlinear work
     #num_nlp_constraints = length(model.nlp_data.constraint_bounds)
 
     nlp_data = m._input_problem._nlp_data
-    evaluator = nlp_data.evaluator::JuMP.NLPEvaluator
     MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
 
     # set nlp data structure
@@ -142,34 +144,32 @@ function add_nonlinear_functions!(m::Optimizer)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        m._working_problem._objective_nl = BufferedNonlinearIneq(evaluator.objective, bnds) # TODO: define bnds
-        m._objective_type = NONLINEAR
+        m._working_problem._objective_nl = BufferedNonlinear(evaluator.objective, MOI.NLPBoundsPair(0.0))
     end
 
-    for i = 1:length(evaluator.constraints)
+    m._working_problem._nonlinear_count = length(evaluator.constraints)
 
-        constraint = evaluator.constraints[i]
-        bnds = nlp_data.constraint_bounds
-
-        if isfinite(bnds.upper) && isinf(bnds.lower)
-            new_bnd = # TODO
-            push!(m._working_problem._nonlinear_leq, BufferedNonlinearIneq(constraint, bnds))
-
-        elseif isfinite(bnds.lower) && isinf(bnds.upper)
-            new_bnd = # TODO
-            push!(m._working_problem._nonlinear_leq, BufferedNonlinearIneq(-constraint, bnds))
-
-        elseif isfinite(bnds.lower) && isfinite(bnds.upper)
-            push!(m._working_problem._nonlinear_eq, BufferedNonlinearIntv(constraint, bnds))
-        end
+    constraint_bounds = nlp_data.constraint_bounds
+    for i = 1:m._working_problem._nonlinear_count
+        bnds = @inbounds constraint_bounds[i]
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinear(constraint, bnds))
     end
+
+    return nothing
+end
+
+add_nonlinear_evaluator!(m::Optimizer) = add_nonlinear_functions!(m, m._input_problem._nlp_data.evaluator)
+
+add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
+add_nonlinear_evaluator!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
+function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
+
+    m._working_problem._relaxed_evaluator = Evaluator()
 
     for i = 1:length(evaluator.subexpressions)
         subexpr = evaluator.subexpressions[i]
-        push!(m._working_problem._relaxed_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpression(subexpr))
+        push!(m._working_problem._relaxed_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpr(subexpr))
     end
-    m._working_problem._nonlinear_leq_count = length(m._working_problem._nonlinear_leq)
-    m._working_problem._nonlinear_eq_count  = length(m._working_problem._nonlinear_eq)
 
     # get user operators
     m._working_problem._relaxed_evaluator.user_operators = nlp_data.user_operators
@@ -254,6 +254,7 @@ function initial_parse!(m::Optimizer)
 
     # add nonlinear constraints
     add_nonlinear_functions!(m)
+    add_nonlinear_evaluator!(m)
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)

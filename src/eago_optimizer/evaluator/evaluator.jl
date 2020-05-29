@@ -138,7 +138,7 @@ $(FUNCTIONNAME)
 
 Sets the current node in the Evaluator structure.
 """
-function set_current_node!(x::Evaluator, n::NodeBB)
+function set_bound_node!(x::Evaluator, n::NodeBB)
     x.current_node = NodeBB(n)
 end
 get_node(d::Evaluator) = d.current_node
@@ -166,41 +166,5 @@ struct EvaluatorParams
     cp_tolerance::Float64
     "Context used to guard against domain violations & branch on these violations if necessary"
     ctx::GuardCtx
-end
-
-struct Evaluator <: MOI.AbstractNLPEvaluator
-    user_operators::JuMP._Derivatives.UserOperatorRegistry
-    objective::NonlinearFunction
-    constraints::Vector{NonlinearFunction}
-    subexpressions::Vector{Union{NonlinearFunction,Subexpression}}
-    current_node::NodeBB
-    subexpression_order::Vector{Int64}
-    params::EvaluatorParams
-    subexpression_order::Vector{Int64}
-
-    index_to_variable::Vector{Tuple{Int64,Int64,Int64}}
-    first_eval_flag::Bool
-    constraints_lbd::Vector{Float64}
-    constraints_ubd::Vector{Float64}
-    subexpression_order::Vector{Int64}
-    subexpression_linearity::Vector{JuMP._Derivatives.Linearity}
-    last_x::Vector{Float64}
-    last_obj::MC{N,T}
-    jac_storage::Vector{MC{N,T}}
-    flt_jac_storage::Vector{Float64}
-    user_output_buffer::Vector{MC}
-    function Evaluator()
-        d = new()
-        d.user_operators = JuMP._Derivatives.UserOperatorRegistry()
-        d.first_eval_flag = false
-        d.objective_ubd = Inf
-        d.constraints = FunctionSetStorage{N,T}[]
-        d.constraints_lbd = Float64[]
-        d.constraints_ubd = Float64[]
-        d.objective = FunctionSetStorage(N,T)
-        d.index_to_variable = Tuple{Int64,Int64,Int64}[]
-        d.ctx = GuardCtx()
-        return d
-    end
 end
 =#

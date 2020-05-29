@@ -94,54 +94,76 @@ $(FUNCTIONAME)
 
 Stores a general quadratic function with a buffer.
 """
-mutable struct BufferedNonlinearEq <: AbstractEAGOConstraint
+mutable struct BufferedNonlinear{V} <: AbstractEAGOConstraint
     "List of nodes in nonlinear expression"
     nd::Vector{JuMP.NodeData}
     "Adjacency Matrix for the expression"
-    adj::SparseMatrixCSC{Bool,Int64}
+    adj::SparseMatrixCSC{Bool, Int64}
     const_values::Vector{Float64}
+    setstorage::Vector{V}
     numberstorage::Vector{Float64}
+    isnumber::Vector{Bool}
     tp1storage::Vector{Float64}
     tp2storage::Vector{Float64}
     tp3storage::Vector{Float64}
     tp4storage::Vector{Float64}
     tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
     grad_sparsity::Vector{Int64}
+    dependent_variable_count::Int
     dependent_subexpressions::Vector{Int64}
+    bnds::MOI.NLPBoundsPair
+    linearity::JuMP._Derivatives.Linearity
+    buffer::SAF
 end
 
-function BufferedNonlinearEq(func::JuMP._FunctionStorage, nlp_bnds::JuMP.ConstraintBounds)
+function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair, tag::T) where T <: RelaxTag
+
+    nd = copy(func.nd)
+    adj = copy(func.adj)
+
+    const_values = copy(func.const_values)
+
+    setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
+    numberstorage = zeros(lenx)
+    isnumber = fill(false, lenx)
+
+    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
+    tp1_count = 0
+    tp2_count = 0
+    for i = 1:lenx
+        node = @inbounds nd[i]
+        op = node.index
+        if double_tp(op)
+            tp1_count += 1
+            tpdict[i] = (tp1_count, tp1_count, tp2_count, tp2_count)
+        elseif single_tp(op)
+            tp1_count += 1
+            tp2_count += 1
+            tpdict[i] = (tp1_count, tp1_count, -1, -1)
+        end
+    end
+    tp1storage = zeros(tp1_count)
+    tp2storage = zeros(tp1_count)
+    tp3storage = zeros(tp2_count)
+    tp4storage = zeros(tp2_count)
+
+    dependent_variable_count = length(func.grad_sparsity)
+    grad_sparsity = copy(func.grad_sparsity)
+    sort!(grad_sparsity)
+
+    dependent_subexpressions = copy(func.dependent_subexpressions)
+
+    saf_buffer = SAF(SAT[SAT(0.0, VI(-1)) for i=1:dependent_variable_count], 0.0)
+
+    return BufferedNonlinear{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage, isnumber,
+                                      grad_sparsity, dependent_variable_count, dependent_subexpressions,
+                                      bnds, saf_buffer)
 end
 
-function BufferedNonlinearEq()
-end
-
-"""
-$(FUNCTIONAME)
-
-Stores a general quadratic function with a buffer.
-"""
-mutable struct BufferedNonlinearIntv <: AbstractEAGOConstraint
-    "List of nodes in nonlinear expression"
-    nd::Vector{JuMP.NodeData}
-    "Adjacency Matrix for the expression"
-    adj::SparseMatrixCSC{Bool,Int64}
-    const_values::Vector{Float64}
-    numberstorage::Vector{Float64}
-    tp1storage::Vector{Float64}
-    tp2storage::Vector{Float64}
-    tp3storage::Vector{Float64}
-    tp4storage::Vector{Float64}
-    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
-    grad_sparsity::Vector{Int64}
-    dependent_subexpressions::Vector{Int64}
-end
-
-function BufferedNonlinearIntv(func::JuMP._FunctionStorage, nlp_bnds::JuMP.ConstraintBounds)
-    copy(func.nd), copy(func.adj)
-end
-
-function BufferedNonlinearIneq()
+function BufferedNonlinear{V}()
+    return BufferedNonlinear{MC{N,T}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], setstorage,
+                                      Float64[], Bool[], Int64[], 0, Int64[],
+                                      MOI.NLPBoundsPair(-Inf, Inf), SAF(SAT[], 0.0))
 end
 
 """
@@ -163,5 +185,5 @@ mutable struct BufferedNonlinearSubexpression <: AbstractEAGOConstraint
     linearity::JuMP._Derivatives.Linearity
 end
 
-function BufferedNonlinearSubexpression(sub::JuMP._SubexpressionStorage)
+function BufferedNonlinearSubexpression{V}(sub::JuMP._SubexpressionStorage)
 end
