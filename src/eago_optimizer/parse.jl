@@ -147,7 +147,7 @@ function add_nonlinear_functions!(m::Optimizer)
     end
 
     for i = 1:length(evaluator.constraints)
-        
+
         constraint = evaluator.constraints[i]
         bnds = nlp_data.constraint_bounds
 
@@ -166,10 +166,13 @@ function add_nonlinear_functions!(m::Optimizer)
 
     for i = 1:length(evaluator.subexpressions)
         subexpr = evaluator.subexpressions[i]
-        push!(m._working_problem._nonlinear_subexpr, BufferedNonlinearSubexpression(subexpr))
+        push!(m._working_problem._relaxed_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpression(subexpr))
     end
     m._working_problem._nonlinear_leq_count = length(m._working_problem._nonlinear_leq)
     m._working_problem._nonlinear_eq_count  = length(m._working_problem._nonlinear_eq)
+
+    # get user operators
+    m._working_problem._relaxed_evaluator.user_operators = nlp_data.user_operators
 
     return nothing
 end
