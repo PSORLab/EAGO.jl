@@ -130,7 +130,9 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._upper_solution      = zeros(Float64, m._working_problem._variable_count)
     m._upper_variables     = fill(VI(-1), m._working_problem._variable_count)
 
-    m._presolve_time = time() - m._parse_time
+    # add storage for fbbt
+    m._lower_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
+    m._upper_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
 
     # add storage for obbt
     if isempty(m.obbt_variable_values)
@@ -166,6 +168,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
         wp._objective_saf.terms = copy(wp._objective_sqf.saf.terms)
     end
 
+    m._presolve_time = time() - m._parse_time
 
     return nothing
 end
@@ -176,9 +179,12 @@ $(SIGNATURES)
 Selects node with the lowest lower bound in stack.
 """
 function node_selection!(t::ExtensionType, m::Optimizer)
+
     m._node_count -= 1
     m._current_node = popmin!(m._stack)
+
     return nothing
+
 end
 
 """
@@ -203,16 +209,12 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     temp_max = 0.0
 
     flag = true
-    #println("m._branch_variable_count = $(m._branch_variable_count)")
     for i = 1:m._branch_variable_count
         si = m._branch_to_sol_map[i]
         vi = m._working_problem._variable_info[si]
-        #println("vi = $vi")
         if vi.branch_on === BRANCH
             temp_max = @inbounds uvbs[i] - lvbs[i]
-            #println(" temp_max $(temp_max)")
             temp_max /= vi.upper_bound - vi.lower_bound
-            #println(" temp_max $(temp_max)")
             if temp_max > max_val
                 max_pos = i
                 max_val = temp_max
@@ -508,6 +510,9 @@ constraint programming walk up to tolerances specified in
 """
 function preprocess!(t::ExtensionType, m::Optimizer)
 
+    wp = m._working_problem
+    params = m._parameters
+
     # Sets initial feasibility
     feasible_flag = true
     rept = 0
@@ -516,21 +521,41 @@ function preprocess!(t::ExtensionType, m::Optimizer)
                              lower_variable_bounds(m._current_node))
 
     # runs poor man's LP contractor
-    if (m._parameters.lp_depth >= m._iteration_count) && feasible_flag
-        #for func in
-        #end
+    if (params.lp_depth >= m._iteration_count)
+        load_fbbt_buffers!(m)
+
+        for i = 1:params.lp_repetitions
+
+            !feasible_flag && break
+
+            for i = 1:wp._saf_leq_count
+                !feasible_flag && break
+                saf_leq = @inbounds wp._saf_leq[i]
+                feasible_flag &= fbbt!(m, saf_leq)
+            end
+
+            for i = 1:wp._saf_eq_count
+                !feasible_flag && break
+                saf_eq = @inbounds wp._saf_eq[i]
+                feasible_flag &= fbbt!(m, saf_eq)
+            end
+        end
+
+        unpack_fbbt_buffers!(m)
     end
 
     m._obbt_performed_flag = false
-    if (m._parameters.obbt_depth >= m._iteration_count) && feasible_flag
+    if (params.obbt_depth >= m._iteration_count)
+
         m._obbt_performed_flag = true
-        for i = 1:m._parameters.obbt_repetitions
-            feasible_flag = obbt(m)
+        for i = 1:params.obbt_repetitions
             !feasible_flag && break
+            feasible_flag = obbt!(m)
+
         end
     end
 
-    if (m._parameters.cp_depth >= m._iteration_count) && feasible_flag
+    if (params.cp_depth >= m._iteration_count) && feasible_flag
         feasible_flag = cpwalk(m)
     end
 
@@ -580,7 +605,6 @@ end
 
 function interval_objective_bound(m::Optimizer, n::NodeBB)
 
-    println("interval boun obj")
     interval_objective_bound = bound_objective(m)
 
     if interval_objective_bound > m._lower_objective_value
@@ -914,7 +938,9 @@ or linear solvers.
 optimize_hook!(t::ExtensionType, m::Optimizer) = nothing
 
 function store_candidate_solution!(m::Optimizer)
+
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
+
         m._feasible_solution_found = true
         m._first_solution_node = m._maximum_node_id
         m._solution_value = m._upper_objective_value
@@ -926,13 +952,17 @@ function store_candidate_solution!(m::Optimizer)
 end
 
 function set_global_lower_bound!(m::Optimizer)
+
     if !isempty(m._stack)
+
         min_node = minimum(m._stack)
         lower_bound = min_node.lower_bound
         if m._global_lower_bound < lower_bound
             m._global_lower_bound = lower_bound
         end
+
     end
+
     return nothing
 end
 

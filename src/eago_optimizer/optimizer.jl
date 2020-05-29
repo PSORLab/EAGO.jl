@@ -250,20 +250,24 @@ end
 function Base.isempty(x::InputProblem)
 
     is_empty_flag = true
-
     new_input_problem = InputProblem()
+
     for field in fieldnames(InputProblem)
+
         field_value = getfield(x, field)
+
         if field_value isa Array
             if !isempty(field_value)
                 is_empty_flag = false
                 break
             end
+
         elseif field_value isa Number
             if getfield(new_input_problem, field) !== field_value
                 is_empty_flag = false
                 break
             end
+
         end
     end
 
@@ -531,6 +535,10 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _obbt_variables::Vector{VI} = VI[]
     _obbt_variable_count::Int = 0
     _obbt_performed_flag::Bool = false
+
+    # Buffers for fbbt, set in presolve, used in preprocess
+    _lower_fbbt_buffer::Vector{Float64} = Float64[]
+    _upper_fbbt_buffer::Vector{Float64} = Float64[]
 
     # Feasibility-Based Bound Tightening Options
     # set in set_constraint_propagation_fbbt in domain_reduction.jl
