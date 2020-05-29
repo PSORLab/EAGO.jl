@@ -54,14 +54,6 @@ end
 function relax!(m::Optimizer, f::BufferedNonlinearEq{N,T}, indx::Int, check_safe::Bool) where {N, T<:RelaxTag}
 end
 
-"""
-$(FUNCTIONAME)
-
-Stores a general quadratic function with a buffer.
-"""
-mutable struct BufferedNonlinear <: AbstractEAGOConstraint
-    func
-end
 =#
 
 ####
@@ -95,3 +87,81 @@ function MOI.eval_hessian_lagrangian(::EmptyNLPEvaluator, H, x, σ, μ)
 end
 
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
+
+
+"""
+$(FUNCTIONAME)
+
+Stores a general quadratic function with a buffer.
+"""
+mutable struct BufferedNonlinearEq <: AbstractEAGOConstraint
+    "List of nodes in nonlinear expression"
+    nd::Vector{JuMP.NodeData}
+    "Adjacency Matrix for the expression"
+    adj::SparseMatrixCSC{Bool,Int64}
+    const_values::Vector{Float64}
+    numberstorage::Vector{Float64}
+    tp1storage::Vector{Float64}
+    tp2storage::Vector{Float64}
+    tp3storage::Vector{Float64}
+    tp4storage::Vector{Float64}
+    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
+    grad_sparsity::Vector{Int64}
+    dependent_subexpressions::Vector{Int64}
+end
+
+function BufferedNonlinearEq(func::JuMP._FunctionStorage, nlp_bnds::JuMP.ConstraintBounds)
+end
+
+function BufferedNonlinearEq()
+end
+
+"""
+$(FUNCTIONAME)
+
+Stores a general quadratic function with a buffer.
+"""
+mutable struct BufferedNonlinearIntv <: AbstractEAGOConstraint
+    "List of nodes in nonlinear expression"
+    nd::Vector{JuMP.NodeData}
+    "Adjacency Matrix for the expression"
+    adj::SparseMatrixCSC{Bool,Int64}
+    const_values::Vector{Float64}
+    numberstorage::Vector{Float64}
+    tp1storage::Vector{Float64}
+    tp2storage::Vector{Float64}
+    tp3storage::Vector{Float64}
+    tp4storage::Vector{Float64}
+    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
+    grad_sparsity::Vector{Int64}
+    dependent_subexpressions::Vector{Int64}
+end
+
+function BufferedNonlinearIntv(func::JuMP._FunctionStorage, nlp_bnds::JuMP.ConstraintBounds)
+    copy(func.nd), copy(func.adj)
+end
+
+function BufferedNonlinearIneq()
+end
+
+"""
+$(FUNCTIONAME)
+
+Stores a general quadratic function with a buffer.
+"""
+mutable struct BufferedNonlinearSubexpression <: AbstractEAGOConstraint
+    nd::Vector{JuMP.NodeData}
+    adj::SparseMatrixCSC{Bool,Int64}
+    const_values::Vector{Float64}
+    setstorage::Vector{MC{N,T}}
+    numberstorage::Vector{Float64}
+    tp1storage::Vector{Float64}
+    tp2storage::Vector{Float64}
+    tp3storage::Vector{Float64}
+    tp4storage::Vector{Float64}
+    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
+    linearity::JuMP._Derivatives.Linearity
+end
+
+function BufferedNonlinearSubexpression(sub::JuMP._SubexpressionStorage)
+end

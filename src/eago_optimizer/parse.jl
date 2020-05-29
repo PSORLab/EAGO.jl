@@ -126,6 +126,54 @@ function label_branch_variables!(m::Optimizer)
     return nothing
 end
 
+
+function add_nonlinear_functions!(m::Optimizer)
+
+    #_objective_nl = nothing  #TODO post nonlinear work
+    #num_nlp_constraints = length(model.nlp_data.constraint_bounds)
+
+    nlp_data = m._input_problem._nlp_data
+    evaluator = nlp_data.evaluator::JuMP.NLPEvaluator
+    MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
+
+    # set nlp data structure
+    m._working_problem._nlp_data = nlp_data
+    parameter_values = copy(nlp_data.nlparamvalues)
+
+    # add nonlinear objective
+    if evaluator.has_nlobj
+        m._working_problem._objective_nl = BufferedNonlinearIneq(evaluator.objective, bnds) # TODO: define bnds
+        m._objective_type = NONLINEAR
+    end
+
+    for i = 1:length(evaluator.constraints)
+        
+        constraint = evaluator.constraints[i]
+        bnds = nlp_data.constraint_bounds
+
+        if isfinite(bnds.upper) && isinf(bnds.lower)
+            new_bnd = # TODO
+            push!(m._working_problem._nonlinear_leq, BufferedNonlinearIneq(constraint, bnds))
+
+        elseif isfinite(bnds.lower) && isinf(bnds.upper)
+            new_bnd = # TODO
+            push!(m._working_problem._nonlinear_leq, BufferedNonlinearIneq(-constraint, bnds))
+
+        elseif isfinite(bnds.lower) && isfinite(bnds.upper)
+            push!(m._working_problem._nonlinear_eq, BufferedNonlinearIntv(constraint, bnds))
+        end
+    end
+
+    for i = 1:length(evaluator.subexpressions)
+        subexpr = evaluator.subexpressions[i]
+        push!(m._working_problem._nonlinear_subexpr, BufferedNonlinearSubexpression(subexpr))
+    end
+    m._working_problem._nonlinear_leq_count = length(m._working_problem._nonlinear_leq)
+    m._working_problem._nonlinear_eq_count  = length(m._working_problem._nonlinear_eq)
+
+    return nothing
+end
+
 """
 Translates input problem to working problem. Routines and checks and optional manipulation is left to the presolve stage.
 """
@@ -200,10 +248,9 @@ function initial_parse!(m::Optimizer)
     m._working_problem._objective_saf = ip._objective_saf
     m._working_problem._objective_saf_parsed = AffineFunctionIneq(ip._objective_saf, LT_ZERO)
     m._working_problem._objective_sqf = BufferedQuadraticIneq(ip._objective_sqf, LT_ZERO)
-    #_objective_nl = nothing  #TODO post nonlinear work
 
-    # set nlp data structure
-    m._working_problem._nlp_data =  ip._nlp_data
+    # add nonlinear constraints
+    add_nonlinear_functions!(m)
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     convert_to_min!(m)

@@ -325,6 +325,10 @@ Base.@kwdef mutable struct ParsedProblem
     # nlp constraints (set in initial_parse)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
+    # storage for nonlinear functions
+    _nonlinear_leq::Vector{BufferedNonlinearIneq} = BufferedNonlinearIneq[]
+    _nonlinear_eq::Vector{BufferedNonlinearIntv} = BufferedNonlinearEq[]
+
     # nonlinear constraint storage
     _nonlinear_leq_count::Int = 0
     _nonlinear_eq_count::Int = 0
