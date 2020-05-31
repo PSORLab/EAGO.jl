@@ -194,9 +194,10 @@ function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::Un
     return nothing
 end
 
-function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::Int64, numvalued::Vector{Bool},
-                        numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
+function forward_minus!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
+                        children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
+                        setstorage::Vector{MC{N,T}}, current_node::NodeBB, subgrad_tighten::Bool,
+                        is_first_eval::Bool) where {N, T<:RelaxTag}
 
     # get row indices
     idx1 = first(children_idx)
@@ -392,44 +393,129 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
     return nothing
 end
 
+function forward_user_multivariate!()
+        op_sym = id_to_operator[op]
+        evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]
+        f_input = view(user_input_buffer, 1:n_children)
+        fnum_input = view(flt_user_input_buffer, 1:n_children)
+        r = 1
+        isnum = true
+        for c_idx in children_idx
+            @inbounds ix = children_arr[c_idx]
+            @inbounds chdset = numvalued[ix]
+            isnum &= chdset
+            if chdset
+                if isnum
+                    @inbounds fnum_input[r] = numberstorage[ix]
+                end
+                @inbounds f_input[r] = numberstorage[ix]
+            else
+                @inbounds f_input[r] = setstorage[ix]
+            end
+            r += 1
+        end
+        if isnum
+            numberstorage[k] = MOI.eval_objective(evaluator, fnum_input)
+        else
+            fval = MOI.eval_objective(evaluator, f_input)
+            #fval = Cassette.overdub(ctx, MOI.eval_objective, evaluator, f_input)
+            setstorage[k] = overwrite_or_intersect(fval, setstorage[k], x, lbd, ubd, is_post, is_intersect)
+        end
+        numvalued[k] = isnum
+    else
+        error("Unsupported operation $(operators[op])")
+    end
+
+    return nothing
+end
+
+function forward_univariate_number!()
+    return nothing
+end
+
+function forward_univariate_tiepnt_1!()
+    @inbounds tpdict_tuple = tpdict[k]
+    tindx1 = tpdict_tuple[1]
+    tindx2 = tpdict_tuple[2]
+    @inbounds tp1 = tp1storage[tindx1]
+    @inbounds tp2 = tp2storage[tindx2]
+    fval_mc, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, first_eval_flag)
+    @inbounds tp1storage[tindx] = tp1
+    @inbounds tp1storage[tindx] = tp2
+    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    return nothing
+end
+
+function forward_univariate_tiepnt_2!()
+    @inbounds tpdict_tuple = tpdict[k]
+    tindx1 = tpdict_tuple[1]
+    tindx2 = tpdict_tuple[2]
+    tindx3 = tpdict_tuple[3]
+    tindx4 = tpdict_tuple[4]
+    @inbounds tp1 = tp1storage[tindx1]
+    @inbounds tp2 = tp2storage[tindx2]
+    @inbounds tp3 = tp1storage[tindx3]
+    @inbounds tp4 = tp2storage[tindx4]
+    fval_mc, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, tp3, tp4, first_eval_flag)
+    @inbounds tp1storage[tindx1] = tp1
+    @inbounds tp2storage[tindx2] = tp2
+    @inbounds tp3storage[tindx1] = tp3
+    @inbounds tp4storage[tindx2] = tp4
+    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    return nothing
+end
+
+function forward_univariate_user!()
+    userop = op - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
+    @inbounds f = user_operators.univariate_operator_f[userop]
+    if arg_is_number
+        fval_num = f(child_val_num)
+        @inbounds numberstorage[k] = fval_num
+    else
+        fval_mc = f(child_val_mc) #Cassette.overdub(ctx, f, child_val_mc)
+        setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    end
+    return nothing
+end
+
+function forward_univariate_other!()
+    if chdset
+        fval_num = eval_univariate_set(op, child_val_num)
+        @inbounds numberstorage[k] = fval_num
+    else
+        #eval_univariate_set(op, child_val_mc)
+        fval_mc = Cassette.overdub(ctx, eval_univariate_set, op, child_val_mc)
+        setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    end
+    return nothing
+end
+
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
-function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
-                      nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64},
-                      current_node::NodeBB, x_values::Vector{Float64},
-                      subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N,T}},
-                      subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, flt_user_input_buffer::Vector{Float64},
-                      subgrad_tighten::Bool,
-                      tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
-                      tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
-                      first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry,
-                      seeds::Vector{SVector{N,Float64}},
-                      ctx::GuardCtx) where {N,T<:RelaxTag}
+function forward_pass!(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
+                       nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64},
+                       current_node::NodeBB, x_values::Vector{Float64},
+                       subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N,T}},
+                       subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, flt_user_input_buffer::Vector{Float64},
+                       subgrad_tighten::Bool,
+                       tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
+                       tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
+                       first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry,
+                       ctx::GuardCtx) where {N,T<:RelaxTag}
 
-    @assert length(numberstorage) >= length(nd)
-    @assert length(setstorage) >= length(nd)
-    @assert length(numvalued) >= length(nd)
-
-    set_value_sto = zero(MC{N,T})
     children_arr = rowvals(adj)
-    n = length(x_values)
 
-    tmp_num_1 = 0.0
-    tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N,T})
-    tmp_mc_2 = zero(MC{N,T})
     for k = length(nd):-1:1
         @inbounds nod = nd[k]
         op = nod.index
+
         if nod.nodetype == JuMP._Derivatives.VALUE
             numvalued[k] = true
+
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
             numvalued[k] = true
+
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
-            seed = seeds[op]
-            xMC = MC{N,T}(x_values[op], x_values[op],
-                        Interval{Float64}(current_node.lower_variable_bounds[op],
-                                     current_node.upper_variable_bounds[op]),
-                                     seed, seed, false)
+            xMC = MC{N,T}(x_values[op], Interval{Float64}(lvb[op], uvb[op]), Val(N))
 
             if first_eval_flag
                 @inbounds setstorage[k] = xMC
@@ -437,6 +523,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @inbounds setstorage[k] = xMC ∩ setstorage[k]
             end
             numvalued[k] = false
+
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION                          # DONE
             @inbounds isnum = subexpression_isnum[op]
             if isnum
@@ -445,126 +532,74 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @inbounds setstorage[k] = subexpr_values_set[op] #∩ setstorage[k]
             end
             numvalued[k] = isnum
+
         elseif nod.nodetype == JuMP._Derivatives.CALL
+
             @inbounds children_idx = nzrange(adj,k)
             n_children = length(children_idx)
-            if op == 1 # :+
-                forward_plus!(k, children_idx, children_arr, numvalued, numberstorage, setstorage, first_eval_flag)::Nothing
-            elseif op == 2 # :-
-                #println("FORWARD MINUS IN")
-                @assert n_children == 2
-                child1 = first(children_idx)
-                @inbounds ix1 = children_arr[child1]
-                @inbounds ix2 = children_arr[child1+1]
-                forward_minus!(k, x_values, ix1, ix2, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag)::Nothing
-                #println("FORWARD MINUS END[$k] = $(setstorage[k])")
-            elseif op == 3 # :*
-                #println("FORWARD MULTIPLY IN")
+
+            # :+ with arity two or greater
+            if op === 1 # :+
+                forward_plus!(k, children_idx, children_arr, numvalued, numberstorage, setstorage, first_eval_flag)
+
+            # :- with arity two
+            elseif op === 2
+                forward_minus!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
+                              setstorage, current_node, subgrad_tighten, first_eval_flag)
+
+            # :* with arity two or greater
+            elseif op === 3
                 forward_multiply!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                                  setstorage, current_node, subgrad_tighten, first_eval_flag)::Nothing
-                #println("FORWARD MULTIPLY END[$k] = $(setstorage[k])")
-            elseif op == 4 # :^                                                      # DONE
-                @assert n_children == 2
+                                  setstorage, current_node, subgrad_tighten, first_eval_flag)
+
+            # :^
+            elseif op === 4
                 forward_power!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)::Nothing
-            elseif op == 5 # :/                                                      # DONE
-                @assert n_children == 2
+                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
+
+            # :/
+            elseif op === 5
                 forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)::Nothing
+                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
+
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
-                op_sym = id_to_operator[op]
-                evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]
-                f_input = view(user_input_buffer, 1:n_children)
-                fnum_input = view(flt_user_input_buffer, 1:n_children)
-                r = 1
-                isnum = true
-                for c_idx in children_idx
-                    @inbounds ix = children_arr[c_idx]
-                    @inbounds chdset = numvalued[ix]
-                    isnum &= chdset
-                    if chdset
-                        if isnum
-                            @inbounds fnum_input[r] = numberstorage[ix]
-                        end
-                        @inbounds f_input[r] = numberstorage[ix]
-                    else
-                        @inbounds f_input[r] = setstorage[ix]
-                    end
-                    r += 1
-                end
-                if isnum
-                    numberstorage[k] = MOI.eval_objective(evaluator, fnum_input)
-                else
-                    fval = MOI.eval_objective(evaluator, f_input)
-                    #fval = Cassette.overdub(ctx, MOI.eval_objective, evaluator, f_input)
-                    setstorage[k] = overwrite_or_intersect(fval, setstorage[k], x, lbd, ubd, is_post, is_intersect)
-                end
-                numvalued[k] = isnum
-            else
-                error("Unsupported operation $(operators[op])")
-            end
+                forward_user_multivariate!()
+
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
-            @inbounds child_idx = children_arr[adj.colptr[k]]
-            @inbounds chdset = numvalued[child_idx]
-            if chdset
-                @inbounds child_val_num = numberstorage[child_idx]
+
+            # checks to see if operator is a number
+            @inbounds arg_idx = children_arr[adj.colptr[k]]
+            arg_is_number = @inbounds numvalued[arg_idx]
+            @inbounds numvalued[k] = arg_is_number
+
+            # performs univariate operators on number valued inputs
+            if arg_is_number
+                forward_univariate_number!()
+
+            # performs set valued operators that require a single tiepoint calculation
+            elseif single_tp(op)
+                forward_univariate_tiepnt_1!()
+
+            # performs set valued operators that require two tiepoint calculations
+            elseif double_tp(op)
+                forward_univariate_tiepnt_2!()
+
+            # performs set valued operators on user-defined univariate functions
+            elseif op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
+                forward_univariate_user!()
+
             else
-                @inbounds child_val_mc = setstorage[child_idx]
+                forward_univariate_other!()
+
             end
-            if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                userop = op - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
-                @inbounds f = user_operators.univariate_operator_f[userop]
-                if chdset
-                    fval_num = f(child_val_num)
-                    @inbounds numberstorage[k] = fval_num
-                else
-                    fval_mc = f(child_val_mc) #Cassette.overdub(ctx, f, child_val_mc)
-                    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
-                end
-            elseif single_tp(op) && chdset
-                @inbounds tpdict_tuple = tpdict[k]
-                tindx1 = tpdict_tuple[1]
-                tindx2 = tpdict_tuple[2]
-                @inbounds tp1 = tp1storage[tindx1]
-                @inbounds tp2 = tp2storage[tindx2]
-                fval_mc, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, first_eval_flag)
-                @inbounds tp1storage[tindx] = tp1
-                @inbounds tp1storage[tindx] = tp2
-                setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
-            elseif double_tp(op) && chdset
-                @inbounds tpdict_tuple = tpdict[k]
-                tindx1 = tpdict_tuple[1]
-                tindx2 = tpdict_tuple[2]
-                tindx3 = tpdict_tuple[3]
-                tindx4 = tpdict_tuple[4]
-                @inbounds tp1 = tp1storage[tindx1]
-                @inbounds tp2 = tp2storage[tindx2]
-                @inbounds tp3 = tp1storage[tindx3]
-                @inbounds tp4 = tp2storage[tindx4]
-                fval_mc, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, tp3, tp4, first_eval_flag)
-                @inbounds tp1storage[tindx1] = tp1
-                @inbounds tp2storage[tindx2] = tp2
-                @inbounds tp3storage[tindx1] = tp3
-                @inbounds tp4storage[tindx2] = tp4
-                setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
-            else
-                if chdset
-                    fval_num = eval_univariate_set(op, child_val_num)
-                    @inbounds numberstorage[k] = fval_num
-                else
-                    #eval_univariate_set(op, child_val_mc)
-                    fval_mc = Cassette.overdub(ctx, eval_univariate_set, op, child_val_mc)
-                    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
-                end
-            end
-            numvalued[k] = chdset
+
         else
             error("Unrecognized node type $(nod.nodetype).")
+
         end
     end
 
-    return
+    return nothing
 end
 
 # maximum number to perform reverse operation on associative term by summing
