@@ -169,9 +169,11 @@ end
 ###
 
 function extract_affine_term!(d::BufferedNonlinear{V}) where V
+    return d
 end
 
 function extract_affine_term!(d::BufferedNonlinearSubexpression{V}) where V
+    return d
 end
 
 
@@ -294,10 +296,76 @@ function BufferedNonlinearSubexpr{V}()
                                              Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
+
+###
+### Define forward evaluation pass
+###
+function forward_pass!(evaluator::Evaluator, d::BufferedNonlinear{V}) where V
+    for subexpr in d.dependent_subexpressions
+        forward_pass!(evaluator, subexpr)
+    end
+    # TODO: DEFINE PASS HERE
+    return nothing
+end
+
+function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearSubexpr{V}) where V
+    for subexpr in d.dependent_subexpressions
+        forward_pass!(evaluator, subexpr)
+    end
+    # TODO: DEFINE PASS HERE
+    return nothing
+end
+
+
+###
+### Define backwards evaluation pass
+###
+function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinear{V}) where V
+    # TODO: DEFINE PASS HERE
+    for subexpr in d.dependent_subexpressions
+        forward_pass!(evaluator, subexpr)
+    end
+    return nothing
+end
+
+function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearSubexpr{V}) where V
+    # TODO: DEFINE PASS HERE
+    for subexpr in d.dependent_subexpressions
+        forward_pass!(evaluator, subexpr)
+    end
+    return nothing
+end
+
+
 ###
 ### Interval bounding definitions
 ###
+function lower_interval_bound(d::BufferedNonlinear{V}, y::NodeBB) where V
+    check_set_node!(d.evaluator, y)
+    forward_pass!(d.evaluator, d)
+    return get_lo(d.value)
+end
+
+function lower_interval_bound(d::BufferedNonlinearSubexpr{V}, y::NodeBB) where V
+    check_set_node!(d.evaluator, y)
+    forward_pass!(d.evaluator, d)
+    return get_lo(d.value)
+end
+
+function interval_bound(d::BufferedNonlinear{V}, y::NodeBB) where V
+    check_set_node!(d.evaluator, y)
+    forward_pass!(d.evaluator, d)
+    return get_interval(d.value)
+end
+
+function interval_bound(d::BufferedNonlinearSubexpr{V}, y::NodeBB) where V
+    check_set_node!(d.evaluator, y)
+    forward_pass!(d.evaluator, d)
+    return get_interval(d.value)
+end
 
 ###
 ### Parsing definitions
 ###
+function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo})
+end
