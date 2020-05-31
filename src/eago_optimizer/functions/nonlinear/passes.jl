@@ -159,39 +159,57 @@ end
 function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::Int64, numvalued::Vector{Bool},
                         numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                         current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
-    tmp_num_1 = 0.0
-    tmp_mc_1 = zero(MC{N,T})
-    @inbounds chdset1 = numvalued[ix1]
-    @inbounds chdset2 = numvalued[ix2]
-    isnum = chdset1
-    isnum &= chdset2
-    if first_eval_flag
-        if isnum
-            @inbounds tmp_num_1 = numberstorage[ix1] - numberstorage[ix2]
-            @inbounds numberstorage[k] = tmp_num_1
-        elseif ~chdset1 && chdset2
-            @inbounds tmp_mc_1 = setstorage[ix1] - numberstorage[ix2]
-        elseif chdset1 && ~chdset2
-            @inbounds tmp_mc_1 = numberstorage[ix1] - setstorage[ix2]
-        else
-            @inbounds tmp_mc_1 = setstorage[ix1] - setstorage[ix2]
-        end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
     else
-        if ~chdset1 && chdset2
-            @inbounds tmp_mc_1 = McCormick.minus_kernel(setstorage[ix1], numberstorage[ix2], setstorage[k].Intv)
-        elseif chdset1 && ~chdset2
-            @inbounds tmp_mc_1 = McCormick.minus_kernel(numberstorage[ix1], setstorage[ix2], setstorage[k].Intv)
-        else
-            @inbounds tmp_mc_1 = McCormick.minus_kernel(setstorage[ix1], setstorage[ix2], setstorage[k].Intv)
-        end
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
     end
-    @inbounds numvalued[k] = isnum
-    #println("minus tmp_mc_1 = $(tmp_mc_1)")
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
+    end
+
+    # a - b
+    if output_is_number
+        @inbounds numberstorage[k] = num1 - num2
+
+    # x - b
+    elseif !arg1_is_number && arg2_is_number
+        outset = is_first_eval ? (set1 - num2) : minus_kernel(set1, num2, setstorage[k].Intv)
+
+    # a - y
+    elseif arg1_is_number && !arg2_is_number
+        outset = is_first_eval ? (num1 - set2) : minus_kernel(num1, set2, setstorage[k].Intv)
+
+    # x - y
+    else
+        outset = is_first_eval ? (set1 - set2) : minus_kernel(set1, set2, setstorage[k].Intv)
+
+    end
+
+    @inbounds numvalued[k] = output_is_number
     if ~isnum
-        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
-    #println("minus tmp_mc_1 = $(tmp_mc_1)")
-    return
+
+    return nothing
 end
 
 function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
@@ -235,8 +253,7 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
                         is_first_eval::Bool,
                         ctx::GuardCtx) where {N, T<:RelaxTag}
 
-    # get row indices, output not proven to be a number (rather than a set)
-    output_is_number = false
+    # get row indices
     idx1 = first(children_idx)
     idx2 = last(children_idx)
 
@@ -262,6 +279,9 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
         num2 = 0.0
     end
 
+    # is output a number (by closure of the reals)?
+    output_is_number = arg1_is_number && arg2_is_number
+
     # x^1 = x
     if num2 === 1.0
         if arg1_is_number
@@ -282,26 +302,25 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
         # a^b
         if arg1_is_number && arg2_is_number
             @inbounds numberstorage[k] = num1^num2
-            output_is_number = true
 
         # x^b
         elseif !arg1_is_number && arg2_is_number
-            set1 = is_first_eval ? pow(set1, num2) : ^(set1, num2, setstorage[k].Intv)
+            outset = is_first_eval ? pow(set1, num2) : ^(set1, num2, setstorage[k].Intv)
 
         # a^y
         elseif arg1_is_number  && !arg2_is_number
-            set1 = is_first_eval ? overdub(ctx, pow, num1, set2) : overdub(ctx, ^, num1, set2, setstorage[k].Intv)
+            outset = is_first_eval ? overdub(ctx, pow, num1, set2) : overdub(ctx, ^, num1, set2, setstorage[k].Intv)
 
         # x^y
         elseif !arg1_is_number && !arg2_is_number
-            set1 = is_first_eval ? overdub(ctx, pow, set1, set2) : overdub(ctx, ^, set1, set2, setstorage[k].Intv)
+            outset = is_first_eval ? overdub(ctx, pow, set1, set2) : overdub(ctx, ^, set1, set2, setstorage[k].Intv)
 
         end
     end
 
     @inbounds numvalued[k] = output_is_number
     if !output_is_number
-        setstorage[k] = overwrite_or_intersect(set1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
 
     return nothing
