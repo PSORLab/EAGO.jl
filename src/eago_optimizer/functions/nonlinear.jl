@@ -88,36 +88,99 @@ end
 
 empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
 
+"""
+$(FUNCTIONAME)
+
+Stores a general nonlinear function with a buffer represented by the sum of a tape
+and a scalar affine function.
+"""
+mutable struct BufferedNonlinear{V} <: AbstractEAGOConstraint
+
+    # node types connections and constants (tape description)
+    "List of nodes in nonlinear expression"
+    nd::Vector{JuMP.NodeData}
+    "Adjacency Matrix for the expression"
+    adj::SparseMatrixCSC{Bool, Int64}
+    const_values::Vector{Float64}
+    affine_term::SAF
+
+    # node values and descriptors (tape values)
+    setstorage::Vector{V}
+    numberstorage::Vector{Float64}
+    isnumber::Vector{Bool}
+    value::V
+    buffer::SAF
+
+    # storage for calculated tie-points (intermediate storage)
+    tp1storage::Vector{Float64}
+    tp2storage::Vector{Float64}
+    tp3storage::Vector{Float64}
+    tp4storage::Vector{Float64}
+    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
+
+    # sparsity of constraint + indices in node to reference
+    grad_sparsity::Vector{Int64}       # indices of variables in the problem space (size = np)
+    is_branch::Vector{Bool}            # is variable (size = np1)
+    branch_indices::Vector{Int64}      # map variable pos to pos in node (-1 if nonbranching)
+
+    # role in problem
+    dependent_variable_count::Int
+    dependent_subexpressions::Vector{Int64}
+    bnds::MOI.NLPBoundsPair
+    linearity::JuMP._Derivatives.Linearity
+end
 
 """
 $(FUNCTIONAME)
 
 Stores a general quadratic function with a buffer.
 """
-mutable struct BufferedNonlinear{V} <: AbstractEAGOConstraint
-    "List of nodes in nonlinear expression"
+mutable struct BufferedNonlinearSubexpression{V} <: AbstractEAGOConstraint
+
     nd::Vector{JuMP.NodeData}
-    "Adjacency Matrix for the expression"
-    adj::SparseMatrixCSC{Bool, Int64}
+    adj::SparseMatrixCSC{Bool,Int64}
     const_values::Vector{Float64}
+    affine_term::SAF
+
     setstorage::Vector{V}
     numberstorage::Vector{Float64}
     isnumber::Vector{Bool}
+    value::V
+
     tp1storage::Vector{Float64}
     tp2storage::Vector{Float64}
     tp3storage::Vector{Float64}
     tp4storage::Vector{Float64}
     tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
-    grad_sparsity::Vector{Int64}
+
+    # sparsity of constraint + indices in node to reference
+    grad_sparsity::Vector{Int64}       # indices of variables in the problem space (size = np)
+    is_branch::Vector{Bool}            # is variable (size = np1)
+    branch_indices::Vector{Int64}      # map variable pos to pos in node (-1 if nonbranching)
+
+    # role in problem
     dependent_variable_count::Int
     dependent_subexpressions::Vector{Int64}
-    bnds::MOI.NLPBoundsPair
     linearity::JuMP._Derivatives.Linearity
-    buffer::SAF
 end
 
+###
+### Constructor utilities
+###
+
+function extract_affine_term!(d::BufferedNonlinear{V}) where V
+end
+
+function extract_affine_term!(d::BufferedNonlinearSubexpression{V}) where V
+end
+
+
+###
+### Constructor definitions
+###
 function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
-                           subexpr_linearity::Vector{JuMP._Derivatives.Linearity}, tag::T) where T <: RelaxTag
+                           subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                           tag::T) where T <: RelaxTag
 
     nd = copy(func.nd)
     adj = copy(func.adj)
@@ -149,51 +212,34 @@ function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
     tp4storage = zeros(tp2_count)
 
     dependent_variable_count = length(func.grad_sparsity)
-    grad_sparsity = copy(func.grad_sparsity)                         # sorted by JUmp, _FunctionStorage
-
-    dependent_subexpressions = copy(func.dependent_subexpressions)
-
-    linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
-
     saf_buffer = SAF(SAT[SAT(0.0, VI(-1)) for i=1:dependent_variable_count], 0.0)
 
-    return BufferedNonlinear{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage, isnumber, tp1storage, tp2storage,
-                                      tp3storage, tp4storage, tpdict, grad_sparsity, dependent_variable_count,
-                                      dependent_subexpressions,
-                                      bnds, linearity, saf_buffer)
+    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
+    is_branch = Bool[]                        # set in label_branch_variables routine
+    branch_indices = Bool[]                   # set in label_branch_variables routine
+
+    dependent_subexpressions = copy(func.dependent_subexpressions)
+    linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
+
+    nonlinear_constraint =  BufferedNonlinear{MC{N,T}}(nd, adj, const_values,  SAF(SAT[], 0.0),
+                                                       setstorage, numberstorage, isnumber, saf_buffer, zero(MC{N,T}),
+                                                       tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
+                                                       grad_sparsity, is_branch, branch_indices,
+                                                       dependent_variable_count, dependent_subexpressions, bnds, linearity)
+    return extract_affine_term(nonlinear_constraint)
 end
 
 function BufferedNonlinear{V}()
-    return BufferedNonlinear{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], V[],
-                                Float64[], Bool[], Float64[], Float64[], Float64[], Float64[],
-                                Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(), Int64[], 0, Int64[],
-                                MOI.NLPBoundsPair(-Inf, Inf), JuMP._Derivatives.CONSTANT, SAF(SAT[], 0.0))
+    return BufferedNonlinear{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[],
+                                V[], Float64[], Bool[], zero(V), SAF(SAT[], 0.0),
+                                Float64[], Float64[], Float64[], Float64[], Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
+                                Int64[], 0, Int64[],
+                                MOI.NLPBoundsPair(-Inf, Inf), JuMP._Derivatives.CONSTANT)
 end
 
-"""
-$(FUNCTIONAME)
-
-Stores a general quadratic function with a buffer.
-"""
-mutable struct BufferedNonlinearSubexpression <: AbstractEAGOConstraint
-    nd::Vector{JuMP.NodeData}
-    adj::SparseMatrixCSC{Bool,Int64}
-    const_values::Vector{Float64}
-    setstorage::Vector{MC{N,T}}
-    numberstorage::Vector{Float64}
-    isnumber::Vector{Bool}
-    tp1storage::Vector{Float64}
-    tp2storage::Vector{Float64}
-    tp3storage::Vector{Float64}
-    tp4storage::Vector{Float64}
-    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
-    linearity::JuMP._Derivatives.Linearity
-    sparsity::Vector{Int64}
-end
-
-function BufferedNonlinearSubexpression{V}(sub::JuMP._SubexpressionStorage,
-                                           subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                                           tag::T) where T
+function BufferedNonlinearSubexpr{V}(sub::JuMP._SubexpressionStorage,
+                                     subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                                     tag::T) where T
     nd = copy(func.nd)
     adj = copy(func.adj)
     const_values = copy(func.const_values)
@@ -222,8 +268,21 @@ function BufferedNonlinearSubexpression{V}(sub::JuMP._SubexpressionStorage,
     tp3storage = zeros(tp2_count)
     tp4storage = zeros(tp2_count)
 
+    dependent_subexpressions = copy(func.dependent_subexpressions)
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
     grad_sparsity = #TODO DEFINE ME!
-    BufferedNonlinearSubexpression{MC{N,T}}()
+    subexpression = BufferedNonlinearSubexpression{MC{N,T}}(dependent_subexpressions, JuMP._Derivatives.CONSTANT)
+    extract_affine_term!(subexpression)
 end
+
+function BufferedNonlinearSubexpr{V}()
+end
+
+###
+### Interval bounding definitions
+###
+
+###
+### Parsing definitions
+###

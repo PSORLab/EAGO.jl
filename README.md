@@ -151,6 +151,11 @@ If any issues are encountered when loading EAGO (or when using it), please submi
 
 Please report bugs or feature requests by opening an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues). All manners of feedback are encouraged.
 
+## Current limitations
+- Nonlinear handling assumes that box-constraints of nonlinear terms are available or can be inferred from bounds-tightening.
+- Only currently supports continuous functions. Support for mixed-integer problems is forthcoming.
+
+
 ## Work In Progress
 - Extensions for nonconvex dynamic global & robust optimization.
 - Provide support for mixed-integer problems.
