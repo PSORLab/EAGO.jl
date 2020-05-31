@@ -230,10 +230,10 @@ function BufferedNonlinear(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
 end
 
 function BufferedNonlinear{V}()
-    return BufferedNonlinear{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[],
+    return BufferedNonlinear{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
                                 V[], Float64[], Bool[], zero(V), SAF(SAT[], 0.0),
                                 Float64[], Float64[], Float64[], Float64[], Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
-                                Int64[], 0, Int64[],
+                                Int64[], Bool[], Int64[], 0,
                                 MOI.NLPBoundsPair(-Inf, Inf), JuMP._Derivatives.CONSTANT)
 end
 
@@ -271,12 +271,27 @@ function BufferedNonlinearSubexpr{V}(sub::JuMP._SubexpressionStorage,
     dependent_subexpressions = copy(func.dependent_subexpressions)
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
-    grad_sparsity = #TODO DEFINE ME!
-    subexpression = BufferedNonlinearSubexpression{MC{N,T}}(dependent_subexpressions, JuMP._Derivatives.CONSTANT)
+    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
+    is_branch = Bool[]                        # set in label_branch_variables routine
+    branch_indices = Bool[]                   # set in label_branch_variables routine
+
+    grad_sparsity = Float64[]
+    subexpression = BufferedNonlinearSubexpression{MC{N,T}}(nd, adj, const_values, SAF(SAT[], 0.0),
+                                                            setstorage, numberstorge, isnumber, zero(MC{N,T}),
+                                                            dependent_variable_count, dependent_subexpressions,
+                                                            tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
+                                                            grad_sparsity, is_branch, branch_indices,
+                                                            JuMP._Derivatives.CONSTANT)
     extract_affine_term!(subexpression)
 end
 
+
 function BufferedNonlinearSubexpr{V}()
+    return BufferedNonlinearSubexpression{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
+                                             V[], Float64[], Bool[], zero(V),
+                                             Float64[], Float64[], Float64[], Float64[],
+                                             Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
+                                             Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
 ###
