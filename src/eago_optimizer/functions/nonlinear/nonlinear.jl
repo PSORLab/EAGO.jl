@@ -11,83 +11,6 @@
 # TODO
 #############################################################################
 
-#=
-NodeType convention is defined to parallel JuMP's nonlinear evaluator
-@enum NodeType: CALL CALLUNIVAR VARIABLE VALUE SUBEXPRESSION PARAMETER
-
-const OPERATORS = [:+, :-, :*, :^, :/, :ifelse, :max, :min]
-const USER_OPERATOR_ID_START = length(operators) + 1
-const OPERATOR_TO_ID = Dict{Symbol,Int}()
-for i = 1:length(OPERATORS)
-    OPERATOR_TO_ID[OPERATORS[i]] = i
-end
-
-const UNIVARIATE_OPERATORS = Symbol[:+, :-, :abs]
-const UNIVARIATE_OPERATOR_TO_ID = Dict{Symbol,Int}(:+ => 1, :- => 2, :abs => 3)
-const UNIVARIATE_OPERATOR_DERIV = Any[:(one(x)), :(-one(x)), :(ifelse(x >= 0, one(x), -one(x)))]
-for (op, deriv) in Calculus.symbolic_derivatives_1arg()
-    push!(UNIVARIATE_OPERATORS, op)
-    push!(UNIVARIATE_OPERATOR_DERIV, deriv)
-    UNIVARIATE_OPERATOR_TO_ID[op] = length(UNIVARIATE_OPERATORS)
-end
-const USER_UNIVAR_OPERATOR_ID_START = length(UNIVARIATE_OPERATORS) + 1
-
-"""
-$(TYPDEF)
-
-Stores a general nonlinear function with a buffer.
-"""
-mutable struct BufferedNonlinearEq{N, T<:RelaxTag} <: AbstractEAGOConstraint
-    "Main evaluator"
-    evaluator::Evaluator
-    "List of nodes in nonlinear expression"
-    node_list::NodeData
-    const_values::Vector{Float64}
-    set_storage::Vector{MC{N,T}}
-    grad_sparsity::Vector{Int64}
-    dependent_subexpressions::Vector{Int64}
-end
-
-function interval_bound(f::BufferedNonlinearEq{N,T}, n::NodeBB) where {N, T<:RelaxTag}
-end
-
-function relax!(m::Optimizer, f::BufferedNonlinearEq{N,T}, indx::Int, check_safe::Bool) where {N, T<:RelaxTag}
-end
-
-=#
-
-####
-#### Nonlinear Storage
-####
-
-struct EmptyNLPEvaluator <: MOI.AbstractNLPEvaluator
-    _current_node::NodeBB
-    has_nlobj::Bool
-end
-EmptyNLPEvaluator() = EmptyNLPEvaluator(NodeBB(),false)
-set_current_node!(x::EmptyNLPEvaluator, n::NodeBB) = ()
-
-MOI.features_available(::EmptyNLPEvaluator) = [:Grad, :Jac, :Hess]
-MOI.initialize(::EmptyNLPEvaluator, features) = nothing
-MOI.eval_objective(::EmptyNLPEvaluator, x) = NaN
-function MOI.eval_constraint(::EmptyNLPEvaluator, g, x)
-    @assert length(g) == 0
-    return
-end
-MOI.eval_objective_gradient(::EmptyNLPEvaluator, g, x) = nothing
-MOI.jacobian_structure(::EmptyNLPEvaluator) = Tuple{Int64,Int64}[]
-MOI.hessian_lagrangian_structure(::EmptyNLPEvaluator) = Tuple{Int64,Int64}[]
-function MOI.eval_constraint_jacobian(::EmptyNLPEvaluator, J, x)
-    @assert length(J) == 0
-    return
-end
-function MOI.eval_hessian_lagrangian(::EmptyNLPEvaluator, H, x, σ, μ)
-    @assert length(H) == 0
-    return
-end
-
-empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
-
 """
 $(FUNCTIONAME)
 
@@ -287,7 +210,6 @@ function BufferedNonlinearSubexpr{V}(sub::JuMP._SubexpressionStorage,
     extract_affine_term!(subexpression)
 end
 
-
 function BufferedNonlinearSubexpr{V}()
     return BufferedNonlinearSubexpression{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
                                              V[], Float64[], Bool[], zero(V),
@@ -296,6 +218,47 @@ function BufferedNonlinearSubexpr{V}()
                                              Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
+###
+### Defines evaluator storage structure
+###
+"""
+$(TYPEDEF)
+
+MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
+
+$(TYPEDFIELDS)
+"""
+Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
+
+    user_operators::JuMP._Derivatives.UserOperatorRegistry = JuMP._Derivatives.UserOperatorRegistry()
+    has_user_mv_operator::Bool = false
+    parameter_values::Vector{Float64} = Float64[]
+
+    current_node::NodeBB = NodeBB()
+    lower_variable_bounds::Vector{Float64} = Float64[]
+    upper_variable_bounds::Vector{Float64} = Float64[]
+    x_value::Vector{Float64} = Float64[]
+
+    "Context used to guard against domain violations & branch on these violations if necessary"
+    subgrad_tighten::Bool = false
+    subgrad_tighten_reverse::Bool = false
+    ctx::GuardCtx = GuardCtx()
+
+    subexpressions::Vector{SubexpressionSetStorage{N,T}}
+end
+
+"""
+$(FUNCTIONNAME)
+
+Sets the current node in the Evaluator structure.
+"""
+function set_node!(x::Evaluator, n::NodeBB)
+    x.current_node = NodeBB(n)
+    return nothing
+end
+
+# TODO: Unpacks variable bounds....
+get_node(d::Evaluator) = d.current_node
 
 ###
 ### Define forward evaluation pass
@@ -341,25 +304,21 @@ end
 ### Interval bounding definitions
 ###
 function lower_interval_bound(d::BufferedNonlinear{V}, y::NodeBB) where V
-    check_set_node!(d.evaluator, y)
     forward_pass!(d.evaluator, d)
     return get_lo(d.value)
 end
 
 function lower_interval_bound(d::BufferedNonlinearSubexpr{V}, y::NodeBB) where V
-    check_set_node!(d.evaluator, y)
     forward_pass!(d.evaluator, d)
     return get_lo(d.value)
 end
 
 function interval_bound(d::BufferedNonlinear{V}, y::NodeBB) where V
-    check_set_node!(d.evaluator, y)
     forward_pass!(d.evaluator, d)
     return get_interval(d.value)
 end
 
 function interval_bound(d::BufferedNonlinearSubexpr{V}, y::NodeBB) where V
-    check_set_node!(d.evaluator, y)
     forward_pass!(d.evaluator, d)
     return get_interval(d.value)
 end
