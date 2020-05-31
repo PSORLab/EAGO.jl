@@ -18,72 +18,79 @@ $(FUNCTIONNAME)
 Post process set_value operator. By default, performs the affine interval cut on
 a MC structure.
 """
-function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, node::NodeBB, flag::Bool) where {N, T<:RelaxTag}
+function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_bounds::Vector{Float64},
+                        upper_variable_bounds::Vector{Float64}) where {N, T<:RelaxTag}
 
-    if flag
-        #println("val.cv_grad 1: $(val.cv_grad)")
-        #println("val.cc_grad 1: $(val.cc_grad)")
-        #println("ran set value post inner")
-        lower = val.cv
-        upper = val.cc
-        lower_refinement = true
-        upper_refinement = true
+    lower = val.cv
+    upper = val.cc
+    lower_refinement = true
+    upper_refinement = true
 
-        for i = 1:N
+    for i = 1:N
 
-            x_val = @inbounds x_values[i]
-            cv_val = @inbounds val.cv_grad[i]
-            cc_val = @inbounds val.cc_grad[i]
+        x_val = @inbounds x_values[i]
+        cv_val = @inbounds val.cv_grad[i]
+        cc_val = @inbounds val.cc_grad[i]
 
-            lower_bound = @inbounds node.lower_variable_bounds[i]
-            upper_bound = @inbounds node.upper_variable_bounds[i]
+        lower_bound = @inbounds lower_variable_bounds[i]
+        upper_bound = @inbounds upper_variable_bounds[i]
 
-            if lower_refinement
-                if cv_val > 0.0
-                    if isinf(lower_bound)
-                        !upper_refinement && break
-                        lower_refinement = false
-                    else
-                        lower += cv_val*(lower_bound - x_val)
-                    end
+        if lower_refinement
+            if cv_val > 0.0
+                if isinf(lower_bound)
+                    !upper_refinement && break
+                    lower_refinement = false
                 else
-                    if isinf(upper_bound)
-                        !upper_refinement && break
-                        lower_refinement = false
-                    else
-                        lower += cv_val*(upper_bound - x_val)
-                    end
+                    lower += cv_val*(lower_bound - x_val)
                 end
-            end
-
-            if upper_refinement
-                if cc_val > 0.0
-                    if isinf(lower_bound)
-                        !lower_refinement && break
-                        upper_refinement = false
-                    else
-                        upper += cc_val*(upper_bound - x_val)
-                    end
+            else
+                if isinf(upper_bound)
+                    !upper_refinement && break
+                    lower_refinement = false
                 else
-                    if isinf(upper_bound)
-                        !lower_refinement && break
-                        upper_refinement = false
-                    else
-                        upper += cc_val*(lower_bound - x_val)
-                    end
+                    lower += cv_val*(upper_bound - x_val)
                 end
             end
         end
 
-        lower = lower_refinement ? max(lower, val.Intv.lo) : val.Intv.lo
-        upper = upper_refinement ? min(upper, val.Intv.hi) : val.Intv.hi
-
-        #println("val.cv_grad 2: $(val.cv_grad)")
-        #println("val.cc_grad 2: $(val.cc_grad)")
-        return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
+        if upper_refinement
+            if cc_val > 0.0
+                if isinf(lower_bound)
+                    !lower_refinement && break
+                    upper_refinement = false
+                else
+                    upper += cc_val*(upper_bound - x_val)
+                end
+            else
+                if isinf(upper_bound)
+                    !lower_refinement && break
+                    upper_refinement = false
+                else
+                    upper += cc_val*(lower_bound - x_val)
+                end
+            end
+        end
     end
 
-    return val
+    lower = lower_refinement ? max(lower, val.Intv.lo) : val.Intv.lo
+    upper = upper_refinement ? min(upper, val.Intv.hi) : val.Intv.hi
+
+    return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
+end
+
+"""
+"""
+function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float64}, lbd::Vector{Float64},
+                                ubd::Vector{Float64}, is_post::Bool, is_intersect::Bool)
+
+    if is_post && is_intersect
+        return set_value_post(x, xMC ∩ past_xMC, lbd, ubd)
+    elseif is_post && !is_intersect
+        return set_value_post(x, xMC, lbd, ubd)
+    elseif !is_post && is_intersect
+        return x ∩ past_xMC
+    end
+    return xMC
 end
 
 function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
@@ -143,11 +150,7 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
     if isnum
         @inbounds numberstorage[k] = tmp_num
     else
-        if first_eval_flag
-            @inbounds setstorage[k] = tmp_num + tmp_mc
-        else
-            @inbounds setstorage[k] = (tmp_num + tmp_mc) ∩ setstorage[k]
-        end
+        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
 
     return
@@ -185,11 +188,7 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
     @inbounds numvalued[k] = isnum
     #println("minus tmp_mc_1 = $(tmp_mc_1)")
     if ~isnum
-        if first_eval_flag
-            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
-        else
-            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
-        end
+        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
     #println("minus tmp_mc_1 = $(tmp_mc_1)")
     return
@@ -229,26 +228,9 @@ function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::Un
         numberstorage[k] = tmp_num_1
     else
         tmp_mc_1 *= tmp_num_1
-        #println("s tmp_mc_1 = $(tmp_mc_1)")
-        if first_eval_flag
-            #println("1 setstorage[$k] = $(setstorage[k])")
-            #println("x_values = $(x_values)")
-            #println("tmp_mc_1 = $(tmp_mc_1)")
-            #println("current_node = $(current_node)")
-            #println("subgrad_tighten = $(subgrad_tighten)")
-            setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
-            #println("1 setstorage[$k] = $(setstorage[k])")
-        else
-            #println("2 setstorage[$k] = $(setstorage[k])")
-            setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
-            #println("2 setstorage[$k] = $(setstorage[k])")
-        end
-        #println("o tmp_mc_1 = $(tmp_mc_1)")
+        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
     numvalued[k] = isnum
-    #println("numvalued[$k] = $(numvalued[k])")
-    #println("setstorage[$k] = $(setstorage[k])")
-    #println("numberstorage[$k] = $(numberstorage[k])")
     return
 end
 
@@ -304,11 +286,7 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
                     @inbounds tmp_mc_1 = Cassette.overdub(ctx, ^, tmp_mc_1, tmp_mc_2, setstorage[k].Intv)
                 end
             end
-            if first_eval_flag
-                @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
-            else
-                @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
-            end
+            setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
         end
     end
     @inbounds numvalued[k] = (chdset1 & chdset2)
@@ -363,11 +341,7 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
                 tmp_mc_1 = McCormick.div_kernel(tmp_mc_1, tmp_mc_2, intv_k) #TODO: Overdub this with guard context
             end
         end
-        if first_eval_flag
-            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1, current_node, subgrad_tighten)
-        else
-            @inbounds setstorage[k] = set_value_post(x_values, tmp_mc_1 ∩ setstorage[k], current_node, subgrad_tighten)
-        end
+        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
     @inbounds numvalued[k] = chdset1 & chdset2
     return
@@ -401,8 +375,6 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
     for k = length(nd):-1:1
         @inbounds nod = nd[k]
         op = nod.index
-        #println(" ")
-        #println("foward pass op = $op (of type = $(nod.nodetype)), setstorage[$k] = $(setstorage[k]), numberstorage[$k] = $(numberstorage[k])")
         if nod.nodetype == JuMP._Derivatives.VALUE
             numvalued[k] = true
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
@@ -413,6 +385,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                         Interval{Float64}(current_node.lower_variable_bounds[op],
                                      current_node.upper_variable_bounds[op]),
                                      seed, seed, false)
+
             if first_eval_flag
                 @inbounds setstorage[k] = xMC
             else
@@ -480,11 +453,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 else
                     fval = MOI.eval_objective(evaluator, f_input)
                     #fval = Cassette.overdub(ctx, MOI.eval_objective, evaluator, f_input)
-                    if first_eval_flag
-                        setstorage[k] = set_value_post(x_values, fval, current_node, subgrad_tighten)
-                    else
-                        setstorage[k] = set_value_post(x_values, fval ∩ setstorage[k], current_node, subgrad_tighten)
-                    end
+                    setstorage[k] = overwrite_or_intersect(fval, setstorage[k], x, lbd, ubd, is_post, is_intersect)
                 end
                 numvalued[k] = isnum
             else
@@ -506,11 +475,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                     @inbounds numberstorage[k] = fval_num
                 else
                     fval_mc = f(child_val_mc) #Cassette.overdub(ctx, f, child_val_mc)
-                    if first_eval_flag
-                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
-                    else
-                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
-                    end
+                    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
                 end
             elseif single_tp(op) && chdset
                 @inbounds tpdict_tuple = tpdict[k]
@@ -521,11 +486,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 fval_mc, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, first_eval_flag)
                 @inbounds tp1storage[tindx] = tp1
                 @inbounds tp1storage[tindx] = tp2
-                if first_eval_flag
-                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
-                else
-                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
-                end
+                setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
             elseif double_tp(op) && chdset
                 @inbounds tpdict_tuple = tpdict[k]
                 tindx1 = tpdict_tuple[1]
@@ -541,11 +502,7 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 @inbounds tp2storage[tindx2] = tp2
                 @inbounds tp3storage[tindx1] = tp3
                 @inbounds tp4storage[tindx2] = tp4
-                if first_eval_flag
-                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
-                else
-                    @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
-                end
+                setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
             else
                 if chdset
                     fval_num = eval_univariate_set(op, child_val_num)
@@ -553,21 +510,14 @@ function forward_eval(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64
                 else
                     #eval_univariate_set(op, child_val_mc)
                     fval_mc = Cassette.overdub(ctx, eval_univariate_set, op, child_val_mc)
-                    if first_eval_flag
-                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc, current_node, subgrad_tighten)
-                    else
-                        @inbounds setstorage[k] = set_value_post(x_values, fval_mc ∩ setstorage[k], current_node, subgrad_tighten)
-                    end
+                    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
                 end
             end
             numvalued[k] = chdset
         else
             error("Unrecognized node type $(nod.nodetype).")
         end
-        #println("value[$k] = $(numvalued[k] ? numberstorage[k] : setstorage[k]) ")
     end
-    #println(" ")
-    #println(" forward op final = $(setstorage[1])")
 
     return
 end
