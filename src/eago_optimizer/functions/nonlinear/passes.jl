@@ -79,6 +79,9 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
 end
 
 """
+$(FUNCTIONNAME)
+
+Intersects the new set valued operator with the prior and performing `set_value_post` if the flag is...
 """
 function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float64}, lbd::Vector{Float64},
                                 ubd::Vector{Float64}, is_post::Bool, is_intersect::Bool)
@@ -156,6 +159,41 @@ function forward_plus!(k::Int64, children_idx::UnitRange{Int64}, children_arr::V
     return
 end
 
+function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
+                           numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                           current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
+    #println("forward multiply kernel")
+    tmp_num_1 = 1.0
+    tmp_mc_1 = one(MC{N,T})
+    isnum = true
+    chdset = true
+    is_first = true
+    for c_idx in children_idx
+        cix = @inbounds children_arr[c_idx]
+        chdset = @inbounds numvalued[cix]
+        isnum &= chdset
+        if chdset
+            tmp_num_1 *= @inbounds numberstorage[cix]
+        else
+            if is_first
+                tmp_mc_1 = @inbounds setstorage[cix]
+                is_first = false
+            else
+                tmp_mc_1 = tmp_mc_1*(@inbounds setstorage[cix])
+            end
+        end
+    end
+    if isnum
+        numberstorage[k] = tmp_num_1
+    else
+        tmp_mc_1 *= tmp_num_1
+        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    end
+    numvalued[k] = isnum
+
+    return nothing
+end
+
 function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::Int64, numvalued::Vector{Bool},
                         numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                         current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
@@ -212,41 +250,6 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, ix1::Int64, ix2::In
     return nothing
 end
 
-function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
-                           numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                           current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
-    #println("forward multiply kernel")
-    tmp_num_1 = 1.0
-    tmp_mc_1 = one(MC{N,T})
-    isnum = true
-    chdset = true
-    is_first = true
-    for c_idx in children_idx
-        cix = @inbounds children_arr[c_idx]
-        chdset = @inbounds numvalued[cix]
-        isnum &= chdset
-        if chdset
-            tmp_num_1 *= @inbounds numberstorage[cix]
-        else
-            if is_first
-                tmp_mc_1 = @inbounds setstorage[cix]
-                is_first = false
-            else
-                tmp_mc_1 = tmp_mc_1*(@inbounds setstorage[cix])
-            end
-        end
-    end
-    if isnum
-        numberstorage[k] = tmp_num_1
-    else
-        tmp_mc_1 *= tmp_num_1
-        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
-    end
-    numvalued[k] = isnum
-
-    return nothing
-end
-
 function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
                         children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
                         setstorage::Vector{MC{N,T}}, current_node::NodeBB, subgrad_tighten::Bool,
@@ -281,6 +284,7 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
 
     # is output a number (by closure of the reals)?
     output_is_number = arg1_is_number && arg2_is_number
+    @inbounds numvalued[k] = output_is_number
 
     # x^1 = x
     if num2 === 1.0
@@ -289,6 +293,7 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
         else
             @inbounds setstorage[k] = set1
         end
+        return nothing
 
     # x^0 = 1
     elseif num2 === 0.0
@@ -297,6 +302,7 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
         else
             @inbounds setstorage[k] = zero(MC{N,T})
         end
+        return nothing
 
     else
         # a^b
@@ -318,7 +324,6 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
         end
     end
 
-    @inbounds numvalued[k] = output_is_number
     if !output_is_number
         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
@@ -333,51 +338,58 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
                          subgrad_tighten::Bool,
                          first_eval_flag::Bool,
                          ctx::GuardCtx) where {N,T<:RelaxTag}
-    tmp_num_1 = 0.0
-    tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N,T})
-    tmp_mc_2 = zero(MC{N,T})
+
+    # get row indices
     idx1 = first(children_idx)
     idx2 = last(children_idx)
-    @inbounds ix1 = children_arr[idx1]
-    @inbounds ix2 = children_arr[idx2]
-    @inbounds chdset1 = numvalued[ix1]
-    @inbounds chdset2 = numvalued[ix2]
-    if chdset1
-        @inbounds tmp_num_1 = numberstorage[ix1]
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
     else
-        @inbounds tmp_mc_1 = setstorage[ix1]
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
     end
-    if chdset2
-        @inbounds tmp_num_2 = numberstorage[ix2]
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
     else
-        @inbounds tmp_mc_2 = setstorage[ix2]
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
     end
-    if chdset1 && chdset2
-        @inbounds numberstorage[k] = tmp_num_1/tmp_num_2
+
+    # is output a number (by closure of the reals)?
+    output_is_number = arg1_is_number && arg2_is_number
+    @inbounds numvalued[k] = output_is_number
+
+    # a/b
+    if output_is_number
+        @inbounds numberstorage[k] = num1/num2
+
+    # x/b
+    elseif !arg1_is_number && arg2_is_number
+        outset = is_first_eval ? set1/num2 : div_kernel(set1, num2, setstorage[k].Intv)
+
+    # a/y
+    elseif arg1_is_number && !arg2_is_number
+        outset = is_first_eval ? num1/set2 : div_kernel(num1, set2, setstorage[k].Intv)
+
+    # x/y
     else
-        if first_eval_flag
-            if !chdset1 && chdset2
-                tmp_mc_1 = tmp_mc_1/tmp_num_2
-            elseif chdset1 && !chdset2
-                tmp_mc_1 = tmp_num_1/tmp_mc_2
-            elseif !chdset1 && !chdset2
-                tmp_mc_1 = tmp_mc_1/tmp_mc_2 #TODO: Overdub this with guard context
-            end
-        else
-            @inbounds intv_k = setstorage[k].Intv
-            if !chdset1 && chdset2
-                tmp_mc_1 = McCormick.div_kernel(tmp_mc_1, tmp_num_2, intv_k)
-            elseif chdset1 && !chdset2
-                tmp_mc_1 = McCormick.div_kernel(tmp_num_1, tmp_mc_2, intv_k)
-            elseif !chdset1 && !chdset2
-                tmp_mc_1 = McCormick.div_kernel(tmp_mc_1, tmp_mc_2, intv_k) #TODO: Overdub this with guard context
-            end
-        end
-        setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        outset = is_first_eval ? set1/set2 : div_kernel(set1, set2, setstorage[k].Intv)
+
     end
-    @inbounds numvalued[k] = chdset1 & chdset2
-    return
+
+    @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+
+    return nothing
 end
 
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
