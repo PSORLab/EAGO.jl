@@ -208,19 +208,13 @@ function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::Un
         chdset = @inbounds numvalued[cix]
         isnum &= chdset
         if chdset
-            #println("numberstorage[$cix] = $(numberstorage[cix])")
             tmp_num_1 *= @inbounds numberstorage[cix]
         else
-            #println("setstorage[$cix] = $(setstorage[cix])")
             if is_first
-                #println(" is first")
                 tmp_mc_1 = @inbounds setstorage[cix]
-                #println("first tmp_mc_1 = $(tmp_mc_1)")
                 is_first = false
             else
-                #println(" is next first")
                 tmp_mc_1 = tmp_mc_1*(@inbounds setstorage[cix])
-                #println("next tmp_mc_1 = $(tmp_mc_1)")
             end
         end
     end
@@ -231,66 +225,86 @@ function forward_multiply!(k::Int64, x_values::Vector{Float64}, children_idx::Un
         setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
     numvalued[k] = isnum
-    return
+
+    return nothing
 end
 
 function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
                         children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
                         setstorage::Vector{MC{N,T}}, current_node::NodeBB, subgrad_tighten::Bool,
-                        first_eval_flag::Bool,
+                        is_first_eval::Bool,
                         ctx::GuardCtx) where {N, T<:RelaxTag}
-    tmp_num_1 = 0.0
-    tmp_num_2 = 0.0
-    tmp_mc_1 = zero(MC{N,T})
-    tmp_mc_2 = zero(MC{N,T})
+
+    # get row indices, output not proven to be a number (rather than a set)
+    output_is_number = false
     idx1 = first(children_idx)
     idx2 = last(children_idx)
-    @inbounds ix1 = children_arr[idx1]
-    @inbounds ix2 = children_arr[idx2]
-    @inbounds chdset1 = numvalued[ix1]
-    @inbounds chdset2 = numvalued[ix2]
-    if chdset1
-        @inbounds tmp_num_1 = numberstorage[ix1]
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
     else
-        @inbounds tmp_mc_1 = setstorage[ix1]
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
     end
-    if chdset2
-        @inbounds tmp_num_2 = numberstorage[ix2]
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
     else
-        @inbounds tmp_mc_2 = setstorage[ix2]
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
     end
-    if (tmp_num_2 == 1.0) && chdset2
-        if chdset1
-            @inbounds numberstorage[k] = tmp_num_1
+
+    # x^1 = x
+    if num2 === 1.0
+        if arg1_is_number
+            @inbounds numberstorage[k] = num1
         else
-            @inbounds setstorage[k] = tmp_mc_1
+            @inbounds setstorage[k] = set1
         end
-    else
-        if chdset1 && chdset2
-            @inbounds numberstorage[k] = tmp_num_1^tmp_num_2
+
+    # x^0 = 1
+    elseif num2 === 0.0
+        if arg1_is_number
+            @inbounds numberstorage[k] = 1.0
         else
-            if first_eval_flag
-                if !chdset1 && chdset2
-                    tmp_mc_1 = pow(tmp_mc_1, tmp_num_2)
-                elseif chdset1 && !chdset2
-                    tmp_mc_1 = Cassette.overdub(ctx, pow, tmp_num_1, tmp_mc_2)
-                elseif !chdset1 && !chdset2
-                    tmp_mc_1 = Cassette.overdub(ctx, pow, tmp_mc_1, tmp_mc_2)
-                end
-            else
-                if !chdset1 && chdset2
-                    @inbounds tmp_mc_1 = ^(tmp_mc_1, tmp_num_2, setstorage[k].Intv)
-                elseif chdset1 && !chdset2
-                    @inbounds tmp_mc_1 = Cassette.overdub(ctx, ^, tmp_num_1, tmp_mc_2, setstorage[k].Intv)
-                elseif !chdset1 && !chdset2
-                    @inbounds tmp_mc_1 = Cassette.overdub(ctx, ^, tmp_mc_1, tmp_mc_2, setstorage[k].Intv)
-                end
-            end
-            setstorage[k] = overwrite_or_intersect(tmp_mc_1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+            @inbounds setstorage[k] = zero(MC{N,T})
+        end
+
+    else
+        # a^b
+        if arg1_is_number && arg2_is_number
+            @inbounds numberstorage[k] = num1^num2
+            output_is_number = true
+
+        # x^b
+        elseif !arg1_is_number && arg2_is_number
+            set1 = is_first_eval ? pow(set1, num2) : ^(set1, num2, setstorage[k].Intv)
+
+        # a^y
+        elseif arg1_is_number  && !arg2_is_number
+            set1 = is_first_eval ? overdub(ctx, pow, num1, set2) : overdub(ctx, ^, num1, set2, setstorage[k].Intv)
+
+        # x^y
+        elseif !arg1_is_number && !arg2_is_number
+            set1 = is_first_eval ? overdub(ctx, pow, set1, set2) : overdub(ctx, ^, set1, set2, setstorage[k].Intv)
+
         end
     end
-    @inbounds numvalued[k] = (chdset1 & chdset2)
-    return
+
+    @inbounds numvalued[k] = output_is_number
+    if !output_is_number
+        setstorage[k] = overwrite_or_intersect(set1, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    end
+
+    return nothing
 end
 
 function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},

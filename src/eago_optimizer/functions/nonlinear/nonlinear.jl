@@ -226,6 +226,8 @@ $(TYPEDEF)
 
 MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
 
+Checks that the resulting value should be a number...
+
 $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
