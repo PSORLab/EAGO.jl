@@ -241,6 +241,8 @@ end
 # TODO: Unpacks variable bounds....
 get_node(d::Evaluator) = d.current_node
 
+include("forward_pass.jl")
+
 ###
 ### Define forward evaluation pass
 ###
@@ -253,7 +255,7 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
             forward_pass!(evaluator, subexpr)
         end
     end
-    # TODO: DEFINE PASS HERE
+    forward_pass_kernel!(#TODO DEFINE ARGS)
     return nothing
 end
 
@@ -267,6 +269,8 @@ end
 ### Define backwards evaluation pass
 ###
 
+include("reverse_pass.jl")
+
 """
 $(FUNCTIONNAME)
 
@@ -274,12 +278,10 @@ A reverse_pass! on a `BufferedNonlinear` structure `d` intersects the existing v
 constraint bounds then reverse propagates a set-valued operator (by default McCormick operator) along the
 computational tape.
 """
-
 function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
-    # TODO: DEFINE PASS HERE
+    reverse_pass_kernel!(#TODO DEFINE ARGS)
     return nothing
 end
-
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     set_value!(d.expr, d.expr.value ∩ d.bnds)
