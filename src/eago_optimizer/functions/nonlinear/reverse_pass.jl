@@ -16,6 +16,7 @@
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 4
 
+# INSIDE DONE...
 function reverse_plus_binary!()
 
     # extract values for k
@@ -66,12 +67,14 @@ function reverse_plus_binary!()
         c, a, b  = plus_rev(setk, set1, set2)
     end
 
+    # empty or nan? handling here
+
     if is_post
-        setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
-        setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
+        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
+        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
     else
-        setstorage[arg1_index] = a
-        setstorage[arg2_index] = b
+        @inbounds setstorage[arg1_index] = a
+        @inbounds setstorage[arg2_index] = b
     end
 
     return nothing
@@ -121,6 +124,65 @@ function reverse_plus_narity!()
 end
 
 function reverse_multiply_binary!()
+
+    # extract values for k
+    argk_index = @inbounds children_arr[k]
+    argk_is_number = @inbounds numvalued[k]
+    if !argk_is_number
+        setk = @inbounds setstorage[argk_index]
+    end
+
+    # don't perform a reverse pass if the output was a number
+    if argk_is_number
+        return nothing
+    end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
+    else
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
+    end
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
+    end
+
+    if !arg1_is_number && arg2_is_number
+        c, a, b = mult_rev(setk, set1, num2)
+
+    elseif arg1_is_number && !arg2_is_number
+        c, a, b = mult_rev(setk, num1, set2)
+
+    else
+        c, a, b = mult_rev(setk, set1, set2)
+    end
+
+    # empty or nan? handling here
+
+    if is_post
+        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
+        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
+    else
+        @inbounds setstorage[arg1_index] = a
+        @inbounds setstorage[arg2_index] = b
+    end
+
     return nothing
 end
 
@@ -171,121 +233,189 @@ function reverse_multiply_narity!()
 end
 
 function reverse_minus!()
-    child1 = first(children_idx)
-    child2 = last(children_idx)
-    @assert n_children == 2
-    @inbounds ix1 = children_arr[child1]
-    @inbounds ix2 = children_arr[child2]
-    @inbounds chdset1 = numvalued[ix1]
-    @inbounds chdset2 = numvalued[ix2]
-    if chdset1 && !chdset2
-        pnew, xnew, ynew = minus_rev(parent_value, numberstorage[ix1], setstorage[ix2])
-    elseif !chdset1 && chdset2
-        pnew, xnew, ynew = minus_rev(parent_value, setstorage[ix1], numberstorage[ix2])
-    elseif chdset1 && chdset2
-        pnew, xnew, ynew = minus_rev(parent_value, setstorage[ix1], setstorage[ix2])
+
+    # extract values for k
+    argk_index = @inbounds children_arr[k]
+    argk_is_number = @inbounds numvalued[k]
+    if !argk_is_number
+        setk = @inbounds setstorage[argk_index]
     end
-    if !(!chdset1 && !chdset2)
-        flagp = isempty(pnew)
-        flagx = isempty(xnew)
-        flagy = isempty(ynew)
-        if (flagp || flagx || flagy)
-            continue_flag = false
-            break
-        end
-        if isnan(pnew)
-            pnew = interval_MC(parent_value)
-        end
-        setstorage[k] = pnew
-        if ~chdset1
-            if isnan(xnew)
-                xnew = interval_MC(setstorage[ix1])
-            end
-            setstorage[ix1] = set_value_post(x_values, xnew, current_node, subgrad_tighten)
-        end
-        if  ~chdset2
-            if isnan(ynew)
-                ynew = interval_MC(setstorage[ix2])
-            end
-            setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
-        end
+
+    # don't perform a reverse pass if the output was a number
+    if argk_is_number
+        return nothing
     end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
+    else
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
+    end
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
+    end
+
+    if !arg1_is_number && arg2_is_number
+        c, a, b = minus_rev(setk, set1, num2)
+
+    elseif arg1_is_number && !arg2_is_number
+        c, a, b = minus_rev(setk, num1, set2)
+
+    else
+        c, a, b = minus_rev(setk, set1, set2)
+    end
+
+    # empty or nan? handling here
+
+    if is_post
+        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
+        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
+    else
+        @inbounds setstorage[arg1_index] = a
+        @inbounds setstorage[arg2_index] = b
+    end
+
     return nothing
 end
 
 function reverse_power!()
-    child1 = first(children_idx)
-    child2 = last(children_idx)
-    @assert n_children == 2
-    @inbounds ix1 = children_arr[child1]
-    @inbounds ix2 = children_arr[child2]
-    @inbounds chdset1 = numvalued[ix1]
-    @inbounds chdset2 = numvalued[ix2]
-    if chdset1
-        pnew, xnew, ynew = power_rev(parent_value, numberstorage[ix1], setstorage[ix2])
-    elseif chdset2
-        pnew, xnew, ynew = power_rev(parent_value, setstorage[ix1], numberstorage[ix2])
+
+    # extract values for k
+    argk_index = @inbounds children_arr[k]
+    argk_is_number = @inbounds numvalued[k]
+    if !argk_is_number
+        setk = @inbounds setstorage[argk_index]
+    end
+
+    # don't perform a reverse pass if the output was a number
+    if argk_is_number
+        return nothing
+    end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
     else
-        pnew, xnew, ynew = power_rev(parent_value, setstorage[ix1], setstorage[ix2])
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
     end
-    if (isempty(pnew) || isempty(xnew) || isempty(ynew))
-        continue_flag = false
-        break
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
     end
-    if isnan(pnew)
-        pnew = interval_MC(parent_value)
+
+    if !arg1_is_number && arg2_is_number
+        c, a, b = power_rev(setk, set1, num2)
+
+    elseif arg1_is_number && !arg2_is_number
+        c, a, b = power_rev(setk, num1, set2)
+
+    else
+        c, a, b = power_rev(setk, set1, set2)
     end
-    setstorage[k] = pnew
-    if ~chdset1
-        if isnan(xnew)
-            xnew = interval_MC(setstorage[ix1])
-        end
-        setstorage[ix1] = set_value_post(x_values, xnew, current_node, subgrad_tighten)
-    end
-    if ~chdset2
-        if isnan(ynew)
-            ynew = interval_MC(setstorage[ix2])
-        end
-        setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
+
+    # empty or nan? handling here
+
+    if is_post
+        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
+        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
+    else
+        @inbounds setstorage[arg1_index] = a
+        @inbounds setstorage[arg2_index] = b
     end
 
     return nothing
 end
 
 function reverse_divide!()
-    child1 = first(children_idx)
-    child2 = last(children_idx)
-    @assert n_children == 2
-    @inbounds ix1 = children_arr[child1]
-    @inbounds ix2 = children_arr[child2]
-    @inbounds chdset1 = numvalued[ix1]
-    @inbounds chdset2 = numvalued[ix2]
-    if chdset1
-        pnew, xnew, ynew = div_rev(parent_value, numberstorage[ix1], setstorage[ix2])
-    elseif chdset2
-        pnew, xnew, ynew = div_rev(parent_value, setstorage[ix1], numberstorage[ix2])
+
+    # extract values for k
+    argk_index = @inbounds children_arr[k]
+    argk_is_number = @inbounds numvalued[k]
+    if !argk_is_number
+        setk = @inbounds setstorage[argk_index]
+    end
+
+    # don't perform a reverse pass if the output was a number
+    if argk_is_number
+        return nothing
+    end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
     else
-        pnew, xnew, ynew = div_rev(parent_value, setstorage[ix1], setstorage[ix2])
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
     end
-    if (isempty(pnew) || isempty(xnew) || isempty(ynew))
-        continue_flag = false
-        break
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
     end
-    setstorage[parent_index] = pnew
-    if isnan(pnew)
-        pnew = interval_MC(pnew)
+
+    if !arg1_is_number && arg2_is_number
+        c, a, b = power_rev(setk, set1, num2)
+
+    elseif arg1_is_number && !arg2_is_number
+        c, a, b = power_rev(setk, num1, set2)
+
+    else
+        c, a, b = power_rev(setk, set1, set2)
     end
-    if ~chdset1
-        if isnan(xnew)
-            xnew = interval_MC(xnew)
-        end
-        setstorage[ix1] = set_value_post(x_values, xnew, current_node, subgrad_tighten)
-    end
-    if ~chdset2
-        if isnan(ynew)
-            ynew = interval_MC(ynew)
-        end
-        setstorage[ix2] = set_value_post(x_values, ynew, current_node, subgrad_tighten)
+
+    # empty or nan? handling here
+
+    if is_post
+        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
+        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
+    else
+        @inbounds setstorage[arg1_index] = a
+        @inbounds setstorage[arg2_index] = b
     end
 
     return nothing
