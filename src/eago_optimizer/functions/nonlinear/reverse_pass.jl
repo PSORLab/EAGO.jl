@@ -14,7 +14,7 @@
 
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
-const MAX_ASSOCIATIVE_REVERSE = 4
+const MAX_ASSOCIATIVE_REVERSE = 6
 
 # INSIDE DONE...
 function reverse_plus_binary!()
@@ -22,14 +22,7 @@ function reverse_plus_binary!()
     # extract values for k
     argk_index = @inbounds children_arr[k]
     argk_is_number = @inbounds numvalued[k]
-    if !argk_is_number
-        setk = @inbounds setstorage[argk_index]
-    end
-
-    # don't perform a reverse pass if the output was a number
-    if argk_is_number
-        return nothing
-    end
+    setk = @inbounds setstorage[argk_index]
 
     # get row indices
     idx1 = first(children_idx)
@@ -67,60 +60,70 @@ function reverse_plus_binary!()
         c, a, b  = plus_rev(setk, set1, set2)
     end
 
-    # empty or nan? handling here
-
-    if is_post
-        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
-        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
-    else
-        @inbounds setstorage[arg1_index] = a
-        @inbounds setstorage[arg2_index] = b
+    if !arg1_is_number
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(set1.Intv)
+        end
+        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    return nothing
+    if !arg2_is_number
+        if isempty(b)
+            return false
+        elseif isnan(b)
+            b = MC{N,T}(set2.Intv)
+        end
+        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+    end
+
+    return true
 end
 
 function reverse_plus_narity!()
-    #println("+")
-    lenx = length(children_idx)
-    count = 0
+
     child_arr_indx = children_arr[children_idx]
-    for c_idx in child_arr_indx
-        tmp_sum = 0.0
-        @inbounds inner_chdset = numvalued[c_idx]
-        if ~inner_chdset
-            if count < MAX_ASSOCIATIVE_REVERSE
-                for cin_idx in child_arr_indx
-                    if cin_idx != c_idx
-                        if @inbounds numvalued[cin_idx]
-                            tmp_sum += @inbounds numberstorage[cin_idx]
-                        else
-                            tmp_sum += @inbounds setstorage[cin_idx]
-                        end
-                    end
+    continue_flag = true
+
+    # out loops makes a temporary sum (minus one argument)
+    # a reverse is then compute with respect to this argument
+    active_count_number = 0
+    for active_idx in child_arr_indx
+
+        # don't contract a number valued argument
+        active_arg_is_number = @inbounds numvalued[active_idx]
+        active_arg_is_number && continue
+
+        if active_count_number >= MAX_ASSOCIATIVE_REVERSE
+            break
+        end
+
+        tmp_sum = zero(MC{N,T})
+        active_count_number += 1
+        for inactive_idx in child_arr_indx
+            if inactive_idx != active_idx
+                if @inbounds numvalued[inactive_idx]
+                    tmp_sum += @inbounds numberstorage[inactive_idx]
+                else
+                    tmp_sum += @inbounds setstorage[inactive_idx]
                 end
-                @inbounds tmp_hold = setstorage[c_idx]
-                pnew, xhold, xsum = plus_rev(parent_value, tmp_hold, tmp_sum)
-                if isempty(pnew) || isempty(xhold) || isempty(xsum)
-                    continue_flag = false
-                    break
-                end
-                if isnan(pnew)
-                    pnew = interval_MC(parent_value)
-                end
-                if isnan(xhold)
-                    pnew = interval_MC(tmp_hold)
-                end
-                setstorage[k] = set_value_post(x_values, pnew, current_node, subgrad_tighten)
-                setstorage[c_idx] = set_value_post(x_values, xhold, current_node, subgrad_tighten)
-            else
-                break
             end
         end
-        count += 1
+
+        active_set = @inbounds setstorage[active_idx]
+        c, a, b = plus_rev(parent_value, active_set, tmp_sum)
+
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(active_set.Intv)
+        end
+        @inbounds setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
+
     !continue_flag && break
-    return nothing
+    return true
 end
 
 function reverse_multiply_binary!()
@@ -128,14 +131,7 @@ function reverse_multiply_binary!()
     # extract values for k
     argk_index = @inbounds children_arr[k]
     argk_is_number = @inbounds numvalued[k]
-    if !argk_is_number
-        setk = @inbounds setstorage[argk_index]
-    end
-
-    # don't perform a reverse pass if the output was a number
-    if argk_is_number
-        return nothing
-    end
+    setk = @inbounds setstorage[argk_index]
 
     # get row indices
     idx1 = first(children_idx)
@@ -173,63 +169,70 @@ function reverse_multiply_binary!()
         c, a, b = mult_rev(setk, set1, set2)
     end
 
-    # empty or nan? handling here
-
-    if is_post
-        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
-        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
-    else
-        @inbounds setstorage[arg1_index] = a
-        @inbounds setstorage[arg2_index] = b
+    if !arg1_is_number
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(set1.Intv)
+        end
+        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    return nothing
+    if !arg2_is_number
+        if isempty(b)
+            return false
+        elseif isnan(b)
+            b = MC{N,T}(set2.Intv)
+        end
+        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+    end
+
+    return true
 end
 
 function reverse_multiply_narity!()
-    tmp_mlt = 1.0
-    chdset = true
-    count = 0
+
     child_arr_indx = children_arr[children_idx]
-    for c_idx in child_arr_indx
-        if count < MAX_ASSOCIATIVE_REVERSE
-            if ~numvalued[c_idx]
-                tmp_mlt = 1.0
-                for cin_idx in child_arr_indx
-                    if cin_idx != c_idx
-                        @inbounds chdset = numvalued[cin_idx]
-                        if chdset
-                            @inbounds tmp_mlt *= numberstorage[cin_idx]
-                        else
-                            @inbounds tmp_mlt *= setstorage[cin_idx]
-                        end
-                    end
-                end
-                @inbounds chdset = numvalued[c_idx]
-                if chdset
-                    @inbounds pnew, xhold, xprd = mul_rev(parent_value, numberstorage[c_idx], tmp_mlt)
-                else
-                    @inbounds pnew, xhold, xprd = mul_rev(parent_value, setstorage[c_idx], tmp_mlt)
-                end
-                if isempty(pnew) || isempty(xhold) || isempty(xprd)
-                    continue_flag = false
-                    break
-                end
-                if isnan(pnew)
-                    pnew = interval_MC(parent_value)
-                end
-                if isnan(xhold)
-                    xhold = interval_MC(setstorage[c_idx])
-                end
-                setstorage[k] = set_value_post(x_values,  pnew, current_node, subgrad_tighten)
-                setstorage[c_idx] = set_value_post(x_values, xhold, current_node, subgrad_tighten)
-                count += 1
-            end
-        else
+    continue_flag = true
+
+    # out loops makes a temporary sum (minus one argument)
+    # a reverse is then compute with respect to this argument
+    active_count_number = 0
+    for active_idx in child_arr_indx
+
+        # don't contract a number valued argument
+        active_arg_is_number = @inbounds numvalued[active_idx]
+        active_arg_is_number && continue
+
+        if active_count_number >= MAX_ASSOCIATIVE_REVERSE
             break
         end
+
+        tmp_mul = one(MC{N,T})
+        active_count_number += 1
+        for inactive_idx in child_arr_indx
+            if inactive_idx != active_idx
+                if @inbounds numvalued[inactive_idx]
+                    tmp_mul *= @inbounds numberstorage[inactive_idx]
+                else
+                    tmp_mul *= @inbounds setstorage[inactive_idx]
+                end
+            end
+        end
+
+        active_set = @inbounds setstorage[active_idx]
+        c, a, b = mult_rev(parent_value, active_set, tmp_mul)
+
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(active_set.Intv)
+        end
+        @inbounds setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
-    return nothing
+
+    !continue_flag && break
+    return true
 end
 
 function reverse_minus!()
@@ -243,7 +246,7 @@ function reverse_minus!()
 
     # don't perform a reverse pass if the output was a number
     if argk_is_number
-        return nothing
+        return true
     end
 
     # get row indices
@@ -282,17 +285,25 @@ function reverse_minus!()
         c, a, b = minus_rev(setk, set1, set2)
     end
 
-    # empty or nan? handling here
-
-    if is_post
-        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
-        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
-    else
-        @inbounds setstorage[arg1_index] = a
-        @inbounds setstorage[arg2_index] = b
+    if !arg1_is_number
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(set1.Intv)
+        end
+        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    return nothing
+    if !arg2_is_number
+        if isempty(b)
+            return false
+        elseif isnan(b)
+            b = MC{N,T}(set2.Intv)
+        end
+        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+    end
+
+    return true
 end
 
 function reverse_power!()
@@ -306,7 +317,7 @@ function reverse_power!()
 
     # don't perform a reverse pass if the output was a number
     if argk_is_number
-        return nothing
+        return true
     end
 
     # get row indices
@@ -345,17 +356,25 @@ function reverse_power!()
         c, a, b = power_rev(setk, set1, set2)
     end
 
-    # empty or nan? handling here
-
-    if is_post
-        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
-        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
-    else
-        @inbounds setstorage[arg1_index] = a
-        @inbounds setstorage[arg2_index] = b
+    if !arg1_is_number
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(set1.Intv)
+        end
+        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    return nothing
+    if !arg2_is_number
+        if isempty(b)
+            return false
+        elseif isnan(b)
+            b = MC{N,T}(set2.Intv)
+        end
+        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+    end
+
+    return true
 end
 
 function reverse_divide!()
@@ -369,7 +388,7 @@ function reverse_divide!()
 
     # don't perform a reverse pass if the output was a number
     if argk_is_number
-        return nothing
+        return true
     end
 
     # get row indices
@@ -408,39 +427,33 @@ function reverse_divide!()
         c, a, b = power_rev(setk, set1, set2)
     end
 
-    # empty or nan? handling here
-
-    if is_post
-        @inbounds setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
-        @inbounds setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
-    else
-        @inbounds setstorage[arg1_index] = a
-        @inbounds setstorage[arg2_index] = b
+    if !arg1_is_number
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            a = MC{N,T}(set1.Intv)
+        end
+        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    return nothing
+    if !arg2_is_number
+        if isempty(b)
+            return false
+        elseif isnan(b)
+            b = MC{N,T}(set2.Intv)
+        end
+        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+    end
+
+    return true
 end
 
 function reverse_univariate!()
-    op = nod.index
-    child_idx = children_arr[adj.colptr[k]]
-    @inbounds child_value = setstorage[child_idx]
-    @inbounds parent_value = setstorage[k]
-    pnew, cnew = eval_univariate_set_reverse(op, parent_value, child_value)
-    if (isempty(pnew) || isempty(cnew))
-        continue_flag = false
-        break
-    end
-    if isnan(pnew)
-        pnew = interval_MC(parent_value)
-    end
-    if isnan(cnew)
-        cnew = interval_MC(child_value)
-    end
-    @inbounds setstorage[child_idx] = set_value_post(x_values, cnew, current_node, subgrad_tighten)
-    @inbounds setstorage[k] = set_value_post(x_values, pnew, current_node, subgrad_tighten)
-
-    return nothing
+    @inbounds valset = setstorage[k]
+    @inbounds argset = setstorage[arg_idx]
+    a, b = eval_univariate_set_reverse(op, valset, argset)
+    @inbounds setstorage[arg_idx] = is_post ? set_value_post(x, b, lbd, ubd) : b
+    return true
 end
 
 """
@@ -449,10 +462,6 @@ $(TYPEDSIGNATURES)
 function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, subexpression_isnum,
                              subexpr_values_set, nd::Vector{JuMP.NodeData}, adj, x_values, current_node::NodeBB,
                              subgrad_tighten::Bool) where T
-
-    @assert length(setstorage) >= length(nd)
-    @assert length(numberstorage) >= length(nd)
-    @assert length(numvalued) >= length(nd)
 
     children_arr = rowvals(adj)
     N = length(x_values)
@@ -501,29 +510,29 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
             # :+
             elseif op === 1
                 if n_children === 2
-                    reverse_plus_binary!()
+                    continue_flag &= reverse_plus_binary!()
                 else
-                    reverse_plus_narity!()
+                    continue_flag &= reverse_plus_narity!()
                 end
 
             # :-
             elseif op === 2
-                reverse_minus!()
+                continue_flag &= reverse_minus!()
 
             elseif op === 3 # :*
                 if n_children === 2
-                    reverse_multiply_binary!()
+                    continue_flag &= reverse_multiply_binary!()
                 else
-                    reverse_multiply_narity!()
+                    continue_flag &= reverse_multiply_narity!()
                 end
 
              # :^
             elseif op === 4
-                reverse_power!()
+                continue_flag &= reverse_power!()
 
             # :/
             elseif op === 5
-                reverse_divide!()
+                continue_flag &= reverse_divide!()
 
             elseif op == 6 # ifelse
                 continue
@@ -531,8 +540,11 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
 
         # assumes that child is set-valued and thus parent is set-valued (since isnumber already checked)
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
-            reverse_univariate!()
-
+            op = nod.index
+            if op <= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
+                child_idx = @inbounds children_arr[adj.colptr[k]]
+                continue_flag &= reverse_univariate!()
+            end
         end
 
         !continue_flag && break
