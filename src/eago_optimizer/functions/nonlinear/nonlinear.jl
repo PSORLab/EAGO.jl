@@ -276,17 +276,16 @@ $(FUNCTIONNAME)
 
 A reverse_pass! on a `BufferedNonlinear` structure `d` intersects the existing value of the `d` with
 constraint bounds then reverse propagates a set-valued operator (by default McCormick operator) along the
-computational tape.
+computational tape. The tapes are updated in place and boolean value is returned indicating whether the
+reverse propagation yeilded a infeasible point (true = still feasible, false is proved infeasible).
 """
 function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
-    reverse_pass_kernel!(#TODO DEFINE ARGS)
-    return nothing
+    return reverse_pass_kernel(#TODO DEFINE ARGS)
 end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     set_value!(d.expr, d.expr.value ∩ d.bnds)
-    reverse_pass!(evaluator, d.expr)
-    return nothing
+    return reverse_pass!(evaluator, d.expr)
 end
 
 ###
