@@ -526,34 +526,37 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
 end
 
 function forward_user_multivariate!()
-        op_sym = id_to_operator[op]
-        evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START+1]
-        f_input = view(user_input_buffer, 1:n_children)
-        fnum_input = view(flt_user_input_buffer, 1:n_children)
-        r = 1
-        isnum = true
+        n = length(children_idx)
+        evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
+        set_input = get_buffer(user_input_buffer, n)
+        num_input = view(flt_user_input_buffer, 1:n)
+        fill!(num_input, -Inf)
+
+        buffer_count = 1
+        output_is_number = true
         for c_idx in children_idx
-            @inbounds ix = children_arr[c_idx]
-            @inbounds chdset = numvalued[ix]
-            isnum &= chdset
-            if chdset
-                if isnum
-                    @inbounds fnum_input[r] = numberstorage[ix]
-                end
-                @inbounds f_input[r] = numberstorage[ix]
+            @inbounds arg_index = children_arr[c_idx]
+            @inbounds arg_is_number = numvalued[arg_index]
+            if arg_is_number
+                @inbounds num_input[buffer_count] = numberstorage[arg_index]
             else
-                @inbounds f_input[r] = setstorage[ix]
+                @inbounds set_input[buffer_count] = setstorage[arg_index]
             end
-            r += 1
+            buffer_count += 1
         end
-        if isnum
-            numberstorage[k] = MOI.eval_objective(evaluator, fnum_input)
+
+        if output_is_number
+            numberstorage[k] = MOI.eval_objective(evaluator, num_input)
         else
-            fval = MOI.eval_objective(evaluator, f_input)
-            #fval = Cassette.overdub(ctx, MOI.eval_objective, evaluator, f_input)
-            setstorage[k] = overwrite_or_intersect(fval, setstorage[k], x, lbd, ubd, is_post, is_intersect)
+            for i = 1:(buffer_count - 1)
+                if !isinf(@inbounds num_input[i])
+                    @inbounds set_input[buffer_count] = V(num_input[buffer_count])
+                end
+            end
+            outset = Cassette.overdub(ctx, MOI.eval_objective, evaluator, set_input)
+            setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect)
         end
-        numvalued[k] = isnum
+        @inbounds numvalued[k] = output_is_number
     else
         error("Unsupported operation $(operators[op])")
     end
@@ -729,6 +732,7 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
                 forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
                                setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
 
+            # user multivariate function
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 forward_user_multivariate!()
 
