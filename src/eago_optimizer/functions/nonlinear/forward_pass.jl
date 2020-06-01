@@ -562,63 +562,87 @@ function forward_user_multivariate!()
 end
 
 function forward_univariate_number!()
+
+    tmp_num = @inbounds numberstorage[child_idx]
+    outnum = eval_univariate_set(op, tmp_num)
+    @inbounds numberstorage[k] = outnum
+
     return nothing
 end
 
 function forward_univariate_tiepnt_1!()
-    @inbounds tpdict_tuple = tpdict[k]
-    tindx1 = tpdict_tuple[1]
-    tindx2 = tpdict_tuple[2]
-    @inbounds tp1 = tp1storage[tindx1]
-    @inbounds tp2 = tp2storage[tindx2]
-    fval_mc, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, first_eval_flag)
-    @inbounds tp1storage[tindx] = tp1
-    @inbounds tp1storage[tindx] = tp2
-    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+
+    tmp_set = @inbounds setstorage[child_idx]
+
+    tidx1, tidx2 = tpdict[k]
+    tp1 = @inbounds tp1storage[tindx1]
+    tp2 = @inbounds tp2storage[tindx2]
+    new_tie_points = tp1 === Inf
+
+    outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, first_eval_flag)
+
+    if new_tie_points
+        @inbounds tp1storage[tindx] = tp1
+        @inbounds tp1storage[tindx] = tp2
+    end
+
+    setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     return nothing
 end
 
 function forward_univariate_tiepnt_2!()
-    @inbounds tpdict_tuple = tpdict[k]
-    tindx1 = tpdict_tuple[1]
-    tindx2 = tpdict_tuple[2]
-    tindx3 = tpdict_tuple[3]
-    tindx4 = tpdict_tuple[4]
-    @inbounds tp1 = tp1storage[tindx1]
-    @inbounds tp2 = tp2storage[tindx2]
-    @inbounds tp3 = tp1storage[tindx3]
-    @inbounds tp4 = tp2storage[tindx4]
-    fval_mc, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, child_val_mc, setstorage[k], tp1, tp2, tp3, tp4, first_eval_flag)
-    @inbounds tp1storage[tindx1] = tp1
-    @inbounds tp2storage[tindx2] = tp2
-    @inbounds tp3storage[tindx1] = tp3
-    @inbounds tp4storage[tindx2] = tp4
-    setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+
+    tmp_set = @inbounds setstorage[child_idx]
+
+    # retreive previously calculated tie-points
+    # These are re-initialize to Inf for each box
+    tidx1, tidx2, tidx3, tidx4 = tpdict[k]
+    tp1 = @inbounds tp1storage[tidx1]
+    tp2 = @inbounds tp2storage[tidx2]
+    tp3 = @inbounds tp1storage[tidx3]
+    tp4 = @inbounds tp2storage[tidx4]
+
+    new_tie_points = tp1 === Inf
+
+    # Perform an evaluation of the univariate function overdubbed with Cassette.jl
+    outset, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, tmp_set, setstorage[k], tp1, tp2, tp3, tp4, first_eval_flag)
+
+    # Store new tiepoints if new evaluation
+    if new_tie_points
+        @inbounds tp1storage[tidx1] = tp1
+        @inbounds tp2storage[tidx2] = tp2
+        @inbounds tp3storage[tidx3] = tp3
+        @inbounds tp4storage[tidx4] = tp4
+    end
+
+    setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     return nothing
 end
 
 function forward_univariate_user!()
+
     userop = op - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
     @inbounds f = user_operators.univariate_operator_f[userop]
+
     if arg_is_number
-        fval_num = f(child_val_num)
-        @inbounds numberstorage[k] = fval_num
+        tmp_num = @inbounds setstorage[child_idx]
+        outnum = f(tmp_num)
+        @inbounds numberstorage[k] = outnum
     else
-        fval_mc = f(child_val_mc) #Cassette.overdub(ctx, f, child_val_mc)
-        setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        tmp_set = @inbounds setstorage[child_idx]
+        outnum = Cassette.overdub(ctx, f, tmp_set)
+        setstorage[k] = overwrite_or_intersect(outnum, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
+
     return nothing
 end
 
 function forward_univariate_other!()
-    if chdset
-        fval_num = eval_univariate_set(op, child_val_num)
-        @inbounds numberstorage[k] = fval_num
-    else
-        #eval_univariate_set(op, child_val_mc)
-        fval_mc = Cassette.overdub(ctx, eval_univariate_set, op, child_val_mc)
-        setstorage[k] = overwrite_or_intersect(fval_mc, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
-    end
+
+    tmp_set = @inbounds setstorage[child_idx]
+    outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
+    setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+
     return nothing
 end
 
@@ -716,7 +740,10 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
             @inbounds numvalued[k] = arg_is_number
 
             # performs univariate operators on number valued inputs
-            if arg_is_number
+            if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
+                forward_univariate_user!()
+
+            elseif arg_is_number
                 forward_univariate_number!()
 
             # performs set valued operators that require a single tiepoint calculation
@@ -726,10 +753,6 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
             # performs set valued operators that require two tiepoint calculations
             elseif double_tp(op)
                 forward_univariate_tiepnt_2!()
-
-            # performs set valued operators on user-defined univariate functions
-            elseif op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                forward_univariate_user!()
 
             else
                 forward_univariate_other!()
