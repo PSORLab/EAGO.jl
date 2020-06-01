@@ -9,7 +9,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/evaluator/passes.jl
-# Functions used to compute forward and reverse pass of nonlinear functions.
+# Functions used to compute forward pass of nonlinear functions.
 #############################################################################
 
 """
@@ -178,7 +178,7 @@ function forward_plus_binary!()
 
     @inbounds numvalued[k] = output_is_number
     if !isnum
-        inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
 
     return nothing

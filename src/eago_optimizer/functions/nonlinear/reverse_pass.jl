@@ -1,9 +1,79 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/evaluator/passes.jl
+# Functions used to compute reverse pass of nonlinear functions.
+#############################################################################
 
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 4
 
 function reverse_plus_binary!()
+
+    # extract values for k
+    argk_index = @inbounds children_arr[k]
+    argk_is_number = @inbounds numvalued[k]
+    if !argk_is_number
+        setk = @inbounds setstorage[argk_index]
+    end
+
+    # don't perform a reverse pass if the output was a number
+    if argk_is_number
+        return nothing
+    end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = @inbounds children_arr[idx1]
+    arg1_is_number = @inbounds numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = @inbounds numberstorage[arg1_index]
+    else
+        num1 = 0.0
+        set1 = @inbounds setstorage[arg1_index]
+    end
+
+    # extract values for argument 2
+    arg2_index = @inbounds children_arr[idx2]
+    arg2_is_number = @inbounds numvalued[arg2_index]
+    if arg2_is_number
+        num2 = @inbounds numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 = @inbounds setstorage[arg2_index]
+        num2 = 0.0
+    end
+
+    if !arg1_is_number && arg2_is_number
+        c, a, b = plus_rev(setk, set1, num2)
+
+    elseif arg1_is_number && !arg2_is_number
+        c, a, b  = plus_rev(setk, num1, set2)
+
+    else
+        c, a, b  = plus_rev(setk, set1, set2)
+    end
+
+    if is_post
+        setstorage[arg1_index] = set_value_post(x, a, lbd, ubd)
+        setstorage[arg2_index] = set_value_post(x, b, lbd, ubd)
+    else
+        setstorage[arg1_index] = a
+        setstorage[arg2_index] = b
+    end
+
     return nothing
 end
 
