@@ -128,7 +128,10 @@ macro get_binary_storage(children_idx, children_arr, numvalued, numberstorage, s
 end
 =#
 
-function forward_plus_binary!()
+function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                              is_post::Bool, is_intersect::Bool, is_first_eval::Bool) where V
 
     # get row indices
     idx1 = first(children_idx)
@@ -178,15 +181,16 @@ function forward_plus_binary!()
 
     @inbounds numvalued[k] = output_is_number
     if !isnum
-        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect)
     end
 
     return nothing
 end
 
 function forward_plus_narity!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
-                       numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                       first_eval_flag::Bool) where {N, T<:RelaxTag}
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                              is_post::Bool, is_intersect::Bool) where V
 
 
     # get row indices
@@ -217,17 +221,20 @@ function forward_plus_narity!(k::Int64, children_idx::UnitRange{Int64}, children
     end
 
     @inbounds numvalued[k] = output_is_number
-    if isnum
+    if output_is_number
         @inbounds numberstorage[k] = tmp_num
     else
         tmp_set += tmp_num
-        setstorage[k] = overwrite_or_intersect(tmp_set, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        setstorage[k] = overwrite_or_intersect(tmp_set, setstorage[k], x, lbd, ubd, is_post, is_intersect)
     end
 
     return nothing
 end
 
-function forward_multiply_binary!()
+function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                                  numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                  is_post::Bool, is_intersect::Bool, is_first_eval::Bool) where V
     # get row indices
     idx1 = first(children_idx)
     idx2 = last(children_idx)
@@ -282,10 +289,10 @@ function forward_multiply_binary!()
     return nothing
 end
 
-function forward_multiply_narity!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
-                           numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                           current_node::NodeBB, subgrad_tighten::Bool, first_eval_flag::Bool) where {N, T<:RelaxTag}
-
+function forward_multiply_narity!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                              is_post::Bool, is_intersect::Bool) where V
     # get row indices
     idx = first(children_idx)
 
@@ -324,10 +331,10 @@ function forward_multiply_narity!(k::Int64, x_values::Vector{Float64}, children_
     return nothing
 end
 
-function forward_minus!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
-                        children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
-                        setstorage::Vector{MC{N,T}}, current_node::NodeBB, subgrad_tighten::Bool,
-                        is_first_eval::Bool) where {N, T<:RelaxTag}
+function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                        is_post::Bool, is_intersect::Bool, is_first_eval::Bool) where V
 
     # get row indices
     idx1 = first(children_idx)
@@ -383,11 +390,10 @@ function forward_minus!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
     return nothing
 end
 
-function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
-                        children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
-                        setstorage::Vector{MC{N,T}}, current_node::NodeBB, subgrad_tighten::Bool,
-                        is_first_eval::Bool,
-                        ctx::GuardCtx) where {N, T<:RelaxTag}
+function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                        is_post::Bool, is_intersect::Bool, is_first_eval::Bool, ctx::GuardCtx) where V
 
     # get row indices
     idx1 = first(children_idx)
@@ -464,13 +470,10 @@ function forward_power!(k::Int64, x_values::Vector{Float64}, children_idx::UnitR
     return nothing
 end
 
-function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::UnitRange{Int64},
-                         children_arr::Vector{Int64}, numvalued::Vector{Bool}, numberstorage::Vector{Float64},
-                         setstorage::Vector{MC{N,T}},
-                         current_node::NodeBB,
-                         subgrad_tighten::Bool,
-                         first_eval_flag::Bool,
-                         ctx::GuardCtx) where {N,T<:RelaxTag}
+function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                         x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                         is_post::Bool, is_intersect::Bool, is_first_eval::Bool, ctx::GuardCtx) where V
 
     # get row indices
     idx1 = first(children_idx)
@@ -525,11 +528,15 @@ function forward_divide!(k::Int64, x_values::Vector{Float64}, children_idx::Unit
     return nothing
 end
 
-function forward_user_multivariate!()
+function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                                    numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                                    x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                    is_post::Bool, is_intersect::Bool, ctx::GuardCtx, set_user_input_buffer,
+                                    set_user_input_buffer, num_user_input_buffer) where V
         n = length(children_idx)
         evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
-        set_input = get_buffer(user_input_buffer, n)
-        num_input = view(flt_user_input_buffer, 1:n)
+        set_input = get_buffer(set_user_input_buffer, n)
+        num_input = view(num_user_input_buffer, 1:n)
         fill!(num_input, -Inf)
 
         buffer_count = 1
@@ -564,7 +571,7 @@ function forward_user_multivariate!()
     return nothing
 end
 
-function forward_univariate_number!()
+function forward_univariate_number!(k::Int64, op::Int64, numberstorage::Vector{Float64})
 
     tmp_num = @inbounds numberstorage[child_idx]
     outnum = eval_univariate_set(op, tmp_num)
@@ -573,7 +580,11 @@ function forward_univariate_number!()
     return nothing
 end
 
-function forward_univariate_tiepnt_1!()
+function forward_univariate_tiepnt_1!(k::Int64, child_idx::Int64, setstorage::Vector{V},
+                                      x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                      tpdict::Dict{Int64, Tuple{Int64,Int64,Int64,Int64}},
+                                      tp1storage::Vector{Float64}, tp2storage::Vector{Float64},
+                                      is_post::Bool, is_intersect::Bool, is_first_eval::Bool, ctx::GuardCtx) where V
 
     tmp_set = @inbounds setstorage[child_idx]
 
@@ -589,11 +600,16 @@ function forward_univariate_tiepnt_1!()
         @inbounds tp1storage[tindx] = tp2
     end
 
-    setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect)
     return nothing
 end
 
-function forward_univariate_tiepnt_2!()
+function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Vector{V},
+                                      x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                      tpdict::Dict{Int64, Tuple{Int64,Int64,Int64,Int64}},
+                                      tp1storage::Vector{Float64}, tp2storage::Vector{Float64},
+                                      tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
+                                      is_post::Bool, is_intersect::Bool, is_first_eval::Bool, ctx::GuardCtx) where V
 
     tmp_set = @inbounds setstorage[child_idx]
 
@@ -602,8 +618,8 @@ function forward_univariate_tiepnt_2!()
     tidx1, tidx2, tidx3, tidx4 = tpdict[k]
     tp1 = @inbounds tp1storage[tidx1]
     tp2 = @inbounds tp2storage[tidx2]
-    tp3 = @inbounds tp1storage[tidx3]
-    tp4 = @inbounds tp2storage[tidx4]
+    tp3 = @inbounds tp3storage[tidx3]
+    tp4 = @inbounds tp4storage[tidx4]
 
     new_tie_points = tp1 === Inf
 
@@ -622,7 +638,10 @@ function forward_univariate_tiepnt_2!()
     return nothing
 end
 
-function forward_univariate_user!()
+function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
+                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                  is_post::Bool, is_intersect::Bool, is_first_eval::Bool, ctx::GuardCtx,
+                                  user_operators) where V
 
     userop = op - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
     @inbounds f = user_operators.univariate_operator_f[userop]
@@ -640,7 +659,9 @@ function forward_univariate_user!()
     return nothing
 end
 
-function forward_univariate_other!()
+function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
+                                   x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                   is_post::Bool, is_intersect::Bool, is_first_eval::Bool, ctx::GuardCtx) where V
 
     tmp_set = @inbounds setstorage[child_idx]
     outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
@@ -758,6 +779,7 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
             elseif double_tp(op)
                 forward_univariate_tiepnt_2!()
 
+            # performs set valued operator on other functions in base library
             else
                 forward_univariate_other!()
 
