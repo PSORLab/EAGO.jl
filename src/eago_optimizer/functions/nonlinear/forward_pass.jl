@@ -187,7 +187,7 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     return nothing
 end
 
-function forward_plus_narity!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
+function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                               is_post::Bool, is_intersect::Bool) where V
@@ -289,10 +289,10 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     return nothing
 end
 
-function forward_multiply_narity!(k::Int64, children_idx::UnitRange{Int64}, children_arr::Vector{Int64},
-                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                              is_post::Bool, is_intersect::Bool) where V
+function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                                  numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                  is_post::Bool, is_intersect::Bool) where V
     # get row indices
     idx = first(children_idx)
 
@@ -531,7 +531,7 @@ end
 function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                     numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
                                     x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                                    is_post::Bool, is_intersect::Bool, ctx::GuardCtx, set_user_input_buffer,
+                                    is_post::Bool, is_intersect::Bool, ctx::GuardCtx, user_operators,
                                     set_user_input_buffer, num_user_input_buffer) where V
         n = length(children_idx)
         evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
@@ -571,11 +571,13 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
     return nothing
 end
 
-function forward_univariate_number!(k::Int64, op::Int64, numberstorage::Vector{Float64})
+function forward_univariate_number!(k::Int64, op::Int64, numvalued::Vector{Bool}, numberstorage::Vector{Float64})
 
     tmp_num = @inbounds numberstorage[child_idx]
     outnum = eval_univariate_set(op, tmp_num)
+
     @inbounds numberstorage[k] = outnum
+    @inbounds numvalued[k] = true
 
     return nothing
 end
@@ -689,73 +691,79 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
         op = nod.index
 
         if nod.nodetype == JuMP._Derivatives.VALUE
-            numvalued[k] = true
+            @inbounds numvalued[k] = true
 
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
-            numvalued[k] = true
+            @inbounds numvalued[k] = true
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
-            xMC = MC{N,T}(x_values[op], Interval{Float64}(lvb[op], uvb[op]), Val(N))
-
-            if first_eval_flag
-                @inbounds setstorage[k] = xMC
+            isa_number = @inbounds xtype[op]
+            @inbounds numvalued[k] = isa_number
+            if isa_number
+                @inbounds numberstorage[k] = x[op]
             else
-                @inbounds setstorage[k] = xMC ∩ setstorage[k]
+                xMC = MC{N,T}(x[op], Interval{Float64}(lvb[op], uvb[op]), Val(N))
+                @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k])
             end
-            numvalued[k] = false
 
-        elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION                          # DONE
-            @inbounds isnum = subexpression_isnum[op]
-            if isnum
+        elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
+            @inbounds isa_number = subexpression_is_number[op]
+            if isa_number
                 @inbounds numberstorage[k] = subexpr_values_flt[op]
             else
-                @inbounds setstorage[k] = subexpr_values_set[op] #∩ setstorage[k]
+                copy_subexpression_value!(k, op, setstorage, subexpr_values_set)
             end
-            numvalued[k] = isnum
+            @inbounds numvalued[k] = isa_number
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
 
-            @inbounds children_idx = nzrange(adj,k)
+            @inbounds children_idx = nzrange(adj, k)
             n_children = length(children_idx)
 
             # :+ with arity two or greater
             if op === 1 # :+
                 n = length(children_idx)
                 if n === 2
-                    forward_plus_binary!(k, children_idx, children_arr, numvalued, numberstorage, setstorage, first_eval_flag)
+                    forward_plus_binary!(k, children_arr, children_idx, numvalued, numberstorage,
+                                         setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval)
                 else
-                    forward_plus_narity!(k, children_idx, children_arr, numvalued, numberstorage, setstorage, first_eval_flag)
+                    forward_plus_narity!(k, children_arr, children_idx, numvalued, numberstorage,
+                                         setstorage, x, lbd, ubd, is_post, is_intersect)
                 end
 
             # :- with arity two
             elseif op === 2
-                forward_minus!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                              setstorage, current_node, subgrad_tighten, first_eval_flag)
+                forward_minus!(k, children_arr, children_idx, numvalued, numberstorage,
+                               setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval)
 
             # :* with arity two or greater
             elseif op === 3
                 n = length(children_idx)
                 if n === 2
-                    forward_multiply_binary!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                                             setstorage, current_node, subgrad_tighten, first_eval_flag)
+                    forward_multiply_binary!(k, children_arr, children_idx, numvalued,
+                                             numberstorage, setstorage, x, lbd, ubd, is_post,
+                                             is_intersect, is_first_eval)
                 else
-                    forward_multiply_narity!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                                             setstorage, current_node, subgrad_tighten, first_eval_flag)
+                    forward_multiply_narity!(k, children_arr, children_idx, numvalued,
+                                             numberstorage, setstorage, x, lbd, ubd,
+                                             is_post, is_intersect)
                 end
 
             # :^
             elseif op === 4
-                forward_power!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
+                forward_power!(k, children_arr, children_idx, numvalued, numberstorage,
+                               setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval, ctx)
 
             # :/
             elseif op === 5
-                forward_divide!(k, x_values, children_idx, children_arr, numvalued, numberstorage,
-                               setstorage, current_node, subgrad_tighten, first_eval_flag, ctx)
+                forward_divide!(k, children_arr, children_idx, numvalued, numberstorage,
+                                setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval, ctx)
 
             # user multivariate function
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
-                forward_user_multivariate!()
+                forward_user_multivariate!(k, children_arr, children_idx, numvalued, numberstorage,
+                                           setstorage, x, lbd, ubd, is_post, is_intersect, ctx,
+                                           user_operators, set_user_input_buffer, num_user_input_buffer)
 
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
 
@@ -766,22 +774,28 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
 
             # performs univariate operators on number valued inputs
             if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                forward_univariate_user!()
+                forward_univariate_user!(k, op, child_idx, setstorage, x, lbd, ubd, is_post,
+                                         is_intersect, is_first_eval, ctx, user_operators)
 
             elseif arg_is_number
-                forward_univariate_number!()
+                forward_univariate_number!(k, op, numvalued, numberstorage)
 
             # performs set valued operators that require a single tiepoint calculation
             elseif single_tp(op)
-                forward_univariate_tiepnt_1!()
+                forward_univariate_tiepnt_1!(k, child_idx, setstorage, x, lbd, ubd, tpdict,
+                                             tp1storage, tp2storage, is_post, is_intersect,
+                                             is_first_eval, ctx)
 
             # performs set valued operators that require two tiepoint calculations
             elseif double_tp(op)
-                forward_univariate_tiepnt_2!()
+                forward_univariate_tiepnt_2!(k, child_idx, setstorage, x, lbd, ubd, tpdict,
+                                             tp1storage, tp2storage, tp3storage, tp4storage,
+                                             is_post, is_intersect, is_first_eval, ctx)
 
             # performs set valued operator on other functions in base library
             else
-                forward_univariate_other!()
+                forward_univariate_other!(k, op, child_idx, setstorage, x, lbd, ubd, is_post,
+                                          is_intersect, is_first_eval, ctx)
 
             end
 

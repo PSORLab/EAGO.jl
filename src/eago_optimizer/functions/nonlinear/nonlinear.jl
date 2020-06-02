@@ -241,6 +241,40 @@ end
 # TODO: Unpacks variable bounds....
 get_node(d::Evaluator) = d.current_node
 
+#=
+Assumes the sparsities are sorted...
+=#
+function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}, substorage::MC{N2,T},
+                                   cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64},
+                                   func_sparsity::Vector{Int64}, sub_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
+
+
+    sset = @inbounds # TODO
+
+    # fill cv_grad/cc_grad buffers
+    fill!(cv_buffer, 0.0)
+    fill!(cc_buffer, 0.0)
+
+    sub_sparsity_count = 1
+    subs_index = @inbounds sub_sparsity[1]
+    for i = 1:length(func_sparsity)
+        func_index = @inbounds func_sparsity[i]
+        if func_index === subs_index
+            @inbounds cv_buffer[i] = sset.cv_grad[sub_sparsity_count]
+            @inbounds cc_buffer[i] = sset.cc_grad[sub_sparsity_count]
+            sub_sparsity_count += 1
+            subs_index = @inbounds sub_sparsity[sub_sparsity_count]
+        end
+    end
+
+    cv_grad = SVector(cv_buffer)
+    cc_grad = SVector(cc_buffer)
+
+    setstorage[k] = MC{N1,T}(sset.cv, sset.cc, sset.Intv, cv_grad, cc_grad, sset.cnst)
+
+    return nothing
+end
+
 include("forward_pass.jl")
 
 ###

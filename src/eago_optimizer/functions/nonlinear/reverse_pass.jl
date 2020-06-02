@@ -17,7 +17,9 @@
 const MAX_ASSOCIATIVE_REVERSE = 6
 
 # INSIDE DONE...
-function reverse_plus_binary!()
+function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where V
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
