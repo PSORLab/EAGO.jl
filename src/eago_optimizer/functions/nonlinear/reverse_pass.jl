@@ -19,7 +19,8 @@ const MAX_ASSOCIATIVE_REVERSE = 6
 # INSIDE DONE...
 function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                              is_post::Bool) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -85,7 +86,8 @@ end
 
 function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                              is_post::Bool) where {N, T<:RelaxTag}
 
     continue_flag = true
 
@@ -132,7 +134,8 @@ end
 
 function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                   numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                                  is_post::Bool) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -198,7 +201,8 @@ end
 
 function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                              is_post::Bool) where {N, T<:RelaxTag}
 
     continue_flag = true
 
@@ -245,7 +249,8 @@ end
 
 function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                        is_post::Bool) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -318,7 +323,8 @@ end
 
 function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                        is_post::Bool) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -391,7 +397,8 @@ end
 
 function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
+                        is_post::Bool) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -463,7 +470,7 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 end
 
 function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::Vector{MC{N,T}}, x::Vector{Float64},
-                             lbd::Vector{Float64}, ubd::Vector{Float64})
+                             lbd::Vector{Float64}, ubd::Vector{Float64}, is_post::Bool)
     valset = @inbounds setstorage[k]
     argset = @inbounds setstorage[arg_idx]
     a, b = eval_univariate_set_reverse(op, valset, argset)
@@ -481,14 +488,12 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, subexpression_isnum, l
-                             subexpr_values_set, nd::Vector{JuMP.NodeData}, adj, x_values, current_node::NodeBB,
-                             subgrad_tighten::Bool) where T
+function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
+                              lbd::Vector{Float64}, ubd::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                              numberstorage::Vector{Float64}, numvalued::Vector{Bool},
+                              subexpression_isnum::Vector{Bool}, subexpr_values_set, is_post::Bool) where T
 
     children_arr = rowvals(adj)
-    N = length(x_values)
-
-    tmp_hold = zero(T)
     continue_flag = true
 
     for k = 1:length(nd)
@@ -513,14 +518,13 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
                 @inbounds subexpr_values_set[nod.index] = setstorage[k]
             end
 
-
         elseif nvalued
             continue
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
             op = nod.index
             parent_index = nod.parent
-            @inbounds children_idx = nzrange(adj,k)
+            @inbounds children_idx = nzrange(adj, k)
             @inbounds parent_value = setstorage[k]
             n_children = length(children_idx)
 
@@ -532,35 +536,35 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
             elseif op === 1
                 if n_children === 2
                     continue_flag &= reverse_plus_binary!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                          setstorage, x, lbd, ubd)
+                                                          setstorage, x, lbd, ubd, is_post)
                 else
                     continue_flag &= reverse_plus_narity!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                          setstorage, x, lbd, ubd)
+                                                          setstorage, x, lbd, ubd, is_post)
                 end
 
             # :-
             elseif op === 2
                 continue_flag &= reverse_minus!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                setstorage, x, lbd, ubd)
+                                                setstorage, x, lbd, ubd, is_post)
 
             elseif op === 3 # :*
                 if n_children === 2
                     continue_flag &= reverse_multiply_binary!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                              setstorage, x, lbd, ubd)
+                                                              setstorage, x, lbd, ubd, is_post)
                 else
                     continue_flag &= reverse_multiply_narity!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                              setstorage, x, lbd, ubd)
+                                                              setstorage, x, lbd, ubd, is_post)
                 end
 
              # :^
             elseif op === 4
                 continue_flag &= reverse_power!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                setstorage, x, lbd, ubd)
+                                                setstorage, x, lbd, ubd, is_post)
 
             # :/
             elseif op === 5
                 continue_flag &= reverse_divide!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                 setstorage, x, lbd, ubd)
+                                                 setstorage, x, lbd, ubd, is_post)
 
             # ifelse
             elseif op === 6
@@ -572,7 +576,7 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
             op = nod.index
             if op <= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
                 arg_indx = @inbounds children_arr[adj.colptr[k]]
-                continue_flag &= reverse_univariate!(k, op, arg_indx, setstorage, x, lbd, ubd)
+                continue_flag &= reverse_univariate!(k, op, arg_indx, setstorage, x, lbd, ubd, is_post)
             end
         end
 

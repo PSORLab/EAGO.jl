@@ -118,11 +118,21 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Subroutines are now customized by creating a subtype of 'ExtensionType' and defining subroutines which dispatch on this new structure.
   - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
   - JIT compilation time has been reduced sub
-- 5/19/2020: [**EAGO v0.4.0**]
-  - Separate McCormick and ReverseMcCormick libraries from main package.
+- 6/3/2020: [**EAGO v0.4.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.3.0))
+  - Support for new MOI/JuMP `RawParameter` input and a number of new attributes.
+  - Separates McCormick and ReverseMcCormick libraries (now [McCormick.jl](https://github.com/PSORLab/McCormick.jl) and [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl))
+    from main package and reexports these packages.
+  - Introduces `verbosity = 5` debugging mode that outputs the relaxed model to console.
+  - Relaxation calculations now return NaN values on a domain violation.
+  - Introduces a guarded relaxation feature to deal with domain violations that occur due to expansiveness
+    of relaxations in intermediate terms.
+  - Tolerance based validation of cuts has been added to ensure numerically safe cut generation.
+  - Significantly simplify internal codebase for `EAGO.Optimizer` (no changes to API): fully decouples
+    input problem specifications from the formulation used internally, stack only stores variables that are
+    branched on, and a number of internal rearrangements to clearly delineate different routines.
+  - Add problem classification preprocessing that throws to simpler routines if (LP, SOCP) problem types
+    are detected.
   - Fix multiple bugs and add more transparent error codes.
-  - Significantly simplify internal codebase for EAGO.Optimizer (no changes to API).
-  - Introduces a guarded relaxation feature to help deal with domain violations.
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
@@ -154,7 +164,6 @@ Please report bugs or feature requests by opening an issue using the Github [**i
 ## Current limitations
 - Nonlinear handling assumes that box-constraints of nonlinear terms are available or can be inferred from bounds-tightening.
 - Only currently supports continuous functions. Support for mixed-integer problems is forthcoming.
-
 
 ## Work In Progress
 - Extensions for nonconvex dynamic global & robust optimization.
