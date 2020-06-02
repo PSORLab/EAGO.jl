@@ -353,23 +353,17 @@ end
 ###
 ### Interval bounding definitions
 ###
-function lower_interval_bound(d::BufferedNonlinearFunction{V}, y::NodeBB) where V
-    forward_pass!(d.evaluator, d)
+function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+    if !has_value(d)
+        forward_pass!(d.evaluator, d)
+    end
     return get_lo(get_value(d))
 end
 
-function lower_interval_bound(d::NonlinearExpression{V}, y::NodeBB) where V
-    forward_pass!(d.evaluator, d)
-    return get_lo(get_value(d))
-end
-
-function interval_bound(d::BufferedNonlinearFunction{V}, y::NodeBB) where V
-    forward_pass!(d.evaluator, d)
-    return get_interval(get_value(d))
-end
-
-function interval_bound(d::NonlinearExpression{V}, y::NodeBB) where V
-    forward_pass!(d.evaluator, d)
+function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+    if !has_value(d)
+        forward_pass!(d.evaluator, d)
+    end
     return get_interval(get_value(d))
 end
 

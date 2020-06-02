@@ -235,26 +235,9 @@ function bound_objective(t::ExtensionType, m::Optimizer)
     obj_type = wp._objective_type
 
     if obj_type === NONLINEAR
-        #=
-        objective_lo = eval_objective_lo(d)
-        constraints = d.constraints
-        constr_num = d.constraint_number
-        constraints_intv_lo = zeros(Float64, constr_num)
-        constraints_intv_hi = zeros(Float64, constr_num)
-        eval_constraint_lo!(d, constraints_intv_lo)
-        eval_constraint_hi!(d, constraints_intv_hi)
-        constraints_bnd_lo = d.constraints_lbd
-        constraints_bnd_hi = d.constraints_ubd
 
-        for i = 1:d.constraint_number
-            @inbounds constraints_intv_lo = constraints_bnd_lo[i]
-            @inbounds constraints_intv_hi = constraints_bnd_hi[i]
-            if (constraints_intv_lo > constraints_intv_hi) || (constraints_intv_hi < constraints_intv_lo)
-                feas = false
-                break
-            end
-        end
-        =#
+        # assumes current node has already been loaded into evaluator
+        objective_lo = lower_interval_bound(wp._objective_nl)
 
     elseif obj_type === SINGLE_VARIABLE
         obj_indx = @inbounds sb_map[wp._objective_sv.variable.value]
