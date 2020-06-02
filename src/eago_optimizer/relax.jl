@@ -196,6 +196,35 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     return nothing
 end
 
+function affine_relax_nonlinear!()
+
+function relax!(m::Optimizer, f::BufferedNonlinearFunction, indx::Int, check_safe::Bool)
+
+    lcut_generated, ucut_generated = affine_relax_nonlinear!()
+    if !f.expr.value_available
+        forward_pass!(evaluator, f)
+    end
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_quadratic_eq_ci, ci)
+        end
+    end
+
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_quadratic_eq_ci, ci)
+        end
+    end
+
+    return nothing
+end
+
 
 function bound_objective(t::ExtensionType, m::Optimizer)
 
@@ -367,19 +396,11 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
         relax!(m, sqf_eq, i, check_safe)
     end
 
-    #=
-    nl_leq_list = m._working_problem._nl_leq
-    for i = 1:m._working_problem._nl_leq_count
-        nl_leq = @inbounds nl_leq_list[i]
-        relax!(m, nl_leq, i, check_safe)
+    nl_list = m._working_problem._nonlinear_constr
+    for i = 1:m._working_problem._nl_count
+        nl = @inbounds nl_list[i]
+        relax!(m, nl, i, check_safe)
     end
-
-    nl_eq_list = m._working_problem._nl_eq
-    for i = 1:m._working_problem._nl_eq_count
-        nl_eq = @inbounds nl_eq_list[i]
-        relax!(m, nl_eq, i, check_safe)
-    end
-    =#
 
     objective_cut!(m, check_safe)
 
@@ -406,19 +427,12 @@ function delete_nl_constraints!(m::Optimizer)
     end
     empty!(m._buffered_quadratic_eq_ci)
 
-    #=
     # delete affine relaxations added from nonlinear inequality
-    for ci in m._buffered_nonlinear_ineq_ci
+    for ci in m._buffered_nonlinear_ci
         MOI.delete(m.relaxed_optimizer, ci)
     end
-    empty!(m._buffered_nonlinear_ineq_ci)
+    empty!(m._buffered_nonlinear_ci)
 
-    # delete affine relaxations added from nonlinear equality
-    for ci in m._buffered_nonlinear_eq_ci
-        MOI.delete(m.relaxed_optimizer, ci)
-    end
-    empty!(m._buffered_nonlinear_eq_ci)
-    =#
 
     return nothing
 end

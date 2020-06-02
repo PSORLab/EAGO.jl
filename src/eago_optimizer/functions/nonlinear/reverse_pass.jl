@@ -531,31 +531,39 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
             # :+
             elseif op === 1
                 if n_children === 2
-                    continue_flag &= reverse_plus_binary!()
+                    continue_flag &= reverse_plus_binary!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                          setstorage, x, lbd, ubd)
                 else
-                    continue_flag &= reverse_plus_narity!()
+                    continue_flag &= reverse_plus_narity!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                          setstorage, x, lbd, ubd)
                 end
 
             # :-
             elseif op === 2
-                continue_flag &= reverse_minus!()
+                continue_flag &= reverse_minus!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                setstorage, x, lbd, ubd)
 
             elseif op === 3 # :*
                 if n_children === 2
-                    continue_flag &= reverse_multiply_binary!()
+                    continue_flag &= reverse_multiply_binary!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                              setstorage, x, lbd, ubd)
                 else
-                    continue_flag &= reverse_multiply_narity!()
+                    continue_flag &= reverse_multiply_narity!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                              setstorage, x, lbd, ubd)
                 end
 
              # :^
             elseif op === 4
-                continue_flag &= reverse_power!()
+                continue_flag &= reverse_power!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                setstorage, x, lbd, ubd)
 
             # :/
             elseif op === 5
-                continue_flag &= reverse_divide!()
+                continue_flag &= reverse_divide!(k, children_arr, children_idx, numvalued, numberstorage,
+                                                 setstorage, x, lbd, ubd)
 
-            elseif op == 6 # ifelse
+            # ifelse
+            elseif op === 6
                 continue
             end
 
@@ -563,8 +571,8 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
             op = nod.index
             if op <= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                child_idx = @inbounds children_arr[adj.colptr[k]]
-                continue_flag &= reverse_univariate!()
+                arg_indx = @inbounds children_arr[adj.colptr[k]]
+                continue_flag &= reverse_univariate!(k, op, arg_indx, setstorage, x, lbd, ubd)
             end
         end
 

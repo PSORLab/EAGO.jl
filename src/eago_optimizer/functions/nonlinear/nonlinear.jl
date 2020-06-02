@@ -30,6 +30,7 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
     numberstorage::Vector{Float64}
     isnumber::Vector{Bool}
     value::V
+    value_available::Bool
 
     tp1storage::Vector{Float64}
     tp2storage::Vector{Float64}
@@ -242,22 +243,25 @@ function set_node!(evaluator::Evaluator, n::NodeBB)
         @inbounds evaluator.upper_variable_bounds[ni_map[i]] = n.lower_variable_bounds[i]
     end
     fill!(evaluator.subexpressions_eval, false)
+
     return nothing
 end
 
 function set_reference_point!(evaluator::Evaluator, x::Vector{Float64})
     fill!(evaluator.subexpressions_eval, false)
+
     return nothing
 end
 
 function retrieve_node(d::Evaluator)
     cn = d.current_node
-    NodeBB(copy(d.lower_variable_bounds[ni_map]), copy(d.upper_variable_bounds[ni_map]),
-           cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
+    return NodeBB(copy(d.lower_variable_bounds[ni_map]),
+                  copy(d.upper_variable_bounds[ni_map]),
+                  cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
 end
 
 # Returns false if subexpression has been evaluated at current reference point
-no_prior_eval(d::Evaluator, i::Int64) = @inbounds subexpressions_eval[i]
+prior_eval(d::Evaluator, i::Int64) = @inbounds subexpressions_eval[i]
 
 #=
 Assumes the sparsities are sorted...
@@ -265,7 +269,6 @@ Assumes the sparsities are sorted...
 function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}, substorage::MC{N2,T},
                                    cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64},
                                    func_sparsity::Vector{Int64}, sub_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
-
 
     sset = @inbounds #TODO
 
@@ -302,7 +305,7 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
     # check that prior subexpressions have been evaluated
     # i.e. box_id is same and reference point is the same
     for i = 1:d.dependent_subexpression_count
-        if no_prior_eval(evaluator, i)
+        if !prior_eval(evaluator, i)
             forward_pass!(evaluator, subexpr)
         end
     end
