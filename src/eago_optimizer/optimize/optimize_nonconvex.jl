@@ -305,7 +305,7 @@ function fathom!(t::ExtensionType, m::Optimizer)
             end
 
         else
-            if ~max_check
+            if !max_check
                 continue_flag = false
             elseif isempty(m._stack)
                 continue_flag = false
@@ -672,6 +672,16 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
                 sqf_eq = @inbounds m._working_problem._sqf_eq[i]
                 lower_value, upper_value = interval_bound(sqf_eq, n)
                 feasible_flag &= (lower_value <= 0.0 <= upper_value)
+                !feasible_flag && break
+            end
+        end
+
+        if feasible_flag
+            for i = 1:m._working_problem._nonlinear_count
+                nl_constr = @inbounds m._working_problem._nonlinear_constr[i]
+                lower_value, upper_value = interval_bound(nl_constr, n)
+                feasible_flag &= upper_value < nl_constr.lower_bound
+                feasible_flag &= lower_value > nl_constr.upper_bound
                 !feasible_flag && break
             end
         end

@@ -196,7 +196,7 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     return nothing
 end
 
-function affine_relax_nonlinear!()
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V}) where V
 end
 
 function relax!(m::Optimizer, f::BufferedNonlinearFunction, indx::Int, check_safe::Bool)
@@ -225,7 +225,6 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction, indx::Int, check_saf
 
     return nothing
 end
-
 
 function bound_objective(t::ExtensionType, m::Optimizer)
 
@@ -339,10 +338,10 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
                     push!(m._objective_cut_ci_saf, ci_saf)
                 end
             end
-        #=
+
         elseif obj_type === NONLINEAR
             buffered_nl = wp._objective_nl
-            finite_cut_generated =  affine_relax_nl!(TODO)
+            finite_cut_generated = affine_relax_nonlinear!(buffered_nl)
             if finite_cut_generated
                 copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
                 wp._objective_saf.constant = 0.0
@@ -351,7 +350,6 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
                     push!(m._objective_cut_ci_saf, ci_saf)
                 end
             end
-        =#
         end
     end
 

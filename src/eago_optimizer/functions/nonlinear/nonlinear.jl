@@ -58,8 +58,9 @@ and a scalar affine function.
 """
 mutable struct BufferedNonlinearFunction{V} <: AbstractEAGOConstraint
     expr::NonlinearExpression{V}
-    buffer::SAF
-    bnds::V
+    saf::SAF
+    lower_bound::Float64
+    upper_bound::Float64
 end
 
 ###

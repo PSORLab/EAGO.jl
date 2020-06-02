@@ -111,7 +111,6 @@ function label_branch_variables!(m::Optimizer)
         end
     end
 
-    # adds nonlinear terms in objectives if
     obj_type = m._working_problem._objective_type
     if obj_type === SCALAR_QUADRATIC
         for term in m._working_problem._objective_sqf.func.quadratic_terms
@@ -119,6 +118,27 @@ function label_branch_variables!(m::Optimizer)
             variable_index_2 = term.variable_index_2.value
             @inbounds m._branch_variables[variable_index_1] = true
             @inbounds m._branch_variables[variable_index_2] = true
+        end
+    end
+
+    # label nonlinear branch variables (assumes affine terms have been extracted)
+    nl_constr = m._working_problem._nonlinear_constr
+    for i = 1:m._working_problem._nonlinear_count
+        nl_constr_eq = @inbounds nl_constr[i]
+        node_list = nl_constr_eq.expr.nd
+        for node in node_list
+            if node.nodetype === JuMP._Derivatives.VARIABLE
+                @inbounds m._branch_variables[node.index] = true
+            end
+        end
+    end
+
+    if obj_type === NONLINEAR
+        node_list = m._working_problem._objective_nl.expr.nd
+        for node in node_list
+            if node.nodetype === JuMP._Derivatives.VARIABLE
+                @inbounds m._branch_variables[node.index] = true
+            end
         end
     end
 
