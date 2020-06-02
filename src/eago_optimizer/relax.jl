@@ -197,18 +197,21 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V}, evaluator::Evaluator, use_cvx::Bool) where V
-    if !has_value(f) || last_pass_reverse(f)
+    if !f.has_value || f.last_past_reverse
         forward_pass!(evaluator, f)
     end
 
     new_point = is_new_reference(f)
-    if use_cvx && (new_point || !last_relax_convex(f))
+    if use_cvx && (new_point || !f.last_relax_convex)
         unpack_value!(f, use_cvx)
     end
 
-    if !use_cvx && (new_point || !last_relax_concave(f))
+    if !use_cvx && (new_point || !f.last_relax_concave)
         unpack_value!(f, use_cvx)
     end
+
+    f.last_relax_convex = use_cvx
+    f.last_relax_concave = !use_cvx
 
     mult = use_cvx : 1.0 : -1.0
     aff_terms = f.expr.affine_terms.terms

@@ -709,6 +709,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     if !m._obbt_performed_flag
         set_first_relax_point!(m)
+        set_node!(m._working_problem.evaluator, n)
+        set_node_flag!(m)
+
         update_relaxed_problem_box!(m)
         relax_constraints!(m, 1)
     end

@@ -61,6 +61,9 @@ mutable struct BufferedNonlinearFunction{V} <: AbstractEAGOConstraint
     saf::SAF
     lower_bound::Float64
     upper_bound::Float64
+    last_relax_convex::Bool
+    last_relax_concave::Bool
+    last_past_reverse::Bool
 end
 
 ###
@@ -199,6 +202,25 @@ function BufferedNonlinearFunction{V}()
     return BufferedNonlinearFunction{V}(NonlinearExpression{V}(), SAF(SAT[], 0.0), MOI.NLPBoundsPair(-Inf, Inf))
 end
 
+function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
+    d.has_value = false
+    d.last_relax_convex = false
+    d.last_relax_concave = false
+
+    return nothing
+end
+
+"""
+$(TYPEDEF)
+
+Extracts the `convex` affine relaxaiton is `use_cvx` to `f.saf` then adds the `affine_terms` to
+this to form the affine relaxation of the function.
+"""
+function unpack_value!(f::BufferedNonlinearFunction{V}, use_cvx::Bool) where V
+
+    return nothing
+end
+
 ###
 ### Defines evaluator storage structure
 ###
@@ -325,6 +347,8 @@ end
 function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     forward_pass!(evaluator, d.expr)
     set_value!(d.expr, d.expr.value ∩ d.bnds)
+    d.has_value = true
+    d.last_past_reverse = false
     return nothing
 end
 
@@ -347,6 +371,7 @@ function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
 end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
+    d.last_past_reverse = true
     set_value!(d.expr, d.expr.value ∩ d.bnds)
     return reverse_pass!(evaluator, d.expr)
 end
@@ -355,14 +380,14 @@ end
 ### Interval bounding definitions
 ###
 function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
-    if !has_value(d)
+    if !d.has_value
         forward_pass!(d.evaluator, d)
     end
     return get_lo(get_value(d))
 end
 
 function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
-    if !has_value(d)
+    if !d.has_value
         forward_pass!(d.evaluator, d)
     end
     return get_interval(get_value(d))

@@ -186,6 +186,18 @@ function aggressive_filtering!(m::Optimizer, n::NodeBB)
     return true
 end
 
+function set_node_flag!(m::Optimizer)
+    for constr in m._working_problem._nonlinear_constr
+        set_node_flag!(constr)
+    end
+
+    if m._working_problem._objective_type === NONLINEAR
+        set_node_flag!(m._working_problem._objective_nl)
+    end
+
+    return nothing
+end
+
 """
 $(FUNCTIONNAME)
 
@@ -204,6 +216,9 @@ function obbt!(m::Optimizer)
     # solve initial problem to feasibility
     set_first_relax_point!(m)
     update_relaxed_problem_box!(m)
+    set_node!(m._working_problem.evaluator, n)
+    set_node_flag!(m)
+
     relax_constraints!(m, 1)
     relax_objective!(m, 1)
 
@@ -538,18 +553,20 @@ cp_condition(m::Optimizer) = false
 function set_constraint_propagation_fbbt!(m::Optimizer)
     feasible_flag = true
 
-    set_node!(evaluator, m._current_nodeB)
+    set_node!(evaluator, m._current_node)
     set_reference_point!(evaluator, m._current_xref)
 
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
+            set_node_flag!(constr)
             forward_pass!(evaluator, constr)
             feasible_flag &= reverse_pass!(evaluator, constr)
         end
     end
 
     if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
-        obj_nonlinear =  m._working_problem._objective_nl
+        obj_nonlinear = m._working_problem._objective_nl
+        set_node_flag!(obj_nonlinear)
         forward_pass!(evaluator, obj_nonlinear)
         feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
     end
