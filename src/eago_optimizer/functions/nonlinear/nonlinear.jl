@@ -370,5 +370,32 @@ end
 ###
 ### Parsing definitions
 ###
-function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo})
+function eliminate_fixed_variables!(f::NonlinearExpression{V}}, v::Vector{VariableInfo}) where V
+    num_constants = length(f.const_values)
+    indx_to_const_loc = Dict{Int,Int}()
+    for i = 1:length(expr.nd)
+        nd = @inbounds expr.nd[i]
+        # Assumes MOI Variable have been eliminated previously...
+        if nd.nodetype === JuMP._Derivatives.VARIABLE
+            indx = nd.index
+            if v[indx].is_fixed
+                if haskey(indx_to_const_loc, indx)
+                    const_loc = indx_to_const_loc[indx]
+                    expr.nd[i] = NodeData(JuMP._Derivatives.VALUE, const_loc, nd.parent)
+                else
+                    push!(const_values, v[indx].lower_bound)
+                    num_constants += 1
+                    indx_to_const_loc[indx] = num_constants
+                    expr.nd[i] = NodeData(nd.nodetype, num_constants, nd.parent)
+                end
+                f.isnumber[i] = true
+            end
+        end
+    end
+
+    return nothing
+end
+
+function eliminate_fixed_variables!(f::BufferedNonlinearFunction{V}, v::Vector{VariableInfo}) where V
+    eliminate_fixed_variables!(f.expr, v)
 end
