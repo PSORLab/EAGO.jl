@@ -839,7 +839,8 @@ function cut_condition(t::ExtensionType, m::Optimizer)
             objective_lo = lower_interval_bound(m._working_problem._objective_sqf, n)
 
         elseif obj_type === NONLINEAR
-                #objective_lo = eval_objective_lo(m._relaxed_evaluator)
+            objective_lo = lower_interval_bound(m._working_problem._objective_nl, n)
+
         end
 
         if objective_lo > m._lower_objective_value
