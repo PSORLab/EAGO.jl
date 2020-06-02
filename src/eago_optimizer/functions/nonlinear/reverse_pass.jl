@@ -18,8 +18,8 @@ const MAX_ASSOCIATIVE_REVERSE = 6
 
 # INSIDE DONE...
 function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
-                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where V
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -83,15 +83,17 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     return true
 end
 
-function reverse_plus_narity!()
+function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
-    child_arr_indx = children_arr[children_idx]
     continue_flag = true
 
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
     active_count_number = 0
-    for active_idx in child_arr_indx
+    for idx in children_idx
+        active_idx = @inbounds children_arr[idx]
 
         # don't contract a number valued argument
         active_arg_is_number = @inbounds numvalued[active_idx]
@@ -128,7 +130,9 @@ function reverse_plus_narity!()
     return true
 end
 
-function reverse_multiply_binary!()
+function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                                  numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -192,15 +196,17 @@ function reverse_multiply_binary!()
     return true
 end
 
-function reverse_multiply_narity!()
+function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
-    child_arr_indx = children_arr[children_idx]
     continue_flag = true
 
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
     active_count_number = 0
-    for active_idx in child_arr_indx
+    for idx in children_idx
+        active_idx = @inbounds children_arr[idx]
 
         # don't contract a number valued argument
         active_arg_is_number = @inbounds numvalued[active_idx]
@@ -237,7 +243,9 @@ function reverse_multiply_narity!()
     return true
 end
 
-function reverse_minus!()
+function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -308,7 +316,9 @@ function reverse_minus!()
     return true
 end
 
-function reverse_power!()
+function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -379,7 +389,9 @@ function reverse_power!()
     return true
 end
 
-function reverse_divide!()
+function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}) where {N, T<:RelaxTag}
 
     # extract values for k
     argk_index = @inbounds children_arr[k]
@@ -450,18 +462,26 @@ function reverse_divide!()
     return true
 end
 
-function reverse_univariate!()
-    @inbounds valset = setstorage[k]
-    @inbounds argset = setstorage[arg_idx]
+function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::Vector{MC{N,T}}, x::Vector{Float64},
+                             lbd::Vector{Float64}, ubd::Vector{Float64})
+    valset = @inbounds setstorage[k]
+    argset = @inbounds setstorage[arg_idx]
     a, b = eval_univariate_set_reverse(op, valset, argset)
+
+    if isempty(b)
+        return false
+    elseif isnan(b)
+        b = MC{N,T}(argset.Intv)
+    end
     @inbounds setstorage[arg_idx] = is_post ? set_value_post(x, b, lbd, ubd) : b
+
     return true
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, subexpression_isnum,
+function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, subexpression_isnum, l
                              subexpr_values_set, nd::Vector{JuMP.NodeData}, adj, x_values, current_node::NodeBB,
                              subgrad_tighten::Bool) where T
 
@@ -484,16 +504,15 @@ function reverse_pass_kernel(setstorage::Vector{T}, numberstorage, numvalued, su
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             op = nod.index
-            @inbounds current_node.lower_variable_bounds[op] = setstorage[k].Intv.lo
-            @inbounds current_node.upper_variable_bounds[op] = setstorage[k].Intv.hi
+            @inbounds lbd[op] = setstorage[k].Intv.lo
+            @inbounds ubd[op] = setstorage[k].Intv.hi
 
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
-            #=
-            @inbounds isnum = subexpression_isnum[nod.index]
-            if ~isnum
+            @inbounds is_number = subexpression_isnum[nod.index]
+            if !is_number
                 @inbounds subexpr_values_set[nod.index] = setstorage[k]
-            end          # DONE
-            =#
+            end
+
 
         elseif nvalued
             continue

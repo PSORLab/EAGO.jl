@@ -219,6 +219,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     lower_variable_bounds::Vector{Float64} = Float64[]
     upper_variable_bounds::Vector{Float64} = Float64[]
     x_value::Vector{Float64} = Float64[]
+    ni_map::Vector{Int64}
 
     "Context used to guard against domain violations & branch on these violations if necessary"
     subgrad_tighten::Bool = false
@@ -226,6 +227,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     ctx::GuardCtx = GuardCtx()
 
     subexpressions::Vector{NonlinearExpression}
+    subexpressions_eval::Vector{Bool}
 end
 
 """
@@ -233,13 +235,29 @@ $(FUNCTIONNAME)
 
 Sets the current node in the Evaluator structure.
 """
-function set_node!(x::Evaluator, n::NodeBB)
-    x.current_node = NodeBB(n)
+function set_node!(evaluator::Evaluator, n::NodeBB)
+    evaluator.current_node = NodeBB(n)
+    for i = 1:length(evaluator.current_node)
+        @inbounds evaluator.lower_variable_bounds[ni_map[i]] = n.lower_variable_bounds[i]
+        @inbounds evaluator.upper_variable_bounds[ni_map[i]] = n.lower_variable_bounds[i]
+    end
+    fill!(evaluator.subexpressions_eval, false)
     return nothing
 end
 
-# TODO: Unpacks variable bounds....
-get_node(d::Evaluator) = d.current_node
+function set_reference_point!(evaluator::Evaluator, x::Vector{Float64})
+    fill!(evaluator.subexpressions_eval, false)
+    return nothing
+end
+
+function retrieve_node(d::Evaluator)
+    cn = d.current_node
+    NodeBB(copy(d.lower_variable_bounds[ni_map]), copy(d.upper_variable_bounds[ni_map]),
+           cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
+end
+
+# Returns false if subexpression has been evaluated at current reference point
+no_prior_eval(d::Evaluator, i::Int64) = @inbounds subexpressions_eval[i]
 
 #=
 Assumes the sparsities are sorted...
@@ -249,7 +267,7 @@ function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}
                                    func_sparsity::Vector{Int64}, sub_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
 
 
-    sset = @inbounds # TODO
+    sset = @inbounds #TODO
 
     # fill cv_grad/cc_grad buffers
     fill!(cv_buffer, 0.0)
@@ -284,12 +302,19 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
     # check that prior subexpressions have been evaluated
     # i.e. box_id is same and reference point is the same
     for i = 1:d.dependent_subexpression_count
-        subexpr = @inbounds evaluator.subexpressions[i]
-        if isequal(subexpr._xref_point, evaluator.expr._xref_point)
+        if no_prior_eval(evaluator, i)
             forward_pass!(evaluator, subexpr)
         end
     end
-    forward_pass_kernel!(#TODO DEFINE ARGS)
+    forward_pass_kernel!(d.nd, d.adj, d.x, evaluator.lower_variable_bounds,
+                         evaluator.upper_variable_bounds, d.setstorage,
+                         d.numberstorage, d.numvalued, d.tpdict,
+                         d.tp1storage, d.tp2storage, d.tp3storage, d.tp4storage,
+                         evaluator.user_operators, evaluator.subexpression_isnum,
+                         evaluator.subexpr_values_flt, evaluator.subexpr_values_set,
+                         evaluator.num_mv_buffer, d.set_mv_buffer, evaluator.ctx,
+                         evaluator.is_post, evaluator.is_intersect,
+                         evaluator.is_first_eval, d.cv_grad_buffer, d.cc_grad_buffer)
     return nothing
 end
 

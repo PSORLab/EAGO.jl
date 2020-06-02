@@ -96,38 +96,6 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
     return xMC
 end
 
-#=
-macro get_binary_storage(children_idx, children_arr, numvalued, numberstorage, setstorage, type)
-    esc(quote
-        # get row indices
-        idx1 = first($children_idx)
-        idx2 = last($children_idx)
-
-        # extract values for argument 1
-        arg1_index = @inbounds $children_arr[idx1]
-        arg1_is_number = @inbounds $numvalued[arg1_index]
-        if arg1_is_number
-            set1 = zero($type)
-            num1 = @inbounds $numberstorage[arg1_index]
-        else
-            num1 = 0.0
-            set1 = @inbounds $setstorage[arg1_index]
-        end
-
-        # extract values for argument 2
-        arg2_index = @inbounds $children_arr[idx2]
-        arg2_is_number = @inbounds $numvalued[arg2_index]
-        if arg2_is_number
-            num2 = @inbounds $numberstorage[arg2_index]
-            set2 = zero(type)
-        else
-            set2 = @inbounds $setstorage[arg2_index]
-            num2 = 0.0
-        end
-    end)
-end
-=#
-
 function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -529,21 +497,23 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 end
 
 function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
-                                    numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                                    numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                                     x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                                    is_post::Bool, is_intersect::Bool, ctx::GuardCtx, user_operators,
-                                    set_user_input_buffer, num_user_input_buffer) where V
+                                    is_post::Bool, is_intersect::Bool, ctx::GuardCtx,
+                                    user_operators::JuMP._Derivatives.UserOperatorRegistry,
+                                    set_mv_buffer::Vector{MC{N,T}}, num_mv_buffer::Vector{Float64}) where {N, T<:RelaxTag}
+
         n = length(children_idx)
         evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
-        set_input = get_buffer(set_user_input_buffer, n)
-        num_input = view(num_user_input_buffer, 1:n)
+        set_input = view(set_mv_buffer, 1:n)
+        num_input = view(num_mv_buffer, 1:n)
         fill!(num_input, -Inf)
 
         buffer_count = 1
         output_is_number = true
         for c_idx in children_idx
-            @inbounds arg_index = children_arr[c_idx]
-            @inbounds arg_is_number = numvalued[arg_index]
+            arg_index = @inbounds children_arr[c_idx]
+            arg_is_number = @inbounds numvalued[arg_index]
             if arg_is_number
                 @inbounds num_input[buffer_count] = numberstorage[arg_index]
             else
@@ -673,21 +643,20 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
 end
 
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
-function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
-                       nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64},
-                       current_node::NodeBB, x_values::Vector{Float64},
-                       subexpr_values_flt::Vector{Float64}, subexpr_values_set::Vector{MC{N,T}},
-                       subexpression_isnum::Vector{Bool}, user_input_buffer::Vector{MC{N,T}}, flt_user_input_buffer::Vector{Float64},
-                       subgrad_tighten::Bool,
-                       tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
-                       tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
-                       first_eval_flag::Bool, user_operators::JuMP._Derivatives.UserOperatorRegistry,
-                       ctx::GuardCtx) where {N,T<:RelaxTag}
+function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
+                              lbd::Vector{Float64}, ubd::Vector{Float64},
+                              setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
+                              tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
+                              tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
+                              user_operators::JuMP._Derivatives.UserOperatorRegistry, subexpression_isnum::Vector{Bool},
+                              subexpr_values_flt::Vector{Float64}, subexpr_values_set, num_mv_buffer::Vector{Float64},
+                              set_mv_buffer::Vector{MC{N,T}}, ctx::GuardCtx, is_post::Bool, is_intersect::Bool,
+                              is_first_eval::Bool, cv_grad_buffer::Vector{Float64}, cc_grad_buffer::Vector{Float64}) where {N, T<:RelaxTag}
 
     children_arr = rowvals(adj)
 
     for k = length(nd):-1:1
-        @inbounds nod = nd[k]
+        nod = @inbounds nd[k]
         op = nod.index
 
         if nod.nodetype == JuMP._Derivatives.VALUE
@@ -702,16 +671,16 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
             if isa_number
                 @inbounds numberstorage[k] = x[op]
             else
-                xMC = MC{N,T}(x[op], Interval{Float64}(lvb[op], uvb[op]), Val(N))
+                xMC = MC{N,T}(x[op], Interval{Float64}(lbd[op], ubd[op]), Val{N}())
                 @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k])
             end
 
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
-            @inbounds isa_number = subexpression_is_number[op]
+            isa_number = @inbounds subexpression_is_number[op]
             if isa_number
                 @inbounds numberstorage[k] = subexpr_values_flt[op]
             else
-                copy_subexpression_value!(k, op, setstorage, subexpr_values_set)
+                copy_subexpression_value!(k, op, setstorage, subexpr_values_set, cv_grad_buffer, cc_grad_buffer)
             end
             @inbounds numvalued[k] = isa_number
 
@@ -721,7 +690,7 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
             n_children = length(children_idx)
 
             # :+ with arity two or greater
-            if op === 1 # :+
+            if op === 1
                 n = length(children_idx)
                 if n === 2
                     forward_plus_binary!(k, children_arr, children_idx, numvalued, numberstorage,
@@ -763,7 +732,7 @@ function forward_pass_kernel!(setstorage::Vector{MC{N,T}}, numberstorage::Vector
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 forward_user_multivariate!(k, children_arr, children_idx, numvalued, numberstorage,
                                            setstorage, x, lbd, ubd, is_post, is_intersect, ctx,
-                                           user_operators, set_user_input_buffer, num_user_input_buffer)
+                                           user_operators, set_mv_buffer, num_mv_buffer)
 
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
 
