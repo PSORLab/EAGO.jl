@@ -197,6 +197,7 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 function affine_relax_nonlinear!()
+end
 
 function relax!(m::Optimizer, f::BufferedNonlinearFunction, indx::Int, check_safe::Bool)
 

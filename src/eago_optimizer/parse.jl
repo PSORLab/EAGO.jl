@@ -37,10 +37,26 @@ function convert_to_min!(m::Optimizer)
             m._working_problem._objective_sqf.sqf = MOIU.operate(-, Float64, sqf)
 
         elseif obj_type === NONLINEAR
-            # TODO NONLINEAR CASE
+
+            # updates tape for nlp_data block (used by local optimizer)
+            nd = m._working_problem._nlp_data.evaluator.m.nlp_data.nlobj.nd
+            pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
+            nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+            for i = 3:length(nd)
+                @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+            end
+
+            # updates tape used by evaluator for the nonlinear objective (used by the relaxed optimizer)
+            nd = m._working_problem._objective_nl.expr.nd
+            pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
+            nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+            for i = 3:length(nd)
+                @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+            end
         end
     end
-    return
+
+    return nothing
 end
 
 function check_set_is_fixed(v::VariableInfo)
@@ -259,6 +275,8 @@ function initial_parse!(m::Optimizer)
     add_nonlinear_functions!(m)
 
     # converts a maximum problem to a minimum problem (internally) if necessary
+    # this is placed after adding nonlinear functions as this prior routine
+    # copies the nlp_block from the input_problem to the working problem
     convert_to_min!(m)
 
     # labels the variable info and the _fixed_variable vector for each fixed variable

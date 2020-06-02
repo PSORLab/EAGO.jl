@@ -348,6 +348,7 @@ function termination_check(t::ExtensionType, m::Optimizer)
             m._termination_status_code = MOI.OPTIMAL
             m._result_status_code = MOI.FEASIBLE_POINT
             (m._parameters.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
+
         else
             m._termination_status_code = MOI.INFEASIBLE
             m._result_status_code = MOI.INFEASIBILITY_CERTIFICATE

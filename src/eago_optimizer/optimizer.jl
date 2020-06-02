@@ -302,7 +302,7 @@ Base.@kwdef mutable struct ParsedProblem
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective_saf_parsed::AffineFunctionIneq = AffineFunctionIneq()
     _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
-    _objective_nl::BufferedNonlinear = BufferedNonlinear{MC{1,NS}}()
+    _objective_nl::BufferedNonlinearFunction = BufferedNonlinearFunction{MC{1,NS}}()
     _objective_type::ObjectiveType = UNSET
 
     # objective sense information (set by convert_to_min in parse.jl)
@@ -326,7 +326,7 @@ Base.@kwdef mutable struct ParsedProblem
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
     # storage for nonlinear functions
-    _nonlinear_constr::Vector{BufferedNonlinear} = BufferedNonlinear[]
+    _nonlinear_constr::Vector{BufferedNonlinearFunction} = BufferedNonlinearFunction[]
 
     # nonlinear constraint storage
     _nonlinear_count::Int = 0
@@ -347,12 +347,14 @@ function Base.isempty(x::ParsedProblem)
 
     new_input_problem = ParsedProblem()
     for field in fieldnames(ParsedProblem)
+
         field_value = getfield(x, field)
         if field_value isa Array
             if !isempty(field_value)
                 is_empty_flag = false
                 break
             end
+
         elseif field_value isa Number
             if getfield(new_input_problem, field) !== field_value
                 is_empty_flag = false
