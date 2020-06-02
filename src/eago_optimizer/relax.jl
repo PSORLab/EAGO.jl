@@ -196,15 +196,36 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     return nothing
 end
 
-function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V}) where V
-end
-
-function relax!(m::Optimizer, f::BufferedNonlinearFunction, indx::Int, check_safe::Bool)
-
-    lcut_generated, ucut_generated = affine_relax_nonlinear!()
-    if !f.expr.value_available
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V}, evaluator::Evaluator, use_cvx::Bool) where V
+    if !has_value(f) || last_pass_reverse(f)
         forward_pass!(evaluator, f)
     end
+
+    new_point = is_new_reference(f)
+    if use_cvx && (new_point || !last_relax_convex(f))
+        unpack_value!(f, use_cvx)
+    end
+
+    if !use_cvx && (new_point || !last_relax_concave(f))
+        unpack_value!(f, use_cvx)
+    end
+
+    mult = use_cvx : 1.0 : -1.0
+    aff_terms = f.expr.affine_terms.terms
+    saf_terms = f.saf.terms
+    for i = 1:length(saf_terms)
+        term = @inbounds saf_terms[i]
+        @inbounds saf_terms[i] = SAT(term.coefficient + mult*aff_terms[i].coefficient, term.variable_index)
+    end
+    f.saf.constrant += mult*f.expr.affine_terms.constant
+
+    return nothing
+end
+
+function relax!(m::Optimizer, f::BufferedNonlinearFunction{V}, indx::Int, check_safe::Bool) where V
+
+    evaluator = m._working_problem.evaluator
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
@@ -214,6 +235,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction, indx::Int, check_saf
         end
     end
 
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
@@ -286,11 +308,17 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
             end
         end
 
-    #=
     elseif obj_type === NONLINEAR
+         buffered_nl = wp._objective_nl
+         finite_cut_generated = affine_relax_nonlinear!(buffered_nl, true)
+         if finite_cut_generated
+             if !check_safe || is_safe_cut!(m, buffered_nl.saf)
+                 copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
+                 wp._objective_saf.constant = buffered_nl.saf.constant
+                 MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+             end
+         end
 
-
-    =#
     end
     return nothing
 end
