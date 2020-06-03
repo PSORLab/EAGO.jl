@@ -10,6 +10,10 @@
 #############################################################################
 # src/eago_optimizer/evaluator/passes.jl
 # Functions used to compute forward pass of nonlinear functions.
+# set_value_post
+# overwrite_or_intersect
+# forward_pass_kernel!
+# associated blocks
 #############################################################################
 
 """
@@ -84,7 +88,7 @@ $(FUNCTIONNAME)
 Intersects the new set valued operator with the prior and performing `set_value_post` if the flag is...
 """
 function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float64}, lbd::Vector{Float64},
-                                ubd::Vector{Float64}, is_post::Bool, is_intersect::Bool)
+                                ubd::Vector{Float64}, is_post::Bool, is_intersect::Bool) where {N,T<:RelaxTag}
 
     if is_post && is_intersect
         return set_value_post(x, xMC ∩ past_xMC, lbd, ubd)
@@ -97,9 +101,9 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
 end
 
 function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
-                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{V},
+                              numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                              is_post::Bool, is_intersect::Bool, is_first_eval::Bool) where V
+                              is_post::Bool, is_intersect::Bool, is_first_eval::Bool) where {N,T<:RelaxTag}
 
     # get row indices
     idx1 = first(children_idx)
@@ -251,7 +255,7 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
 
     @inbounds numvalued[k] = output_is_number
     if !isnum
-        inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
 
     return nothing
@@ -351,8 +355,8 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     @inbounds numvalued[k] = output_is_number
-    if ~isnum
-        inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
+    if !output_is_number
+        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x_values, lbd, ubd, is_post, is_intersect)
     end
 
     return nothing
@@ -503,40 +507,37 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
                                     user_operators::JuMP._Derivatives.UserOperatorRegistry,
                                     set_mv_buffer::Vector{MC{N,T}}, num_mv_buffer::Vector{Float64}) where {N, T<:RelaxTag}
 
-        n = length(children_idx)
-        evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
-        set_input = view(set_mv_buffer, 1:n)
-        num_input = view(num_mv_buffer, 1:n)
-        fill!(num_input, -Inf)
+    n = length(children_idx)
+    evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
+    set_input = view(set_mv_buffer, 1:n)
+    num_input = view(num_mv_buffer, 1:n)
+    fill!(num_input, -Inf)
 
-        buffer_count = 1
-        output_is_number = true
-        for c_idx in children_idx
-            arg_index = @inbounds children_arr[c_idx]
-            arg_is_number = @inbounds numvalued[arg_index]
-            if arg_is_number
-                @inbounds num_input[buffer_count] = numberstorage[arg_index]
-            else
-                @inbounds set_input[buffer_count] = setstorage[arg_index]
-            end
-            buffer_count += 1
-        end
-
-        if output_is_number
-            numberstorage[k] = MOI.eval_objective(evaluator, num_input)
+    buffer_count = 1
+    output_is_number = true
+    for c_idx in children_idx
+        arg_index = @inbounds children_arr[c_idx]
+        arg_is_number = @inbounds numvalued[arg_index]
+        if arg_is_number
+            @inbounds num_input[buffer_count] = numberstorage[arg_index]
         else
-            for i = 1:(buffer_count - 1)
-                if !isinf(@inbounds num_input[i])
-                    @inbounds set_input[buffer_count] = V(num_input[buffer_count])
-                end
-            end
-            outset = Cassette.overdub(ctx, MOI.eval_objective, evaluator, set_input)
-            setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect)
+            @inbounds set_input[buffer_count] = setstorage[arg_index]
         end
-        @inbounds numvalued[k] = output_is_number
-    else
-        error("Unsupported operation $(operators[op])")
+        buffer_count += 1
     end
+
+    if output_is_number
+        numberstorage[k] = MOI.eval_objective(evaluator, num_input)
+    else
+        for i = 1:(buffer_count - 1)
+            if !isinf(@inbounds num_input[i])
+                @inbounds set_input[buffer_count] = MC{N,T}(num_input[buffer_count])
+            end
+        end
+        outset = Cassette.overdub(ctx, MOI.eval_objective, evaluator, set_input)
+        setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect)
+    end
+    @inbounds numvalued[k] = output_is_number
 
     return nothing
 end
@@ -733,6 +734,10 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                 forward_user_multivariate!(k, children_arr, children_idx, numvalued, numberstorage,
                                            setstorage, x, lbd, ubd, is_post, is_intersect, ctx,
                                            user_operators, set_mv_buffer, num_mv_buffer)
+
+            else
+               error("Unsupported operation $(operators[op])")
+            end
 
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
 

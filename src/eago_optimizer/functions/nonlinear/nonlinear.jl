@@ -8,11 +8,27 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# Defines the NonlinearExpression, BufferedNonlinearFunction
+# unpack_value!
+# Defines the Evaluator
+# set_node_flag!
+# set_node!
+# set_reference_point!
+# retrieve_node
+# prior_eval
+# copy_subexpression_value!
+# forward_pass!
+# reverse_pass!
+# lower_interval_bound
+# interval_bound
+# eliminate_fixed_variables!
 #############################################################################
 
+include("empty_evaluator.jl")
+include("univariate.jl")
+
 """
-$(FUNCTIONAME)
+$(TYPEDEF)
 
 Stores a general quadratic function with a buffer.
 """
@@ -49,7 +65,7 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
 end
 
 """
-$(FUNCTIONAME)
+$(TYPEDEF)
 
 Stores a general nonlinear function with a buffer represented by the sum of a tape
 and a scalar affine function.
@@ -119,7 +135,7 @@ function NonlinearExpression()
     return NonlinearExpression{MC{1,NS}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
                                          MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}),
                                          Float64[], Float64[], Float64[], Float64[],
-                                         Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
+                                         Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
                                          Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
@@ -199,7 +215,7 @@ function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
 end
 
 """
-$(TYPEDEF)
+$(FUNCTIONNAME)
 
 Extracts the `convex` affine relaxaiton is `use_cvx` to `f.saf` then adds the `affine_terms` to
 this to form the affine relaxation of the function.
@@ -292,6 +308,7 @@ function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}
                                    cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64},
                                    func_sparsity::Vector{Int64}, sub_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
 
+                                   #=
     sset = @inbounds #TODO
 
     # fill cv_grad/cc_grad buffers
@@ -314,6 +331,7 @@ function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}
     cc_grad = SVector(cc_buffer)
 
     setstorage[k] = MC{N1,T}(sset.cv, sset.cc, sset.Intv, cv_grad, cc_grad, sset.cnst)
+    =#
 
     return nothing
 end
@@ -402,7 +420,7 @@ end
 ###
 ### Parsing definitions
 ###
-function eliminate_fixed_variables!(f::NonlinearExpression{V}}, v::Vector{VariableInfo}) where V
+function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{VariableInfo}) where V
     num_constants = length(f.const_values)
     indx_to_const_loc = Dict{Int,Int}()
     for i = 1:length(expr.nd)

@@ -21,8 +21,6 @@ module EAGO
     @reexport using McCormick
     @reexport using ReverseMcCormick
 
-    import Base: ImmutableDict, isless, isempty, eltype, copy, length
-
     const MOI = MathOptInterface
 
     const SV = MOI.SingleVariable

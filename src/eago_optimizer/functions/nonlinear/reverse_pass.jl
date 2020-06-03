@@ -8,7 +8,7 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eago_optimizer/evaluator/passes.jl
+# src/eago_optimizer/functions/nonlinear/reverse_pass.jl
 # Functions used to compute reverse pass of nonlinear functions.
 #############################################################################
 
@@ -128,7 +128,6 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         @inbounds setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    !continue_flag && break
     return true
 end
 
@@ -243,7 +242,6 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         @inbounds setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
-    !continue_flag && break
     return true
 end
 
@@ -470,7 +468,7 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 end
 
 function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::Vector{MC{N,T}}, x::Vector{Float64},
-                             lbd::Vector{Float64}, ubd::Vector{Float64}, is_post::Bool)
+                             lbd::Vector{Float64}, ubd::Vector{Float64}, is_post::Bool) where {N, T<:RelaxTag}
     valset = @inbounds setstorage[k]
     argset = @inbounds setstorage[arg_idx]
     a, b = eval_univariate_set_reverse(op, valset, argset)
@@ -491,7 +489,7 @@ $(TYPEDSIGNATURES)
 function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64}, setstorage::Vector{MC{N,T}},
                               numberstorage::Vector{Float64}, numvalued::Vector{Bool},
-                              subexpression_isnum::Vector{Bool}, subexpr_values_set, is_post::Bool) where T
+                              subexpression_isnum::Vector{Bool}, subexpr_values_set, is_post::Bool) where {N, T<:RelaxTag}
 
     children_arr = rowvals(adj)
     continue_flag = true

@@ -72,4 +72,4 @@ is_integer(x::VariableInfo) = x.is_integer
 include("affine.jl")
 include("quadratic.jl")
 include("cone.jl")
-include("nonlinear.jl")
+include("nonlinear/nonlinear.jl")
