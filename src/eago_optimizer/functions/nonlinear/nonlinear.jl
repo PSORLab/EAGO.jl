@@ -54,8 +54,6 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
 
     # sparsity of constraint + indices in node to reference
     grad_sparsity::Vector{Int64}       # indices of variables in the problem space (size = np)
-    is_branch::Vector{Bool}            # is variable (size = np1)
-    branch_indices::Vector{Int64}      # map variable pos to pos in node (-1 if nonbranching)
 
     # role in problem
     dependent_variable_count::Int
@@ -124,19 +122,22 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     N = length(grad_sparsity)
 
     subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorge,
-                                                 isnumber, zero(MC{N,T}), false, dependent_variable_count,
-                                                 dependent_subexpressions, tp1storage, tp2storage,
+                                                 isnumber, zero(MC{N,T}), false,
+                                                 tp1storage, tp2storage,
                                                  tp3storage, tp4storage, tpdict, grad_sparsity,
+                                                 dependent_variable_count,
+                                                 dependent_subexpression_count,
+                                                 dependent_subexpressions,
                                                  JuMP._Derivatives.CONSTANT)
     return subexpression
 end
 
 function NonlinearExpression()
-    return NonlinearExpression{MC{1,NS}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
-                                         MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}),
+    return NonlinearExpression{MC{1,NS}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[],
+                                         MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}), false,
                                          Float64[], Float64[], Float64[], Float64[],
                                          Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
-                                         Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
+                                         Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
 function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
@@ -202,7 +203,7 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
 end
 
 function BufferedNonlinearFunction()
-    return BufferedNonlinearFunction{MC{1,NS}}(NonlinearExpression{MC{1,NS}}(), SAF(SAT[], 0.0),
+    return BufferedNonlinearFunction{MC{1,NS}}(NonlinearExpression(), SAF(SAT[], 0.0),
                                                -Inf, Inf, false, false, false)
 end
 

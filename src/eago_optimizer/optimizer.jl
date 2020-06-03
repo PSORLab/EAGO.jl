@@ -299,7 +299,7 @@ Base.@kwdef mutable struct ParsedProblem
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective_saf_parsed::AffineFunctionIneq = AffineFunctionIneq()
     _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
-    _objective_nl::BufferedNonlinearFunction = BufferedNonlinearFunction{MC{1,NS}}()
+    _objective_nl::BufferedNonlinearFunction = BufferedNonlinearFunction()
     _objective_type::ObjectiveType = UNSET
 
     # objective sense information (set by convert_to_min in parse.jl)

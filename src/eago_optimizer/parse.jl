@@ -224,8 +224,8 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     # scrubs udf functions using Cassette to remove odd data structures...
     # alternatively convert udfs to JuMP scripts...
-    m.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
-    if m.presolve_to_JuMP_flag
+    m._parameters.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
+    if m._parameters.presolve_to_JuMP_flag
         Script.udf_loader!(m)
     end
 

@@ -1,7 +1,11 @@
-using JuMP, EAGO, Gurobi, CSV, DataFrames, Ipopt
+#using JuMP, EAGO, Gurobi, CSV, DataFrames, Ipopt
 #m = Model(with_optimizer(Ipopt.Optimizer))
 
-m = Model(with_optimizer(EAGO.Optimizer, relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
+using Revise
+using JuMP, EAGO, Ipopt
+#m = Model(Ipopt.Optimizer)
+m = Model(EAGO.Optimizer)
+
 # ----- Variables ----- #
 x_Idx = Any[1, 2]
 @variable(m, x[x_Idx])
