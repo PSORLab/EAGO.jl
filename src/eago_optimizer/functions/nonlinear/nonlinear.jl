@@ -20,11 +20,9 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
 
     "List of nodes in nonlinear expression"
     nd::Vector{JuMP.NodeData}
-    label::Vector{NODE_LABEL}
     "Adjacency Matrix for the expression"
     adj::SparseMatrixCSC{Bool,Int64}
     const_values::Vector{Float64}
-    affine_term::SAF
 
     setstorage::Vector{V}
     numberstorage::Vector{Float64}
@@ -69,13 +67,14 @@ end
 ###
 ### Constructor definitions
 ###
-function NonlinearExpression{V}(sub::JuMP._SubexpressionStorage,
-                                     subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                                     tag::T) where T
+function NonlinearExpression(sub::JuMP._SubexpressionStorage,
+                             subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                             tag::T) where T <: RelaxTag
     nd = copy(func.nd)
     adj = copy(func.adj)
     const_values = copy(func.const_values)
 
+    lenx = length(nd)
     setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
     numberstorage = zeros(lenx)
     isnumber = fill(false, lenx)
@@ -106,36 +105,36 @@ function NonlinearExpression{V}(sub::JuMP._SubexpressionStorage,
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
     grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
-    is_branch = Bool[]                        # set in label_branch_variables routine
-    branch_indices = Bool[]                   # set in label_branch_variables routine
+    N = length(grad_sparsity)
 
-    grad_sparsity = Float64[]
-    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, SAF(SAT[], 0.0),
-                                                            setstorage, numberstorge, isnumber, zero(MC{N,T}),
-                                                            dependent_variable_count, dependent_subexpressions,
-                                                            tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
-                                                            grad_sparsity, is_branch, branch_indices,
-                                                            JuMP._Derivatives.CONSTANT)
+    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorge,
+                                                 isnumber, zero(MC{N,T}), false, dependent_variable_count,
+                                                 dependent_subexpressions, tp1storage, tp2storage,
+                                                 tp3storage, tp4storage, tpdict, grad_sparsity,
+                                                 JuMP._Derivatives.CONSTANT)
     return subexpression
 end
 
-function NonlinearExpression{V}()
-    return BufferedNonlinearSubexpression{V}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
-                                             V[], Float64[], Bool[], zero(V),
-                                             Float64[], Float64[], Float64[], Float64[],
-                                             Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
-                                             Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
+function NonlinearExpression()
+    return NonlinearExpression{MC{1,NS}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[], SAF(SAT[], 0.0),
+                                         MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}),
+                                         Float64[], Float64[], Float64[], Float64[],
+                                         Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
+                                         Int64[], Bool[], Int64[], 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
 function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
-                           subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                           tag::T) where T <: RelaxTag
+                                   subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                                   tag::T) where T <: RelaxTag
 
     nd = copy(func.nd)
     adj = copy(func.adj)
-
     const_values = copy(func.const_values)
 
+    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
+    N = length(grad_sparsity)
+
+    lenx = length(nd)
     setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
     numberstorage = zeros(lenx)
     isnumber = fill(false, lenx)
@@ -155,37 +154,40 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
             tpdict[i] = (tp1_count, tp1_count, -1, -1)
         end
     end
+
     tp1storage = zeros(tp1_count)
     tp2storage = zeros(tp1_count)
     tp3storage = zeros(tp2_count)
     tp4storage = zeros(tp2_count)
-
-    dependent_variable_count = length(func.grad_sparsity)
-    saf_buffer = SAF(SAT[SAT(0.0, VI(-1)) for i=1:dependent_variable_count], 0.0)
-
-    # sorted by JUmp, _FunctionStorage
-    grad_sparsity = copy(func.grad_sparsity)
-
-    # set in label_branch_variables routine
-    is_branch = Bool[]
-    branch_indices = Bool[]
 
     dependent_subexpressions = copy(func.dependent_subexpressions)
     dependent_subexpression_count = length(dependent_subexpressions)
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
-    nonlinear_constraint =  BufferedNonlinearFunction{MC{N,T}}(nd, adj, const_values,  SAF(SAT[], 0.0),
-                                                       setstorage, numberstorage, isnumber, saf_buffer, zero(MC{N,T}),
-                                                       tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
-                                                       grad_sparsity, is_branch, branch_indices,
-                                                       dependent_variable_count, dependent_subexpression_count,
-                                                       dependent_subexpressions, bnds, linearity)
-    return extract_affine_term(nonlinear_constraint)
+
+    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorge,
+                                                 isnumber, zero(MC{N,T}), false, dependent_variable_count,
+                                                 dependent_subexpressions, tp1storage, tp2storage,
+                                                 tp3storage, tp4storage, tpdict, grad_sparsity,
+                                                 JuMP._Derivatives.CONSTANT)
+
+    saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:length(grad_sparsity)], 0.0)
+
+    lower_bound = bnds.lower
+    upper_bound = bnds.upper
+
+    last_relax_convex = false
+    last_relax_concave = false
+    last_past_reverse = false
+
+    return BufferedNonlinearFunction{MC{N,T}}(nonlinear_expression, saf, lower_bound, upper_bound,
+                                              last_relax_convex, last_relax_concave, last_past_reverse)
 end
 
-function BufferedNonlinearFunction{V}()
-    return BufferedNonlinearFunction{V}(NonlinearExpression{V}(), SAF(SAT[], 0.0), MOI.NLPBoundsPair(-Inf, Inf))
+function BufferedNonlinearFunction()
+    return BufferedNonlinearFunction{MC{1,NS}}(NonlinearExpression{MC{1,NS}}(), SAF(SAT[], 0.0),
+                                               -Inf, Inf, false, false, false)
 end
 
 function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
