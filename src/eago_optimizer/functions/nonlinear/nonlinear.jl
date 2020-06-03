@@ -275,7 +275,8 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     lower_variable_bounds::Vector{Float64} = Float64[]
     upper_variable_bounds::Vector{Float64} = Float64[]
     x::Vector{Float64} = Float64[]
-    ni_map::Vector{Int64} = Int64[]
+    node_to_variable_map::Vector{Int64} = Int64[]
+    variable_to_node_map::Vector{Int64} = Int64[]
 
     variable_count::Int = 0
     node_count::Int = 0
@@ -304,14 +305,14 @@ Sets the current node in the Evaluator structure.
 function set_node!(evaluator::Evaluator, n::NodeBB)
 
     evaluator.current_node = NodeBB(n)
-    ni_map = evaluator.ni_map
+    node_to_variable_map = evaluator.node_to_variable_map
     node_lower_bounds = n.lower_variable_bounds
     node_upper_bounds = n.upper_variable_bounds
     eval_lower_bounds = evaluator.lower_variable_bounds
     eval_upper_bounds = evaluator.upper_variable_bounds
 
     for i = 1:length(evaluator.current_node)
-        full_variable_index = ni_map[i]
+        full_variable_index = node_to_variable_map[i]
         eval_lower_bounds[full_variable_index] = node_lower_bounds[i]
         eval_upper_bounds[full_variable_index] = node_upper_bounds[i]
     end
@@ -328,8 +329,8 @@ end
 
 function retrieve_node(d::Evaluator)
     cn = d.current_node
-    return NodeBB(copy(d.lower_variable_bounds[ni_map]),
-                  copy(d.upper_variable_bounds[ni_map]),
+    return NodeBB(copy(d.lower_variable_bounds[node_to_variable_map]),
+                  copy(d.upper_variable_bounds[node_to_variable_map]),
                   cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
 end
 
@@ -389,10 +390,11 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
                          d.numberstorage, d.isnumber, d.tpdict,
                          d.tp1storage, d.tp2storage, d.tp3storage, d.tp4storage,
                          evaluator.user_operators, evaluator.subexpressions,
-                         d.grad_sparsity, evaluator.num_mv_buffer, evaluator.ctx,
+                         d.grad_sparsity, evaluator.variable_to_node_map,
+                         evaluator.num_mv_buffer, evaluator.ctx,
                          evaluator.is_post, evaluator.is_intersect,
                          evaluator.is_first_eval, evaluator.cv_grad_buffer,
-                         evaluator.cc_grad_buffer)
+                         evaluator.cc_grad_buffer, evaluator.treat_x_as_number)
     return nothing
 end
 

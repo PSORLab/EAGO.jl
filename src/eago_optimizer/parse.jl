@@ -206,7 +206,8 @@ function label_branch_variables!(m::Optimizer)
     end
 
     # adds branch solution to branch map to evaluator
-    m._working_problem._relaxed_evaluator.ni_map = m._branch_to_sol_map
+    m._working_problem._relaxed_evaluator.node_to_variable_map = m._branch_to_sol_map
+    m._working_problem._relaxed_evaluator.variable_to_node_map = m._sol_to_branch_map
     m._working_problem._relaxed_evaluator.node_count = length(m._branch_to_sol_map)
 
     return nothing
