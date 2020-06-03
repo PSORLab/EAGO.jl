@@ -76,6 +76,7 @@ mutable struct BufferedNonlinearFunction{V} <: AbstractEAGOConstraint
     last_relax_convex::Bool
     last_relax_concave::Bool
     last_past_reverse::Bool
+    has_value::Bool
 end
 
 ###
@@ -212,14 +213,23 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
     last_relax_convex = false
     last_relax_concave = false
     last_past_reverse = false
+    has_value = false
+
 
     return BufferedNonlinearFunction{MC{N,T}}(expression, saf, lower_bound, upper_bound,
-                                              last_relax_convex, last_relax_concave, last_past_reverse)
+                                              last_relax_convex, last_relax_concave,
+                                              last_past_reverse, has_value)
 end
 
 function BufferedNonlinearFunction()
     return BufferedNonlinearFunction{MC{1,NS}}(NonlinearExpression(), SAF(SAT[], 0.0),
-                                               -Inf, Inf, false, false, false)
+                                               -Inf, Inf, false, false, false, false)
+end
+
+function set_value!(expr::NonlinearExpression{V}, val::V) where V
+    expr.value = val
+
+    return nothing
 end
 
 function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
@@ -400,7 +410,7 @@ end
 
 function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     forward_pass!(evaluator, d.expr)
-    set_value!(d.expr, d.expr.value ∩ d.bnds)
+    set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
     d.has_value = true
     d.last_past_reverse = false
 
@@ -430,7 +440,7 @@ end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     d.last_past_reverse = true
-    set_value!(d.expr, d.expr.value ∩ d.bnds)
+    set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
 
     return reverse_pass!(evaluator, d.expr)
 end
