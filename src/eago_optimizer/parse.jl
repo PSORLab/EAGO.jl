@@ -8,7 +8,9 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# Defines functions used to parse the input optimization problem into
+# a solvable form including routines used to classify input problems as a
+# LP, SOCP, MILP, MISOCP, and convex problem types.
 #############################################################################
 
 """
@@ -213,11 +215,10 @@ add_nonlinear_functions!(m::Optimizer, evaluator::Nothing) = nothing
 add_nonlinear_functions!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
 function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
-    #_objective_nl = nothing  #TODO post nonlinear work
-    #num_nlp_constraints = length(model.nlp_data.constraint_bounds)
-
     nlp_data = m._input_problem._nlp_data
     MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
+    println(" ")
+    println("evaluator.parameter_values = $(evaluator.parameter_values)")
 
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
@@ -229,19 +230,22 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         Script.udf_loader!(m)
     end
 
-    parameter_values = copy(nlp_data.nlparamvalues)
+    parameter_values = copy(evaluator.parameter_values)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        m._working_problem._objective_nl = BufferedNonlinear(evaluator.objective, MOI.NLPBoundsPair(0.0))
+        m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(0.0, 0.0),
+                                                                     evaluator.subexpression_linearity,
+                                                                     m._parameters.relax_tag)
     end
 
     m._working_problem._nonlinear_count = length(evaluator.constraints)
-
     constraint_bounds = nlp_data.constraint_bounds
     for i = 1:m._working_problem._nonlinear_count
-        bnds = @inbounds constraint_bounds[i]
-        push!(m._working_problem._nonlinear_constr, BufferedNonlinear(constraint, bnds))
+        bnds = constraint_bounds[i]
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds,
+                                                                              evaluator.subexpression_linearity,
+                                                                              m._parameters.relax_tag))
     end
 
     return nothing
@@ -255,9 +259,11 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     m._working_problem._relaxed_evaluator = Evaluator()
 
+    relax_evaluator = m._working_problem._relaxed_evaluator
     for i = 1:length(evaluator.subexpressions)
         subexpr = evaluator.subexpressions[i]
-        push!(m._working_problem._relaxed_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpr(subexpr))
+        push!(relax_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpr(subexpr, evaluator.subexpression_linearity,
+                                                                           m._parameters.relax_tag))
     end
 
     # get user operators

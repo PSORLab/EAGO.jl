@@ -8,7 +8,7 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eago_optimizer/logging.jl
+# src/eago_optimizer/logging/log.jl
 # Defines all type used to store solution information at given iterations
 #############################################################################
 

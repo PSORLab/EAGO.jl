@@ -118,10 +118,23 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
-    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
-    N = length(grad_sparsity)
+    # counts varialbes in subexpression
+    variable_dict = Dict{Int,Bool}()
+    for node in nd
+        if node.nodetype === JuMP._Derivatives.VARIABLE
+            indx = node.index
+            if !haskey(variable_dict, indx)
+                variable_dict[indx] = true
+            end
+        end
+    end
+    grad_sparsity = collect(keys(variable_dict)))
+    sort!(grad_sparsity)
 
-    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorge,
+    dependent_variable_count = length(grad_sparsity)
+    N = dependent_variable_count
+
+    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
                                                  isnumber, zero(MC{N,T}), false,
                                                  tp1storage, tp2storage,
                                                  tp3storage, tp4storage, tpdict, grad_sparsity,
@@ -182,11 +195,17 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
+    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
+    dependent_variable_count = length(grad_sparsity)
+    N = dependent_variable_count
 
-    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorge,
+    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
                                                  isnumber, zero(MC{N,T}), false, dependent_variable_count,
                                                  dependent_subexpressions, tp1storage, tp2storage,
                                                  tp3storage, tp4storage, tpdict, grad_sparsity,
+                                                 dependent_variable_count,
+                                                 dependent_subexpression_count,
+                                                 dependent_subexpressions,
                                                  JuMP._Derivatives.CONSTANT)
 
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:length(grad_sparsity)], 0.0)

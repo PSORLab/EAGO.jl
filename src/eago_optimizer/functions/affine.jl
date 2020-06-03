@@ -8,7 +8,11 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eago_optimizer/functions/nonlinear/affine.jl
+# Defines buffered structures to store quadratic functions:
+# AffineFunctionIneq, AffineFunctionEq, as well as the
+# lower_interval_bound, interval_bound, and eliminate_fixed_variables!
+# functions associated with each structure.
 #############################################################################
 
 ###

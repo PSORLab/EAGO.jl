@@ -8,7 +8,8 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eago_optimizer/functions/nonlinear/functions.jl
+# Defines variable info and function types.
 #############################################################################
 
 """

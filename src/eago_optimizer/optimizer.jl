@@ -9,8 +9,8 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/optimizer.jl
-# Defines optimizer structure used by EAGO, storage functions, and access
-# functions.
+# Defines optimizer structure used by EAGO. Namely, ObjectiveType, ProblemType
+# EAGOParameters, InputProblem, ParsedProblem, and Optimizer.
 #############################################################################
 
 """
@@ -151,6 +151,8 @@ Base.@kwdef mutable struct EAGOParameters
     dbbt_tolerance::Float64 = 1E-8
 
     # Subgradient tightening flag
+    "Relax Tag used to specify type of McCormick operator"
+    relax_tag::RelaxTag = NS()
     "Perform tightening of interval bounds using subgradients at each factor in
     each nonlinear tape during a forward-reverse pass (default = true)."
     subgrad_tighten::Bool = true
