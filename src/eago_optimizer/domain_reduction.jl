@@ -553,7 +553,7 @@ cp_condition(m::Optimizer) = false
 function set_constraint_propagation_fbbt!(m::Optimizer)
     feasible_flag = true
 
-    m._working_problem._relaxed_evaluator
+    evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
     set_reference_point!(evaluator, m._current_xref)
 

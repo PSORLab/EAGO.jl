@@ -505,11 +505,11 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
                                     x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                     is_post::Bool, is_intersect::Bool, ctx::GuardCtx,
                                     user_operators::JuMP._Derivatives.UserOperatorRegistry,
-                                    set_mv_buffer::Vector{MC{N,T}}, num_mv_buffer::Vector{Float64}) where {N, T<:RelaxTag}
+                                    num_mv_buffer::Vector{Float64}) where {N, T<:RelaxTag}
 
     n = length(children_idx)
     evaluator = user_operators.multivariate_operator_evaluator[op - JuMP._Derivatives.USER_OPERATOR_ID_START + 1]
-    set_input = view(set_mv_buffer, 1:n)
+    set_input = zeros(MC{N,T}, n)
     num_input = view(num_mv_buffer, 1:n)
     fill!(num_input, -Inf)
 
@@ -643,16 +643,33 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
     return nothing
 end
 
+function forward_get_subexpression!(k::Int64, op::Int64, subexpressions::Vector{NonlinearExpression},
+                                    numvalued::Vector{Bool}, numberstorage::Vector{Float64},
+                                    setstorage::Vector{MC{N,T}}, cv_buffer::Vector{Float64},
+                                    cc_buffer::Vector{Float64}, func_sparsity::Vector{Int64}) where {N, T<:RelaxTag}
+    subexpression = subexpressions[op]
+
+    isa_number = subexpression.is_number[1]
+    if isa_number
+        @inbounds numberstorage[k] = subexpression.numberstorage[1]
+    else
+        copy_subexpression_value!(k, op, setstorage, subexpression, cv_grad_buffer, cc_grad_buffer)
+    end
+    @inbounds numvalued[k] = isa_number
+
+    return nothing
+end
+
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64},
                               setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
                               tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
                               tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
-                              user_operators::JuMP._Derivatives.UserOperatorRegistry, subexpression_isnum::Vector{Bool},
-                              subexpr_values_flt::Vector{Float64}, subexpr_values_set, num_mv_buffer::Vector{Float64},
-                              set_mv_buffer::Vector{MC{N,T}}, ctx::GuardCtx, is_post::Bool, is_intersect::Bool,
-                              is_first_eval::Bool, cv_grad_buffer::Vector{Float64}, cc_grad_buffer::Vector{Float64}) where {N, T<:RelaxTag}
+                              user_operators::JuMP._Derivatives.UserOperatorRegistry, subexpressions::Vector{NonlinearExpression},
+                              func_sparsity::Vector{Int64}, num_mv_buffer::Vector{Float64}, ctx::GuardCtx,
+                              is_post::Bool, is_intersect::Bool, is_first_eval::Bool, cv_grad_buffer::Vector{Float64},
+                              cc_grad_buffer::Vector{Float64}, treat_x_as_number::Vector{Bool}) where {N, T<:RelaxTag}
 
     children_arr = rowvals(adj)
 
@@ -667,7 +684,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             @inbounds numvalued[k] = true
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
-            isa_number = @inbounds xtype[op]
+            isa_number = @inbounds treat_x_as_number[op]
             @inbounds numvalued[k] = isa_number
             if isa_number
                 @inbounds numberstorage[k] = x[op]
@@ -677,13 +694,8 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             end
 
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
-            isa_number = @inbounds subexpression_is_number[op]
-            if isa_number
-                @inbounds numberstorage[k] = subexpr_values_flt[op]
-            else
-                copy_subexpression_value!(k, op, setstorage, subexpr_values_set, cv_grad_buffer, cc_grad_buffer)
-            end
-            @inbounds numvalued[k] = isa_number
+            forward_get_subexpression!(k, op, subexpressions, numvalued, numberstorage, setstorage, cv_buffer,
+                                       cc_buffer, func_sparsity::Vector{Int64})
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
 
@@ -733,7 +745,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 forward_user_multivariate!(k, children_arr, children_idx, numvalued, numberstorage,
                                            setstorage, x, lbd, ubd, is_post, is_intersect, ctx,
-                                           user_operators, set_mv_buffer, num_mv_buffer)
+                                           user_operators, num_mv_buffer)
 
             else
                error("Unsupported operation $(operators[op])")

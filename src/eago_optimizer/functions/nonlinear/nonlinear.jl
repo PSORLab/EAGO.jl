@@ -223,9 +223,8 @@ function BufferedNonlinearFunction()
 end
 
 function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
-    d.has_value = false
-    d.last_relax_convex = false
-    d.last_relax_concave = false
+    f.last_relax_convex = false
+    f.last_relax_concave = false
 
     return nothing
 end
@@ -268,13 +267,21 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
     user_operators::JuMP._Derivatives.UserOperatorRegistry = JuMP._Derivatives.UserOperatorRegistry()
     has_user_mv_operator::Bool = false
+    num_mv_buffer::Vector{Float64} = Float64[]
     parameter_values::Vector{Float64} = Float64[]
 
     current_node::NodeBB = NodeBB()
+    treat_x_as_number = Bool[]
     lower_variable_bounds::Vector{Float64} = Float64[]
     upper_variable_bounds::Vector{Float64} = Float64[]
-    x_value::Vector{Float64} = Float64[]
+    x::Vector{Float64} = Float64[]
     ni_map::Vector{Int64} = Int64[]
+
+    variable_count::Int = 0
+    node_count::Int = 0
+
+    cv_grad_buffer::Vector{Float64} = Float64[]
+    cc_grad_buffer::Vector{Float64} = Float64[]
 
     "Context used to guard against domain violations & branch on these violations if necessary"
     subgrad_tighten::Bool = false
@@ -283,6 +290,10 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
     subexpressions::Vector{NonlinearExpression} = NonlinearExpression[]
     subexpressions_eval::Vector{Bool} = Bool[]
+
+    is_post::Bool = false
+    is_intersect::Bool = false
+    is_first_eval::Bool = false
 end
 
 """
@@ -291,10 +302,18 @@ $(FUNCTIONNAME)
 Sets the current node in the Evaluator structure.
 """
 function set_node!(evaluator::Evaluator, n::NodeBB)
+
     evaluator.current_node = NodeBB(n)
+    ni_map = evaluator.ni_map
+    node_lower_bounds = n.lower_variable_bounds
+    node_upper_bounds = n.upper_variable_bounds
+    eval_lower_bounds = evaluator.lower_variable_bounds
+    eval_upper_bounds = evaluator.upper_variable_bounds
+
     for i = 1:length(evaluator.current_node)
-        @inbounds evaluator.lower_variable_bounds[ni_map[i]] = n.lower_variable_bounds[i]
-        @inbounds evaluator.upper_variable_bounds[ni_map[i]] = n.lower_variable_bounds[i]
+        full_variable_index = ni_map[i]
+        eval_lower_bounds[full_variable_index] = node_lower_bounds[i]
+        eval_upper_bounds[full_variable_index] = node_upper_bounds[i]
     end
     fill!(evaluator.subexpressions_eval, false)
 
@@ -320,14 +339,14 @@ prior_eval(d::Evaluator, i::Int64) = @inbounds subexpressions_eval[i]
 #=
 Assumes the sparsities are sorted...
 =#
-function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}, substorage::MC{N2,T},
+function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpression{MC{N1,T}},
+                                   numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N2,T}},
                                    cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64},
-                                   func_sparsity::Vector{Int64}, sub_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
-
-                                   #=
-    sset = @inbounds #TODO
+                                   func_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
 
     # fill cv_grad/cc_grad buffers
+    sub_sparsity = subexpression.grad_sparsity
+    sset = subexpression.setstorage[1]
     fill!(cv_buffer, 0.0)
     fill!(cc_buffer, 0.0)
 
@@ -347,7 +366,6 @@ function copy_subexpression_value!(k::Int, op::Int, setstorage::Vector{MC{N1,T}}
     cc_grad = SVector(cc_buffer)
 
     setstorage[k] = MC{N1,T}(sset.cv, sset.cc, sset.Intv, cv_grad, cc_grad, sset.cnst)
-    =#
 
     return nothing
 end
@@ -362,18 +380,19 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
     # i.e. box_id is same and reference point is the same
     for i = 1:d.dependent_subexpression_count
         if !prior_eval(evaluator, i)
+            subexpr = evaluator.subexpressions[i]
             forward_pass!(evaluator, subexpr)
         end
     end
-    forward_pass_kernel!(d.nd, d.adj, d.x, evaluator.lower_variable_bounds,
+    forward_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
                          evaluator.upper_variable_bounds, d.setstorage,
-                         d.numberstorage, d.numvalued, d.tpdict,
+                         d.numberstorage, d.isnumber, d.tpdict,
                          d.tp1storage, d.tp2storage, d.tp3storage, d.tp4storage,
-                         evaluator.user_operators, evaluator.subexpression_isnum,
-                         evaluator.subexpr_values_flt, evaluator.subexpr_values_set,
-                         evaluator.num_mv_buffer, d.set_mv_buffer, evaluator.ctx,
+                         evaluator.user_operators, evaluator.subexpressions,
+                         d.grad_sparsity, evaluator.num_mv_buffer, evaluator.ctx,
                          evaluator.is_post, evaluator.is_intersect,
-                         evaluator.is_first_eval, d.cv_grad_buffer, d.cc_grad_buffer)
+                         evaluator.is_first_eval, evaluator.cv_grad_buffer,
+                         evaluator.cc_grad_buffer)
     return nothing
 end
 
@@ -403,7 +422,7 @@ reverse propagation yeilded a infeasible point (true = still feasible, false is 
 function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
     return reverse_pass_kernel!(d.nd, d.adj, d.x, evaluator.lower_variable_bounds,
                                 evaluator.upper_variable_bounds, d.setstorage,
-                                d.numberstorage, d.numvalued, evaluator.subexpression_isnum,
+                                d.numberstorage, d.isnumber, evaluator.subexpression_isnum,
                                 evaluator.subexpr_values_set, evaluator.is_post)
 end
 

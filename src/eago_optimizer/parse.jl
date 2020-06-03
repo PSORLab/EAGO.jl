@@ -205,6 +205,10 @@ function label_branch_variables!(m::Optimizer)
         m._sol_to_branch_map[j] = i
     end
 
+    # adds branch solution to branch map to evaluator
+    m._working_problem._relaxed_evaluator.ni_map = m._branch_to_sol_map
+    m._working_problem._relaxed_evaluator.node_count = length(m._branch_to_sol_map)
+
     return nothing
 end
 
@@ -217,8 +221,6 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     nlp_data = m._input_problem._nlp_data
     MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
-    println(" ")
-    println("evaluator.parameter_values = $(evaluator.parameter_values)")
 
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
@@ -251,24 +253,38 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     return nothing
 end
 
-add_nonlinear_evaluator!(m::Optimizer) = add_nonlinear_functions!(m, m._input_problem._nlp_data.evaluator)
+function add_nonlinear_evaluator!(m::Optimizer)
+    evaluator = m._input_problem._nlp_data.evaluator
+    add_nonlinear_evaluator!(m, evaluator)
+    return nothing
+end
 
 add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
 add_nonlinear_evaluator!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
 function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
-
     m._working_problem._relaxed_evaluator = Evaluator()
 
     relax_evaluator = m._working_problem._relaxed_evaluator
-    for i = 1:length(evaluator.subexpressions)
-        subexpr = evaluator.subexpressions[i]
-        push!(relax_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpr(subexpr, evaluator.subexpression_linearity,
-                                                                           m._parameters.relax_tag))
+    has_subexpressions = length(evaluator.m.nlp_data.nlexpr) > 0
+    if has_subexpressions
+        for i = 1:length(evaluator.subexpressions)
+            subexpr = evaluator.subexpressions[i]
+            push!(relax_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpr(subexpr,
+                                                                               evaluator.subexpression_linearity,
+                                                                               m._parameters.relax_tag))
+        end
     end
 
-    # get user operators
-    m._working_problem._relaxed_evaluator.user_operators = nlp_data.user_operators
+    relax_evaluator.variable_count = length(m._working_problem._variable_info)
+    relax_evaluator.user_operators = evaluator.m.nlp_data.user_operators
 
+    relax_evaluator.lower_variable_bounds = zeros(relax_evaluator.variable_count)
+    relax_evaluator.upper_variable_bounds = zeros(relax_evaluator.variable_count)
+    relax_evaluator.x                     = zeros(relax_evaluator.variable_count)
+    relax_evaluator.num_mv_buffer         = zeros(relax_evaluator.variable_count)
+    relax_evaluator.cv_grad_buffer        = zeros(relax_evaluator.variable_count)
+    relax_evaluator.cc_grad_buffer        = zeros(relax_evaluator.variable_count)
+    relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
     return nothing
 end
 
