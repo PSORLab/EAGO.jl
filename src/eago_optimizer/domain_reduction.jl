@@ -216,7 +216,7 @@ function obbt!(m::Optimizer)
     # solve initial problem to feasibility
     set_first_relax_point!(m)
     update_relaxed_problem_box!(m)
-    set_node!(m._working_problem.evaluator, n)
+    set_node!(m._working_problem._relaxed_evaluator, n)
     set_node_flag!(m)
 
     relax_constraints!(m, 1)

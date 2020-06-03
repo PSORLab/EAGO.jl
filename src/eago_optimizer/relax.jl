@@ -200,16 +200,33 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     return nothing
 end
 
-function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V}, evaluator::Evaluator, use_cvx::Bool) where V
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator, use_cvx::Bool) where {N,T<:RelaxTag}
     if !f.has_value || f.last_past_reverse
         forward_pass!(evaluator, f)
     end
-    unpack_value!(f, use_cvx)
+    finite_cut = true
 
-    return nothing
+    # if number return zero saf cut...
+    expr = f.expr
+    grad_sparsity = expr.grad_sparsity
+    if expr.isnumber[1]
+        f.saf.constant = expr.numberstorage[1]
+        for i = 1:N
+            vval = @inbounds grad_sparsity[i]
+            f.saf.terms[i] = SAT(0.0, VI(vval))
+        end
+    else
+        setvalue = expr.setstorage[1]
+        finite_cut &= !(isempty(setvalue) || isnan(setvalue))
+        if finite_cut
+            unpack_value!(f, evaluator.x, use_cvx)
+        end
+    end
+
+    return finite_cut
 end
 
-function relax!(m::Optimizer, f::BufferedNonlinearFunction{V}, indx::Int, check_safe::Bool) where V
+function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
 
     evaluator = m._working_problem.evaluator
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
@@ -263,6 +280,23 @@ function bound_objective(t::ExtensionType, m::Optimizer)
 end
 bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
 
+
+function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe::Bool)
+    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_evaluator = wp._relaxed_evaluator
+    buffered_nl = wp._objective_nl
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, buffered_nl.saf)
+            copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
+            wp._objective_saf.constant = buffered_nl.saf.constant
+            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+        end
+    end
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -271,6 +305,7 @@ A rountine that only relaxes the objective.
 function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
 
     relaxed_optimizer = m.relaxed_optimizer
+    m._working_problem._relaxed_evaluator
 
     # Add objective
     wp = m._working_problem
@@ -296,16 +331,7 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         end
 
     elseif obj_type === NONLINEAR
-         buffered_nl = wp._objective_nl
-         finite_cut_generated = affine_relax_nonlinear!(buffered_nl, true)
-         if finite_cut_generated
-             if !check_safe || is_safe_cut!(m, buffered_nl.saf)
-                 copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
-                 wp._objective_saf.constant = buffered_nl.saf.constant
-                 MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
-             end
-         end
-
+        relax_objective_nonlinear!(m, wp, check_safe)
     end
 
     return nothing
@@ -395,7 +421,7 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
     end
 
     nl_list = m._working_problem._nonlinear_constr
-    for i = 1:m._working_problem._nl_count
+    for i = 1:m._working_problem._nonlinear_count
         nl = @inbounds nl_list[i]
         relax!(m, nl, i, check_safe)
     end

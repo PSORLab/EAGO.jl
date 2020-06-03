@@ -245,7 +245,7 @@ $(FUNCTIONNAME)
 Extracts the `convex` affine relaxaiton is `use_cvx` to `f.saf` then adds the `affine_terms` to
 this to form the affine relaxation of the function.
 """
-function unpack_value!(f::BufferedNonlinearFunction{MC{N,T}}, use_cvx::Bool) where {N,T<:RelaxTag}
+function unpack_value!(f::BufferedNonlinearFunction{MC{N,T}}, x::Vector{Float64}, use_cvx::Bool) where {N,T<:RelaxTag}
 
     value = f.expr.value
     grad_sparsity = f.expr.grad_sparsity
@@ -339,6 +339,7 @@ end
 
 function retrieve_node(d::Evaluator)
     cn = d.current_node
+    node_to_variable_map = d.node_to_variable_map
     return NodeBB(copy(d.lower_variable_bounds[node_to_variable_map]),
                   copy(d.upper_variable_bounds[node_to_variable_map]),
                   cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
