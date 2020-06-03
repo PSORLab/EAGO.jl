@@ -569,6 +569,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _buffered_quadratic_ineq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
     _buffered_quadratic_eq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
+    _buffered_nonlinear_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+
     # set initially in TODO, reset in objective_cut in relax.jl
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
 

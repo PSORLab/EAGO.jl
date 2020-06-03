@@ -235,7 +235,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, 
             lt = LT(f.upper_bound - f.saf.constant)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_quadratic_eq_ci, ci)
+            push!(m._buffered_nonlinear_ci, ci)
         end
     end
 
@@ -245,7 +245,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, 
             lt = LT(-f.lower_bound - f.saf.constant)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_quadratic_eq_ci, ci)
+            push!(m._buffered_nonlinear_ci, ci)
         end
     end
 
@@ -282,10 +282,12 @@ bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
 
 
 function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe::Bool)
+
     relaxed_optimizer = m.relaxed_optimizer
     relaxed_evaluator = wp._relaxed_evaluator
     buffered_nl = wp._objective_nl
     finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
+
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, buffered_nl.saf)
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
@@ -338,6 +340,26 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
 end
 relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
+
+function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64, check_safe::Bool)
+
+    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_evaluator = wp._relaxed_evaluator
+    buffered_nl = wp._objective_nl
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
+
+    if finite_cut_generated
+        copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
+        wp._objective_saf.constant = 0.0
+        if !check_safe || is_safe_cut!(m,  buffered_nl.saf)
+            ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_nl.saf.constant))
+            push!(m._objective_cut_ci_saf, ci_saf)
+        end
+    end
+
+    return nothing
+end
+
 """
 $(FUNCTIONNAME)
 
@@ -382,16 +404,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
             end
 
         elseif obj_type === NONLINEAR
-            buffered_nl = wp._objective_nl
-            finite_cut_generated = affine_relax_nonlinear!(buffered_nl)
-            if finite_cut_generated
-                copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
-                wp._objective_saf.constant = 0.0
-                if !check_safe || is_safe_cut!(m,  buffered_nl.saf)
-                    ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_nl.saf.constant))
-                    push!(m._objective_cut_ci_saf, ci_saf)
-                end
-            end
+            objective_cut_nonlinear!(m, wp, UBD, check_safe)
         end
     end
 

@@ -548,6 +548,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         end
         unpack_fbbt_buffer!(m)
     end
+    #println("feasible post fbbt! = $(feasible_flag)")
 
     perform_cp_walk_flag = (params.cp_depth >= m._iteration_count)
     perfom_obbt_flag     = (params.obbt_depth >= m._iteration_count)
@@ -559,12 +560,14 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
         if feasible_flag && perform_cp_walk_flag
             feasible_flag &= set_constraint_propagation_fbbt!(m)
+            #println("feasible post set_constraint_propagation_fbbt! = $(feasible_flag)")
             !feasible_flag && break
             cp_walk_count += 1
         end
 
         if feasible_flag && perfom_obbt_flag
             feasible_flag &= obbt!(m)
+            #println("feasible post obbt! = $(feasible_flag)")
             !feasible_flag && break
             obbt_count += 1
         end
@@ -575,8 +578,11 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
                            lower_variable_bounds(m._current_node))
+
+    #println("final feasibility flag = $feasible_flag")
     m._preprocess_feasibility = feasible_flag
 
+    #println("m._preprocess_feasibility  = $(m._preprocess_feasibility)")
     return nothing
 end
 
@@ -711,7 +717,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     if !m._obbt_performed_flag
         set_first_relax_point!(m)
-        set_node!(m._working_problem.evaluator, n)
+        set_node!(m._working_problem._relaxed_evaluator, n)
         set_node_flag!(m)
 
         update_relaxed_problem_box!(m)
@@ -733,6 +739,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._lower_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
+    #println("lower problem term status = $(m._lower_termination_status), lower_problem result status = $(m._lower_result_status)")
     if valid_flag && feasible_flag
         set_dual!(m)
         m._cut_add_flag = true
@@ -750,6 +757,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     else
         fallback_interval_lower_bound!(m, n)
     end
+    #println("lower problem feasibility = $(m._lower_feasibility)")
 
     return nothing
 end

@@ -4,7 +4,11 @@
 using Revise
 using JuMP, EAGO, Ipopt
 #m = Model(Ipopt.Optimizer)
-m = Model(EAGO.Optimizer)
+m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
+                                                    "output_iterations" => 1000,
+                                                    "cp_repetitions" => -1))
+# cp_repetitions
+# obbt_repetitions
 
 # ----- Variables ----- #
 x_Idx = Any[1, 2]

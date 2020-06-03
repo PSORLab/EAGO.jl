@@ -453,7 +453,14 @@ function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where 
         forward_pass!(d.evaluator, d)
     end
 
-    return get_lo(get_value(d))
+    expr = d.expr
+    if expr.isnumber[1]
+        lower_value = expr.numberstorage[1]
+    else
+        lower_value = expr.setstorage[1].Intv.lo
+    end
+
+    return lower_value
 end
 
 function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
@@ -461,7 +468,14 @@ function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
         forward_pass!(d.evaluator, d)
     end
 
-    return get_interval(get_value(d))
+    expr = d.expr
+    if expr.isnumber[1]
+        interval_value = Interval(expr.numberstorage[1])
+    else
+        interval_value = expr.setstorage[1].Intv
+    end
+
+    return interval_value
 end
 
 ###
