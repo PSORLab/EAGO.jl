@@ -643,23 +643,6 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
     return nothing
 end
 
-function forward_get_subexpression!(k::Int64, op::Int64, subexpressions::Vector{NonlinearExpression},
-                                    numvalued::Vector{Bool}, numberstorage::Vector{Float64},
-                                    setstorage::Vector{MC{N,T}}, cv_buffer::Vector{Float64},
-                                    cc_buffer::Vector{Float64}, func_sparsity::Vector{Int64}) where {N, T<:RelaxTag}
-    subexpression = subexpressions[op]
-
-    isa_number = subexpression.is_number[1]
-    if isa_number
-        @inbounds numberstorage[k] = subexpression.numberstorage[1]
-    else
-        copy_subexpression_value!(k, op, setstorage, subexpression, cv_grad_buffer, cc_grad_buffer)
-    end
-    @inbounds numvalued[k] = isa_number
-
-    return nothing
-end
-
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64},

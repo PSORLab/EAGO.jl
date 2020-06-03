@@ -90,6 +90,8 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
                               is_post::Bool) where {N, T<:RelaxTag}
 
     continue_flag = true
+    argk_index = @inbounds children_arr[k]
+    setk = @inbounds setstorage[argk_index]
 
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
@@ -107,7 +109,8 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
 
         tmp_sum = zero(MC{N,T})
         active_count_number += 1
-        for inactive_idx in child_arr_indx
+        for nidx in children_idx
+            inactive_idx = @inbounds children_arr[nidx]
             if inactive_idx != active_idx
                 if @inbounds numvalued[inactive_idx]
                     tmp_sum += @inbounds numberstorage[inactive_idx]
@@ -118,7 +121,7 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         end
 
         active_set = @inbounds setstorage[active_idx]
-        c, a, b = plus_rev(parent_value, active_set, tmp_sum)
+        c, a, b = plus_rev(setk, active_set, tmp_sum)
 
         if isempty(a)
             return false
@@ -204,6 +207,8 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
                               is_post::Bool) where {N, T<:RelaxTag}
 
     continue_flag = true
+    argk_index = @inbounds children_arr[k]
+    setk = @inbounds setstorage[argk_index]
 
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
@@ -221,7 +226,8 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
 
         tmp_mul = one(MC{N,T})
         active_count_number += 1
-        for inactive_idx in child_arr_indx
+        for nidx in children_idx
+            inactive_idx = @inbounds children_arr[nidx]
             if inactive_idx != active_idx
                 if @inbounds numvalued[inactive_idx]
                     tmp_mul *= @inbounds numberstorage[inactive_idx]
@@ -232,7 +238,7 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         end
 
         active_set = @inbounds setstorage[active_idx]
-        c, a, b = mult_rev(parent_value, active_set, tmp_mul)
+        c, a, b = mult_rev(setk, active_set, tmp_mul)
 
         if isempty(a)
             return false
@@ -483,13 +489,33 @@ function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::V
     return true
 end
 
+function forward_set_subexpression!(k::Int64, op::Int64, subexpressions::Vector{NonlinearExpression},
+                                    numvalued::Vector{Bool}, numberstorage::Vector{Float64},
+                                    setstorage::Vector{MC{N,T}}, cv_buffer::Vector{Float64},
+                                    cc_buffer::Vector{Float64}, func_sparsity::Vector{Int64}) where {N, T<:RelaxTag}
+
+    @inbounds is_number = subexpression_isnum[nod.index]
+    if !is_number
+        @inbounds subexpr_values_set[nod.index] = setstorage[k]
+    end
+
+    subexpression = subexpressions[op]
+
+    isa_number = subexpression.is_number[1]
+    if !isa_number
+        copy_subexpression_value!(k, op, setstorage, subexpression, cv_grad_buffer, cc_grad_buffer)
+    end
+    @inbounds numvalued[k] = isa_number
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 """
 function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              numberstorage::Vector{Float64}, numvalued::Vector{Bool},
-                              subexpression_isnum::Vector{Bool}, subexpr_values_set, is_post::Bool) where {N, T<:RelaxTag}
+                              numberstorage::Vector{Float64}, numvalued::Vector{Bool}, is_post::Bool) where {N, T<:RelaxTag}
 
     children_arr = rowvals(adj)
     continue_flag = true
@@ -502,19 +528,13 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
         if ntype == JuMP._Derivatives.VALUE      || ntype == JuMP._Derivatives.LOGIC     ||
            ntype == JuMP._Derivatives.COMPARISON || ntype == JuMP._Derivatives.PARAMETER ||
-           ntype == JuMP._Derivatives.EXTRA
+           ntype == JuMP._Derivatives.EXTRA      || ntype == JuMP._Derivatives.SUBEXPRESSION
            continue
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             op = nod.index
             @inbounds lbd[op] = setstorage[k].Intv.lo
             @inbounds ubd[op] = setstorage[k].Intv.hi
-
-        elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
-            @inbounds is_number = subexpression_isnum[nod.index]
-            if !is_number
-                @inbounds subexpr_values_set[nod.index] = setstorage[k]
-            end
 
         elseif nvalued
             continue
