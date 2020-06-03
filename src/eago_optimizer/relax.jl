@@ -25,7 +25,8 @@ function is_safe_cut!(m::Optimizer, f::SAF)
     safe_u = m._parameters.cut_safe_u
     safe_b = m._parameters.cut_safe_b
 
-    (abs(f.constant) > safe_b) && return false                          # violates |b| <= safe_b
+    # violates |b| <= safe_b
+    (abs(f.constant) > safe_b) && return false
 
     term_count = length(f.terms)
     for i = 1:term_count
@@ -33,13 +34,15 @@ function is_safe_cut!(m::Optimizer, f::SAF)
         ai = (@inbounds f.terms[i]).coefficient
         if ai !== 0.0
 
+            # violates safe_l <= abs(ai) <= safe_u
             ai_abs = abs(ai)
-            !(safe_l <= abs(ai) <= safe_u) && return false              # violates safe_l <= abs(ai) <= safe_u
+            !(safe_l <= abs(ai) <= safe_u) && return false
 
+            # violates safe_l <= abs(ai/aj) <= safe_u
             for j = i:term_count
                 aj = (@inbounds f.terms[j]).coefficient
                 if aj !== 0.0
-                    !(safe_l <= abs(ai/aj) <= safe_u) && return false   # violates safe_l <= abs(ai/aj) <= safe_u
+                    !(safe_l <= abs(ai/aj) <= safe_u) && return false
                 end
             end
         end
@@ -200,27 +203,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V}, evaluator::Eva
     if !f.has_value || f.last_past_reverse
         forward_pass!(evaluator, f)
     end
-
-    new_point = is_new_reference(f)
-    if use_cvx && (new_point || !f.last_relax_convex)
-        unpack_value!(f, use_cvx)
-    end
-
-    if !use_cvx && (new_point || !f.last_relax_concave)
-        unpack_value!(f, use_cvx)
-    end
-
-    f.last_relax_convex = use_cvx
-    f.last_relax_concave = !use_cvx
-
-    mult = use_cvx : 1.0 : -1.0
-    aff_terms = f.expr.affine_terms.terms
-    saf_terms = f.saf.terms
-    for i = 1:length(saf_terms)
-        term = @inbounds saf_terms[i]
-        @inbounds saf_terms[i] = SAT(term.coefficient + mult*aff_terms[i].coefficient, term.variable_index)
-    end
-    f.saf.constrant += mult*f.expr.affine_terms.constant
+    unpack_value!(f, use_cvx)
 
     return nothing
 end
@@ -231,7 +214,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{V}, indx::Int, check_
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant)
+            lt = LT(f.upper_bound - f.saf.constant)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_quadratic_eq_ci, ci)
@@ -241,7 +224,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{V}, indx::Int, check_
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant)
+            lt = LT(-f.lower_bound - f.saf.constant)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_quadratic_eq_ci, ci)
@@ -323,6 +306,7 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
          end
 
     end
+
     return nothing
 end
 relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
@@ -446,7 +430,6 @@ function delete_nl_constraints!(m::Optimizer)
     end
     empty!(m._buffered_nonlinear_ci)
 
-
     return nothing
 end
 
@@ -472,7 +455,6 @@ function set_first_relax_point!(m::Optimizer)
         n = m._current_node
         @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
-
     end
 
     return nothing

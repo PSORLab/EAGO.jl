@@ -59,6 +59,49 @@ function convert_to_min!(m::Optimizer)
     return nothing
 end
 
+"""
+
+Performs an epigraph reformulation assuming the working_problem is a minimization problem.
+"""
+function reform_epigraph!(m::Optimizer)
+
+    if m._parameters.presolve_epigraph_flag
+        #=
+        # add epigraph variable
+        obj_variable_index = MOI.add_variable(m)
+
+        # converts ax + b objective to ax - y <= -b constraint with y objective
+        obj_type = m._working_problem._objective_type
+        if obj_type === SCALAR_AFFINE
+
+            # update unparsed expression
+            objective_saf = m._working_problem._objective_saf
+            push!(objective_saf, SAT(-1.0, obj_variable_index))
+            obj_ci = MOI.add_constraint(m, saf, LT(-objective_saf.constant))
+
+            # update parsed expression (needed for interval bounds)
+
+        # converts ax + b objective to ax - y <= -b constraint with y objective
+        elseif obj_type === SCALAR_QUADRATIC
+
+            # update parsed expression
+            objective_sqf = m._working_problem._objective_sqf
+            obj_ci = MOI.add_constraint(m, saf, LT())
+
+        elseif obj_type === NONLINEAR
+
+            # updated parsed expressions
+            objective_nl = m._working_problem._objective_nl
+
+        end
+
+        MOI.set(m, MOI.ObjectiveFunction{SV}(), SV(obj_variable_index))
+        =#
+    end
+
+    return nothing
+end
+
 function check_set_is_fixed(v::VariableInfo)
     v.is_fixed && return true
     v.is_fixed = x.lower_bound === x.upper_bound
@@ -308,6 +351,7 @@ function initial_parse!(m::Optimizer)
     # this is placed after adding nonlinear functions as this prior routine
     # copies the nlp_block from the input_problem to the working problem
     convert_to_min!(m)
+    reform_epigraph!(m)
 
     # labels the variable info and the _fixed_variable vector for each fixed variable
     label_fixed_variables!(m)

@@ -42,9 +42,6 @@ Base.@kwdef mutable struct EAGOParameters
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Apply the epigraph reformulation
     to the problem (default = false)."
     presolve_epigraph_flag::Bool = false
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Enable common subexpression
-    elimination for DAG (default = false)."
-    presolve_cse_flag::Bool = false
     "Rerranges the DAG using registered transformations (default = false)"
     presolve_flatten_flag::Bool = false
 

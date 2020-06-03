@@ -54,9 +54,9 @@ function load_relaxed_problem!(m::Optimizer)
 
     # add variables and indices and constraints
     wp = m._working_problem
-    variable_count = wp._variable_count
     branch_variable_count = 0
 
+    variable_count = wp._variable_count
     for i = 1:variable_count
 
         relaxed_variable_indx = MOI.add_variable(relaxed_optimizer)

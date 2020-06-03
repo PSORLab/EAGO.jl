@@ -11,7 +11,6 @@
 # TODO
 #############################################################################
 
-
 """
 $(FUNCTIONAME)
 
@@ -21,6 +20,7 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
 
     "List of nodes in nonlinear expression"
     nd::Vector{JuMP.NodeData}
+    label::Vector{NODE_LABEL}
     "Adjacency Matrix for the expression"
     adj::SparseMatrixCSC{Bool,Int64}
     const_values::Vector{Float64}
@@ -64,20 +64,6 @@ mutable struct BufferedNonlinearFunction{V} <: AbstractEAGOConstraint
     last_relax_convex::Bool
     last_relax_concave::Bool
     last_past_reverse::Bool
-end
-
-###
-### Constructor utilities
-###
-
-function extract_affine_term!(d::NonlinearExpression{V}) where V
-    # TODO
-    return nothing
-end
-
-function extract_affine_term!(d::BufferedNonlinearFunction{V}) where V
-    extract_affine_term!(d.expr)
-    return nothing
 end
 
 ###
@@ -130,7 +116,7 @@ function NonlinearExpression{V}(sub::JuMP._SubexpressionStorage,
                                                             tp1storage, tp2storage, tp3storage, tp4storage, tpdict,
                                                             grad_sparsity, is_branch, branch_indices,
                                                             JuMP._Derivatives.CONSTANT)
-    extract_affine_term!(subexpression)
+    return subexpression
 end
 
 function NonlinearExpression{V}()
@@ -216,7 +202,18 @@ $(TYPEDEF)
 Extracts the `convex` affine relaxaiton is `use_cvx` to `f.saf` then adds the `affine_terms` to
 this to form the affine relaxation of the function.
 """
-function unpack_value!(f::BufferedNonlinearFunction{V}, use_cvx::Bool) where V
+function unpack_value!(f::BufferedNonlinearFunction{MC{N,T}}, use_cvx::Bool) where {N,T<:RelaxTag}
+
+    value = f.expr.value
+    grad_sparsity = f.expr.grad_sparsity
+    subgrad = use_cvx ? value.cv_grad : -value.cc_grad
+    f.saf.constant = use_cvx ? value.cv : -value.cc
+    for i = 1:N
+        vval = @inbounds grad_sparsity[i]
+        coef = @inbounds subgrad[i]
+        f.saf.terms[i] = SAT(coef, VI(vval))
+        f.saf.constant -= coef*(@inbounds x[vval])
+    end
 
     return nothing
 end
@@ -349,6 +346,7 @@ function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) wh
     set_value!(d.expr, d.expr.value ∩ d.bnds)
     d.has_value = true
     d.last_past_reverse = false
+
     return nothing
 end
 
@@ -376,6 +374,7 @@ end
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     d.last_past_reverse = true
     set_value!(d.expr, d.expr.value ∩ d.bnds)
+
     return reverse_pass!(evaluator, d.expr)
 end
 
@@ -386,6 +385,7 @@ function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where 
     if !d.has_value
         forward_pass!(d.evaluator, d)
     end
+
     return get_lo(get_value(d))
 end
 
@@ -393,6 +393,7 @@ function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     if !d.has_value
         forward_pass!(d.evaluator, d)
     end
+
     return get_interval(get_value(d))
 end
 
