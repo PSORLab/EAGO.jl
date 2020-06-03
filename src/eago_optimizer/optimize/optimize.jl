@@ -8,7 +8,9 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eago_optimizer/optimize/optimize.jl
+# Load subproblem type optimization routines and define general optimize!
+# throw_optimize_hook!.
 #############################################################################
 
 include("optimize_lp_cone.jl")

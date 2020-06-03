@@ -8,7 +8,9 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eago_optimizer/optimize/optimize_nonconvex.jl
+# Contains the optimize! routine and subroutines needed in the branch and
+# bound routine called by EAGO.
 #############################################################################
 
 """

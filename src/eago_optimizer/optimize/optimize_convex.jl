@@ -8,7 +8,11 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eeago_optimizer/optimize/optimize_convex.jl
+# Contains the single_nlp_solve! routine which computes the optimal value
+# of a convex function. This is used to compute the upper bound in the
+# branch and bound routine. A number of utility function required for
+# single_nlp_solve! are also included.
 #############################################################################
 
 """
@@ -151,6 +155,13 @@ function single_nlp_solve!(m::Optimizer)
         m._upper_objective_value = Inf
 
     end
+
+    return nothing
+end
+
+function optimize!(::Val{DIFF_CVX}, m::Optimizer)
+
+    single_nlp_solve!(m)
 
     return nothing
 end

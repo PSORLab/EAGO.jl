@@ -8,7 +8,10 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eeago_optimizer/optimize/optimize_lp_cone.jl
+# Contains the optimize! routines for LP, SOCP, (and in the future MILP and
+# MISOCP) type problems. This also includes functions to add variables,
+# linear constraints, soc constraints, and unpack solutions.
 #############################################################################
 
 #=
@@ -167,10 +170,3 @@ function optimize!(::Val{SOCP}, m::Optimizer)
 end
 
 optimize!(::Val{MISOCP}, m::Optimizer) = optimize!(Val{SOCP}(), m)
-
-function optimize!(::Val{DIFF_CVX}, m::Optimizer)
-
-    single_nlp_solve!(m)
-
-    return nothing
-end
