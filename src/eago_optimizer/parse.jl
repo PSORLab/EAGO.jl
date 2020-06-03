@@ -142,10 +142,12 @@ function label_branch_variables!(m::Optimizer)
         end
     end
 
-    # drop fixed variables from branching
-
     # add a map of branch/node index to variables in the continuous solution
     for i = 1:m._working_problem._variable_count
+        if m._working_problem._variable_info[i].is_fixed
+            m._branch_variables[i] = false
+            continue
+        end
         if m._branch_variables[i]
             push!(m._branch_to_sol_map, i)
         end
@@ -176,6 +178,14 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
+
+    # scrubs udf functions using Cassette to remove odd data structures...
+    # alternatively convert udfs to JuMP scripts...
+    m.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
+    if m.presolve_to_JuMP_flag
+        Script.udf_loader!(m)
+    end
+
     parameter_values = copy(nlp_data.nlparamvalues)
 
     # add nonlinear objective
