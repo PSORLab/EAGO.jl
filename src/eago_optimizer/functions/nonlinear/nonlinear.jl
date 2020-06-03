@@ -128,7 +128,7 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
             end
         end
     end
-    grad_sparsity = collect(keys(variable_dict)))
+    grad_sparsity = collect(keys(variable_dict))
     sort!(grad_sparsity)
 
     dependent_variable_count = length(grad_sparsity)
@@ -163,6 +163,7 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
 
     grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
     N = length(grad_sparsity)
+    dependent_variable_count = length(grad_sparsity)
 
     lenx = length(nd)
     setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
@@ -195,18 +196,13 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
-    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
-    dependent_variable_count = length(grad_sparsity)
-    N = dependent_variable_count
-
-    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
-                                                 isnumber, zero(MC{N,T}), false, dependent_variable_count,
-                                                 dependent_subexpressions, tp1storage, tp2storage,
-                                                 tp3storage, tp4storage, tpdict, grad_sparsity,
-                                                 dependent_variable_count,
-                                                 dependent_subexpression_count,
-                                                 dependent_subexpressions,
-                                                 JuMP._Derivatives.CONSTANT)
+    expression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
+                                              isnumber, zero(MC{N,T}), false,
+                                              tp1storage, tp2storage, tp3storage, tp4storage,
+                                              tpdict, grad_sparsity, dependent_variable_count,
+                                              dependent_subexpression_count,
+                                              dependent_subexpressions,
+                                              JuMP._Derivatives.CONSTANT)
 
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:length(grad_sparsity)], 0.0)
 
@@ -217,7 +213,7 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
     last_relax_concave = false
     last_past_reverse = false
 
-    return BufferedNonlinearFunction{MC{N,T}}(nonlinear_expression, saf, lower_bound, upper_bound,
+    return BufferedNonlinearFunction{MC{N,T}}(expression, saf, lower_bound, upper_bound,
                                               last_relax_convex, last_relax_concave, last_past_reverse)
 end
 
@@ -278,15 +274,15 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     lower_variable_bounds::Vector{Float64} = Float64[]
     upper_variable_bounds::Vector{Float64} = Float64[]
     x_value::Vector{Float64} = Float64[]
-    ni_map::Vector{Int64}
+    ni_map::Vector{Int64} = Int64[]
 
     "Context used to guard against domain violations & branch on these violations if necessary"
     subgrad_tighten::Bool = false
     subgrad_tighten_reverse::Bool = false
     ctx::GuardCtx = GuardCtx()
 
-    subexpressions::Vector{NonlinearExpression}
-    subexpressions_eval::Vector{Bool}
+    subexpressions::Vector{NonlinearExpression} = NonlinearExpression[]
+    subexpressions_eval::Vector{Bool} = Bool[]
 end
 
 """

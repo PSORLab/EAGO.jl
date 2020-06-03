@@ -8,7 +8,8 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# src/eago_script/patterns.jl
+#
 #############################################################################
 
 # (1) register log(a^x) = x*log(a) DONE

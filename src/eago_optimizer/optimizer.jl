@@ -330,6 +330,9 @@ Base.@kwdef mutable struct ParsedProblem
     # nonlinear constraint storage
     _nonlinear_count::Int = 0
 
+    # nonlinear evaluator
+    _relaxed_evaluator = Evaluator()
+
     # variables (set in initial_parse)
     _variable_info::Vector{VariableInfo} = VariableInfo[]
     _variable_count::Int = 0
