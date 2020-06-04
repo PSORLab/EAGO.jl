@@ -204,8 +204,21 @@ function set_reference_point!(m::Optimizer)
     evaluator = m._working_problem._relaxed_evaluator
     evaluator_x = evaluator.x
     current_xref = m._current_xref
-    if !isequal(evaluator_x, current_xref)
-        copyto!(evaluator_x, current_xref)
+
+    new_reference_point = false
+    for node_i = 1:m._branch_variable_count
+        solution_i = m._branch_to_sol_map[node_i]
+
+        node_x = current_xref[node_i]
+        solution_x = evaluator_x[solution_i]
+
+        if node_x !== solution_x
+            evaluator_x[solution_i] = node_x
+            new_reference_point = true
+        end
+    end
+
+    if new_reference_point
 
         for constr in m._working_problem._nonlinear_constr
             constr.has_value = false
@@ -580,6 +593,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
     set_reference_point!(m)
     evaluator.interval_intersect = !m._parameeters.subgrad_tighten
 
+    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
             set_node_flag!(constr)
@@ -588,12 +602,15 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         end
     end
 
+    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
     if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
         obj_nonlinear = m._working_problem._objective_nl
         set_node_flag!(obj_nonlinear)
         forward_pass!(evaluator, obj_nonlinear)
         feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
     end
+    m._new_eval_constraint = false
+    m._new_eval_objective = false
 
     evaluator.interval_intersect = true
     m._current_node = retrieve_node(evaluator)

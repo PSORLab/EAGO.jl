@@ -588,6 +588,9 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # set as user-input
     _branch_variables::Vector{Bool} = Bool[]
 
+    _new_eval_constraint::Bool = false
+    _new_eval_objective::Bool = false
+
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end

@@ -234,7 +234,7 @@ end
 
 function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
 
-    evaluator = m._working_problem.evaluator
+    evaluator = m._working_problem._relaxed_evaluator
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
     #"first cut: $(f.saf)"
     if finite_cut_generated
@@ -294,8 +294,10 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     relaxed_optimizer = m.relaxed_optimizer
     relaxed_evaluator = wp._relaxed_evaluator
     buffered_nl = wp._objective_nl
-    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
 
+    relaxed_evaluator.is_first_eval = m._new_eval_objective
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
+    relaxed_evaluator.is_first_eval = false
     #println("finite_cut_generated: $(finite_cut_generated)")
 
     if finite_cut_generated
@@ -353,6 +355,8 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         relax_objective_nonlinear!(m, wp, check_safe)
     end
 
+    m._new_eval_objective = false
+
     return nothing
 end
 relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
@@ -363,6 +367,8 @@ function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64,
     relaxed_optimizer = m.relaxed_optimizer
     relaxed_evaluator = wp._relaxed_evaluator
     buffered_nl = wp._objective_nl
+
+    relaxed_evaluator.is_first_eval = m._new_eval_objective
     finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
 
     if finite_cut_generated
@@ -373,6 +379,8 @@ function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64,
             push!(m._objective_cut_ci_saf, ci_saf)
         end
     end
+
+    m._new_eval_objective = false
 
     return nothing
 end
@@ -423,6 +431,8 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
         elseif obj_type === NONLINEAR
             objective_cut_nonlinear!(m, wp, UBD, check_safe)
         end
+
+        m._new_eval_objective = false
     end
 
     return nothing
@@ -436,7 +446,10 @@ nonlinear constraints and quadratic constraints.
 """
 function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
+    #println("relaxing all constraints!")
+
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
+    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
 
     sqf_leq_list = m._working_problem._sqf_leq
     for i = 1:m._working_problem._sqf_leq_count
@@ -451,10 +464,14 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
     end
 
     nl_list = m._working_problem._nonlinear_constr
+    #println("m._working_problem._nonlinear_count = $(m._working_problem._nonlinear_count)")
     for i = 1:m._working_problem._nonlinear_count
+        #println("relaxing nonlinear constraint $i")
         nl = @inbounds nl_list[i]
         relax!(m, nl, i, check_safe)
     end
+
+    m._new_eval_constraint = false
 
     objective_cut!(m, check_safe)
 
@@ -508,6 +525,11 @@ function set_first_relax_point!(m::Optimizer)
 
     #println("m._first_relax_point_set: $(m._first_relax_point_set)")
     m._first_relax_point_set = true
+
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    m._new_eval_constraint = true
+    m._new_eval_objective = true
+
     n = m._current_node
     @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
     unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))

@@ -9,11 +9,8 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/evaluator/passes.jl
-# Functions used to compute forward pass of nonlinear functions.
-# set_value_post
-# overwrite_or_intersect
-# forward_pass_kernel!
-# associated blocks
+# Functions used to compute forward pass of nonlinear functions which include:
+# set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
 """
@@ -85,12 +82,26 @@ end
 """
 $(FUNCTIONNAME)
 
-Intersects the new set valued operator with the prior and performing `set_value_post` if the flag is...
+Intersects the new set valued operator with the prior and performs affine bound tightening
+
+- First forward pass: `is_post` should be set by user option, `is_intersect` should be false
+  so that the tape overwrites existing values, and the `interval_intersect` flag could be set
+  to either value.
+- Forward CP pass (assumes same reference point): `is_post` should be set by user option,
+  `is_intersect` should be true so that the tape intersects with  existing values, and the
+  `interval_intersect` flag should be false.
+- Forward CP pass (assumes same reference point): `is_post` should be set by user option,
+  `is_intersect` should be true so that the tape intersects with existing values, and the
+  `interval_intersect` flag should be false.
+- Subsequent forward passes at new points: is_post` should be set by user option,
+  `is_intersect` should be true so that the tape intersects with existing values, and the
+  `interval_intersect` flag should be `true` as predetermined interval bounds are valid but
+   the prior values may correspond to different points of evaluation.
 """
 function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float64}, lbd::Vector{Float64},
                                 ubd::Vector{Float64}, is_post::Bool, is_intersect::Bool,
                                 interval_intersect::Bool) where {N,T<:RelaxTag}
-
+    #println("is_post = $(is_post), is_intersect = $(is_intersect), interval_intersect = $(interval_intersect)")
     if is_post && is_intersect && interval_intersect
         return set_value_post(x, xMC ∩ past_xMC.Intv, lbd, ubd)
 
@@ -106,6 +117,11 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
     return xMC
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution of node representing `n = x + y`.
+"""
 function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -166,6 +182,11 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution of node representing `n = +(x, y, z,...)`.
+"""
 function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -218,6 +239,11 @@ function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = x*y`.
+"""
 function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                   numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                                   x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -248,6 +274,11 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
         num2 = 0.0
     end
 
+    #println("arg1_is_number: $(arg1_is_number)")
+    #println("arg2_is_number: $(arg2_is_number)")
+    #println("set1: $set1")
+    #println("set2: $set2")
+
     output_is_number = arg1_is_number && arg2_is_number
 
     # a * b
@@ -277,6 +308,12 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     return nothing
 end
 
+
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution of node representing `n = *(x, y, z,...)`.
+"""
 function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                   numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                                   x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -288,10 +325,10 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
     arg_index = @inbounds children_arr[idx]
     output_is_number = @inbounds numvalued[arg_index]
     if output_is_number
-        tmp_set = zero(MC{N,T})
+        tmp_set = one(MC{N,T})
         tmp_num = @inbounds numberstorage[arg_index]
     else
-        tmp_num = 0.0
+        tmp_num = 1.0
         tmp_set = @inbounds setstorage[arg_index]
     end
     #println("tmp_num[1] = $tmp_num")
@@ -318,6 +355,7 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         @inbounds numberstorage[k] = tmp_num
     else
        tmp_set *= tmp_num
+     #  println("tmp_set")
        setstorage[k] = overwrite_or_intersect(tmp_set, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                               interval_intersect)
     end
@@ -325,6 +363,11 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = x-y`.
+"""
 function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                         x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -385,6 +428,11 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = x^y`.
+"""
 function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                         x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -467,6 +515,11 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = x/y`.
+"""
 function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                          numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                          x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -527,6 +580,11 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = user_f(x, y...)`.
+"""
 function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                     numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                                     x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -570,6 +628,12 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = f(c)` where f is standard function
+and `c` is a number.
+"""
 function forward_univariate_number!(k::Int64, op::Int64, numvalued::Vector{Bool}, numberstorage::Vector{Float64})
 
     tmp_num = @inbounds numberstorage[child_idx]
@@ -581,6 +645,12 @@ function forward_univariate_number!(k::Int64, op::Int64, numvalued::Vector{Bool}
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = f(x)` where f is standard function
+that requires a single tiepoint calculation per convex/concave relaxation (e.g. tan).
+"""
 function forward_univariate_tiepnt_1!(k::Int64, child_idx::Int64, setstorage::Vector{V},
                                       x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                       tpdict::Dict{Int64, Tuple{Int64,Int64,Int64,Int64}},
@@ -606,6 +676,12 @@ function forward_univariate_tiepnt_1!(k::Int64, child_idx::Int64, setstorage::Ve
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = f(x)` where f is standard function
+that requires a two tiepoint calculations per convex/concave relaxation (e.g. sin).
+"""
 function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Vector{V},
                                       x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                       tpdict::Dict{Int64, Tuple{Int64,Int64,Int64,Int64}},
@@ -641,6 +717,11 @@ function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Ve
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = user_f(x)`.
+"""
 function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
                                   x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                   is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool,
@@ -663,6 +744,12 @@ function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstor
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+Updates storage tapes with forward evalution for node representing `n = f(x)` where `f` is a standard function
+that does not require a tiepoint evaluation (e.g. exp).
+"""
 function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
                                    x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                    is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
@@ -676,19 +763,27 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
 end
 
 const FORWARD_DEBUG = false
-
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
+
+"""
+$(FUNCTIONNAME)
+
+Performs a forward pass using the tape information passed as arguments. Each variety of node calls an associated
+forward_xxx function where xxx is a descriptor.
+"""
 function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64},
                               setstorage::Vector{MC{N,T}}, numberstorage::Vector{Float64}, numvalued::Vector{Bool},
                               tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}, tp1storage::Vector{Float64},
                               tp2storage::Vector{Float64}, tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
                               user_operators::JuMP._Derivatives.UserOperatorRegistry, subexpressions::Vector{NonlinearExpression},
-                              func_sparsity::Vector{Int64}, variable_to_node_map::Vector{Int64},
+                              func_sparsity::Vector{Int64}, reverse_sparsity::Vector{Int64},
                               num_mv_buffer::Vector{Float64}, ctx::GuardCtx,
                               is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool,
                               cv_grad_buffer::Vector{Float64}, cc_grad_buffer::Vector{Float64},
                               treat_x_as_number::Vector{Bool}) where {N, T<:RelaxTag}
+
+    #println("x = $x")
 
     children_arr = rowvals(adj)
 
@@ -713,14 +808,18 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             if isa_number
                 @inbounds numberstorage[k] = x[op]
             else
-                seed_index = variable_to_node_map[op]
+                seed_index = reverse_sparsity[op]
+                #println("is_first_eval: $(is_first_eval)")
+                #println("seed_index = $(seed_index)")
+                #println("(x[op] = $(x[op])")
                 xMC = MC{N,T}(x[op], Interval{Float64}(lbd[op], ubd[op]), seed_index)
+                #println("xMC = $(xMC)")
                 @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k])
             end
             FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
             forward_get_subexpression!(k, op, subexpressions, numvalued, numberstorage, setstorage, cv_buffer,
-                                       cc_buffer, func_sparsity::Vector{Int64})
+                                       cc_buffer, func_sparsity)
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
 
@@ -738,13 +837,13 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                     forward_plus_narity!(k, children_arr, children_idx, numvalued, numberstorage,
                                          setstorage, x, lbd, ubd, is_post, is_intersect, interval_intersect)
                 end
-            FORWARD_DEBUG && println("plus[$n]     at k = $k -> $(setstorage[k])")
+                FORWARD_DEBUG && println("plus[$n]     at k = $k -> $(setstorage[k])")
             # :- with arity two
             elseif op === 2
                 forward_minus!(k, children_arr, children_idx, numvalued, numberstorage,
                                setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval,
                                interval_intersect)
-
+                FORWARD_DEBUG && println("minus        at k = $k -> $(setstorage[k])")
             # :* with arity two or greater
             elseif op === 3
                 n = length(children_idx)
@@ -814,7 +913,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             # performs set valued operator on other functions in base library
             else
                 forward_univariate_other!(k, op, child_idx, setstorage, x, lbd, ubd, is_post,
-                                          is_intersect, is_first_eval, ctx)
+                                          is_intersect, is_first_eval, interval_intersect, ctx)
 
             end
 

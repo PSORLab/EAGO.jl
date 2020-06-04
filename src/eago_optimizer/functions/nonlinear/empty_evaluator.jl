@@ -8,7 +8,8 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# TODO
+# Defines the EmptyNLPEvaluator needed to provide a constructor for
+# the EAGO.Optimizer prior to loading JuMP's NLPEvaluator.
 #############################################################################
 
 struct EmptyNLPEvaluator <: MOI.AbstractNLPEvaluator

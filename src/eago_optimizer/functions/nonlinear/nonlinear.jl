@@ -54,6 +54,7 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
 
     # sparsity of constraint + indices in node to reference
     grad_sparsity::Vector{Int64}       # indices of variables in the problem space (size = np)
+    reverse_sparsity::Vector{Int64}
 
     # role in problem
     dependent_variable_count::Int
@@ -136,6 +137,22 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     grad_sparsity = collect(keys(variable_dict))
     sort!(grad_sparsity)
 
+    reverse_sparsity_length = grad_sparsity[end]
+    reverse_sparsity = zeros(Int64, reverse_sparsity_length)
+    current_grad_sparsity = grad_sparsity[1]
+    current_grad_sparsity_count = 1
+    for i = 1:reverse_sparsity_length
+        if i == current_grad_sparsity
+            reverse_sparsity[i] = current_grad_sparsity_count
+            current_grad_sparsity_count += 1
+            if current_grad_sparsity_count <= length(grad_sparsity)
+                current_grad_sparsity = grad_sparsity[current_grad_sparsity_count]
+            else
+                break
+            end
+        end
+    end
+
     dependent_variable_count = length(grad_sparsity)
     N = dependent_variable_count
 
@@ -143,7 +160,7 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
                                                  isnumber, zero(MC{N,T}), false,
                                                  tp1storage, tp2storage,
                                                  tp3storage, tp4storage, tpdict, grad_sparsity,
-                                                 dependent_variable_count,
+                                                 reverse_sparsity, dependent_variable_count,
                                                  dependent_subexpression_count,
                                                  dependent_subexpressions,
                                                  JuMP._Derivatives.CONSTANT)
@@ -155,7 +172,7 @@ function NonlinearExpression()
                                          MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}), false,
                                          Float64[], Float64[], Float64[], Float64[],
                                          Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
-                                         Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT)
+                                         Int64[],  Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
 function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
@@ -167,6 +184,24 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
     const_values = copy(func.const_values)
 
     grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
+    sort!(grad_sparsity)
+
+    reverse_sparsity_length = grad_sparsity[end]
+    reverse_sparsity = zeros(Int64, reverse_sparsity_length)
+    current_grad_sparsity = grad_sparsity[1]
+    current_grad_sparsity_count = 1
+    for i = 1:reverse_sparsity_length
+        if i == current_grad_sparsity
+            reverse_sparsity[i] = current_grad_sparsity_count
+            current_grad_sparsity_count += 1
+            if current_grad_sparsity_count <= length(grad_sparsity)
+                current_grad_sparsity = grad_sparsity[current_grad_sparsity_count]
+            else
+                break
+            end
+        end
+    end
+
     N = length(grad_sparsity)
     dependent_variable_count = length(grad_sparsity)
 
@@ -211,8 +246,8 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
     expression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
                                               isnumber, zero(MC{N,T}), false,
                                               tp1storage, tp2storage, tp3storage, tp4storage,
-                                              tpdict, grad_sparsity, dependent_variable_count,
-                                              dependent_subexpression_count,
+                                              tpdict, grad_sparsity, reverse_sparsity,
+                                              dependent_variable_count, dependent_subexpression_count,
                                               dependent_subexpressions,
                                               JuMP._Derivatives.CONSTANT)
 
@@ -225,7 +260,6 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
     last_relax_concave = false
     last_past_reverse = false
     has_value = false
-
 
     return BufferedNonlinearFunction{MC{N,T}}(expression, saf, lower_bound, upper_bound,
                                               last_relax_convex, last_relax_concave,
@@ -414,7 +448,7 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
                          d.numberstorage, d.isnumber, d.tpdict,
                          d.tp1storage, d.tp2storage, d.tp3storage, d.tp4storage,
                          evaluator.user_operators, evaluator.subexpressions,
-                         d.grad_sparsity, evaluator.variable_to_node_map,
+                         d.grad_sparsity, d.reverse_sparsity,
                          evaluator.num_mv_buffer, evaluator.ctx,
                          evaluator.is_post, evaluator.is_intersect,
                          evaluator.is_first_eval, evaluator.interval_intersect,
@@ -429,7 +463,6 @@ function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) wh
     set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
     d.has_value = true
     d.last_past_reverse = false
-    evaluator.is_first_eval = false
 
     return nothing
 end

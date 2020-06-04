@@ -22,7 +22,7 @@
 """
 $(TYPEDEF)
 
-Stores a general quadratic function with a buffer.
+Stores a general quadratic inequality constraint with a buffer.
 """
 mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
     func::SQF
@@ -34,7 +34,7 @@ end
 """
 $(TYPEDEF)
 
-Stores a general quadratic function with a buffer.
+Stores a general quadratic equality constraint with a buffer.
 """
 mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     func::SQF

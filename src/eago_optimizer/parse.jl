@@ -226,6 +226,9 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
 
+
+    println("typeof(nlp_data) = $(nlp_data)")
+
     # scrubs udf functions using Cassette to remove odd data structures...
     # alternatively convert udfs to JuMP scripts...
     m._parameters.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
@@ -242,14 +245,16 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
                                                                      m._parameters.relax_tag)
     end
 
-    m._working_problem._nonlinear_count = length(evaluator.constraints)
-    constraint_bounds = nlp_data.constraint_bounds
-    for i = 1:m._working_problem._nonlinear_count
+    # add nonlinear constraints
+    constraint_bounds = m._working_problem._nlp_data.constraint_bounds
+    for i = 1:length(evaluator.constraints)
+        constraint = evaluator.constraints[i]
         bnds = constraint_bounds[i]
         push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds,
                                                                               evaluator.subexpression_linearity,
                                                                               m._parameters.relax_tag))
     end
+     m._working_problem._nonlinear_count =  length(m._working_problem._nonlinear_constr)
 
     return nothing
 end

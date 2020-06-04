@@ -77,33 +77,58 @@ function single_nlp_solve!(m::Optimizer)
         vinfo = @inbounds variable_info[i]
         single_variable = MOI.SingleVariable(@inbounds upper_variables[i])
 
-        if vinfo.is_integer
+        if vinfo.branch_on === BRANCH
+            if vinfo.is_integer
+            else
+                indx = @inbounds sol_to_branch_map[i]
+                lvb  = @inbounds lower_variable_bounds[indx]
+                uvb  = @inbounds upper_variable_bounds[indx]
+                if vinfo.is_fixed
+                    MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
 
-        else
-            indx = @inbounds sol_to_branch_map[i]
-            lvb  = @inbounds lower_variable_bounds[indx]
-            uvb  = @inbounds upper_variable_bounds[indx]
-            if vinfo.is_fixed
-                MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
+                elseif vinfo.has_lower_bound
+                    if vinfo.has_upper_bound
+                        MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
 
-            elseif vinfo.has_lower_bound
-                if vinfo.has_upper_bound
+                    else
+                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+
+                    end
+                elseif vinfo.has_upper_bound
                     MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                    MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                else
-                    MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
 
                 end
-            elseif vinfo.has_upper_bound
-                MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-
             end
-
             x0 = 0.5*(lvb + uvb)
             upper_variable_index = @inbounds upper_variables[i]
             MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
 
+        else
+            # not branch variable
+            if vinfo.is_integer
+            else
+                lvb  = vinfo.lower_bound
+                uvb  = vinfo.upper_bound
+                if vinfo.is_fixed
+                    MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
+
+                elseif vinfo.has_lower_bound
+                    if vinfo.has_upper_bound
+                        MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+
+                    else
+                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+
+                    end
+                elseif vinfo.has_upper_bound
+                    MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+                end
+                x0 = 0.5*(lvb + uvb)
+                upper_variable_index = @inbounds upper_variables[i]
+                MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
+            end
         end
     end
 
@@ -127,7 +152,7 @@ function single_nlp_solve!(m::Optimizer)
     end
 
     # Add nonlinear evaluation block
-    MOI.set(upper_optimizer, MOI.NLPBlock(), m._input_problem._nlp_data)
+    MOI.set(upper_optimizer, MOI.NLPBlock(), m._working_problem._nlp_data)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     # set objective as NECESSARY
@@ -142,6 +167,8 @@ function single_nlp_solve!(m::Optimizer)
     # Process output info and save to CurrentUpperInfo object
     m._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
     m._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
+    println("local termination status = $(m._upper_termination_status)")
+    println("local result status = $(m._upper_result_status)")
 
     if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
         m._upper_feasibility = true

@@ -22,7 +22,8 @@
 """
 $(TYPEDEF)
 
-Current only used for bound tightening...
+Current only used for bound tightening. Stores a representation
+of an affine inequality.
 """
 mutable struct AffineFunctionIneq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
@@ -33,7 +34,8 @@ end
 """
 $(TYPEDEF)
 
-Current only used for bound tightening...
+Current only used for bound tightening. Stores a representation
+of an affine equality.
 """
 mutable struct AffineFunctionEq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
