@@ -168,6 +168,8 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     obj_type = wp._objective_type
     if obj_type === SCALAR_QUADRATIC
         wp._objective_saf.terms = copy(wp._objective_sqf.saf.terms)
+    elseif obj_type === NONLINEAR
+        wp._objective_saf.terms = copy(wp._objective_nl.saf.terms)
     end
 
     m._presolve_time = time() - m._parse_time
@@ -718,6 +720,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     if !m._obbt_performed_flag
         set_first_relax_point!(m)
         set_node!(m._working_problem._relaxed_evaluator, n)
+        set_reference_point!(m)
         set_node_flag!(m)
 
         update_relaxed_problem_box!(m)
@@ -748,14 +751,17 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         for i = 1:m._relaxed_variable_number
             @inbounds m._lower_solution[i] = MOI.get(opt, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
+        #println("lower problem value good LP = $(m._lower_objective_value)")
 
     elseif valid_flag
         m._cut_add_flag = false
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
+        #println("lower problem value infeasible LP = $(m._lower_objective_value)")
 
     else
         fallback_interval_lower_bound!(m, n)
+        #println("lower problem value fallback = $(m._lower_objective_value)")
     end
     #println("lower problem feasibility = $(m._lower_feasibility)")
 

@@ -201,6 +201,8 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator, use_cvx::Bool) where {N,T<:RelaxTag}
+    #println("!f.has_value = $(!f.has_value)")
+    #println("f.last_past_reverse = $(f.last_past_reverse)")
     if !f.has_value || f.last_past_reverse
         forward_pass!(evaluator, f)
     end
@@ -217,6 +219,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
         end
     else
         setvalue = expr.setstorage[1]
+        #println("setvalue: $setvalue")
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
         if finite_cut
             unpack_value!(f, evaluator.x, use_cvx)
@@ -288,8 +291,13 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     buffered_nl = wp._objective_nl
     finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
 
+    #println("finite_cut_generated: $(finite_cut_generated)")
+
     if finite_cut_generated
+        #println("not safe = $(!check_safe)")
         if !check_safe || is_safe_cut!(m, buffered_nl.saf)
+            #println("buffered_nl.saf.terms: $(buffered_nl.saf.terms)")
+            #println("wp._objective_saf.terms: $(wp._objective_saf.terms)")
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
             wp._objective_saf.constant = buffered_nl.saf.constant
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
@@ -314,6 +322,8 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
     obj_type = wp._objective_type
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
 
+    #println("objective relax variable type = $obj_type")
+
     if obj_type === SINGLE_VARIABLE
         MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), wp._objective_sv)
 
@@ -333,6 +343,7 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         end
 
     elseif obj_type === NONLINEAR
+        #println("nonlinear relax pre...")
         relax_objective_nonlinear!(m, wp, check_safe)
     end
 

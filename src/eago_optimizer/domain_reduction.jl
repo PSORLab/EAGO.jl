@@ -198,6 +198,28 @@ function set_node_flag!(m::Optimizer)
     return nothing
 end
 
+
+function set_reference_point!(m::Optimizer)
+
+    evaluator = m._working_problem._relaxed_evaluator
+    evaluator_x = evaluator.x
+    current_xref = m._current_xref
+    if !isequal(evaluator_x, current_xref)
+        copyto!(evaluator_x, current_xref)
+
+        for constr in m._working_problem._nonlinear_constr
+            constr.has_value = false
+        end
+
+        if m._working_problem._objective_type === NONLINEAR
+            m._working_problem._objective_nl.has_value = false
+        end
+    end
+    fill!(evaluator.subexpressions_eval, false)
+
+    return nothing
+end
+
 """
 $(FUNCTIONNAME)
 
@@ -217,6 +239,7 @@ function obbt!(m::Optimizer)
     set_first_relax_point!(m)
     update_relaxed_problem_box!(m)
     set_node!(m._working_problem._relaxed_evaluator, n)
+    set_reference_point!(m)
     set_node_flag!(m)
 
     relax_constraints!(m, 1)
@@ -411,7 +434,7 @@ function fbbt! end
 
 function fbbt!(m::Optimizer, f::AffineFunctionIneq)
 
-    println("ran me affine ineq")
+    #println("ran me affine ineq")
     # compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
@@ -555,7 +578,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
 
     evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
-    set_reference_point!(evaluator, m._current_xref)
+    set_reference_point!(m)
 
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag

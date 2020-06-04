@@ -178,17 +178,23 @@ function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
        tmp_num = 0.0
        tmp_set = @inbounds setstorage[arg_index]
     end
+    #println("tmp_num[1] = $tmp_num")
+    #println("tmp_set[1] = $tmp_set")
 
     output_is_number = true
 
     for idx = 2:length(children_idx)
-        arg_index = @inbounds children_arr[idx]
+        cidx = @inbounds children_idx[idx]
+        arg_index = @inbounds children_arr[cidx]
         arg_is_number = @inbounds numvalued[arg_index]
         if arg_is_number
             tmp_num += @inbounds numberstorage[arg_index]
         else
+            #println("setstorage[arg_index] = $(setstorage[arg_index])")
             tmp_set += @inbounds setstorage[arg_index]
         end
+        #println("tmp_num[$idx] = $tmp_num")
+        #println("tmp_set[$idx] = $tmp_set")
         output_is_number &= arg_is_number
     end
 
@@ -197,6 +203,7 @@ function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         @inbounds numberstorage[k] = tmp_num
     else
         tmp_set += tmp_num
+        #println("tmp_set[last] = $tmp_set")
         setstorage[k] = overwrite_or_intersect(tmp_set, setstorage[k], x, lbd, ubd, is_post, is_intersect)
     end
 
@@ -278,11 +285,14 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         tmp_num = 0.0
         tmp_set = @inbounds setstorage[arg_index]
     end
+    #println("tmp_num[1] = $tmp_num")
+    #println("tmp_set[1] = $tmp_set")
 
     output_is_number = true
 
     for idx = 2:length(children_idx)
-        arg_index = @inbounds children_arr[idx]
+        cidx = @inbounds children_idx[idx]
+        arg_index = @inbounds children_arr[cidx]
         arg_is_number = @inbounds numvalued[arg_index]
         if arg_is_number
             tmp_num *= @inbounds numberstorage[arg_index]
@@ -290,6 +300,8 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
             tmp_set *= @inbounds setstorage[arg_index]
         end
         output_is_number &= arg_is_number
+        #println("tmp_num[$idx] = $tmp_num")
+        #println("tmp_set[$idx] = $tmp_set")
     end
 
     @inbounds numvalued[k] = output_is_number
@@ -643,6 +655,8 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
     return nothing
 end
 
+const FORWARD_DEBUG = false
+
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64},
@@ -657,15 +671,20 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
     children_arr = rowvals(adj)
 
+    FORWARD_DEBUG && println(" ")
     for k = length(nd):-1:1
+
+        oldset = setstorage[k]
         nod = @inbounds nd[k]
         op = nod.index
 
         if nod.nodetype == JuMP._Derivatives.VALUE
             @inbounds numvalued[k] = true
+            FORWARD_DEBUG && println("value[$op]    at k = $k -> $(numberstorage[k])")
 
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
             @inbounds numvalued[k] = true
+            FORWARD_DEBUG && println("parameter[$op] at k = $k -> $(numberstorage[k])")
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             isa_number = @inbounds treat_x_as_number[op]
@@ -677,7 +696,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                 xMC = MC{N,T}(x[op], Interval{Float64}(lbd[op], ubd[op]), seed_index)
                 @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k])
             end
-
+            FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
             forward_get_subexpression!(k, op, subexpressions, numvalued, numberstorage, setstorage, cv_buffer,
                                        cc_buffer, func_sparsity::Vector{Int64})
@@ -697,7 +716,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                     forward_plus_narity!(k, children_arr, children_idx, numvalued, numberstorage,
                                          setstorage, x, lbd, ubd, is_post, is_intersect)
                 end
-
+            FORWARD_DEBUG && println("plus[$n]     at k = $k -> $(setstorage[k])")
             # :- with arity two
             elseif op === 2
                 forward_minus!(k, children_arr, children_idx, numvalued, numberstorage,
@@ -721,6 +740,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                 forward_power!(k, children_arr, children_idx, numvalued, numberstorage,
                                setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval, ctx)
 
+            FORWARD_DEBUG && println("power       at k = $k -> $(setstorage[k])")
             # :/
             elseif op === 5
                 forward_divide!(k, children_arr, children_idx, numvalued, numberstorage,
@@ -774,6 +794,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             error("Unrecognized node type $(nod.nodetype).")
 
         end
+
     end
 
     return nothing

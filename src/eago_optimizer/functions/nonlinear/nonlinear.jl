@@ -121,12 +121,16 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
 
     # counts varialbes in subexpression
     variable_dict = Dict{Int,Bool}()
-    for node in nd
+    for (i,node) in enumerate(nd)
         if node.nodetype === JuMP._Derivatives.VARIABLE
             indx = node.index
             if !haskey(variable_dict, indx)
                 variable_dict[indx] = true
             end
+        end
+        if node.nodetype === JuMP._Derivatives.VALUE
+            indx = node.index
+            numberstorage[i] = const_values[indx]
         end
     end
     grad_sparsity = collect(keys(variable_dict))
@@ -184,6 +188,13 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
             tp1_count += 1
             tp2_count += 1
             tpdict[i] = (tp1_count, tp1_count, -1, -1)
+        end
+    end
+
+    for (i,node) in enumerate(nd)
+        if node.nodetype === JuMP._Derivatives.VALUE
+            indx = node.index
+            numberstorage[i] = const_values[indx]
         end
     end
 
@@ -327,12 +338,7 @@ function set_node!(evaluator::Evaluator, n::NodeBB)
         eval_upper_bounds[full_variable_index] = node_upper_bounds[i]
     end
     fill!(evaluator.subexpressions_eval, false)
-
-    return nothing
-end
-
-function set_reference_point!(evaluator::Evaluator, x::Vector{Float64})
-    fill!(evaluator.subexpressions_eval, false)
+    evaluator.is_first_eval = true
 
     return nothing
 end
@@ -410,10 +416,12 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
 end
 
 function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
+
     forward_pass!(evaluator, d.expr)
     set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
     d.has_value = true
     d.last_past_reverse = false
+    evaluator.is_first_eval = false
 
     return nothing
 end
