@@ -2,14 +2,14 @@ using Revise
 using JuMP, EAGO, Ipopt
 
 m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
-                                                    "output_iterations" => 100,
-                                                    "cp_repetitions" => -1,
-                                                    "iteration_limit" => 50000,
-                                                    "cut_min_iterations" => 0,
-                                                    "cut_max_iterations" => 0,
-                                                    "objective_cut_on" => false,
+                                                    "output_iterations" => 1,
+                                                    "cp_repetitions" => 6,
+                                                    "iteration_limit" => 3,
+                                                    "cut_min_iterations" => 2,
+                                                    "cut_max_iterations" => 2,
+                                                    "objective_cut_on" => true,
                                                     "subgrad_tighten" => true,
-                                                    "obbt_depth" => -1,
+                                                    "obbt_depth" => 6,
                                                     "fbbt_lp_depth" => -1))
 
 #m = Model(Ipopt.Optimizer)
@@ -62,13 +62,17 @@ JuMP.set_upper_bound(x[15], 1.01010101010101)
 
 # ----- Constraints ----- #
 @constraint(m, e2, -0.819672131147541*x[2]+x[5]-0.819672131147541*x[6] == 0.0)
-@NLconstraint(m, e3, 0.98*x[4]-x[7]*(0.01*x[5]*x[10]+x[4]) == 0.0)
+
+@NLconstraint(m, e3, 0.98*x[4]-x[7]*(0.01*x[5]*x[10]+x[4]) == 0.0) # first
 
 @NLconstraint(m, e4, -x[2]*x[9] + 10*x[3] + x[6] == 0.0)
 
 @NLconstraint(m, e7, x[10]*x[14]+22.2*x[11] == 35.82)
+
 @NLconstraint(m, e8, x[11]*x[15]-3*x[8] == -1.33)
+
 @NLconstraint(m, e5, x[5]*x[12]-x[2]*(1.12+0.13167*x[9]-0.0067*x[9]^2) == 0.0)
+
 @NLconstraint(m, e6, x[8]*x[13]-0.01*(1.098*x[9]-0.038*x[9]^2)-0.325*x[7] == 0.57425)
 
 #=

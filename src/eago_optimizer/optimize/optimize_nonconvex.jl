@@ -520,7 +520,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
     wp = m._working_problem
     params = m._parameters
-    set_first_relax_point!(m)
 
     # Sets initial feasibility
     feasible_flag = true
@@ -531,14 +530,11 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
 
-    cp_walk_count = 0
-    obbt_count = 0
-
-    #println("start lp reptitions")
+    println("start lp reptitions")
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
         for i = 1:m._parameters.fbbt_lp_repetitions
-            #println("lp reptition number = $i")
+            println("lp reptition number = $i")
             if feasible_flag
                 for j = 1:wp._saf_leq_count
                     !feasible_flag && break
@@ -557,45 +553,41 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         end
         unpack_fbbt_buffer!(m)
     end
-    #println("feasible post fbbt! = $(feasible_flag)")
+    println("feasible post fbbt! = $(feasible_flag)")
 
-    perform_cp_walk_flag = (params.cp_depth >= m._iteration_count)
-    perfom_obbt_flag     = (params.obbt_depth >= m._iteration_count)
-
-    perform_cp_walk_flag &= (cp_walk_count < m._parameters.cp_repetitions)
-    perfom_obbt_flag     &= (obbt_count < m._parameters.obbt_repetitions)
+    # done after cp
+    set_first_relax_point!(m)
 
     #println("start cp/obbt")
     #println("feasible_flag = $(feasible_flag)")
     #println("m._parameters.obbt_repetitions = $(m._parameters.obbt_repetitions)")
     #println("m._parameters.cp_repetitions = $(m._parameters.cp_repetitions)")
 
-    if feasible_flag
-        while perform_cp_walk_flag || perfom_obbt_flag
+    println("start cp")
+    cp_walk_count = 0
+    perform_cp_walk_flag = feasible_flag
+    perform_cp_walk_flag &= (params.cp_depth >= m._iteration_count)
+    perform_cp_walk_flag &= (cp_walk_count < m._parameters.cp_repetitions)
+    while perform_cp_walk_flag
+        feasible_flag &= set_constraint_propagation_fbbt!(m)
+        println("feasible post set_constraint_propagation_fbbt! = $(feasible_flag)")
+        !feasible_flag && break
+        cp_walk_count += 1
+        perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
+    end
 
-            #println("start cp")
-            if feasible_flag && perform_cp_walk_flag
-                feasible_flag &= set_constraint_propagation_fbbt!(m)
-                #println("feasible post set_constraint_propagation_fbbt! = $(feasible_flag)")
-                !feasible_flag && break
-                cp_walk_count += 1
-            end
-
-            #println("start obbt")
-            if feasible_flag && perfom_obbt_flag
-                feasible_flag &= obbt!(m)
-                m._obbt_performed_flag = true
-                #println("feasible post obbt! = $(feasible_flag)")
-                !feasible_flag && break
-                obbt_count += 1
-            end
-
-            #println("feasible_flag = $(feasible_flag)")
-            #println("cp_walk_count: $(cp_walk_count)")
-            #println("obbt_count: $(obbt_count)")
-            perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
-            perfom_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
-        end
+    obbt_count = 0
+    perfom_obbt_flag = feasible_flag
+    perfom_obbt_flag &= (params.obbt_depth >= m._iteration_count)
+    perfom_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
+    while  perfom_obbt_flag
+        println("start obbt")
+        feasible_flag &= obbt!(m)
+        m._obbt_performed_flag = true
+        println("feasible post obbt! = $(feasible_flag)")
+        !feasible_flag && break
+        obbt_count += 1
+        perfom_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
     end
     #println("end cp/obbt")
 

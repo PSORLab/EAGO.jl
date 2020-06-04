@@ -273,6 +273,10 @@ end
 
 function set_value!(expr::NonlinearExpression{V}, val::V) where V
     expr.value = val
+    if !expr.isnumber[1]
+        println("set storage  = $val")
+        expr.setstorage[1] = val
+    end
 
     return nothing
 end
@@ -489,8 +493,11 @@ end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     d.last_past_reverse = true
+    println("d.expr.value = $(d.expr.value)")
+    println("Interval(d.lower_bound, d.upper_bound) = $(Interval(d.lower_bound, d.upper_bound))")
+    println("d.expr.value ∩ Interval(d.lower_bound, d.upper_bound ): $(d.expr.value ∩ Interval(d.lower_bound, d.upper_bound)) ")
     set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
-
+    println("d.expr.value = $(d.expr.value)")
     return reverse_pass!(evaluator, d.expr)
 end
 

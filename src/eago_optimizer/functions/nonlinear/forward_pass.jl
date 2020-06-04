@@ -401,6 +401,13 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
     output_is_number = arg1_is_number && arg2_is_number
 
+    println("arg1_is_number = $arg1_is_number")
+    println("arg2_is_number = $arg2_is_number")
+    println("set1 = $set1")
+    println("set2 = $set2")
+    println("num1 = $num1")
+    println("num2 = $num2")
+
     # a - b
     if output_is_number
         @inbounds numberstorage[k] = num1 - num2
@@ -409,15 +416,19 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     elseif !arg1_is_number && arg2_is_number
         outset = is_first_eval ? (set1 - num2) : minus_kernel(set1, num2, setstorage[k].Intv)
 
+    println("outset = $outset")
     # a - y
     elseif arg1_is_number && !arg2_is_number
         outset = is_first_eval ? (num1 - set2) : minus_kernel(num1, set2, setstorage[k].Intv)
 
+    println("outset = $outset")
     # x - y
     else
         outset = is_first_eval ? (set1 - set2) : minus_kernel(set1, set2, setstorage[k].Intv)
 
+    println("outset = $outset")
     end
+
 
     @inbounds numvalued[k] = output_is_number
     if !output_is_number
@@ -762,7 +773,7 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
     return nothing
 end
 
-const FORWARD_DEBUG = false
+const FORWARD_DEBUG = true
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 
 """
@@ -789,6 +800,10 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
     FORWARD_DEBUG && println(" ")
     for k = length(nd):-1:1
+
+        if k == 1
+            println("out in kernel: $(setstorage[k])")
+        end
 
         oldset = setstorage[k]
         nod = @inbounds nd[k]
@@ -871,12 +886,13 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                                 setstorage, x, lbd, ubd, is_post, is_intersect, is_first_eval,
                                 interval_intersect, ctx)
 
+            FORWARD_DEBUG && println("divide      at k = $k -> $(setstorage[k])")
             # user multivariate function
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
                 forward_user_multivariate!(k, children_arr, children_idx, numvalued, numberstorage,
                                            setstorage, x, lbd, ubd, is_post, is_intersect, ctx,
                                            interval_intersect, user_operators, num_mv_buffer)
-
+            FORWARD_DEBUG && println("user_mult   at k = $k -> $(setstorage[k])")
             else
                error("Unsupported operation $(operators[op])")
             end
@@ -916,7 +932,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                                           is_intersect, is_first_eval, interval_intersect, ctx)
 
             end
-
+            FORWARD_DEBUG && println("fop[$op]   at k = $k -> $(setstorage[k])")
         else
             error("Unrecognized node type $(nod.nodetype).")
 

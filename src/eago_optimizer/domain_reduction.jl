@@ -591,15 +591,26 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
     evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
     set_reference_point!(m)
-    evaluator.interval_intersect = !m._parameeters.subgrad_tighten
+    evaluator.interval_intersect = !m._parameters.subgrad_tighten
 
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
+    count = 1
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
             set_node_flag!(constr)
+            println("")
+            println(" ----------------- Forward Pass = ($count) ----------------- ")
+            println(" ----------------- Forward Pass = ($count) ----------------- ")
+            println("")
             forward_pass!(evaluator, constr)
+            println("constr.expr.setstorage[1] = $(constr.expr.setstorage[1])")
+            println("")
+            println(" ----------------- Reverse Pass = ($count) ----------------- ")
+            println(" ----------------- Reverse Pass = ($count) ----------------- ")
+            println("")
             feasible_flag &= reverse_pass!(evaluator, constr)
         end
+        count += 1
     end
 
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
