@@ -517,9 +517,11 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
     wp = m._working_problem
     params = m._parameters
+    set_first_relax_point!(m)
 
     # Sets initial feasibility
     feasible_flag = true
+    m._obbt_performed_flag = false
     rept = 0
 
     # compute initial volume
@@ -569,6 +571,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
         if feasible_flag && perfom_obbt_flag
             feasible_flag &= obbt!(m)
+            m._obbt_performed_flag = true
             #println("feasible post obbt! = $(feasible_flag)")
             !feasible_flag && break
             obbt_count += 1
@@ -699,6 +702,8 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
     if feasible_flag
         interval_objective_used = interval_objective_bound(m, n)
+        @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
     else
         m._lower_objective_value = -Inf
     end
@@ -718,14 +723,14 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     n = m._current_node
 
     if !m._obbt_performed_flag
-        set_first_relax_point!(m)
         set_node!(m._working_problem._relaxed_evaluator, n)
         set_reference_point!(m)
         set_node_flag!(m)
-
         update_relaxed_problem_box!(m)
         relax_constraints!(m, 1)
     end
+    #println("m._current_xref: $(m._current_xref)")
+    m._working_problem._relaxed_evaluator.interval_intersect = true
     relax_objective!(m, 1)
 
     # Optimizes the object
@@ -748,8 +753,8 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = true
         m._lower_feasibility = true
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-        for i = 1:m._relaxed_variable_number
-            @inbounds m._lower_solution[i] = MOI.get(opt, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+        for i = 1:m._working_problem._variable_count
+            @inbounds m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
         #println("lower problem value good LP = $(m._lower_objective_value)")
 
@@ -785,7 +790,7 @@ function cut_update!(m::Optimizer)
         m._cut_add_flag = true
         m._lower_termination_status = m._cut_termination_status
         m._lower_result_status = m._cut_result_status
-        @inbounds m._cut_solution[:] = MOI.get(opt, MOI.VariablePrimal(), x._relaxed_variable_index)
+        @inbounds m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
         copyto!(m._lower_solution, m._cut_solution)
 
     end
@@ -871,6 +876,8 @@ function cut_condition(t::ExtensionType, m::Optimizer)
             objective_lo = lower_interval_bound(m._working_problem._objective_nl, n)
 
         end
+        println("m._lower_objective_value = $(m._lower_objective_value)")
+        println("objective_lo = $(objective_lo)")
 
         if objective_lo > m._lower_objective_value
             m._lower_objective_value = objective_lo

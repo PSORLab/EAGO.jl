@@ -258,16 +258,22 @@ this to form the affine relaxation of the function.
 """
 function unpack_value!(f::BufferedNonlinearFunction{MC{N,T}}, x::Vector{Float64}, use_cvx::Bool) where {N,T<:RelaxTag}
 
-    value = f.expr.value
+    #println("x = $x")
+    #println("unpack_value! f.saf in = $(f.saf)")
+    value = f.expr.setstorage[1]
+    #println("value = $(value)")
     grad_sparsity = f.expr.grad_sparsity
     subgrad = use_cvx ? value.cv_grad : -value.cc_grad
+    #println("subgrad = $subgrad")
     f.saf.constant = use_cvx ? value.cv : -value.cc
+    #println("grad_sparsity = $(grad_sparsity)")
     for i = 1:N
         vval = @inbounds grad_sparsity[i]
         coef = @inbounds subgrad[i]
         f.saf.terms[i] = SAT(coef, VI(vval))
         f.saf.constant -= coef*(@inbounds x[vval])
     end
+    #println("unpack_value! f.saf out = $(f.saf)")
 
     return nothing
 end
@@ -316,6 +322,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     is_post::Bool = false
     is_intersect::Bool = false
     is_first_eval::Bool = false
+    interval_intersect::Bool = false
 end
 
 """
@@ -410,8 +417,9 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
                          d.grad_sparsity, evaluator.variable_to_node_map,
                          evaluator.num_mv_buffer, evaluator.ctx,
                          evaluator.is_post, evaluator.is_intersect,
-                         evaluator.is_first_eval, evaluator.cv_grad_buffer,
-                         evaluator.cc_grad_buffer, evaluator.treat_x_as_number)
+                         evaluator.is_first_eval, evaluator.interval_intersect,
+                         evaluator.cv_grad_buffer, evaluator.cc_grad_buffer,
+                         evaluator.treat_x_as_number)
     return nothing
 end
 

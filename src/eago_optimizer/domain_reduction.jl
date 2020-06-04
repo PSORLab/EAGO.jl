@@ -236,7 +236,6 @@ function obbt!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
 
     # solve initial problem to feasibility
-    set_first_relax_point!(m)
     update_relaxed_problem_box!(m)
     set_node!(m._working_problem._relaxed_evaluator, n)
     set_reference_point!(m)
@@ -579,6 +578,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
     evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
     set_reference_point!(m)
+    evaluator.interval_intersect = !m._parameeters.subgrad_tighten
 
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
@@ -595,6 +595,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
     end
 
+    evaluator.interval_intersect = true
     m._current_node = retrieve_node(evaluator)
 
     return feasible_flag

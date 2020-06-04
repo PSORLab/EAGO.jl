@@ -211,6 +211,8 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     # if number return zero saf cut...
     expr = f.expr
     grad_sparsity = expr.grad_sparsity
+
+    #println("f.expr is number = $(expr.isnumber[1])")
     if expr.isnumber[1]
         f.saf.constant = expr.numberstorage[1]
         for i = 1:N
@@ -221,6 +223,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
         setvalue = expr.setstorage[1]
         #println("setvalue: $setvalue")
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
+        #println("finite_cut = $(finite_cut)")
         if finite_cut
             unpack_value!(f, evaluator.x, use_cvx)
         end
@@ -233,6 +236,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, 
 
     evaluator = m._working_problem.evaluator
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
+    #"first cut: $(f.saf)"
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(f.upper_bound - f.saf.constant)
@@ -243,6 +247,7 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, 
     end
 
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false)
+    "second cut: $(f.saf)"
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.lower_bound - f.saf.constant)
@@ -300,6 +305,7 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
             #println("wp._objective_saf.terms: $(wp._objective_saf.terms)")
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
             wp._objective_saf.constant = buffered_nl.saf.constant
+            #println("wp._objective_saf = $(wp._objective_saf)")
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
     end
@@ -500,13 +506,11 @@ end
 
 function set_first_relax_point!(m::Optimizer)
 
-    if !m._first_relax_point_set
-        m._first_relax_point_set = true
-
-        n = m._current_node
-        @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
-        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
-    end
+    #println("m._first_relax_point_set: $(m._first_relax_point_set)")
+    m._first_relax_point_set = true
+    n = m._current_node
+    @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
 
     return nothing
 end
