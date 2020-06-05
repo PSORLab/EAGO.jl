@@ -198,7 +198,6 @@ function set_node_flag!(m::Optimizer)
     return nothing
 end
 
-
 function set_reference_point!(m::Optimizer)
 
     evaluator = m._working_problem._relaxed_evaluator
@@ -242,6 +241,9 @@ https://doi.org/10.1007/s10898-016-0450-4
 """
 function obbt!(m::Optimizer)
 
+
+    println("obbt start node: $(m._current_node)")
+
     feasibility = true
 
     n = m._current_node
@@ -283,7 +285,7 @@ function obbt!(m::Optimizer)
         return false
     end
 
-    while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) & ~isempty(n)
+    while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
 
         # Get lower value
         lower_indx = -1;     upper_indx = -1
@@ -335,18 +337,25 @@ function obbt!(m::Optimizer)
 
             if valid_flag && feasible_flag
                 xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+
                 node_index = branch_to_sol_map[lower_indx]
-                if m._working_problem._variable_info[node_index].is_integer
-                    @inbounds n.lower_variable_bounds[lower_indx] = ceil(xLP[node_index])
-                else
-                    @inbounds n.lower_variable_bounds[lower_indx] = xLP[node_index]
+                updated_value = xLP[node_index]
+                previous_value = n.lower_variable_bounds[lower_indx]
+
+                # if bound is improved update node and corresponding constraint
+                if updated_value > previous_value
+                    # reset_lower_bound!(m, relaxed_optimizer, node_index, updated_value)
+                    @inbounds n.lower_variable_bounds[lower_indx] = updated_value
                 end
+
                 if isempty(n)
                     feasibility = false
                     break
                 end
+
             elseif valid_flag
                 feasibility = false
+
             else
                 break
             end
@@ -366,17 +375,23 @@ function obbt!(m::Optimizer)
             if valid_flag && feasible_flag
                 xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
                 node_index = branch_to_sol_map[upper_indx]
-                if m._working_problem._variable_info[node_index].is_integer
-                    @inbounds n.upper_variable_bounds[upper_indx] = ceil(xLP[node_index])
-                else
-                    @inbounds n.upper_variable_bounds[upper_indx] = xLP[node_index]
+                updated_value = xLP[node_index]
+                previous_value = n.upper_variable_bounds[upper_indx]
+
+                # if bound is improved update node and corresponding constraint
+                if updated_value < previous_value
+                    # reset_upper_bound!(m, relaxed_optimizer, node_index, updated_value)
+                    @inbounds n.upper_variable_bounds[upper_indx] = updated_value
                 end
+
                 if isempty(n)
                     feasibility = false
                     break
                 end
+
             elseif valid_flag
                 feasibility = false
+
             else
                 break
             end
@@ -386,6 +401,8 @@ function obbt!(m::Optimizer)
         end
         trivial_filtering!(m, n)
     end
+
+    println("obbt end node: $(m._current_node)")
 
     return feasibility
 end
@@ -471,8 +488,12 @@ function fbbt!(m::Optimizer, f::AffineFunctionIneq)
         aik, indx_k = @inbounds terms[k]
         if aik !== 0.0
 
-            aik_xL = aik*(@inbounds lower_bounds[indx_k])
-            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            xL = @inbounds lower_bounds[indx_k]
+            xU = @inbounds upper_bounds[indx_k]
+
+            aik_xL = aik*xL
+            aik_xU = aik*xU
+
             temp_sum += min(aik_xL, aik_xU)
             xh = temp_sum/aik
 
@@ -510,9 +531,14 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
 
+#    println("lower_bounds = $lower_bounds")
+#    println("upper_bounds = $upper_bounds")
+
     terms = f.terms
     temp_sum_leq = -f.constant
     temp_sum_geq = -f.constant
+#    println("f.constrant = $(f.constant)")
+    #println("f: $f")
 
     for k = 1:f.len
         aik, indx_k = @inbounds terms[k]
@@ -525,12 +551,16 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
 
         end
     end
+#    println("temp_sum_leq = $temp_sum_leq")
+#    println("temp_sum_geq = $temp_sum_geq")
 
     # subtract extra term, check to see if implied bound is better, if so update the node and
     # the working sum if the node is now empty then break
     for k = 1:f.len
 
         aik, indx_k = @inbounds terms[k]
+        #println("aik = $aik")
+        #println("indx_k = $indx_k")
         if aik !== 0.0
 
             xL = @inbounds lower_bounds[indx_k]
@@ -548,7 +578,7 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
             if aik > 0.0
                 (xh_leq < xL) && return false
                 if xh_leq < xU
-                    @inbounds lower_bounds[indx_k] = xh_leq
+                    @inbounds upper_bounds[indx_k] = xh_leq
                 end
                 (xh_geq > xU) && return false
                 if (xh_geq > xL)
@@ -562,7 +592,7 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
                 end
                 (xh_geq < xL) && return false
                 if (xh_geq < xU)
-                    @inbounds lower_bounds[indx_k] = xh_geq
+                    @inbounds upper_bounds[indx_k] = xh_geq
                 end
 
             else
@@ -579,13 +609,20 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
         end
     end
 
+    #println(" ")
     return true
 end
 
 cp_condition(m::Optimizer) = false
 
+"""
+Performs bound tightening based on forward/reverse interval and/or McCormick passes. This routine
+resets the current node with new interval bounds.
+"""
 function set_constraint_propagation_fbbt!(m::Optimizer)
     feasible_flag = true
+
+    println("cp start node: $(m._current_node)")
 
     evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
@@ -615,6 +652,8 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
 
     evaluator.interval_intersect = true
     m._current_node = retrieve_node(evaluator)
+
+    println("cp end node: $(m._current_node)")
 
     return feasible_flag
 end

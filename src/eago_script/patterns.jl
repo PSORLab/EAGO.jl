@@ -9,7 +9,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_script/patterns.jl
-#
+# Patterns to use in transormations that flatten expressions.
 #############################################################################
 
 # (1) register log(a^x) = x*log(a) DONE

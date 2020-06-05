@@ -167,8 +167,6 @@ function single_nlp_solve!(m::Optimizer)
     # Process output info and save to CurrentUpperInfo object
     m._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
     m._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
-    println("local termination status = $(m._upper_termination_status)")
-    println("local result status = $(m._upper_result_status)")
 
     if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
         m._upper_feasibility = true

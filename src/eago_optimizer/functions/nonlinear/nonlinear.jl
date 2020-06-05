@@ -8,9 +8,9 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# Defines the NonlinearExpression, BufferedNonlinearFunction
-# unpack_value!
-# Defines the Evaluator
+# Defines the NonlinearExpression, BufferedNonlinearFunction used in
+# constructing relaxations of nonlinear functions along with a number of helper
+# functions including an Evaluator structure and:
 # set_node_flag!
 # set_node!
 # set_reference_point!
@@ -287,28 +287,6 @@ function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
     return nothing
 end
 
-"""
-$(FUNCTIONNAME)
-
-Extracts the `convex` affine relaxaiton is `use_cvx` to `f.saf` then adds the `affine_terms` to
-this to form the affine relaxation of the function.
-"""
-function unpack_value!(f::BufferedNonlinearFunction{MC{N,T}}, x::Vector{Float64}, use_cvx::Bool) where {N,T<:RelaxTag}
-
-    value = f.expr.setstorage[1]
-    grad_sparsity = f.expr.grad_sparsity
-    subgrad = use_cvx ? value.cv_grad : -value.cc_grad
-    f.saf.constant = use_cvx ? value.cv : -value.cc
-    for i = 1:N
-        vval = @inbounds grad_sparsity[i]
-        coef = @inbounds subgrad[i]
-        f.saf.terms[i] = SAT(coef, VI(vval))
-        f.saf.constant -= coef*(@inbounds x[vval])
-    end
-
-    return nothing
-end
-
 ###
 ### Defines evaluator storage structure
 ###
@@ -457,7 +435,6 @@ end
 function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
 
     forward_pass!(evaluator, d.expr)
-    set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
     d.has_value = true
     d.last_past_reverse = false
 

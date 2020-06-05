@@ -1,17 +1,34 @@
 using Revise
 using JuMP, EAGO, Ipopt
 
-m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 4,
-                                                    "output_iterations" => 1,
-                                                    "cp_repetitions" => -1,
+println(" ")
+for i=1:6
+    println("----- CASE NOTE: NEW ARG_INDEX OFF recent -----")
+end
+
+println(" ")
+
+m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
+                                                    "output_iterations" => 1000,
                                                     "iteration_limit" => 100000,
+
+                                                    "cp_depth" => -1,
+                                                    "cp_repetitions" => -1,
+                                                    "cp_forward_reverse_limit" => 2,
+
                                                     "cut_min_iterations" => 2,
                                                     "cut_max_iterations" => 2,
                                                     "objective_cut_on" => true,
                                                     "subgrad_tighten" => true,
-                                                    "obbt_depth" => 12,
-                                                    "fbbt_lp_depth" => -1,
-                                                    "obbt_aggressive_on" => true))
+
+                                                    "obbt_depth" => 6,
+                                                    "obbt_repetitions" => 4,
+                                                    "obbt_aggressive_on" => true,
+
+                                                    "upper_bounding_depth" => 12,
+
+                                                    "fbbt_lp_depth" => 100000,
+                                                    "fbbt_lp_repetitions" => 3))
 
 #m = Model(Ipopt.Optimizer)
 

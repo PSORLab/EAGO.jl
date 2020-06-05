@@ -9,7 +9,8 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_script/scrubber.jl
-#
+# A context used to "scrub" type specific storage, assertions, and other
+# language features from a user-defined function.
 #############################################################################
 
 @context ScrubCtx

@@ -9,7 +9,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_script/substitute.jl
-#
+# Utilities that are used to substitute expressions in the computational tape.
 #############################################################################
 
 """

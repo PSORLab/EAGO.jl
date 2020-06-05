@@ -9,7 +9,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_script/script.jl
-#
+# A module used to manipulate script function inputs.
 #############################################################################
 
 module Script

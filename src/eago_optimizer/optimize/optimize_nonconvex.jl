@@ -531,12 +531,14 @@ function preprocess!(t::ExtensionType, m::Optimizer)
                              lower_variable_bounds(m._current_node))
 
 
+    #println("fbbt m.current_node: $(m._current_node)")
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
         for i = 1:m._parameters.fbbt_lp_repetitions
-
+            #println("fbbt i = $i")
             if feasible_flag
                 for j = 1:wp._saf_leq_count
+                    #println("fbbt leq j = $i")
                     !feasible_flag && break
                     saf_leq = @inbounds wp._saf_leq[j]
                     feasible_flag &= fbbt!(m, saf_leq)
@@ -544,6 +546,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
                 !feasible_flag && break
 
                 for j = 1:wp._saf_eq_count
+                    #println("fbbt eq j = $i")
                     !feasible_flag && break
                     saf_eq = @inbounds wp._saf_eq[j]
                     feasible_flag &= fbbt!(m, saf_eq)
@@ -556,7 +559,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
     # done after cp
     set_first_relax_point!(m)
-
 
     cp_walk_count = 0
     perform_cp_walk_flag = feasible_flag
@@ -817,9 +819,12 @@ interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
 
+
     continue_cut_flag = m._cut_add_flag
     continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
     n = m._current_node
+    #println("continueing to cut: $(continue_cut_flag)")
+    #println("starting cut: $(m._current_xref)")
 
     if continue_cut_flag
         cvx_factor =  m._parameters.cut_cvx
@@ -836,10 +841,15 @@ function cut_condition(t::ExtensionType, m::Optimizer)
 
         if norm(m._current_xref, 1) > m._parameters.cut_tolerance
             copyto!(m._current_xref, m._candidate_xref)
+            set_reference_point!(m)
+            m._working_problem._relaxed_evaluator.interval_intersect = true
         else
             continue_cut_flag = false
         end
     end
+
+    #println("past sol: $(m._lower_solution)")
+    #println("new cut: $(m._current_xref)")
 
     if !continue_cut_flag
         delete_nl_constraints!(m)

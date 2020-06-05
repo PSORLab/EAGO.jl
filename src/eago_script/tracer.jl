@@ -9,7 +9,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_script/tracer.jl
-#
+# Utilities for tracing a user-defined function.
 #############################################################################
 
 struct NodeInfo

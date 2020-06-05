@@ -13,6 +13,8 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
+const FORWARD_DEBUG = false
+
 """
 $(FUNCTIONNAME)
 
@@ -161,15 +163,18 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
 
     # x + b
     elseif !arg1_is_number && arg2_is_number
-        outset = is_first_eval ? (set1 + num2) : plus_kernel(set1, num2, setstorage[k].Intv)
+        outset = set1 + num2
+        # is_first_eval ? (set1 + num2) : plus_kernel(set1, num2, setstorage[k].Intv)
 
     # a + y
     elseif arg1_is_number && !arg2_is_number
-        outset = is_first_eval ? (num1 + set2) : plus_kernel(num1, set2, setstorage[k].Intv)
+        outset = num1 + set2
+        # is_first_eval ? (num1 + set2) : plus_kernel(num1, set2, setstorage[k].Intv)
 
     # x + y
     else
-        outset = is_first_eval ? (set1 + set2) : plus_kernel(set1, set2, setstorage[k].Intv)
+        outset = set1 + set2
+        # is_first_eval ? (set1 + set2) : plus_kernel(set1, set2, setstorage[k].Intv)
 
     end
 
@@ -287,15 +292,15 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
 
     # x * b
     elseif !arg1_is_number && arg2_is_number
-        outset = is_first_eval ? (set1 * num2) : mult_kernel(set1, num2, setstorage[k].Intv)
+        outset = set1*num2 #is_first_eval ? (set1 * num2) : mult_kernel(set1, num2, setstorage[k].Intv)
 
     # a * y
     elseif arg1_is_number && !arg2_is_number
-        outset = is_first_eval ? (num1 * set2) : mult_kernel(set2, num1, setstorage[k].Intv)
+        outset = num1*set2 #is_first_eval ? (num1 * set2) : mult_kernel(set2, num1, setstorage[k].Intv)
 
     # x * y
     else
-        outset = is_first_eval ? (set1 * set2) : mult_kernel(set1, set2, setstorage[k].Intv)
+        outset = set1*set2 #is_first_eval ? (set1 * set2) : mult_kernel(set1, set2, setstorage[k].Intv)
 
     end
 
@@ -494,15 +499,18 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
         # x^b
         elseif !arg1_is_number && arg2_is_number
-            outset = is_first_eval ? pow(set1, num2) : ^(set1, num2, setstorage[k].Intv)
+            outset = pow(set1, num2)
+            #is_first_eval ? pow(set1, num2) : ^(set1, num2, setstorage[k].Intv)
 
         # a^y
         elseif arg1_is_number  && !arg2_is_number
-            outset = is_first_eval ? overdub(ctx, pow, num1, set2) : overdub(ctx, ^, num1, set2, setstorage[k].Intv)
+            outset = overdub(ctx, pow, num1, set2)
+            #is_first_eval ? overdub(ctx, pow, num1, set2) : overdub(ctx, ^, num1, set2, setstorage[k].Intv)
 
         # x^y
         elseif !arg1_is_number && !arg2_is_number
-            outset = is_first_eval ? overdub(ctx, pow, set1, set2) : overdub(ctx, ^, set1, set2, setstorage[k].Intv)
+            outset = overdub(ctx, pow, set1, set2)
+            #is_first_eval ? overdub(ctx, pow, set1, set2) : overdub(ctx, ^, set1, set2, setstorage[k].Intv)
 
         end
     end
@@ -562,15 +570,18 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 
     # x/b
     elseif !arg1_is_number && arg2_is_number
-        outset = is_first_eval ? set1/num2 : div_kernel(set1, num2, setstorage[k].Intv)
+        outset = set1/num2
+        # is_first_eval ? set1/num2 : div_kernel(set1, num2, setstorage[k].Intv)
 
     # a/y
     elseif arg1_is_number && !arg2_is_number
-        outset = is_first_eval ? num1/set2 : div_kernel(num1, set2, setstorage[k].Intv)
+        outset = num1/set2
+        # is_first_eval ? num1/set2 : div_kernel(num1, set2, setstorage[k].Intv)
 
     # x/y
     else
-        outset = is_first_eval ? set1/set2 : div_kernel(set1, set2, setstorage[k].Intv)
+        outset = set1/set2
+        # is_first_eval ? set1/set2 : div_kernel(set1, set2, setstorage[k].Intv)
 
     end
 
@@ -734,6 +745,7 @@ function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstor
         tmp_num = @inbounds setstorage[child_idx]
         outnum = f(tmp_num)
         @inbounds numberstorage[k] = outnum
+
     else
         tmp_set = @inbounds setstorage[child_idx]
         outnum = Cassette.overdub(ctx, f, tmp_set)
@@ -754,15 +766,17 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
                                    x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                    is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
+    #println("child_idx = $(child_idx)")
     tmp_set = @inbounds setstorage[child_idx]
     outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
+    #println("tmp_set = $(tmp_set)")
+    #println("outset = $(outset)")
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                            interval_intersect)
-
+    #println("setstorage[k]  = $(setstorage[k])")
     return nothing
 end
 
-const FORWARD_DEBUG = false
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 
 """
@@ -814,7 +828,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                 #println("(x[op] = $(x[op])")
                 xMC = MC{N,T}(x[op], Interval{Float64}(lbd[op], ubd[op]), seed_index)
                 #println("xMC = $(xMC)")
-                @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k])
+                @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k].Intv)
             end
             FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
@@ -892,7 +906,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
             # performs univariate operators on number valued inputs
             if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                forward_univariate_user!(k, op, child_idx, setstorage, x, lbd, ubd, is_post,
+                forward_univariate_user!(k, op, arg_idx, setstorage, x, lbd, ubd, is_post,
                                          is_intersect, is_first_eval, interval_intersect, ctx, user_operators)
 
             elseif arg_is_number
@@ -900,20 +914,20 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
             # performs set valued operators that require a single tiepoint calculation
             elseif single_tp(op)
-                forward_univariate_tiepnt_1!(k, child_idx, setstorage, x, lbd, ubd, tpdict,
+                forward_univariate_tiepnt_1!(k, arg_idx, setstorage, x, lbd, ubd, tpdict,
                                              tp1storage, tp2storage, is_post, is_intersect,
                                              is_first_eval, interval_intersect, ctx)
 
             # performs set valued operators that require two tiepoint calculations
             elseif double_tp(op)
-                forward_univariate_tiepnt_2!(k, child_idx, setstorage, x, lbd, ubd, tpdict,
+                forward_univariate_tiepnt_2!(k, arg_idx, setstorage, x, lbd, ubd, tpdict,
                                              tp1storage, tp2storage, tp3storage, tp4storage,
                                              is_post, is_intersect, is_first_eval,
                                              interval_intersect, ctx)
 
             # performs set valued operator on other functions in base library
             else
-                forward_univariate_other!(k, op, child_idx, setstorage, x, lbd, ubd, is_post,
+                forward_univariate_other!(k, op, arg_idx, setstorage, x, lbd, ubd, is_post,
                                           is_intersect, is_first_eval, interval_intersect, ctx)
 
             end

@@ -8,8 +8,8 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-## src/eago_semiinfinite/spi_explicit.jl
-#
+# src/eago_semiinfinite/sip_explicit.jl
+# An implementation of the SIPres algorithm.
 #############################################################################
 
 

@@ -291,6 +291,7 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator.cv_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.cc_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
+    relax_evaluator.ctx       = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ))
     return nothing
 end
 
@@ -308,10 +309,10 @@ function initial_parse!(m::Optimizer)
     m._working_problem._variable_count = ip._variable_count
 
     # add linear constraints to the working problem
-    linear_leq = ip._linear_geq_constraints
+    linear_leq = ip._linear_leq_constraints
     for i = 1:ip._linear_leq_count
         linear_func, leq_set = @inbounds linear_leq[i]
-        push!(m._working_problem._saf_leq, AffineFunctionEq(linear_func, leq_set))
+        push!(m._working_problem._saf_leq, AffineFunctionIneq(linear_func, leq_set))
         m._working_problem._saf_leq_count += 1
     end
 

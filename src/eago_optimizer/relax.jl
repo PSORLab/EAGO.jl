@@ -201,56 +201,73 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator, use_cvx::Bool) where {N,T<:RelaxTag}
-    if !f.has_value || f.last_past_reverse
-        forward_pass!(evaluator, f)
-    end
+
+    forward_pass!(evaluator, f)
+    x = evaluator.x
     finite_cut = true
 
-    # if number return zero saf cut...
     expr = f.expr
     grad_sparsity = expr.grad_sparsity
-
     if expr.isnumber[1]
         f.saf.constant = expr.numberstorage[1]
         for i = 1:N
             vval = @inbounds grad_sparsity[i]
             f.saf.terms[i] = SAT(0.0, VI(vval))
         end
+
     else
         setvalue = expr.setstorage[1]
+        #println("setvalue = $setvalue")
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
+
         if finite_cut
-            unpack_value!(f, evaluator.x, use_cvx)
+            value = f.expr.setstorage[1]
+            grad_sparsity = f.expr.grad_sparsity
+            f.saf.constant = use_cvx ? value.cv : -value.cc
+            for i = 1:N
+                vval = @inbounds grad_sparsity[i]
+                if use_cvx
+                    coef = @inbounds value.cv_grad[i]
+                else
+                    coef = @inbounds -value.cc_grad[i]
+                end
+                f.saf.terms[i] = SAT(coef, VI(vval))
+                f.saf.constant -= coef*(@inbounds x[vval])
+            end
+            f.saf.constant += use_cvx ? -f.upper_bound : f.lower_bound
+        end
+    end
+    #printty = ""
+    #for term in f.saf.terms
+    #    printty *= "$(term.coefficient)*x[$(term.variable_index.value)] + "
+    #end
+    #printty *= "$(f.saf.constant)"
+    #println("f.saf: "*printty)
+
+    return finite_cut
+end
+
+function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_nonlinear_ci, ci)
         end
     end
 
-    return finite_cut
+    return nothing
 end
 
 function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
 
     evaluator = m._working_problem._relaxed_evaluator
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
-    #"first cut: $(f.saf)"
-    if finite_cut_generated
-        if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(f.upper_bound - f.saf.constant)
-            f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_nonlinear_ci, ci)
-        end
-    end
+    check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false)
-    "second cut: $(f.saf)"
-    if finite_cut_generated
-        if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.lower_bound - f.saf.constant)
-            f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_nonlinear_ci, ci)
-        end
-    end
+    check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
     return nothing
 end
@@ -433,6 +450,11 @@ nonlinear constraints and quadratic constraints.
 """
 function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
+  #println(" ")
+  # println(" ")
+#    println("relax_all_constraints")
+    #println(" ")
+    #println(" ")
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
 
@@ -450,9 +472,13 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
     nl_list = m._working_problem._nonlinear_constr
     for i = 1:m._working_problem._nonlinear_count
+        #println("relax nonlinear i = $i")
+    #   println(" ")
         nl = @inbounds nl_list[i]
         relax!(m, nl, i, check_safe)
     end
+    #println(" ")
+    #println(" finish relaxing constraints")
 
     m._new_eval_constraint = false
 

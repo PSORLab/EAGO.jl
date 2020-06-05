@@ -3,9 +3,9 @@ using Revise
 using JuMP, EAGO
 
 m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
-                                                    "output_iterations" => 100,
+                                                    "output_iterations" => 10000,
                                                     "cp_repetitions" => -1,
-                                                    "iteration_limit" => 100000,
+                                                    "iteration_limit" => 1000000,
                                                     "cut_min_iterations" => 1,
                                                     "cut_max_iterations" => 1,
                                                     "objective_cut_on" => true,

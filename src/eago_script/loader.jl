@@ -9,7 +9,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_script/loader.jl
-#
+# Utilities used to load user-defined functions into JuMP tapes.
 #############################################################################
 
 """
