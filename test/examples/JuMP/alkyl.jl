@@ -1,16 +1,17 @@
 using Revise
 using JuMP, EAGO, Ipopt
 
-m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
+m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 4,
                                                     "output_iterations" => 1,
-                                                    "cp_repetitions" => 6,
-                                                    "iteration_limit" => 3,
+                                                    "cp_repetitions" => -1,
+                                                    "iteration_limit" => 100000,
                                                     "cut_min_iterations" => 2,
                                                     "cut_max_iterations" => 2,
                                                     "objective_cut_on" => true,
                                                     "subgrad_tighten" => true,
-                                                    "obbt_depth" => 6,
-                                                    "fbbt_lp_depth" => -1))
+                                                    "obbt_depth" => 12,
+                                                    "fbbt_lp_depth" => -1,
+                                                    "obbt_aggressive_on" => true))
 
 #m = Model(Ipopt.Optimizer)
 

@@ -446,7 +446,6 @@ function fbbt! end
 
 function fbbt!(m::Optimizer, f::AffineFunctionIneq)
 
-    #println("ran me affine ineq")
     # compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
@@ -598,16 +597,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
             set_node_flag!(constr)
-            println("")
-            println(" ----------------- Forward Pass = ($count) ----------------- ")
-            println(" ----------------- Forward Pass = ($count) ----------------- ")
-            println("")
             forward_pass!(evaluator, constr)
-            println("constr.expr.setstorage[1] = $(constr.expr.setstorage[1])")
-            println("")
-            println(" ----------------- Reverse Pass = ($count) ----------------- ")
-            println(" ----------------- Reverse Pass = ($count) ----------------- ")
-            println("")
             feasible_flag &= reverse_pass!(evaluator, constr)
         end
         count += 1

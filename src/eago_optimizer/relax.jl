@@ -201,8 +201,6 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator, use_cvx::Bool) where {N,T<:RelaxTag}
-    #println("!f.has_value = $(!f.has_value)")
-    #println("f.last_past_reverse = $(f.last_past_reverse)")
     if !f.has_value || f.last_past_reverse
         forward_pass!(evaluator, f)
     end
@@ -212,7 +210,6 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     expr = f.expr
     grad_sparsity = expr.grad_sparsity
 
-    #println("f.expr is number = $(expr.isnumber[1])")
     if expr.isnumber[1]
         f.saf.constant = expr.numberstorage[1]
         for i = 1:N
@@ -221,9 +218,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
         end
     else
         setvalue = expr.setstorage[1]
-        #println("setvalue: $setvalue")
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
-        #println("finite_cut = $(finite_cut)")
         if finite_cut
             unpack_value!(f, evaluator.x, use_cvx)
         end
@@ -298,16 +293,11 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     relaxed_evaluator.is_first_eval = m._new_eval_objective
     finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
     relaxed_evaluator.is_first_eval = false
-    #println("finite_cut_generated: $(finite_cut_generated)")
 
     if finite_cut_generated
-        #println("not safe = $(!check_safe)")
         if !check_safe || is_safe_cut!(m, buffered_nl.saf)
-            #println("buffered_nl.saf.terms: $(buffered_nl.saf.terms)")
-            #println("wp._objective_saf.terms: $(wp._objective_saf.terms)")
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
             wp._objective_saf.constant = buffered_nl.saf.constant
-            #println("wp._objective_saf = $(wp._objective_saf)")
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
     end
@@ -330,8 +320,6 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
     obj_type = wp._objective_type
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
 
-    #println("objective relax variable type = $obj_type")
-
     if obj_type === SINGLE_VARIABLE
         MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), wp._objective_sv)
 
@@ -351,7 +339,6 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         end
 
     elseif obj_type === NONLINEAR
-        #println("nonlinear relax pre...")
         relax_objective_nonlinear!(m, wp, check_safe)
     end
 
@@ -446,8 +433,6 @@ nonlinear constraints and quadratic constraints.
 """
 function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
-    #println("relaxing all constraints!")
-
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
 
@@ -464,9 +449,7 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
     end
 
     nl_list = m._working_problem._nonlinear_constr
-    #println("m._working_problem._nonlinear_count = $(m._working_problem._nonlinear_count)")
     for i = 1:m._working_problem._nonlinear_count
-        #println("relaxing nonlinear constraint $i")
         nl = @inbounds nl_list[i]
         relax!(m, nl, i, check_safe)
     end
@@ -523,7 +506,6 @@ end
 
 function set_first_relax_point!(m::Optimizer)
 
-    #println("m._first_relax_point_set: $(m._first_relax_point_set)")
     m._first_relax_point_set = true
 
     m._working_problem._relaxed_evaluator.is_first_eval = true

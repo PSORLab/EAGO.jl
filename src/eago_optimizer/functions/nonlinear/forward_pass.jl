@@ -112,7 +112,7 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
         return set_value_post(x, xMC, lbd, ubd)
 
     elseif !is_post && is_intersect
-        return x ∩ past_xMC
+        return xMC ∩ past_xMC
     end
     return xMC
 end
@@ -401,34 +401,23 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
     output_is_number = arg1_is_number && arg2_is_number
 
-    println("arg1_is_number = $arg1_is_number")
-    println("arg2_is_number = $arg2_is_number")
-    println("set1 = $set1")
-    println("set2 = $set2")
-    println("num1 = $num1")
-    println("num2 = $num2")
-
     # a - b
     if output_is_number
         @inbounds numberstorage[k] = num1 - num2
 
     # x - b
     elseif !arg1_is_number && arg2_is_number
-        outset = is_first_eval ? (set1 - num2) : minus_kernel(set1, num2, setstorage[k].Intv)
+        outset = set1 - num2 #is_first_eval ? (set1 - num2) : minus_kernel(set1, num2, setstorage[k].Intv)
 
-    println("outset = $outset")
     # a - y
     elseif arg1_is_number && !arg2_is_number
-        outset = is_first_eval ? (num1 - set2) : minus_kernel(num1, set2, setstorage[k].Intv)
+        outset = num1 - set2 #is_first_eval ? (num1 - set2) : minus_kernel(num1, set2, setstorage[k].Intv)
 
-    println("outset = $outset")
     # x - y
     else
-        outset = is_first_eval ? (set1 - set2) : minus_kernel(set1, set2, setstorage[k].Intv)
+        outset = set1 - set2 #is_first_eval ? (set1 - set2) : minus_kernel(set1, set2, setstorage[k].Intv)
 
-    println("outset = $outset")
     end
-
 
     @inbounds numvalued[k] = output_is_number
     if !output_is_number
@@ -773,7 +762,7 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
     return nothing
 end
 
-const FORWARD_DEBUG = true
+const FORWARD_DEBUG = false
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 
 """
@@ -800,10 +789,6 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
     FORWARD_DEBUG && println(" ")
     for k = length(nd):-1:1
-
-        if k == 1
-            println("out in kernel: $(setstorage[k])")
-        end
 
         oldset = setstorage[k]
         nod = @inbounds nd[k]

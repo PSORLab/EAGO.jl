@@ -530,11 +530,11 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
 
-    println("start lp reptitions")
+
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
         for i = 1:m._parameters.fbbt_lp_repetitions
-            println("lp reptition number = $i")
+
             if feasible_flag
                 for j = 1:wp._saf_leq_count
                     !feasible_flag && break
@@ -553,24 +553,17 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         end
         unpack_fbbt_buffer!(m)
     end
-    println("feasible post fbbt! = $(feasible_flag)")
 
     # done after cp
     set_first_relax_point!(m)
 
-    #println("start cp/obbt")
-    #println("feasible_flag = $(feasible_flag)")
-    #println("m._parameters.obbt_repetitions = $(m._parameters.obbt_repetitions)")
-    #println("m._parameters.cp_repetitions = $(m._parameters.cp_repetitions)")
 
-    println("start cp")
     cp_walk_count = 0
     perform_cp_walk_flag = feasible_flag
     perform_cp_walk_flag &= (params.cp_depth >= m._iteration_count)
     perform_cp_walk_flag &= (cp_walk_count < m._parameters.cp_repetitions)
     while perform_cp_walk_flag
         feasible_flag &= set_constraint_propagation_fbbt!(m)
-        println("feasible post set_constraint_propagation_fbbt! = $(feasible_flag)")
         !feasible_flag && break
         cp_walk_count += 1
         perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
@@ -581,24 +574,18 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     perfom_obbt_flag &= (params.obbt_depth >= m._iteration_count)
     perfom_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
     while  perfom_obbt_flag
-        println("start obbt")
         feasible_flag &= obbt!(m)
         m._obbt_performed_flag = true
-        println("feasible post obbt! = $(feasible_flag)")
         !feasible_flag && break
         obbt_count += 1
         perfom_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
     end
-    #println("end cp/obbt")
 
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
                            lower_variable_bounds(m._current_node))
 
-    #println("final feasibility flag = $feasible_flag")
-    #println("feasible_flag: $(feasible_flag)")
     m._preprocess_feasibility = feasible_flag
 
-    #println("m._preprocess_feasibility  = $(m._preprocess_feasibility)")
     return nothing
 end
 
@@ -733,13 +720,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
 
-    #println("n = $n")
-    #xt = [Interval(n.lower_variable_bounds[i], n.upper_variable_bounds[i]) for i=1:2]
-    #val = 3*xt[1]^2 + 6*xt[1]*xt[2] + 3*xt[2]^2 - 14*xt[1] - 14*xt[2]
-    #println(" test obj interval = $(val)")
-    #println(" ")
-    #println("LOWER PROBLEM 1 m._new_eval_objective = $(m._new_eval_objective)")
-
     if !m._obbt_performed_flag
         set_node!(m._working_problem._relaxed_evaluator, n)
         set_reference_point!(m)
@@ -747,10 +727,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         update_relaxed_problem_box!(m)
         relax_constraints!(m, 1)
     end
-    #println("m._current_xref: $(m._current_xref)")
+    m._working_problem._objective_nl.has_value = false
     m._working_problem._relaxed_evaluator.interval_intersect = true
 
-    #println("LOWER PROBLEM 2 m._new_eval_objective = $(m._new_eval_objective)")
     relax_objective!(m, 1)
 
     # Optimizes the object
@@ -767,7 +746,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._lower_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
-    #println("lower problem term status = $(m._lower_termination_status), lower_problem result status = $(m._lower_result_status)")
     if valid_flag && feasible_flag
         set_dual!(m)
         m._cut_add_flag = true
@@ -776,19 +754,15 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         for i = 1:m._working_problem._variable_count
             @inbounds m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
-        #println("lower problem value good LP = $(m._lower_objective_value)")
 
     elseif valid_flag
         m._cut_add_flag = false
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
-        #println("lower problem value infeasible LP = $(m._lower_objective_value)")
 
     else
         fallback_interval_lower_bound!(m, n)
-        #println("lower problem value fallback = $(m._lower_objective_value)")
     end
-    #println("lower problem feasibility = $(m._lower_feasibility)")
 
     return nothing
 end
@@ -896,8 +870,6 @@ function cut_condition(t::ExtensionType, m::Optimizer)
             objective_lo = lower_interval_bound(m._working_problem._objective_nl, n)
 
         end
-        #println("m._lower_objective_value = $(m._lower_objective_value)")
-        #println("objective_lo = $(objective_lo)")
 
         if objective_lo > m._lower_objective_value
             m._lower_objective_value = objective_lo

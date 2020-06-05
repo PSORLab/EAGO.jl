@@ -227,7 +227,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     m._working_problem._nlp_data = nlp_data
 
 
-    println("typeof(nlp_data) = $(nlp_data)")
+    #println("typeof(nlp_data) = $(nlp_data)")
 
     # scrubs udf functions using Cassette to remove odd data structures...
     # alternatively convert udfs to JuMP scripts...
@@ -240,7 +240,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(0.0, 0.0),
+        m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                      evaluator.subexpression_linearity,
                                                                      m._parameters.relax_tag)
     end

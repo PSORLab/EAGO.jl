@@ -15,7 +15,7 @@
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 6
-const REVERSE_DEBUG = true
+const REVERSE_DEBUG = false
 
 """
 $(FUNCTIONNAME)
@@ -321,13 +321,13 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         num2 = 0.0
     end
 
-    println("setk = $setk")
-    println("set1 = $set1")
-    println("set2 = $set2")
-    println("arg1_is_number = $arg1_is_number")
-    println("arg2_is_number = $arg2_is_number")
-    println("num1 = $num1")
-    println("num2 = $num2")
+    #println("setk = $setk")
+    #println("set1 = $set1")
+    #println("set2 = $set2")
+    #println("arg1_is_number = $arg1_is_number")
+    #println("arg2_is_number = $arg2_is_number")
+    #println("num1 = $num1")
+    #println("num2 = $num2")
 
     if !arg1_is_number && arg2_is_number
         c, a, b = minus_rev(setk, set1, num2)
@@ -340,7 +340,7 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     if !arg1_is_number
-        println("b = $(a)")
+        #println("b = $(a)")
         if isempty(a)
             return false
         elseif isnan(a)
@@ -350,7 +350,7 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     if !arg2_is_number
-        println("b = $(b)")
+        #println("b = $(b)")
         if isempty(b)
             return false
         elseif isnan(b)
@@ -557,7 +557,7 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
     continue_flag = true
 
     for k = 1:length(nd)
-        println("K = $k")
+        #println("K = $k")
 
         @inbounds nod = nd[k]
         ntype = nod.nodetype

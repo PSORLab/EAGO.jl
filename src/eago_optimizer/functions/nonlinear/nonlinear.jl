@@ -271,11 +271,10 @@ function BufferedNonlinearFunction()
                                                -Inf, Inf, false, false, false, false)
 end
 
-function set_value!(expr::NonlinearExpression{V}, val::V) where V
-    expr.value = val
+function set_intersect_value!(expr::NonlinearExpression{V}, value) where V
     if !expr.isnumber[1]
-        println("set storage  = $val")
-        expr.setstorage[1] = val
+        expr.value = expr.setstorage[1] ∩ value
+        expr.setstorage[1] = expr.value
     end
 
     return nothing
@@ -296,22 +295,16 @@ this to form the affine relaxation of the function.
 """
 function unpack_value!(f::BufferedNonlinearFunction{MC{N,T}}, x::Vector{Float64}, use_cvx::Bool) where {N,T<:RelaxTag}
 
-    #println("x = $x")
-    #println("unpack_value! f.saf in = $(f.saf)")
     value = f.expr.setstorage[1]
-    #println("value = $(value)")
     grad_sparsity = f.expr.grad_sparsity
     subgrad = use_cvx ? value.cv_grad : -value.cc_grad
-    #println("subgrad = $subgrad")
     f.saf.constant = use_cvx ? value.cv : -value.cc
-    #println("grad_sparsity = $(grad_sparsity)")
     for i = 1:N
         vval = @inbounds grad_sparsity[i]
         coef = @inbounds subgrad[i]
         f.saf.terms[i] = SAT(coef, VI(vval))
         f.saf.constant -= coef*(@inbounds x[vval])
     end
-    #println("unpack_value! f.saf out = $(f.saf)")
 
     return nothing
 end
@@ -464,7 +457,7 @@ end
 function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
 
     forward_pass!(evaluator, d.expr)
-    set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
+    set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
     d.has_value = true
     d.last_past_reverse = false
 
@@ -493,11 +486,7 @@ end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     d.last_past_reverse = true
-    println("d.expr.value = $(d.expr.value)")
-    println("Interval(d.lower_bound, d.upper_bound) = $(Interval(d.lower_bound, d.upper_bound))")
-    println("d.expr.value ∩ Interval(d.lower_bound, d.upper_bound ): $(d.expr.value ∩ Interval(d.lower_bound, d.upper_bound)) ")
-    set_value!(d.expr, d.expr.value ∩ Interval(d.lower_bound, d.upper_bound))
-    println("d.expr.value = $(d.expr.value)")
+    set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
     return reverse_pass!(evaluator, d.expr)
 end
 
