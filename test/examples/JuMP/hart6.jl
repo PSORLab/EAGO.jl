@@ -1,6 +1,27 @@
-using JuMP, EAGO, Gurobi
+#using Revise
+using JuMP, EAGO
 
-m = Model(with_optimizer(EAGO.Optimizer, relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
+m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
+                                                    "output_iterations" => 1000,
+                                                    "iteration_limit" => 100000,
+
+                                                    "cp_depth" => -1,
+                                                    "cp_repetitions" => -1,
+                                                    "cp_forward_reverse_limit" => 2,
+
+                                                    "cut_min_iterations" => 2,
+                                                    "cut_max_iterations" => 2,
+                                                    "objective_cut_on" => true,
+                                                    "subgrad_tighten" => true,
+
+                                                    "obbt_depth" => 4,
+                                                    "obbt_repetitions" => 4,
+                                                    "obbt_aggressive_on" => true,
+
+                                                    "upper_bounding_depth" => 4,
+
+                                                    "fbbt_lp_depth" => 100000,
+                                                    "fbbt_lp_repetitions" => 3))
 
 # ----- Variables ----- #
 x_Idx = Any[1, 2, 3, 4, 5, 6]

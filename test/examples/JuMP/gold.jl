@@ -1,25 +1,27 @@
-#using JuMP, EAGO, Gurobi, CSV, DataFrames, Ipopt
-#m = Model(with_optimizer(Ipopt.Optimizer))
-
-# true objective is 3 ish....
-
 using Revise
-using BlackBoxOptim
-using JuMP, EAGO, Ipopt, SCIP
-#m = Model(SCIP.Optimizer)
-#m = Model(Ipopt.Optimizer)
+using JuMP, EAGO
 
-flag_run_JuMP = true
-if flag_run_JuMP
 m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
-                                                    "output_iterations" => 1,
-                                                    "cp_repetitions" => -1,
+                                                    "output_iterations" => 1000,
                                                     "iteration_limit" => 100000,
-                                                    "cut_min_iterations" => 2,
-                                                    "cut_max_iterations" => 2,
+
+                                                    "cp_depth" => -1,
+                                                    "cp_repetitions" => -1,
+                                                    "cp_forward_reverse_limit" => 2,
+
+                                                    "cut_min_iterations" => 3,
+                                                    "cut_max_iterations" => 3,
                                                     "objective_cut_on" => true,
                                                     "subgrad_tighten" => true,
-                                                    "obbt_depth" => 6))
+
+                                                    "obbt_depth" => 4,
+                                                    "obbt_repetitions" => 4,
+                                                    "obbt_aggressive_on" => true,
+
+                                                    "upper_bounding_depth" => 4,
+
+                                                    "fbbt_lp_depth" => 100000,
+                                                    "fbbt_lp_repetitions" => 3))
 
 # cp_repetitions
 # obbt_repetitions
@@ -46,14 +48,3 @@ JuMP.set_upper_bound(x[2], 2.0)
 JuMP.optimize!(m)
 run_time = backend(m).optimizer.model.optimizer._run_time
 println("run time: $run_time")
-else
-
-    function f(x)
-      return 9+3*(x[1])^2-14*x[1]+6*x[1]*x[2]-14*x[2]+3* (x[2])^2
-    end
-
-    res = bboptimize(f; Method = :resampling_memetic_search,
-                     SearchRange = [(-2.0, 2.0), (-2.0, 2.0)], NumDimensions = 2)
-    bf = best_fitness(res)
-    println("best fitness = $(bf)")
-end

@@ -15,7 +15,7 @@
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 6
-const REVERSE_DEBUG = false
+const REVERSE_DEBUG = true
 
 """
 $(FUNCTIONNAME)
@@ -27,10 +27,12 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                               is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println("--- start reverse plus binary ---")
+
     # extract values for k
-    argk_is_number = @inbounds numvalued[k]
+    argk_is_number =  numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk =  setstorage[k]
     end
 
     # get row indices
@@ -38,26 +40,39 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
+
+    printstr = ""
+    if arg1_is_number
+        printstr *= "num1 is $num1"
+    else
+        printstr *= "set1 is $set1"
+    end
+    if arg2_is_number
+        printstr *= "num2 is $num2"
+    else
+        printstr *= "set2 is $set2"
+    end
+    REVERSE_DEBUG && println(printstr)
 
     if !arg1_is_number && arg2_is_number
         c, a, b = plus_rev(setk, set1, num2)
@@ -73,19 +88,24 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(set1.Intv)
+            setstorage[arg1_index] = MC{N,T}(a.Intv)
+        else
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+        REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
 
     if !arg2_is_number
         if isempty(b)
             return false
         elseif isnan(b)
-            b = MC{N,T}(set2.Intv)
+            setstorage[arg2_index] = MC{N,T}(b.Intv)
+        else
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
         end
-        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+        REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
+
 
     return true
 end
@@ -100,20 +120,22 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                               is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println("--- start reverse plus narity ---")
+
     continue_flag = true
-    argk_is_number = @inbounds numvalued[k]
+    argk_is_number =  numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk =  setstorage[k]
     end
 
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
     active_count_number = 0
     for idx in children_idx
-        active_idx = @inbounds children_arr[idx]
+        active_idx =  children_arr[idx]
 
         # don't contract a number valued argument
-        active_arg_is_number = @inbounds numvalued[active_idx]
+        active_arg_is_number =  numvalued[active_idx]
         active_arg_is_number && continue
 
         if active_count_number >= MAX_ASSOCIATIVE_REVERSE
@@ -123,25 +145,26 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         tmp_sum = zero(MC{N,T})
         active_count_number += 1
         for nidx in children_idx
-            inactive_idx = @inbounds children_arr[nidx]
+            inactive_idx =  children_arr[nidx]
             if inactive_idx != active_idx
-                if @inbounds numvalued[inactive_idx]
-                    tmp_sum += @inbounds numberstorage[inactive_idx]
+                if  numvalued[inactive_idx]
+                    tmp_sum +=  numberstorage[inactive_idx]
                 else
-                    tmp_sum += @inbounds setstorage[inactive_idx]
+                    tmp_sum +=  setstorage[inactive_idx]
                 end
             end
         end
 
-        active_set = @inbounds setstorage[active_idx]
+        active_set =  setstorage[active_idx]
         c, a, b = plus_rev(setk, active_set, tmp_sum)
 
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(active_set.Intv)
+            setstorage[active_idx] = MC{N,T}(a.Intv)
+        else
+            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
     return true
@@ -157,11 +180,15 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
                                   x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                   is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println(" is_post = $is_post")
+
+    REVERSE_DEBUG && println("--- start reverse mult binary ---")
     # extract values for k
-    #argk_index = @inbounds children_arr[k]
-    argk_is_number = @inbounds numvalued[k]
+    #argk_index =  children_arr[k]
+    argk_is_number =  numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk =  setstorage[k]
+        REVERSE_DEBUG && println("setk = $setk")
     end
 
     # get row indices
@@ -169,26 +196,39 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
+
+    printstr = ""
+    if arg1_is_number
+        printstr *= "num1 is $num1 \n"
+    else
+        printstr *= "set1 is $set1 \n"
+    end
+    if arg2_is_number
+        printstr *= "num2 is $num2"
+    else
+        printstr *= "set2 is $set2"
+    end
+    REVERSE_DEBUG && println(printstr)
 
     if !arg1_is_number && arg2_is_number
         c, a, b = mult_rev(setk, set1, num2)
@@ -204,18 +244,22 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(set1.Intv)
+            setstorage[arg1_index] = MC{N,T}(a.Intv)
+        else
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+        REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
 
     if !arg2_is_number
         if isempty(b)
             return false
         elseif isnan(b)
-            b = MC{N,T}(set2.Intv)
+            setstorage[arg2_index] = MC{N,T}(b.Intv)
+        else
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
         end
-        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+        REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
 
     return true
@@ -231,20 +275,21 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
                               x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                               is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println("--- start reverse mult narity ---")
     continue_flag = true
-    argk_is_number = @inbounds numvalued[k]
+    argk_is_number = numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk = setstorage[k]
     end
 
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
     active_count_number = 0
     for idx in children_idx
-        active_idx = @inbounds children_arr[idx]
+        active_idx = children_arr[idx]
 
         # don't contract a number valued argument
-        active_arg_is_number = @inbounds numvalued[active_idx]
+        active_arg_is_number = numvalued[active_idx]
         active_arg_is_number && continue
 
         if active_count_number >= MAX_ASSOCIATIVE_REVERSE
@@ -254,25 +299,26 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         tmp_mul = one(MC{N,T})
         active_count_number += 1
         for nidx in children_idx
-            inactive_idx = @inbounds children_arr[nidx]
+            inactive_idx = children_arr[nidx]
             if inactive_idx != active_idx
-                if @inbounds numvalued[inactive_idx]
-                    tmp_mul *= @inbounds numberstorage[inactive_idx]
+                if  numvalued[inactive_idx]
+                    tmp_mul *=  numberstorage[inactive_idx]
                 else
-                    tmp_mul *= @inbounds setstorage[inactive_idx]
+                    tmp_mul *=  setstorage[inactive_idx]
                 end
             end
         end
 
-        active_set = @inbounds setstorage[active_idx]
+        active_set = setstorage[active_idx]
         c, a, b = mult_rev(setk, active_set, tmp_mul)
 
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(active_set.Intv)
+            setstorage[active_idx] = MC{N,T}(a.Intv)
+        else
+            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
     return true
@@ -283,11 +329,12 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
                         x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                         is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println("--- start reverse minus ---")
     # extract values for k
-    #argk_index = @inbounds children_arr[k]
-    argk_is_number = @inbounds numvalued[k]
+    #argk_index =  children_arr[k]
+    argk_is_number = numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk = setstorage[k]
     end
 
     # don't perform a reverse pass if the output was a number
@@ -300,34 +347,39 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 = numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
 
-    #println("setk = $setk")
-    #println("set1 = $set1")
-    #println("set2 = $set2")
-    #println("arg1_is_number = $arg1_is_number")
-    #println("arg2_is_number = $arg2_is_number")
-    #println("num1 = $num1")
-    #println("num2 = $num2")
+    printstr = ""
+    if arg1_is_number
+        printstr *= "num1 is $num1"
+    else
+        printstr *= "set1 is $set1"
+    end
+    if arg2_is_number
+        printstr *= "num2 is $num2"
+    else
+        printstr *= "set2 is $set2"
+    end
+    REVERSE_DEBUG && println(printstr)
 
     if !arg1_is_number && arg2_is_number
         c, a, b = minus_rev(setk, set1, num2)
@@ -340,13 +392,15 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     if !arg1_is_number
-        #println("b = $(a)")
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(set1.Intv)
+            a = MC{N,T}(a.Intv)
+            setstorage[arg1_index] = a
+        else
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+        REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
 
     if !arg2_is_number
@@ -354,9 +408,12 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         if isempty(b)
             return false
         elseif isnan(b)
-            b = MC{N,T}(set2.Intv)
+            b = MC{N,T}(b.Intv)
+            setstorage[arg2_index] = b
+        else
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
         end
-        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+        REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
 
     return true
@@ -367,10 +424,11 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
                         x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                         is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println("--- start reverse power ---")
     # extract values for k
-    argk_is_number = @inbounds numvalued[k]
+    argk_is_number =  numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk =  setstorage[k]
     end
 
     # don't perform a reverse pass if the output was a number
@@ -383,26 +441,39 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
+
+    printstr = ""
+    if arg1_is_number
+        printstr *= "num1 is $num1"
+    else
+        printstr *= "set1 is $set1"
+    end
+    if arg2_is_number
+        printstr *= "num2 is $num2"
+    else
+        printstr *= "set2 is $set2"
+    end
+    REVERSE_DEBUG && println(printstr)
 
     if !arg1_is_number && arg2_is_number
         c, a, b = power_rev(setk, set1, num2)
@@ -418,18 +489,20 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(set1.Intv)
+            setstorage[arg1_index] = MC{N,T}(a.Intv)
+        else
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
     if !arg2_is_number
         if isempty(b)
             return false
         elseif isnan(b)
-            b = MC{N,T}(set2.Intv)
+            setstorage[arg2_index] = MC{N,T}(b.Intv)
+        else
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
         end
-        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
     end
 
     return true
@@ -440,10 +513,11 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
                         x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                         is_post::Bool) where {N, T<:RelaxTag}
 
+    REVERSE_DEBUG && println("--- start reverse divide ---")
     # extract values for k
-    argk_is_number = @inbounds numvalued[k]
+    argk_is_number =  numvalued[k]
     if !argk_is_number
-        setk = @inbounds setstorage[k]
+        setk =  setstorage[k]
     end
 
     # don't perform a reverse pass if the output was a number
@@ -456,24 +530,24 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -491,18 +565,20 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
         if isempty(a)
             return false
         elseif isnan(a)
-            a = MC{N,T}(set1.Intv)
+            setstorage[arg1_index] = MC{N,T}(a.Intv)
+        else
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
         end
-        @inbounds setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
     end
 
     if !arg2_is_number
         if isempty(b)
             return false
         elseif isnan(b)
-            b = MC{N,T}(set2.Intv)
+            setstorage[arg2_index] = MC{N,T}(b.Intv)
+        else
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
         end
-        @inbounds setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
     end
 
     return true
@@ -511,16 +587,22 @@ end
 function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::Vector{MC{N,T}}, x::Vector{Float64},
                              lbd::Vector{Float64}, ubd::Vector{Float64}, is_post::Bool) where {N, T<:RelaxTag}
 
-    valset = @inbounds setstorage[k]
-    argset = @inbounds setstorage[arg_indx]
+    REVERSE_DEBUG && println("--- start reverse reverse_univariate ---")
+    valset =  setstorage[k]
+    argset =  setstorage[arg_indx]
+
+    REVERSE_DEBUG && println("valset = $(valset)")
+    REVERSE_DEBUG && println("argset = $(argset)")
+
     a, b = eval_univariate_set_reverse(op, valset, argset)
 
     if isempty(b)
         return false
     elseif isnan(b)
-        b = MC{N,T}(argset.Intv)
+        setstorage[arg_indx] = MC{N,T}(b.Intv)
+    else
+        setstorage[arg_indx] = is_post ? set_value_post(x, b, lbd, ubd) : b
     end
-    @inbounds setstorage[arg_indx] = is_post ? set_value_post(x, b, lbd, ubd) : b
 
     return true
 end
@@ -530,9 +612,9 @@ function reverse_set_subexpression!(k::Int64, op::Int64, subexpressions::Vector{
                                     setstorage::Vector{MC{N,T}}, cv_buffer::Vector{Float64},
                                     cc_buffer::Vector{Float64}, func_sparsity::Vector{Int64}) where {N, T<:RelaxTag}
 
-    @inbounds is_number = subexpression_isnum[nod.index]
+     is_number = subexpression_isnum[nod.index]
     if !is_number
-        @inbounds subexpr_values_set[nod.index] = setstorage[k]
+         subexpr_values_set[nod.index] = setstorage[k]
     end
 
     subexpression = subexpressions[op]
@@ -541,27 +623,35 @@ function reverse_set_subexpression!(k::Int64, op::Int64, subexpressions::Vector{
     if !isa_number
         copy_subexpression_value!(k, op, setstorage, subexpression, cv_grad_buffer, cc_grad_buffer)
     end
-    @inbounds numvalued[k] = isa_number
+    numvalued[k] = isa_number
 
     return nothing
 end
 
 """
 $(TYPEDSIGNATURES)
+
+Performs a reverse McCormick/interval pass. If a NaN value is computed for the McCormick relaxation then the
+routine defaults to the interval value instead.
+
+There is a tacit assumption here that an abstract tree structure is used for propagation. If a cse structure is
+eventually used then each reverse_xxx function will need to keep track of each variables state.
 """
 function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
                               lbd::Vector{Float64}, ubd::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              numberstorage::Vector{Float64}, numvalued::Vector{Bool}, is_post::Bool) where {N, T<:RelaxTag}
+                              numberstorage::Vector{Float64}, numvalued::Vector{Bool},
+                              is_post_input::Bool) where {N, T<:RelaxTag}
 
     children_arr = rowvals(adj)
     continue_flag = true
+    is_post = is_post_input
 
     for k = 1:length(nd)
         #println("K = $k")
 
-        @inbounds nod = nd[k]
+         nod = nd[k]
         ntype = nod.nodetype
-        nvalued = @inbounds numvalued[k]
+        nvalued =  numvalued[k]
 
         if ntype == JuMP._Derivatives.VALUE      || ntype == JuMP._Derivatives.LOGIC     ||
            ntype == JuMP._Derivatives.COMPARISON || ntype == JuMP._Derivatives.PARAMETER ||
@@ -570,8 +660,29 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             op = nod.index
-            @inbounds lbd[op] = setstorage[k].Intv.lo
-            @inbounds ubd[op] = setstorage[k].Intv.hi
+            REVERSE_DEBUG && println("--- start reverse reverse variable ---")
+            #is_nan = isnan(setstorage[k])
+            #println("is nan = $(is_nan)")
+            variable_interval = setstorage[k].Intv
+            lower_interval = variable_interval.lo
+            upper_interval = variable_interval.hi
+
+            # update
+            prior_x = x[op]
+            if lower_interval > prior_x
+                x[op] = 0.5*(lower_interval + upper_interval)
+                is_post = false
+            end
+            if upper_interval < prior_x
+                x[op] = 0.5*(lower_interval + upper_interval)
+                is_post = false
+            end
+            lbd[op] = lower_interval
+            ubd[op] = upper_interval
+
+            #if is_nan
+            #    setstorage[k] = MC{N,T}(variable_interval)
+            #end
             REVERSE_DEBUG && println("variable_rev[$op]($continue_flag) at k = $k -> $(setstorage[k])")
 
         elseif nvalued
@@ -580,8 +691,8 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
         elseif nod.nodetype == JuMP._Derivatives.CALL
             op = nod.index
             parent_index = nod.parent
-            @inbounds children_idx = nzrange(adj, k)
-            @inbounds parent_value = setstorage[k]
+            children_idx = nzrange(adj, k)
+            parent_value = setstorage[k]
             n_children = length(children_idx)
 
             # SKIPS USER DEFINE OPERATORS NOT BRIDGED INTO JuMP Tree Representation
@@ -631,10 +742,10 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
             op = nod.index
             if op <= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                arg_indx = @inbounds children_arr[adj.colptr[k]]
+                arg_indx =  children_arr[adj.colptr[k]]
                 continue_flag &= reverse_univariate!(k, op, arg_indx, setstorage, x, lbd, ubd, is_post)
             end
-            REVERSE_DEBUG && println("fop[$op]($continue_flag)       at k = $k -> $(setstorage[k])")
+            REVERSE_DEBUG && println("fop_rev[$op]($continue_flag)       at k = $k -> $(setstorage[k])")
         end
 
         !continue_flag && break

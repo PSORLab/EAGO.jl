@@ -1,16 +1,16 @@
 using Revise
-using JuMP, EAGO, Ipopt
+using JuMP, EAGO
 
 m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
-                                                    "output_iterations" => 3000,
+                                                    "output_iterations" => 1000,
                                                     "iteration_limit" => 100000,
 
                                                     "cp_depth" => -1,
                                                     "cp_repetitions" => -1,
                                                     "cp_forward_reverse_limit" => 2,
 
-                                                    "cut_min_iterations" => 2,
-                                                    "cut_max_iterations" => 2,
+                                                    "cut_min_iterations" => 3,
+                                                    "cut_max_iterations" => 3,
                                                     "objective_cut_on" => true,
                                                     "subgrad_tighten" => true,
 
@@ -20,8 +20,8 @@ m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
 
                                                     "upper_bounding_depth" => 4,
 
-                                                    "fbbt_lp_depth" => 100,
-                                                    "fbbt_lp_repetitions" => 1))
+                                                    "fbbt_lp_depth" => 100000,
+                                                    "fbbt_lp_repetitions" => 3))
 # ----- Variables ----- #
 x_Idx = Any[2, 3, 4]
 @variable(m, x[x_Idx])

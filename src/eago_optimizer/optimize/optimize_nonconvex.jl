@@ -13,6 +13,151 @@
 # bound routine called by EAGO.
 #############################################################################
 
+function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
+
+    d.is_post = is_post
+    d.is_intersect = is_intersect
+    d.is_first_eval = is_first_eval
+    d.interval_intersect = interval_intersect
+
+    return nothing
+end
+
+
+function check_for_solution!(n)
+    #=
+    xsol = [0.16666662509163402, 0.0, 0.0, 1.7759562500751098, 2.0, 0.9072011719589772, 0.95,
+    12.0, 2.0, 1.51566550424387, 1.0, 0.9959266654708594, 1.0, 1.002859896026428]
+    contains_sol = true
+    for i = 1:length(xsol)
+        if  (n.lower_variable_bounds[i] > xsol[i]) || (xsol[i] > n.upper_variable_bounds[i])
+            contains_sol = false
+        end
+    end
+    if contains_sol
+        println("THIS NODE CONTAINS THE GLOBAL SOLUTION")
+        for i = 1:length(xsol)
+            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
+        end
+    else
+        println("THIS NODE lacks the GLOBAL SOLUTION")
+        for i = 1:length(xsol)
+            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
+        end
+    end
+    =#
+    return nothing
+end
+
+function pretty_print_node!(n, offset, xref)
+    lower_bounds = deepcopy(n.lower_variable_bounds)
+    upper_bounds = deepcopy(n.upper_variable_bounds)
+    if offset
+        pushfirst!(lower_bounds, 0.0)
+        pushfirst!(upper_bounds, 0.0)
+    end
+    for i = 1:length(xref)
+        println(" at x[$i] = $(xref[i]), xL[$i] = $(lower_bounds[i]), xU[$i] = $(upper_bounds[i]),")
+    end
+    return nothing
+end
+
+function pretty_print_mc!(desc, m, xmc, xref, N)
+    println(" -----------------------")
+    println(desc)
+    println(" -----------------------")
+    println(" analytic/eago value is  ")
+    if xmc.cv !== xref.cv
+        println(" cv =  $(xmc.cv) vs. $(xref.cv)")
+    end
+    if xmc.cc !== xref.cc
+        println(" cc =  $(xmc.cc) vs. $(xref.cc)")
+    end
+    if xmc.Intv.lo !== xref.Intv.lo
+        println(" lo =  $(xmc.Intv.lo) vs. $(xref.Intv.lo)")
+    end
+    if xmc.Intv.hi !== xref.Intv.hi
+        println(" hi =  $(xmc.Intv.hi) vs. $(xref.Intv.hi)")
+    end
+    #=
+    for i = 1:N
+        if !iszero(xmc.cv_grad[i]) || !iszero(xmc.cc_grad[i])
+            if xmc.cv_grad[i] !== xref.cv_grad[i]
+                println("convex gradient analytic = $(xmc.cv_grad[i]), eago = $(xref.cc_grad[i])")
+            end
+            if xmc.cv_grad[i] !== xref.cc_grad[i]
+                println("concave gradient analytic = $(xmc.cv_grad[i]), eago = $(xref.cc_grad[i])")
+            end
+        end
+    end
+    =#
+    println(" -----------------------")
+end
+
+function compute_compare_mcs!(m::Optimizer)
+
+    println("  ")
+    println(" start mc compare ")
+    println("  ")
+    n = m._current_node
+
+    xref = deepcopy(m._current_xref)
+    pushfirst!(xref, 0.0)
+    pretty_print_node!(n, true, xref)
+
+    lower_bounds = deepcopy(n.lower_variable_bounds)
+    upper_bounds = deepcopy(n.upper_variable_bounds)
+    pushfirst!(lower_bounds, 0.0)
+    pushfirst!(upper_bounds, 0.0)
+
+    N = 14
+    xval = 0.5*(lower_bounds + upper_bounds)
+    x = [MC{N,NS}(xval[i], Interval(lower_bounds[i], upper_bounds[i]), i) for i=1:length(xval)]
+
+    #=
+    for i = 2:(N+1)
+        println("double X$i = $(x[i]);")
+        println("double XL$i = $(lower_bounds[i]);")
+        println("double XU$i = $(upper_bounds[i]);")
+        println("MC XMC( I(XL$i, XU$i), X$i);")
+        println("XMC.sub($N,$(i-2));")
+    end
+    =#
+
+    refx1 = m._working_problem._nonlinear_constr[1].expr.setstorage[1]
+    refx2 = m._working_problem._nonlinear_constr[2].expr.setstorage[1]
+    refx3 = m._working_problem._nonlinear_constr[3].expr.setstorage[1]
+    refx4 = m._working_problem._nonlinear_constr[4].expr.setstorage[1]
+    refx5 = m._working_problem._nonlinear_constr[5].expr.setstorage[1]
+    refx6 = m._working_problem._nonlinear_constr[6].expr.setstorage[1]
+
+    # - uni, - binary, + binary, + n, ^2, * binary, * n,
+    term1a = 0.01*x[5]*x[10]
+    term1 = 0.98*x[4] - x[7]*(0.01*x[5]*x[10] + x[4])
+    pretty_print_mc!("Term 1 MC = ", m, term1, refx1, N)
+
+    term2 = -x[2]*x[9] + 10*x[3] + x[6]
+    pretty_print_mc!("Term 2 MC = ", m, term2, refx2, N)
+
+    term3 = x[10]*x[14] + 22.2*x[11] - 35.82
+    pretty_print_mc!("Term 3 MC = ", m, term3, refx3, N)
+
+    term4 = x[11]*x[15] - 3*x[8] + 1.33
+    pretty_print_mc!("Term 4 MC = ", m, term4, refx4, N)
+
+    term5 = x[5]*x[12] - x[2]*(1.12 + 0.13167*x[9] - 0.0067*x[9]^2)
+    pretty_print_mc!("Term 5 MC = ", m, term5, refx5, N)
+
+    term6 = x[8]*x[13] - 0.01*(1.098*x[9] - 0.038*x[9]^2) - 0.325*x[7] - 0.57425
+    pretty_print_mc!("Term 6 MC = ", m, term6, refx6, N)
+
+    println("  ")
+    println(" end mc compare ")
+    println("  ")
+
+    return nothing
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -28,10 +173,10 @@ function create_initial_node!(m::Optimizer)
     branch_count = 1
 
     for i = 1:m._working_problem._variable_count
-        vi = @inbounds variable_info[i]
+        vi =  variable_info[i]
         if vi.branch_on === BRANCH
-            @inbounds lower_bound[branch_count] = vi.lower_bound
-            @inbounds upper_bound[branch_count] = vi.upper_bound
+             lower_bound[branch_count] = vi.lower_bound
+             upper_bound[branch_count] = vi.upper_bound
             branch_count += 1
         end
     end
@@ -65,9 +210,9 @@ function load_relaxed_problem!(m::Optimizer)
         relaxed_variable = SV(relaxed_variable_indx)
         push!(m._relaxed_variable_index, relaxed_variable_indx)
 
-        vinfo = @inbounds wp._variable_info[i]
+        vinfo =  wp._variable_info[i]
 
-        is_branch_variable = @inbounds m._branch_variables[i]
+        is_branch_variable =  m._branch_variables[i]
         vinfo.branch_on = is_branch_variable ? BRANCH : NO_BRANCH
         is_branch_variable && (branch_variable_count += 1)
 
@@ -136,12 +281,13 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._lower_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
     m._upper_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
 
-    # add storage for obbt
+    # add storage for obbt ( perform obbt on all relaxed variables, potentially)
+    #=
     if isempty(m.obbt_variable_values)
         m._obbt_variables = fill(VI(-1), branch_variable_count)
         for i = 1:m._working_problem._variable_count
-            if @inbounds m._branch_variables[i]
-                @inbounds m._obbt_variables[i] = VI(i)
+            if m._branch_variables[i]
+                m._obbt_variables[i] = VI(i)
             end
         end
     else
@@ -151,6 +297,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
             end
         end
     end
+    =#
     obbt_variable_count = length(m._obbt_variables)
 
     m._obbt_working_lower_index = fill(false, obbt_variable_count)
@@ -220,7 +367,7 @@ function branch_node!(t::ExtensionType, m::Optimizer)
         si = m._branch_to_sol_map[i]
         vi = m._working_problem._variable_info[si]
         if vi.branch_on === BRANCH
-            temp_max = @inbounds uvbs[i] - lvbs[i]
+            temp_max =  uvbs[i] - lvbs[i]
             temp_max /= vi.upper_bound - vi.lower_bound
             if temp_max > max_val
                 max_pos = i
@@ -250,10 +397,10 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     uvb_1 = copy(uvbs)
     lvb_2 = copy(lvbs)
     uvb_2 = copy(uvbs)
-    @inbounds lvb_1[max_pos] = N1.lo
-    @inbounds uvb_1[max_pos] = N1.hi
-    @inbounds lvb_2[max_pos] = N2.lo
-    @inbounds uvb_2[max_pos] = N2.hi
+     lvb_1[max_pos] = N1.lo
+     uvb_1[max_pos] = N1.hi
+     lvb_2[max_pos] = N2.lo
+     uvb_2[max_pos] = N2.hi
 
     lower_bound = max(n.lower_bound, m._lower_objective_value)
     upper_bound = min(n.upper_bound, m._upper_objective_value)
@@ -498,12 +645,12 @@ function set_dual!(m::Optimizer)
     relaxed_variable_gt = m._relaxed_variable_gt
 
     for i = 1:m._working_problem._var_leq_count
-        ci_lt, i_lt = @inbounds relaxed_variable_lt[i]
-        @inbounds m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
+        ci_lt, i_lt =  relaxed_variable_lt[i]
+         m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
     end
     for i = 1:m._working_problem._var_geq_count
-        ci_gt, i_gt = @inbounds relaxed_variable_gt[i]
-        @inbounds m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
+        ci_gt, i_gt =  relaxed_variable_gt[i]
+         m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
     end
 
     return nothing
@@ -517,6 +664,8 @@ constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
 """
 function preprocess!(t::ExtensionType, m::Optimizer)
+    #println("START PREPROCESS")
+    check_for_solution!(m._current_node)
 
     wp = m._working_problem
     params = m._parameters
@@ -530,7 +679,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
 
-
     #println("fbbt m.current_node: $(m._current_node)")
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
@@ -538,17 +686,17 @@ function preprocess!(t::ExtensionType, m::Optimizer)
             #println("fbbt i = $i")
             if feasible_flag
                 for j = 1:wp._saf_leq_count
-                    #println("fbbt leq j = $i")
+                #    println("fbbt leq j = $j")
                     !feasible_flag && break
-                    saf_leq = @inbounds wp._saf_leq[j]
+                    saf_leq =  wp._saf_leq[j]
                     feasible_flag &= fbbt!(m, saf_leq)
                 end
                 !feasible_flag && break
 
                 for j = 1:wp._saf_eq_count
-                    #println("fbbt eq j = $i")
+                #    println("fbbt eq j = $j")
                     !feasible_flag && break
-                    saf_eq = @inbounds wp._saf_eq[j]
+                    saf_eq = wp._saf_eq[j]
                     feasible_flag &= fbbt!(m, saf_eq)
                 end
                 !feasible_flag && break
@@ -556,6 +704,8 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         end
         unpack_fbbt_buffer!(m)
     end
+    #println("END FBBT")
+    check_for_solution!(m._current_node)
 
     # done after cp
     set_first_relax_point!(m)
@@ -570,6 +720,8 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         cp_walk_count += 1
         perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
     end
+    #println("END CPWALK")
+    check_for_solution!(m._current_node)
 
     obbt_count = 0
     perfom_obbt_flag = feasible_flag
@@ -582,6 +734,8 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         obbt_count += 1
         perfom_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
     end
+    #println("END obbt")
+    check_for_solution!(m._current_node)
 
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
                            lower_variable_bounds(m._current_node))
@@ -609,20 +763,20 @@ function update_relaxed_problem_box!(m::Optimizer)
 
     relaxed_variable_eq = m._relaxed_variable_eq
     for i = 1:wp._var_eq_count
-        constr_indx, node_indx = @inbounds relaxed_variable_eq[i]
-        MOI.set(opt, MOI.ConstraintSet(), constr_indx, ET(@inbounds lower_bound[node_indx]))
+        constr_indx, node_indx =  relaxed_variable_eq[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, ET( lower_bound[node_indx]))
     end
 
     relaxed_variable_lt = m._relaxed_variable_lt
     for i = 1:wp._var_leq_count
-        constr_indx, node_indx = @inbounds relaxed_variable_lt[i]
-        MOI.set(opt, MOI.ConstraintSet(), constr_indx, LT(@inbounds upper_bound[node_indx]))
+        constr_indx, node_indx =  relaxed_variable_lt[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, LT( upper_bound[node_indx]))
     end
 
     relaxed_variable_gt = m._relaxed_variable_gt
     for i = 1:wp._var_geq_count
-        constr_indx, node_indx = @inbounds relaxed_variable_gt[i]
-        MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT(@inbounds lower_bound[node_indx]))
+        constr_indx, node_indx =  relaxed_variable_gt[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT( lower_bound[node_indx]))
     end
 
     return nothing
@@ -658,14 +812,14 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
     if !cp_condition(m)
         for i = 1:m._working_problem._saf_leq_count
-            saf_leq = @inbounds m._working_problem._saf_leq[i]
+            saf_leq =  m._working_problem._saf_leq[i]
             feasible_flag &= (lower_interval_bound(saf_leq, n) <= 0.0)
             !feasible_flag && break
         end
 
         if feasible_flag
             for i = 1:m._working_problem._saf_eq_count
-                saf_eq = @inbounds m._working_problem._saf_eq[i]
+                saf_eq =  m._working_problem._saf_eq[i]
                 lower_value, upper_value = interval_bound(saf_eq, n)
                 feasible_flag &= (lower_value <= 0.0 <= upper_value)
                 !feasible_flag && break
@@ -674,7 +828,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
         if feasible_flag
             for i = 1:m._working_problem._sqf_leq_count
-                sqf_leq = @inbounds m._working_problem._sqf_leq[i]
+                sqf_leq =  m._working_problem._sqf_leq[i]
                 feasible_flag &= (lower_interval_bound(sqf_leq, n) <= 0.0)
                 !feasible_flag && break
             end
@@ -682,7 +836,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
         if feasible_flag
             for i = 1:m._working_problem._sqf_eq_count
-                sqf_eq = @inbounds m._working_problem._sqf_eq[i]
+                sqf_eq =  m._working_problem._sqf_eq[i]
                 lower_value, upper_value = interval_bound(sqf_eq, n)
                 feasible_flag &= (lower_value <= 0.0 <= upper_value)
                 !feasible_flag && break
@@ -691,7 +845,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
         if feasible_flag
             for i = 1:m._working_problem._nonlinear_count
-                nl_constr = @inbounds m._working_problem._nonlinear_constr[i]
+                nl_constr =  m._working_problem._nonlinear_constr[i]
                 lower_value, upper_value = interval_bound(nl_constr, n)
                 feasible_flag &= upper_value < nl_constr.lower_bound
                 feasible_flag &= lower_value > nl_constr.upper_bound
@@ -722,6 +876,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
 
+    m._working_problem._relaxed_evaluator.is_post = true
     if !m._obbt_performed_flag
         set_node!(m._working_problem._relaxed_evaluator, n)
         set_reference_point!(m)
@@ -731,6 +886,8 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     end
     m._working_problem._objective_nl.has_value = false
     m._working_problem._relaxed_evaluator.interval_intersect = true
+
+    #compute_compare_mcs!(m)
 
     relax_objective!(m, 1)
 
@@ -753,8 +910,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = true
         m._lower_feasibility = true
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
+        println("m._lower_objective_value: $(m._lower_objective_value)")
         for i = 1:m._working_problem._variable_count
-            @inbounds m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+             m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
 
     elseif valid_flag
@@ -781,12 +939,13 @@ function cut_update!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
+    #println("obj_val: $(obj_val)")
 
     if m._cut_iterations <= m._parameters.cut_min_iterations
         m._cut_add_flag = true
         m._lower_termination_status = m._cut_termination_status
         m._lower_result_status = m._cut_result_status
-        @inbounds m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+         m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
         copyto!(m._lower_solution, m._cut_solution)
 
     end
@@ -842,6 +1001,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
         if norm(m._current_xref, 1) > m._parameters.cut_tolerance
             copyto!(m._current_xref, m._candidate_xref)
             set_reference_point!(m)
+            m._working_problem._relaxed_evaluator.is_intersect = true
             m._working_problem._relaxed_evaluator.interval_intersect = true
         else
             continue_cut_flag = false
@@ -852,6 +1012,8 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     #println("new cut: $(m._current_xref)")
 
     if !continue_cut_flag
+        m._working_problem._relaxed_evaluator.is_intersect = false
+        m._working_problem._relaxed_evaluator.interval_intersect = false
         delete_nl_constraints!(m)
         delete_objective_cuts!(m)
     end
@@ -878,6 +1040,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
 
         elseif obj_type === NONLINEAR
             objective_lo = lower_interval_bound(m._working_problem._objective_nl, n)
+            println("objective_lo = $(objective_lo)")
 
         end
 

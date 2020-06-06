@@ -200,9 +200,12 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     return nothing
 end
 
-function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator, use_cvx::Bool) where {N,T<:RelaxTag}
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator,
+                                 use_cvx::Bool, new_pass::Bool) where {N,T<:RelaxTag}
 
-    forward_pass!(evaluator, f)
+    if new_pass
+        forward_pass!(evaluator, f)
+    end
     x = evaluator.x
     finite_cut = true
 
@@ -217,7 +220,6 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
 
     else
         setvalue = expr.setstorage[1]
-        #println("setvalue = $setvalue")
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
 
         if finite_cut
@@ -237,17 +239,12 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
             f.saf.constant += use_cvx ? -f.upper_bound : f.lower_bound
         end
     end
-    #printty = ""
-    #for term in f.saf.terms
-    #    printty *= "$(term.coefficient)*x[$(term.variable_index.value)] + "
-    #end
-    #printty *= "$(f.saf.constant)"
-    #println("f.saf: "*printty)
 
     return finite_cut
 end
 
 function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
+
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
@@ -263,10 +260,11 @@ end
 function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
 
     evaluator = m._working_problem._relaxed_evaluator
-    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true)
+
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
-    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false)
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
     return nothing
@@ -308,7 +306,7 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     buffered_nl = wp._objective_nl
 
     relaxed_evaluator.is_first_eval = m._new_eval_objective
-    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, true)
     relaxed_evaluator.is_first_eval = false
 
     if finite_cut_generated

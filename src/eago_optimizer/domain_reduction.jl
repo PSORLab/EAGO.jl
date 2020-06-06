@@ -43,7 +43,8 @@ function variable_dbbt!(n::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
             end
          end
     end
-    return
+
+    return nothing
 end
 
 """
@@ -242,7 +243,7 @@ https://doi.org/10.1007/s10898-016-0450-4
 function obbt!(m::Optimizer)
 
 
-    println("obbt start node: $(m._current_node)")
+    #println("obbt start node: $(m._current_node)")
 
     feasibility = true
 
@@ -264,7 +265,6 @@ function obbt!(m::Optimizer)
 
     # Sets indices to attempt OBBT on (full set...)
     obbt_variable_count = m._obbt_variable_count
-    obbt_variables = m._obbt_variables
     fill!(m._obbt_working_lower_index, true)
     fill!(m._obbt_working_upper_index, true)
 
@@ -402,7 +402,7 @@ function obbt!(m::Optimizer)
         trivial_filtering!(m, n)
     end
 
-    println("obbt end node: $(m._current_node)")
+    #println("obbt end node: $(m._current_node)")
 
     return feasibility
 end
@@ -441,15 +441,30 @@ function unpack_fbbt_buffer!(m::Optimizer)
     for i = 1:m._working_problem._variable_count
         if @inbounds m._branch_variables[i]
             indx = @inbounds sol_to_branch[i]
-            @inbounds lower_variable_bounds[indx] = m._lower_fbbt_buffer[i]
-            @inbounds upper_variable_bounds[indx] = m._upper_fbbt_buffer[i]
+            if m._lower_fbbt_buffer[i] > lower_variable_bounds[indx]
+                @inbounds lower_variable_bounds[indx] = m._lower_fbbt_buffer[i]
+                #println(:"updated indx low = $indx")
+            end
+            if upper_variable_bounds[indx] > m._upper_fbbt_buffer[i]
+                @inbounds upper_variable_bounds[indx] = m._upper_fbbt_buffer[i]
+                #println(:"updated indx high = $indx")
+            end
 
         else
-            @inbounds m._working_problem._variable_info[i].lower_bound = m._lower_fbbt_buffer[i]
-            @inbounds m._working_problem._variable_info[i].upper_bound = m._upper_fbbt_buffer[i]
+            if m._working_problem._variable_info[i].lower_bound < m._lower_fbbt_buffer[i]
+                @inbounds m._working_problem._variable_info[i].lower_bound = m._lower_fbbt_buffer[i]
+                #println(:"updated i low = $indx")
+            end
+            if m._working_problem._variable_info[i].upper_bound > m._upper_fbbt_buffer[i]
+                @inbounds m._working_problem._variable_info[i].upper_bound = m._upper_fbbt_buffer[i]
+                #println(:"updated i high = $indx")
+            end
 
         end
     end
+
+    #println("m._lower_fbbt_buffer = $(m._lower_fbbt_buffer)")
+    #println("m._upper_fbbt_buffer = $(m._upper_fbbt_buffer)")
 
     return nothing
 end
@@ -531,14 +546,9 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
 
-#    println("lower_bounds = $lower_bounds")
-#    println("upper_bounds = $upper_bounds")
-
     terms = f.terms
     temp_sum_leq = -f.constant
     temp_sum_geq = -f.constant
-#    println("f.constrant = $(f.constant)")
-    #println("f: $f")
 
     for k = 1:f.len
         aik, indx_k = @inbounds terms[k]
@@ -551,16 +561,12 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
 
         end
     end
-#    println("temp_sum_leq = $temp_sum_leq")
-#    println("temp_sum_geq = $temp_sum_geq")
 
     # subtract extra term, check to see if implied bound is better, if so update the node and
     # the working sum if the node is now empty then break
     for k = 1:f.len
 
         aik, indx_k = @inbounds terms[k]
-        #println("aik = $aik")
-        #println("indx_k = $indx_k")
         if aik !== 0.0
 
             xL = @inbounds lower_bounds[indx_k]
@@ -609,7 +615,6 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
         end
     end
 
-    #println(" ")
     return true
 end
 
@@ -622,38 +627,42 @@ resets the current node with new interval bounds.
 function set_constraint_propagation_fbbt!(m::Optimizer)
     feasible_flag = true
 
-    println("cp start node: $(m._current_node)")
+#    println("cp start node: $(m._current_node)")
+    start_node = deepcopy(m._current_node)
 
     evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
     set_reference_point!(m)
-    evaluator.interval_intersect = !m._parameters.subgrad_tighten
 
+    #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    count = 1
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
-            set_node_flag!(constr)
             forward_pass!(evaluator, constr)
+            #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
             feasible_flag &= reverse_pass!(evaluator, constr)
+            #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
+            evaluator.interval_intersect = true
         end
-        count += 1
     end
+    evaluator.is_post = m._parameters.subgrad_tighten
 
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
     if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
         obj_nonlinear = m._working_problem._objective_nl
         set_node_flag!(obj_nonlinear)
         forward_pass!(evaluator, obj_nonlinear)
+        #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
         feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
+        #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
+        evaluator.interval_intersect = true
     end
+
     m._new_eval_constraint = false
     m._new_eval_objective = false
 
-    evaluator.interval_intersect = true
+    m._current_xref = evaluator.x
     m._current_node = retrieve_node(evaluator)
-
-    println("cp end node: $(m._current_node)")
 
     return feasible_flag
 end

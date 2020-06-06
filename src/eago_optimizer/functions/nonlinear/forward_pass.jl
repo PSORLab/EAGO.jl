@@ -13,7 +13,7 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
-const FORWARD_DEBUG = false
+const FORWARD_DEBUG = true
 
 """
 $(FUNCTIONNAME)
@@ -31,12 +31,12 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
 
     for i = 1:N
 
-        x_val = @inbounds x_values[i]
-        cv_val = @inbounds val.cv_grad[i]
-        cc_val = @inbounds val.cc_grad[i]
+        x_val =  x_values[i]
+        cv_val =  val.cv_grad[i]
+        cc_val =  val.cc_grad[i]
 
-        lower_bound = @inbounds lower_variable_bounds[i]
-        upper_bound = @inbounds upper_variable_bounds[i]
+        lower_bound =  lower_variable_bounds[i]
+        upper_bound =  upper_variable_bounds[i]
 
         if lower_refinement
             if cv_val > 0.0
@@ -75,8 +75,17 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
         end
     end
 
-    lower = lower_refinement ? max(lower, val.Intv.lo) : val.Intv.lo
-    upper = upper_refinement ? min(upper, val.Intv.hi) : val.Intv.hi
+    if lower_refinement && (val.Intv.lo > lower)
+        lower = val.Intv.lo
+    elseif !lower_refinement
+        lower = val.Intv.lo
+    end
+
+    if upper_refinement && (val.Intv.hi < upper)
+        upper = val.Intv.hi
+    elseif !upper_refinement
+        upper = val.Intv.hi
+    end
 
     return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
 end
@@ -113,8 +122,12 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
     elseif is_post && !is_intersect
         return set_value_post(x, xMC, lbd, ubd)
 
-    elseif !is_post && is_intersect
+    elseif !is_post && is_intersect && interval_intersect
+        return xMC ∩ past_xMC.Intv
+
+    elseif is_post && is_intersect && !interval_intersect
         return xMC ∩ past_xMC
+
     end
     return xMC
 end
@@ -134,24 +147,24 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -159,7 +172,7 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
 
     # a + b
     if output_is_number
-        @inbounds numberstorage[k] = num1 + num2
+         numberstorage[k] = num1 + num2
 
     # x + b
     elseif !arg1_is_number && arg2_is_number
@@ -178,9 +191,9 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
 
     end
 
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
     if !output_is_number
-        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post,
+         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post,
                                                          is_intersect, interval_intersect)
     end
 
@@ -202,41 +215,34 @@ function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
     idx = first(children_idx)
 
     # extract values for argument 1
-    arg_index = @inbounds children_arr[idx]
-    output_is_number = @inbounds numvalued[arg_index]
+    arg_index =  children_arr[idx]
+    output_is_number =  numvalued[arg_index]
     if output_is_number
        tmp_set = zero(MC{N,T})
-       tmp_num = @inbounds numberstorage[arg_index]
+       tmp_num =  numberstorage[arg_index]
     else
        tmp_num = 0.0
-       tmp_set = @inbounds setstorage[arg_index]
+       tmp_set =  setstorage[arg_index]
     end
-    #println("tmp_num[1] = $tmp_num")
-    #println("tmp_set[1] = $tmp_set")
-
     output_is_number = true
 
     for idx = 2:length(children_idx)
-        cidx = @inbounds children_idx[idx]
-        arg_index = @inbounds children_arr[cidx]
-        arg_is_number = @inbounds numvalued[arg_index]
+        cidx =  children_idx[idx]
+        arg_index =  children_arr[cidx]
+        arg_is_number =  numvalued[arg_index]
         if arg_is_number
-            tmp_num += @inbounds numberstorage[arg_index]
+            tmp_num +=  numberstorage[arg_index]
         else
-            #println("setstorage[arg_index] = $(setstorage[arg_index])")
-            tmp_set += @inbounds setstorage[arg_index]
+            tmp_set +=  setstorage[arg_index]
         end
-        #println("tmp_num[$idx] = $tmp_num")
-        #println("tmp_set[$idx] = $tmp_set")
         output_is_number &= arg_is_number
     end
 
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
     if output_is_number
-        @inbounds numberstorage[k] = tmp_num
+         numberstorage[k] = tmp_num
     else
         tmp_set += tmp_num
-        #println("tmp_set[last] = $tmp_set")
         setstorage[k] = overwrite_or_intersect(tmp_set, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                                interval_intersect)
     end
@@ -258,37 +264,32 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
-
-    #println("arg1_is_number: $(arg1_is_number)")
-    #println("arg2_is_number: $(arg2_is_number)")
-    #println("set1: $set1")
-    #println("set2: $set2")
 
     output_is_number = arg1_is_number && arg2_is_number
 
     # a * b
     if output_is_number
-        @inbounds numberstorage[k] = num1 * num2
+         numberstorage[k] = num1 * num2
 
     # x * b
     elseif !arg1_is_number && arg2_is_number
@@ -304,9 +305,9 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
 
     end
 
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
     if !output_is_number
-        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
+         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                                          interval_intersect)
     end
 
@@ -325,42 +326,45 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
                                   is_post::Bool, is_intersect::Bool, interval_intersect::Bool) where {N,T<:RelaxTag}
     # get row indices
     idx = first(children_idx)
+    println("children_idx = $(children_idx)")
 
     # extract values for argument 1
-    arg_index = @inbounds children_arr[idx]
-    output_is_number = @inbounds numvalued[arg_index]
+    arg_index =  children_arr[idx]
+    output_is_number =  numvalued[arg_index]
     if output_is_number
-        tmp_set = one(MC{N,T})
-        tmp_num = @inbounds numberstorage[arg_index]
+        tmp_set = 1.0#one(MC{N,T})
+        tmp_num =  numberstorage[arg_index]
     else
         tmp_num = 1.0
-        tmp_set = @inbounds setstorage[arg_index]
+        tmp_set = setstorage[arg_index]
     end
-    #println("tmp_num[1] = $tmp_num")
-    #println("tmp_set[1] = $tmp_set")
 
-    output_is_number = true
+    println("tmp_num = $(tmp_num)")
+    println("tmp_set = $(tmp_set)")
 
     for idx = 2:length(children_idx)
-        cidx = @inbounds children_idx[idx]
-        arg_index = @inbounds children_arr[cidx]
-        arg_is_number = @inbounds numvalued[arg_index]
-        if arg_is_number
-            tmp_num *= @inbounds numberstorage[arg_index]
+        cidx =  children_idx[idx]
+        arg_index_t =  children_arr[cidx]
+        arg_is_number_t = numvalued[arg_index_t]
+        println("numberstorage[arg_index_t] = $(numberstorage[arg_index_t])")
+        println("setstorage[arg_index_t] = $(setstorage[arg_index_t])")
+        xorgss = setstorage[arg_index_t]
+        println("times = $(tmp_set*xorgss)")
+        if arg_is_number_t
+            tmp_num = tmp_num*numberstorage[arg_index_t]
         else
-            tmp_set *= @inbounds setstorage[arg_index]
+            tmp_set = tmp_set*setstorage[arg_index_t]
         end
-        output_is_number &= arg_is_number
-        #println("tmp_num[$idx] = $tmp_num")
-        #println("tmp_set[$idx] = $tmp_set")
+        println("tmp_num = $(tmp_num)")
+        println("tmp_set = $(tmp_set)")
+        output_is_number &= arg_is_number_t
     end
 
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
     if output_is_number
-        @inbounds numberstorage[k] = tmp_num
+         numberstorage[k] = tmp_num
     else
        tmp_set *= tmp_num
-     #  println("tmp_set")
        setstorage[k] = overwrite_or_intersect(tmp_set, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                               interval_intersect)
     end
@@ -383,24 +387,24 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -408,7 +412,7 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
     # a - b
     if output_is_number
-        @inbounds numberstorage[k] = num1 - num2
+         numberstorage[k] = num1 - num2
 
     # x - b
     elseif !arg1_is_number && arg2_is_number
@@ -424,9 +428,9 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
     end
 
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
     if !output_is_number
-        @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
+         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                                          interval_intersect)
     end
 
@@ -449,53 +453,53 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
 
     # is output a number (by closure of the reals)?
     output_is_number = arg1_is_number && arg2_is_number
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
 
     # x^1 = x
     if num2 === 1.0
         if arg1_is_number
-            @inbounds numberstorage[k] = num1
+             numberstorage[k] = num1
         else
-            @inbounds setstorage[k] = set1
+             setstorage[k] = set1
         end
         return nothing
 
     # x^0 = 1
     elseif num2 === 0.0
         if arg1_is_number
-            @inbounds numberstorage[k] = 1.0
+             numberstorage[k] = 1.0
         else
-            @inbounds setstorage[k] = zero(MC{N,T})
+             setstorage[k] = zero(MC{N,T})
         end
         return nothing
 
     else
         # a^b
         if arg1_is_number && arg2_is_number
-            @inbounds numberstorage[k] = num1^num2
+             numberstorage[k] = num1^num2
 
         # x^b
         elseif !arg1_is_number && arg2_is_number
@@ -539,34 +543,34 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index = @inbounds children_arr[idx1]
-    arg1_is_number = @inbounds numvalued[arg1_index]
+    arg1_index =  children_arr[idx1]
+    arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 = @inbounds numberstorage[arg1_index]
+        num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 = @inbounds setstorage[arg1_index]
+        set1 =  setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index = @inbounds children_arr[idx2]
-    arg2_is_number = @inbounds numvalued[arg2_index]
+    arg2_index =  children_arr[idx2]
+    arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 = @inbounds numberstorage[arg2_index]
+        num2 =  numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 = @inbounds setstorage[arg2_index]
+        set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
 
     # is output a number (by closure of the reals)?
     output_is_number = arg1_is_number && arg2_is_number
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
 
     # a/b
     if output_is_number
-        @inbounds numberstorage[k] = num1/num2
+         numberstorage[k] = num1/num2
 
     # x/b
     elseif !arg1_is_number && arg2_is_number
@@ -585,7 +589,7 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 
     end
 
-    @inbounds setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
+     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                                      interval_intersect)
 
     return nothing
@@ -612,12 +616,12 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
     buffer_count = 1
     output_is_number = true
     for c_idx in children_idx
-        arg_index = @inbounds children_arr[c_idx]
-        arg_is_number = @inbounds numvalued[arg_index]
+        arg_index =  children_arr[c_idx]
+        arg_is_number =  numvalued[arg_index]
         if arg_is_number
-            @inbounds num_input[buffer_count] = numberstorage[arg_index]
+             num_input[buffer_count] = numberstorage[arg_index]
         else
-            @inbounds set_input[buffer_count] = setstorage[arg_index]
+             set_input[buffer_count] = setstorage[arg_index]
         end
         buffer_count += 1
     end
@@ -626,15 +630,15 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
         numberstorage[k] = MOI.eval_objective(evaluator, num_input)
     else
         for i = 1:(buffer_count - 1)
-            if !isinf(@inbounds num_input[i])
-                @inbounds set_input[buffer_count] = MC{N,T}(num_input[buffer_count])
+            if !isinf( num_input[i])
+                 set_input[buffer_count] = MC{N,T}(num_input[buffer_count])
             end
         end
         outset = Cassette.overdub(ctx, MOI.eval_objective, evaluator, set_input)
         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                                interval_intersect)
     end
-    @inbounds numvalued[k] = output_is_number
+     numvalued[k] = output_is_number
 
     return nothing
 end
@@ -647,11 +651,11 @@ and `c` is a number.
 """
 function forward_univariate_number!(k::Int64, op::Int64, numvalued::Vector{Bool}, numberstorage::Vector{Float64})
 
-    tmp_num = @inbounds numberstorage[child_idx]
+    tmp_num =  numberstorage[child_idx]
     outnum = eval_univariate_set(op, tmp_num)
 
-    @inbounds numberstorage[k] = outnum
-    @inbounds numvalued[k] = true
+     numberstorage[k] = outnum
+     numvalued[k] = true
 
     return nothing
 end
@@ -668,18 +672,18 @@ function forward_univariate_tiepnt_1!(k::Int64, child_idx::Int64, setstorage::Ve
                                       tp1storage::Vector{Float64}, tp2storage::Vector{Float64},
                                       is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
-    tmp_set = @inbounds setstorage[child_idx]
+    tmp_set =  setstorage[child_idx]
 
     tidx1, tidx2 = tpdict[k]
-    tp1 = @inbounds tp1storage[tindx1]
-    tp2 = @inbounds tp2storage[tindx2]
+    tp1 =  tp1storage[tindx1]
+    tp2 =  tp2storage[tindx2]
     new_tie_points = tp1 === Inf
 
     outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, first_eval_flag)
 
     if new_tie_points
-        @inbounds tp1storage[tindx] = tp1
-        @inbounds tp1storage[tindx] = tp2
+         tp1storage[tindx] = tp1
+         tp1storage[tindx] = tp2
     end
 
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
@@ -700,15 +704,15 @@ function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Ve
                                       tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
                                       is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
-    tmp_set = @inbounds setstorage[child_idx]
+    tmp_set =  setstorage[child_idx]
 
     # retreive previously calculated tie-points
     # These are re-initialize to Inf for each box
     tidx1, tidx2, tidx3, tidx4 = tpdict[k]
-    tp1 = @inbounds tp1storage[tidx1]
-    tp2 = @inbounds tp2storage[tidx2]
-    tp3 = @inbounds tp3storage[tidx3]
-    tp4 = @inbounds tp4storage[tidx4]
+    tp1 =  tp1storage[tidx1]
+    tp2 =  tp2storage[tidx2]
+    tp3 =  tp3storage[tidx3]
+    tp4 =  tp4storage[tidx4]
 
     new_tie_points = tp1 === Inf
 
@@ -717,10 +721,10 @@ function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Ve
 
     # Store new tiepoints if new evaluation
     if new_tie_points
-        @inbounds tp1storage[tidx1] = tp1
-        @inbounds tp2storage[tidx2] = tp2
-        @inbounds tp3storage[tidx3] = tp3
-        @inbounds tp4storage[tidx4] = tp4
+         tp1storage[tidx1] = tp1
+         tp2storage[tidx2] = tp2
+         tp3storage[tidx3] = tp3
+         tp4storage[tidx4] = tp4
     end
 
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, is_post, is_intersect,
@@ -739,15 +743,15 @@ function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstor
                                   ctx::GuardCtx, user_operators) where V
 
     userop = op - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
-    @inbounds f = user_operators.univariate_operator_f[userop]
+     f = user_operators.univariate_operator_f[userop]
 
     if arg_is_number
-        tmp_num = @inbounds setstorage[child_idx]
+        tmp_num =  setstorage[child_idx]
         outnum = f(tmp_num)
-        @inbounds numberstorage[k] = outnum
+         numberstorage[k] = outnum
 
     else
-        tmp_set = @inbounds setstorage[child_idx]
+        tmp_set =  setstorage[child_idx]
         outnum = Cassette.overdub(ctx, f, tmp_set)
         setstorage[k] = overwrite_or_intersect(outnum, setstorage[k], x, lbd, ubd, is_post, is_intersect,
                                                interval_intersect)
@@ -767,7 +771,7 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
                                    is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
     #println("child_idx = $(child_idx)")
-    tmp_set = @inbounds setstorage[child_idx]
+    tmp_set =  setstorage[child_idx]
     outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
     #println("tmp_set = $(tmp_set)")
     #println("outset = $(outset)")
@@ -805,30 +809,26 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
     for k = length(nd):-1:1
 
         oldset = setstorage[k]
-        nod = @inbounds nd[k]
+        nod =  nd[k]
         op = nod.index
 
         if nod.nodetype == JuMP._Derivatives.VALUE
-            @inbounds numvalued[k] = true
+             numvalued[k] = true
             FORWARD_DEBUG && println("value[$op]    at k = $k -> $(numberstorage[k])")
 
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
-            @inbounds numvalued[k] = true
+             numvalued[k] = true
             FORWARD_DEBUG && println("parameter[$op] at k = $k -> $(numberstorage[k])")
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
-            isa_number = @inbounds treat_x_as_number[op]
-            @inbounds numvalued[k] = isa_number
+            isa_number =  treat_x_as_number[op]
+             numvalued[k] = isa_number
             if isa_number
-                @inbounds numberstorage[k] = x[op]
+                 numberstorage[k] = x[op]
             else
                 seed_index = reverse_sparsity[op]
-                #println("is_first_eval: $(is_first_eval)")
-                #println("seed_index = $(seed_index)")
-                #println("(x[op] = $(x[op])")
                 xMC = MC{N,T}(x[op], Interval{Float64}(lbd[op], ubd[op]), seed_index)
-                #println("xMC = $(xMC)")
-                @inbounds setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k].Intv)
+                setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k].Intv)
             end
             FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
@@ -837,7 +837,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
 
-            @inbounds children_idx = nzrange(adj, k)
+             children_idx = nzrange(adj, k)
             n_children = length(children_idx)
 
             # :+ with arity two or greater
@@ -900,9 +900,9 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
             # checks to see if operator is a number
             child_idx = first(nzrange(adj, k))
-            @inbounds arg_idx = children_arr[adj.colptr[k]]
-            arg_is_number = @inbounds numvalued[arg_idx]
-            @inbounds numvalued[k] = arg_is_number
+             arg_idx = children_arr[adj.colptr[k]]
+            arg_is_number =  numvalued[arg_idx]
+             numvalued[k] = arg_is_number
 
             # performs univariate operators on number valued inputs
             if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
