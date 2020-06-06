@@ -102,9 +102,9 @@ function lower_interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
 
         if vi1 === vi2
             if coeff > 0.0
-                lower_interval_bound += (0.0 < xL) ? coeff*xL*xL : ((xU <= 0.0) ? coeff*xU*xU : 0.0)
+                lower_interval_bound += (0.0 < xL) ? 0.5*coeff*xL*xL : ((xU <= 0.0) ? 0.5*coeff*xU*xU : 0.0)
             else
-                lower_interval_bound += (xL < xU) ? coeff*xU*xU : coeff*xL*xL
+                lower_interval_bound += (xL < xU) ? 0.5*coeff*xU*xU : 0.5*coeff*xL*xL
             end
         else
             mapped_vi2 = sol_branch_map[vi2]
@@ -158,7 +158,7 @@ function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
         xU = @inbounds up_bnds[mapped_vi1]
 
         if vi1 === vi2
-            val_intv += coeff*pow(Interval(xL, xU), 2)
+            val_intv += 0.5*coeff*pow(Interval(xL, xU), 2)
         else
             mapped_vi2 = @inbounds sol_branch_map[vi2]
             @inbounds il2b = lo_bnds[mapped_vi2]
@@ -174,7 +174,7 @@ end
 ### NONLINEAR FUNCTIONS
 ###
 
-function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+function lower_interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     if !d.has_value
         forward_pass!(d.evaluator, d)
     end
@@ -189,7 +189,7 @@ function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where 
     return lower_value
 end
 
-function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     if !d.has_value
         forward_pass!(d.evaluator, d)
     end

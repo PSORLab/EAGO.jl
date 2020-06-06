@@ -73,6 +73,8 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     upper_bounds = n.upper_variable_bounds
     quadratic_constant = func.constant
 
+    println("x = $x")
+
     # Affine terms only contribute coefficients, so the respective
     # values do not contribute to the cut. Since all quadratic terms
     # are considered to be branch variables we exclude any potential
@@ -92,13 +94,13 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         if idx1 === idx2
 
             if a > 0.0
-                buffer[idx1] += 2.0*a*x0_1
-                quadratic_constant -= a*x0_1*x0_1
+                buffer[idx1] += a*x0_1
+                quadratic_constant -= 0.5*a*x0_1*x0_1
 
             else
                 if !isinf(xL_1) && !isinf(xU_1)
-                    buffer[idx1] += a*(xL_1 + xU_1)
-                    quadratic_constant -= a*xL_1*xU_1
+                    buffer[idx1] += 0.5*a*(xL_1 + xU_1)
+                    quadratic_constant -= 0.5*a*xL_1*xU_1
                 else
                     return false
                 end

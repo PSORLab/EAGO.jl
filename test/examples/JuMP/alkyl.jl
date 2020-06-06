@@ -8,9 +8,9 @@ end
 
 println(" ")
 
-m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 4,
+m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
                                                     "output_iterations" => 1,
-                                                    "iteration_limit" => 100000,
+                                                    "iteration_limit" => 200,
 
                                                     "cp_depth" => -1,
                                                     "cp_repetitions" => 2,
@@ -25,11 +25,11 @@ m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 4,
                                                     "obbt_repetitions" => 4,
                                                     "obbt_aggressive_on" => true,
 
-                                                    "upper_bounding_depth" => 4,
+                                                    "upper_bounding_depth" => 12,
 
                                                     "fbbt_lp_depth" => -1,
                                                     "fbbt_lp_repetitions" => 3,
-                                                    "relax_tag" => Diff()))
+                                                    "relax_tag" => NS()))
 
 #m = Model(Ipopt.Optimizer)
 
@@ -137,7 +137,7 @@ JuMP.set_upper_bound(x[15], 1.01010101010101)
 #@NLconstraint(m, (5.04*x[2] + 0.35*x[3] + x[4] + 3.36*x[6] - 6.3*x[5]*x[8]) - x[1] == 0.0)
 #@objective(m, Min, x[2])
 
-@objective(m, Min, 5.04*x[2] + 0.35*x[3] + x[4] + 3.36*x[6] - 6.3*x[5]*x[8])
+@objective(m, Min, 5.04*x[2] + 0.35*x[3] + x[4] + 3.36*x[6] - 6.3*x[5]*x[8] + x[4]*(x[6] -1.0)  + x[8]*x[4] - (x[4]+2.0)^2)
 
 #@NLobjective(m, Min, 5.04*x[2] + 0.35*x[3] + x[4] + 3.36*x[6] - 6.3*x[5]*x[8] + x[7] +  x[10]*x[14] + 22.2*x[11] + x[11]*x[15]-3*x[8]
 #                       + x[5]*x[12]-(1.12+0.13167*x[9]-0.0067*x[9]^2)*x[2] + x[13])

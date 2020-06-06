@@ -912,7 +912,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = true
         m._lower_feasibility = true
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-        println("m._lower_objective_value: $(m._lower_objective_value)")
+        #println("m._lower_objective_value: $(m._lower_objective_value)")
         for i = 1:m._working_problem._variable_count
              m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
@@ -941,8 +941,8 @@ function cut_update!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
-    println("obj_val: $(obj_val)")
-    println("prior_obj_val: $(prior_obj_val)")
+    #println("obj_val: $(obj_val)")
+    #println("prior_obj_val: $(prior_obj_val)")
 
     if m._cut_iterations <= m._parameters.cut_min_iterations
         m._cut_add_flag = true
@@ -981,7 +981,7 @@ interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
 
-    println("ran cut condition")
+    #println("ran cut condition")
     continue_cut_flag = m._cut_add_flag
     continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
     n = m._current_node
@@ -1040,11 +1040,11 @@ function cut_condition(t::ExtensionType, m::Optimizer)
 
         elseif obj_type === SCALAR_QUADRATIC
             objective_lo = lower_interval_bound(m, m._working_problem._objective_sqf, n)
-            println("objective_lo = $(objective_lo)")
+            #println("objective_lo = $(objective_lo)")
 
         elseif obj_type === NONLINEAR
             objective_lo = lower_interval_bound(m, m._working_problem._objective_nl, n)
-            println("objective_lo = $(objective_lo)")
+            #println("objective_lo = $(objective_lo)")
 
         end
 
