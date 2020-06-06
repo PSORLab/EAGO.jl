@@ -941,3 +941,39 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
     return nothing
 end
+
+
+###
+### Define forward evaluation pass
+###
+function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
+    # check that prior subexpressions have been evaluated
+    # i.e. box_id is same and reference point is the same
+    for i = 1:d.dependent_subexpression_count
+        if !prior_eval(evaluator, i)
+            subexpr = evaluator.subexpressions[i]
+            forward_pass!(evaluator, subexpr)
+        end
+    end
+    forward_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
+                         evaluator.upper_variable_bounds, d.setstorage,
+                         d.numberstorage, d.isnumber, d.tpdict,
+                         d.tp1storage, d.tp2storage, d.tp3storage, d.tp4storage,
+                         evaluator.user_operators, evaluator.subexpressions,
+                         d.grad_sparsity, d.reverse_sparsity,
+                         evaluator.num_mv_buffer, evaluator.ctx,
+                         evaluator.is_post, evaluator.is_intersect,
+                         evaluator.is_first_eval, evaluator.interval_intersect,
+                         evaluator.cv_grad_buffer, evaluator.cc_grad_buffer,
+                         evaluator.treat_x_as_number)
+    return nothing
+end
+
+function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
+
+    forward_pass!(evaluator, d.expr)
+    d.has_value = true
+    d.last_past_reverse = false
+
+    return nothing
+end

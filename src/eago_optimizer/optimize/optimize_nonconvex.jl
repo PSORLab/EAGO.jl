@@ -813,14 +813,14 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
     if !cp_condition(m)
         for i = 1:m._working_problem._saf_leq_count
             saf_leq =  m._working_problem._saf_leq[i]
-            feasible_flag &= (lower_interval_bound(saf_leq, n) <= 0.0)
+            feasible_flag &= (lower_interval_bound(m, saf_leq, n) <= 0.0)
             !feasible_flag && break
         end
 
         if feasible_flag
             for i = 1:m._working_problem._saf_eq_count
                 saf_eq =  m._working_problem._saf_eq[i]
-                lower_value, upper_value = interval_bound(saf_eq, n)
+                lower_value, upper_value = interval_bound(m, saf_eq, n)
                 feasible_flag &= (lower_value <= 0.0 <= upper_value)
                 !feasible_flag && break
             end
@@ -829,7 +829,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
         if feasible_flag
             for i = 1:m._working_problem._sqf_leq_count
                 sqf_leq =  m._working_problem._sqf_leq[i]
-                feasible_flag &= (lower_interval_bound(sqf_leq, n) <= 0.0)
+                feasible_flag &= (lower_interval_bound(m, sqf_leq, n) <= 0.0)
                 !feasible_flag && break
             end
         end
@@ -837,7 +837,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
         if feasible_flag
             for i = 1:m._working_problem._sqf_eq_count
                 sqf_eq =  m._working_problem._sqf_eq[i]
-                lower_value, upper_value = interval_bound(sqf_eq, n)
+                lower_value, upper_value = interval_bound(m, sqf_eq, n)
                 feasible_flag &= (lower_value <= 0.0 <= upper_value)
                 !feasible_flag && break
             end
@@ -846,7 +846,7 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
         if feasible_flag
             for i = 1:m._working_problem._nonlinear_count
                 nl_constr =  m._working_problem._nonlinear_constr[i]
-                lower_value, upper_value = interval_bound(nl_constr, n)
+                lower_value, upper_value = interval_bound(m, nl_constr, n)
                 feasible_flag &= upper_value < nl_constr.lower_bound
                 feasible_flag &= lower_value > nl_constr.upper_bound
                 !feasible_flag && break
@@ -878,9 +878,11 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     m._working_problem._relaxed_evaluator.is_post = true
     if !m._obbt_performed_flag
-        set_node!(m._working_problem._relaxed_evaluator, n)
-        set_reference_point!(m)
-        set_node_flag!(m)
+        if m._nonlinear_evaluator_created
+            set_node!(m._working_problem._relaxed_evaluator, n)
+            set_node_flag!(m)
+            set_reference_point!(m)
+        end
         update_relaxed_problem_box!(m)
         relax_constraints!(m, 1)
     end
@@ -939,7 +941,8 @@ function cut_update!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
-    #println("obj_val: $(obj_val)")
+    println("obj_val: $(obj_val)")
+    println("prior_obj_val: $(prior_obj_val)")
 
     if m._cut_iterations <= m._parameters.cut_min_iterations
         m._cut_add_flag = true
@@ -978,7 +981,7 @@ interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
 
-
+    println("ran cut condition")
     continue_cut_flag = m._cut_add_flag
     continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
     n = m._current_node
@@ -1033,13 +1036,14 @@ function cut_condition(t::ExtensionType, m::Optimizer)
             end
 
         elseif obj_type === SCALAR_AFFINE
-            objective_lo = lower_interval_bound(m._working_problem._objective_saf_parsed, n)
+            objective_lo = lower_interval_bound(m, m._working_problem._objective_saf_parsed, n)
 
         elseif obj_type === SCALAR_QUADRATIC
-            objective_lo = lower_interval_bound(m._working_problem._objective_sqf, n)
+            objective_lo = lower_interval_bound(m, m._working_problem._objective_sqf, n)
+            println("objective_lo = $(objective_lo)")
 
         elseif obj_type === NONLINEAR
-            objective_lo = lower_interval_bound(m._working_problem._objective_nl, n)
+            objective_lo = lower_interval_bound(m, m._working_problem._objective_nl, n)
             println("objective_lo = $(objective_lo)")
 
         end

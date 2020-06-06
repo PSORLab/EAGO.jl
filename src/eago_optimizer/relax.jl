@@ -73,6 +73,11 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     upper_bounds = n.upper_variable_bounds
     quadratic_constant = func.constant
 
+    # Affine terms only contribute coefficients, so the respective
+    # values do not contribute to the cut. Since all quadratic terms
+    # are considered to be branch variables we exclude any potential
+    # need to retrieve variable bounds from locations other than
+    # the node.
     for term in func.quadratic_terms
 
         a = term.coefficient

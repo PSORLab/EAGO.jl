@@ -591,6 +591,9 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _new_eval_constraint::Bool = false
     _new_eval_objective::Bool = false
 
+    "Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
+    _nonlinear_evaluator_created::Bool = false
+
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end

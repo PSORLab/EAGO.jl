@@ -753,3 +753,23 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
     return continue_flag
 end
+
+"""
+$(FUNCTIONNAME)
+
+A reverse_pass! on a `BufferedNonlinear` structure `d` intersects the existing value of the `d` with
+constraint bounds then reverse propagates a set-valued operator (by default McCormick operator) along the
+computational tape. The tapes are updated in place and boolean value is returned indicating whether the
+reverse propagation yeilded a infeasible point (true = still feasible, false is proved infeasible).
+"""
+function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
+    return reverse_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
+                                evaluator.upper_variable_bounds, d.setstorage,
+                                d.numberstorage, d.isnumber, evaluator.is_post)
+end
+
+function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
+    d.last_past_reverse = true
+    set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
+    return reverse_pass!(evaluator, d.expr)
+end

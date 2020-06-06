@@ -17,10 +17,6 @@
 # retrieve_node
 # prior_eval
 # copy_subexpression_value!
-# forward_pass!
-# reverse_pass!
-# lower_interval_bound
-# interval_bound
 # eliminate_fixed_variables!
 #############################################################################
 
@@ -348,6 +344,9 @@ function set_node!(evaluator::Evaluator, n::NodeBB)
     eval_lower_bounds = evaluator.lower_variable_bounds
     eval_upper_bounds = evaluator.upper_variable_bounds
 
+    println("node_lower_bounds: $(node_lower_bounds)")
+    println("eval_lower_bounds: $(eval_lower_bounds)")
+
     for i = 1:length(evaluator.current_node)
         full_variable_index = node_to_variable_map[i]
         eval_lower_bounds[full_variable_index] = node_lower_bounds[i]
@@ -404,105 +403,6 @@ function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpr
     return nothing
 end
 
-include("forward_pass.jl")
-
-###
-### Define forward evaluation pass
-###
-function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
-    # check that prior subexpressions have been evaluated
-    # i.e. box_id is same and reference point is the same
-    for i = 1:d.dependent_subexpression_count
-        if !prior_eval(evaluator, i)
-            subexpr = evaluator.subexpressions[i]
-            forward_pass!(evaluator, subexpr)
-        end
-    end
-    forward_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
-                         evaluator.upper_variable_bounds, d.setstorage,
-                         d.numberstorage, d.isnumber, d.tpdict,
-                         d.tp1storage, d.tp2storage, d.tp3storage, d.tp4storage,
-                         evaluator.user_operators, evaluator.subexpressions,
-                         d.grad_sparsity, d.reverse_sparsity,
-                         evaluator.num_mv_buffer, evaluator.ctx,
-                         evaluator.is_post, evaluator.is_intersect,
-                         evaluator.is_first_eval, evaluator.interval_intersect,
-                         evaluator.cv_grad_buffer, evaluator.cc_grad_buffer,
-                         evaluator.treat_x_as_number)
-    return nothing
-end
-
-function forward_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
-
-    forward_pass!(evaluator, d.expr)
-    d.has_value = true
-    d.last_past_reverse = false
-
-    return nothing
-end
-
-###
-### Define backwards evaluation pass
-###
-
-include("reverse_pass.jl")
-
-"""
-$(FUNCTIONNAME)
-
-A reverse_pass! on a `BufferedNonlinear` structure `d` intersects the existing value of the `d` with
-constraint bounds then reverse propagates a set-valued operator (by default McCormick operator) along the
-computational tape. The tapes are updated in place and boolean value is returned indicating whether the
-reverse propagation yeilded a infeasible point (true = still feasible, false is proved infeasible).
-"""
-function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
-    return reverse_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
-                                evaluator.upper_variable_bounds, d.setstorage,
-                                d.numberstorage, d.isnumber, evaluator.is_post)
-end
-
-function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
-    d.last_past_reverse = true
-    set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
-    return reverse_pass!(evaluator, d.expr)
-end
-
-###
-### Interval bounding definitions
-###
-function lower_interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
-    if !d.has_value
-        forward_pass!(d.evaluator, d)
-    end
-
-    expr = d.expr
-    if expr.isnumber[1]
-        lower_value = expr.numberstorage[1]
-    else
-        lower_value = expr.setstorage[1].Intv.lo
-    end
-
-    return lower_value
-end
-
-function interval_bound(d::BufferedNonlinearFunction{V}, n::NodeBB) where V
-    if !d.has_value
-        forward_pass!(d.evaluator, d)
-    end
-
-    expr = d.expr
-    if expr.isnumber[1]
-        interval_value = Interval(expr.numberstorage[1])
-    else
-        interval_value = expr.setstorage[1].Intv
-    end
-
-    return interval_value
-end
-
-###
-### Parsing definitions
-###
 function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{VariableInfo}) where V
     num_constants = length(f.const_values)
     indx_to_const_loc = Dict{Int,Int}()
@@ -532,3 +432,6 @@ end
 function eliminate_fixed_variables!(f::BufferedNonlinearFunction{V}, v::Vector{VariableInfo}) where V
     eliminate_fixed_variables!(f.expr, v)
 end
+
+include("forward_pass.jl")
+include("reverse_pass.jl")

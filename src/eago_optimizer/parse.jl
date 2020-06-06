@@ -281,6 +281,7 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         end
     end
 
+    println("length(m._working_problem._variable_info) = $(length(m._working_problem._variable_info))")
     relax_evaluator.variable_count = length(m._working_problem._variable_info)
     relax_evaluator.user_operators = evaluator.m.nlp_data.user_operators
 
@@ -292,6 +293,9 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator.cc_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
     relax_evaluator.ctx       = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ))
+
+    m._nonlinear_evaluator_created = true
+
     return nothing
 end
 

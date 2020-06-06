@@ -97,6 +97,7 @@ module EAGO
 
     #
     include("eago_optimizer/relax.jl")
+    include("eago_optimizer/bound.jl")
 
     #
     include("eago_optimizer/domain_reduction.jl")
