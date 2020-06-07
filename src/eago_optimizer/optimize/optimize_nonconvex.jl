@@ -876,7 +876,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
 
-    m._working_problem._relaxed_evaluator.is_post = true
+    m._working_problem._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
     if !m._obbt_performed_flag
         if m._nonlinear_evaluator_created
             set_node!(m._working_problem._relaxed_evaluator, n)

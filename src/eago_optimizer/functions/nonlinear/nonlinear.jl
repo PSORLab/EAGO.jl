@@ -328,6 +328,8 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     is_intersect::Bool = false
     is_first_eval::Bool = false
     interval_intersect::Bool = false
+
+    subgrad_tol::Float64 = 1E-10
 end
 
 """

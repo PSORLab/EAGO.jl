@@ -255,7 +255,6 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
                                                                               m._parameters.relax_tag))
     end
      m._working_problem._nonlinear_count =  length(m._working_problem._nonlinear_constr)
-
     return nothing
 end
 
@@ -293,6 +292,7 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator.cc_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
     relax_evaluator.ctx       = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ))
+    relax_evaluator.subgrad_tol       = m._parameters.subgrad_tol
 
     m._nonlinear_evaluator_created = true
 

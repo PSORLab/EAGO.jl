@@ -156,6 +156,7 @@ Base.@kwdef mutable struct EAGOParameters
     "Perform tightening of interval bounds using subgradients at each factor in
     each nonlinear tape during a forward-reverse pass (default = true)."
     subgrad_tighten::Bool = true
+    subgrad_tol::Float64 = 1E-10
 
     # Tolerance to add cuts and max number of cuts
     cut_min_iterations::Int64 = 1
