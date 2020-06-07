@@ -208,7 +208,7 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
 end
 
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator,
-                                 use_cvx::Bool, new_pass::Bool) where {N,T<:RelaxTag}
+                                 use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {N,T<:RelaxTag}
 
     if new_pass
         forward_pass!(evaluator, f)
@@ -218,6 +218,9 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
 
     expr = f.expr
     grad_sparsity = expr.grad_sparsity
+    println("grad_sparsity = $(grad_sparsity)")
+    println("upper_bound = $(f.upper_bound)")
+    println("lower_bound = $(f.lower_bound)")
     if expr.isnumber[1]
         f.saf.constant = expr.numberstorage[1]
         for i = 1:N
@@ -231,19 +234,20 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
 
         if finite_cut
             value = f.expr.setstorage[1]
-            grad_sparsity = f.expr.grad_sparsity
-            f.saf.constant = use_cvx ? value.cv : -value.cc
+            f.saf.constant = use_cvx ? value.cv : value.cc
             for i = 1:N
                 vval = @inbounds grad_sparsity[i]
                 if use_cvx
                     coef = @inbounds value.cv_grad[i]
                 else
-                    coef = @inbounds -value.cc_grad[i]
+                    coef = @inbounds value.cc_grad[i]
                 end
                 f.saf.terms[i] = SAT(coef, VI(vval))
                 f.saf.constant -= coef*(@inbounds x[vval])
             end
-            f.saf.constant += use_cvx ? -f.upper_bound : f.lower_bound
+            if is_constraint
+                f.saf.constant += use_cvx ? -f.upper_bound : f.lower_bound
+            end
         end
     end
 
@@ -265,13 +269,12 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
 end
 
 function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
-
     evaluator = m._working_problem._relaxed_evaluator
 
-    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true)
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
-    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false)
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
     return nothing
@@ -313,13 +316,14 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     buffered_nl = wp._objective_nl
 
     relaxed_evaluator.is_first_eval = m._new_eval_objective
-    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, true)
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, true, false)
     relaxed_evaluator.is_first_eval = false
 
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, buffered_nl.saf)
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
             wp._objective_saf.constant = buffered_nl.saf.constant
+            println("wp._objective_saf $(wp._objective_saf)")
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
     end
@@ -378,7 +382,7 @@ function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64,
     buffered_nl = wp._objective_nl
 
     relaxed_evaluator.is_first_eval = m._new_eval_objective
-    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true)
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, false, true)
 
     if finite_cut_generated
         copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)

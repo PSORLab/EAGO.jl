@@ -15,7 +15,7 @@
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 6
-const REVERSE_DEBUG = true
+const REVERSE_DEBUG = false
 
 """
 $(FUNCTIONNAME)

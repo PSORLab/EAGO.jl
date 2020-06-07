@@ -344,9 +344,6 @@ function set_node!(evaluator::Evaluator, n::NodeBB)
     eval_lower_bounds = evaluator.lower_variable_bounds
     eval_upper_bounds = evaluator.upper_variable_bounds
 
-    println("node_lower_bounds: $(node_lower_bounds)")
-    println("eval_lower_bounds: $(eval_lower_bounds)")
-
     for i = 1:length(evaluator.current_node)
         full_variable_index = node_to_variable_map[i]
         eval_lower_bounds[full_variable_index] = node_lower_bounds[i]
