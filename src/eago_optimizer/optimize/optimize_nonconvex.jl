@@ -23,9 +23,13 @@ function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_
     return nothing
 end
 
-function reset_flag!(m::Optimizer)
+function reset_relaxation!(m::Optimizer)
     m._new_eval_objective = true
     m._new_eval_constraint = true
+
+    delete_nl_constraints!(m)
+    delete_objective_cuts!(m)
+
     return nothing
 end
 
@@ -277,13 +281,27 @@ function load_relaxed_problem!(m::Optimizer)
         end
     end
 
+    # set node index to single variable constraint index maps
+    m._node_to_sv_leq_ci = fill(CI{SV,LT}(-1), branch_variable_count)
+    m._node_to_sv_geq_ci = fill(CI{SV,GT}(-1), branch_variable_count)
+    for i = 1:wp._var_leq_count
+        ci_sv_lt, branch_index = m._relaxed_variable_lt[i]
+        m._node_to_sv_leq_ci[branch_index] = ci_sv_lt
+    end
+    for i = 1:wp._var_geq_count
+        ci_sv_gt, branch_index = m._relaxed_variable_gt[i]
+        m._node_to_sv_geq_ci[branch_index] = ci_sv_gt
+    end
+
+    # set number of variables to branch on
     m._branch_variable_count = branch_variable_count
 
     # add linear constraints
     add_linear_constraints!(m, relaxed_optimizer)
 
+    # sets relaxed problem objective sense to Min as all problems
+    # are internally converted in Min problems in EAGO
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
     return nothing
 end
 
@@ -315,33 +333,15 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._upper_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
 
     # add storage for obbt ( perform obbt on all relaxed variables, potentially)
-    #=
-    if isempty(m.obbt_variable_values)
-        m._obbt_variables = fill(VI(-1), branch_variable_count)
-        for i = 1:m._working_problem._variable_count
-            if m._branch_variables[i]
-                m._obbt_variables[i] = VI(i)
-            end
-        end
-    else
-        for i = 1:m._working_problem._variable_count
-            if m.obbt_variable_values[i]
-                m._obbt_variables[i] = m.obbt_variable_values[i]
-            end
-        end
-    end
-    =#
-    obbt_variable_count = length(m._obbt_variables)
-
-    m._obbt_working_lower_index = fill(false, obbt_variable_count)
-    m._obbt_working_upper_index = fill(false, obbt_variable_count)
-    m._old_low_index            = fill(false, obbt_variable_count)
-    m._old_upp_index            = fill(false, obbt_variable_count)
-    m._new_low_index            = fill(false, obbt_variable_count)
-    m._new_upp_index            = fill(false, obbt_variable_count)
-    m._lower_indx_diff          = fill(false, obbt_variable_count)
-    m._upper_indx_diff          = fill(false, obbt_variable_count)
-    m._obbt_variable_count      = obbt_variable_count
+    m._obbt_working_lower_index = fill(false, branch_variable_count)
+    m._obbt_working_upper_index = fill(false, branch_variable_count)
+    m._old_low_index            = fill(false, branch_variable_count)
+    m._old_upp_index            = fill(false, branch_variable_count)
+    m._new_low_index            = fill(false, branch_variable_count)
+    m._new_upp_index            = fill(false, branch_variable_count)
+    m._lower_indx_diff          = fill(false, branch_variable_count)
+    m._upper_indx_diff          = fill(false, branch_variable_count)
+    m._obbt_variable_count      = branch_variable_count
 
     # add storage for objective cut if quadratic or nonlinear
     wp = m._working_problem
@@ -700,7 +700,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     #println("START PREPROCESS")
     check_for_solution!(m._current_node)
 
-    reset_flag!(m)
+    reset_relaxation!(m)
 
     wp = m._working_problem
     params = m._parameters
@@ -1052,8 +1052,6 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     if !continue_cut_flag
         m._working_problem._relaxed_evaluator.is_intersect = false
         m._working_problem._relaxed_evaluator.interval_intersect = false
-        delete_nl_constraints!(m)
-        delete_objective_cuts!(m)
     end
 
     # check to see if interval bound is preferable

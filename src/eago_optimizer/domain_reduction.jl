@@ -344,9 +344,15 @@ function obbt!(m::Optimizer)
                 updated_value = xLP[node_index]
                 previous_value = n.lower_variable_bounds[lower_indx]
 
-                # if bound is improved update node and corresponding constraint
+                # if bound is improved update node and corresponding constraint update
+                # the node bounds and the single variable bound in the relaxation
+                # we assume branching does not occur on fixed variables and interval
+                # constraints are internally bridged by EAGO. So the only L <= x
+                # constraint in the model is a GreaterThan.
                 if updated_value > previous_value
-                    # reset_lower_bound!(m, relaxed_optimizer, node_index, updated_value)
+                    #println("updated value improves lower bound from $previous_value to $updated_value")
+                    sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
+                    MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
                     @inbounds n.lower_variable_bounds[lower_indx] = updated_value
                 end
 
@@ -374,15 +380,22 @@ function obbt!(m::Optimizer)
             valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
                                                             m._preprocess_result_status)
 
+            #println("upper arc = $(valid_flag), $(feasible_flag)")
             if valid_flag && feasible_flag
                 xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
                 node_index = branch_to_sol_map[upper_indx]
                 updated_value = xLP[node_index]
                 previous_value = n.upper_variable_bounds[upper_indx]
 
-                # if bound is improved update node and corresponding constraint
+                # if bound is improved update node and corresponding constraint update
+                # the node bounds and the single variable bound in the relaxation
+                # we assume branching does not occur on fixed variables and interval
+                # constraints are internally bridged by EAGO. So the only U => x
+                # constraint in the model is a LessThan.
                 if updated_value < previous_value
-                    # reset_upper_bound!(m, relaxed_optimizer, node_index, updated_value)
+                    #println("updated value improves lower bound from $previous_value to $updated_value")
+                    sv_leq_ci = m._node_to_sv_leq_ci[upper_indx]
+                    MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
                     @inbounds n.upper_variable_bounds[upper_indx] = updated_value
                 end
 

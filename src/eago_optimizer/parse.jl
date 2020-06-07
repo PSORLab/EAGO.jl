@@ -402,10 +402,10 @@ end
 
 ### Routines for parsing the full nonconvex problem
 """
-Reformulates quadratic terms in SOC constraints if possible. For <= or >=,
-the quadratic term is deleted if an SOCP is detected. For ==, the SOC check
-is done for each >= and <=, the convex constraint is reformulated to a SOC,
-the concave constraint is keep as a quadratic.
+[FUTURE FEATURE] Reformulates quadratic terms in SOC constraints if possible.
+For <= or >=, the quadratic term is deleted if an SOCP is detected. For ==,
+the SOC check is done for each >= and <=, the convex constraint is reformulated
+to a SOC, the concave constraint is keep as a quadratic.
 """
 function parse_classify_quadratic!(m::Optimizer)
     #=
@@ -420,13 +420,15 @@ function parse_classify_quadratic!(m::Optimizer)
         end
     end
     =#
-    nothing
+    return nothing
 end
 
 """
+[FUTURE FEATURE] Parses provably convex nonlinear functions into a convex
+function buffer
 """
 function parse_classify_nlp(m)
-    nothing
+    return nothing
 end
 
 """
@@ -499,4 +501,5 @@ end
 Basic parsing for global solutions (no extensive manipulation)
 """
 function parse_global!(t::ExtensionType, m::Optimizer)
+    return nothing
 end

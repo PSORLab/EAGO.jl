@@ -592,6 +592,9 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _new_eval_constraint::Bool = false
     _new_eval_objective::Bool = false
 
+    _node_to_sv_leq_ci::Vector{CI{SV,LT}} = CI{SV,LT}[]
+    _node_to_sv_geq_ci::Vector{CI{SV,GT}} = CI{SV,GT}[]
+
     "Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
     _nonlinear_evaluator_created::Bool = false
 

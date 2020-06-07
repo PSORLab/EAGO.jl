@@ -1002,6 +1002,7 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
             forward_pass!(evaluator, subexpr)
         end
     end
+
     forward_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
                          evaluator.upper_variable_bounds, d.grad_sparsity,
                          d.setstorage,
