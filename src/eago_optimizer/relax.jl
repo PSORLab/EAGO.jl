@@ -234,13 +234,13 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
 
         if finite_cut
             value = f.expr.setstorage[1]
-            f.saf.constant = use_cvx ? value.cv : value.cc
+            f.saf.constant = use_cvx ? value.cv : -value.cc
             for i = 1:N
                 vval = @inbounds grad_sparsity[i]
                 if use_cvx
                     coef = @inbounds value.cv_grad[i]
                 else
-                    coef = @inbounds value.cc_grad[i]
+                    coef = @inbounds -value.cc_grad[i]
                 end
                 f.saf.terms[i] = SAT(coef, VI(vval))
                 f.saf.constant -= coef*(@inbounds x[vval])
