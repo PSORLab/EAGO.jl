@@ -175,8 +175,9 @@ end
 ###
 
 function lower_interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+    #println("d.has_value: $(d.has_value)")
     if !d.has_value
-        forward_pass!(d.evaluator, d)
+        forward_pass!(m._working_problem._relaxed_evaluator, d)
     end
 
     expr = d.expr

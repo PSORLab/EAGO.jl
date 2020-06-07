@@ -320,8 +320,9 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     relaxed_evaluator = wp._relaxed_evaluator
     buffered_nl = wp._objective_nl
 
-    relaxed_evaluator.is_first_eval = m._new_eval_objective
-    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, true, false)
+    new_flag = m._new_eval_objective
+    relaxed_evaluator.is_first_eval = new_flag
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, new_flag, false)
     relaxed_evaluator.is_first_eval = false
 
     if finite_cut_generated
@@ -382,17 +383,24 @@ relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
 function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64, check_safe::Bool)
 
+    #println("ran objective cut nonlinear")
     relaxed_optimizer = m.relaxed_optimizer
     relaxed_evaluator = wp._relaxed_evaluator
     buffered_nl = wp._objective_nl
 
-    relaxed_evaluator.is_first_eval = m._new_eval_objective
-    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, false, true)
+    # if the objective cut is the first evaluation of the objective expression
+    # then perform a a forward pass
+    new_flag = m._new_eval_objective
+    relaxed_evaluator.is_first_eval = new_flag
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, new_flag, false)
 
     if finite_cut_generated
         copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
         wp._objective_saf.constant = 0.0
         if !check_safe || is_safe_cut!(m,  buffered_nl.saf)
+            # TODO: When we introduce numerically safe McCormick operators we'll need to replace
+            # the UBD - buffered_nl.saf.constant with a correctly rounded version. For now,
+            # a small factor is added to the UBD calculation initially which should be sufficient.
             ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_nl.saf.constant))
             push!(m._objective_cut_ci_saf, ci_saf)
         end

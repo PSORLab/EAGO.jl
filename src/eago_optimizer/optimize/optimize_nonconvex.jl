@@ -23,9 +23,42 @@ function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_
     return nothing
 end
 
+function reset_flag!(m::Optimizer)
+    m._new_eval_objective = true
+    m._new_eval_constraint = true
+    return nothing
+end
+
 
 function check_for_solution!(n)
-    #=
+    xsol = [0.16666662509163402, 0.0, 0.0, 1.7759562500751098, 2.0, 0.9072011719589772, 0.95,
+    12.0, 2.0, 1.51566550424387, 1.0, 0.9959266654708594, 1.0, 1.002859896026428]
+    contains_sol = true
+    for i = 1:length(xsol)
+        if  (n.lower_variable_bounds[i] > xsol[i]) || (xsol[i] > n.upper_variable_bounds[i])
+            contains_sol = false
+        end
+    end
+
+    if contains_sol
+    #    println("THIS NODE CONTAINS THE GLOBAL SOLUTION")
+        #=
+        for i = 1:length(xsol)
+            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
+        end
+        =#
+    else
+        #println("THIS NODE lacks the GLOBAL SOLUTION")
+        #=
+        for i = 1:length(xsol)
+            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
+        end
+        =#
+    end
+    return nothing
+end
+
+function check_for_storage!(n)
     xsol = [0.16666662509163402, 0.0, 0.0, 1.7759562500751098, 2.0, 0.9072011719589772, 0.95,
     12.0, 2.0, 1.51566550424387, 1.0, 0.9959266654708594, 1.0, 1.002859896026428]
     contains_sol = true
@@ -666,6 +699,8 @@ constraint programming walk up to tolerances specified in
 function preprocess!(t::ExtensionType, m::Optimizer)
     #println("START PREPROCESS")
     check_for_solution!(m._current_node)
+
+    reset_flag!(m)
 
     wp = m._working_problem
     params = m._parameters
