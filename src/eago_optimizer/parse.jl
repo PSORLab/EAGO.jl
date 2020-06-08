@@ -226,9 +226,6 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
 
-
-    #println("typeof(nlp_data) = $(nlp_data)")
-
     # scrubs udf functions using Cassette to remove odd data structures...
     # alternatively convert udfs to JuMP scripts...
     m._parameters.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
@@ -280,7 +277,6 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         end
     end
 
-    println("length(m._working_problem._variable_info) = $(length(m._working_problem._variable_info))")
     relax_evaluator.variable_count = length(m._working_problem._variable_info)
     relax_evaluator.user_operators = evaluator.m.nlp_data.user_operators
 
@@ -291,8 +287,8 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator.cv_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.cc_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
-    relax_evaluator.ctx       = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ))
-    relax_evaluator.subgrad_tol       = m._parameters.subgrad_tol
+    relax_evaluator.ctx                   = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ))
+    relax_evaluator.subgrad_tol           = m._parameters.subgrad_tol
 
     m._nonlinear_evaluator_created = true
 
@@ -444,7 +440,8 @@ function parse_classify_problem!(m::Optimizer)
     quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
     linear_or_sv_objective = (ip._objective_type === SINGLE_VARIABLE || ip._objective_type === SCALAR_AFFINE)
-    relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
+    relaxed_supports_soc = false
+    #TODO: relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
 
     if integer_variable_number === 0
 
@@ -452,11 +449,10 @@ function parse_classify_problem!(m::Optimizer)
             nl_constraint_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = LP
 
-            println(" was lp")
         elseif quad_constraint_number === 0 && relaxed_supports_soc &&
                nl_constraint_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = SOCP
-            println(" was socp")
+
         else
             #parse_classify_quadratic!(m)
             #if iszero(m._input_nonlinear_constraint_number)
@@ -468,7 +464,6 @@ function parse_classify_problem!(m::Optimizer)
             #    m._problem_type = parse_classify_nlp(m)
             #end
             m._working_problem._problem_type = MINCVX
-            println(" was minlp")
 
         end
     else

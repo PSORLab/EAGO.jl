@@ -925,8 +925,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._working_problem._objective_nl.has_value = false
     m._working_problem._relaxed_evaluator.interval_intersect = true
 
-    #compute_compare_mcs!(m)
-
     relax_objective!(m, 1)
 
     # Optimizes the object
@@ -934,9 +932,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
-    if m._parameters.verbosity > 5
-        display_relaxed_optimizer!(m, relaxed_optimizer, " used in lower_problem!")
-    end
     MOI.optimize!(relaxed_optimizer)
 
     m._lower_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
@@ -948,7 +943,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = true
         m._lower_feasibility = true
         m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-        #println("m._lower_objective_value: $(m._lower_objective_value)")
         for i = 1:m._working_problem._variable_count
              m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end

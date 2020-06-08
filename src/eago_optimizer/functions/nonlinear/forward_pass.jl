@@ -819,11 +819,11 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
         op = nod.index
 
         if nod.nodetype == JuMP._Derivatives.VALUE
-             numvalued[k] = true
+            numvalued[k] = true
             FORWARD_DEBUG && println("value[$op]    at k = $k -> $(numberstorage[k])")
 
         elseif nod.nodetype == JuMP._Derivatives.PARAMETER
-             numvalued[k] = true
+            numvalued[k] = true
             FORWARD_DEBUG && println("parameter[$op] at k = $k -> $(numberstorage[k])")
 
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE

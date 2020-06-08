@@ -15,7 +15,7 @@
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 6
-const REVERSE_DEBUG = false
+const REVERSE_DEBUG = true
 
 """
 $(FUNCTIONNAME)
@@ -24,8 +24,8 @@ Updates storage tapes with reverse evalution of node representing `n = x + y` wh
 """
 function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                              is_post::Bool) where {N, T<:RelaxTag}
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                              subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse plus binary ---")
 
@@ -40,24 +40,24 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 =  numberstorage[arg1_index]
+        num1 = numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 =  setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2
     arg2_index =  children_arr[idx2]
     arg2_is_number =  numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -65,10 +65,10 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         c, a, b = plus_rev(setk, set1, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b  = plus_rev(setk, num1, set2)
+        c, a, b = plus_rev(setk, num1, set2)
 
     else
-        c, a, b  = plus_rev(setk, set1, set2)
+        c, a, b = plus_rev(setk, set1, set2)
     end
 
     if !arg1_is_number
@@ -77,7 +77,7 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         elseif isnan(a)
             setstorage[arg1_index] = MC{N,T}(a.Intv)
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
         end
         REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
@@ -88,11 +88,10 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         elseif isnan(b)
             setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
         end
         REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
-
 
     return true
 end
@@ -104,13 +103,13 @@ Updates storage tapes with reverse evalution of node representing `n = +(x,y,z..
 """
 function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                              is_post::Bool) where {N, T<:RelaxTag}
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                              subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse plus narity ---")
 
     continue_flag = true
-    argk_is_number =  numvalued[k]
+    argk_is_number = numvalued[k]
     if !argk_is_number
         setk =  setstorage[k]
     end
@@ -119,10 +118,10 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
     # a reverse is then compute with respect to this argument
     active_count_number = 0
     for idx in children_idx
-        active_idx =  children_arr[idx]
+        active_idx = children_arr[idx]
 
         # don't contract a number valued argument
-        active_arg_is_number =  numvalued[active_idx]
+        active_arg_is_number = numvalued[active_idx]
         active_arg_is_number && continue
 
         if active_count_number >= MAX_ASSOCIATIVE_REVERSE
@@ -135,14 +134,14 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
             inactive_idx =  children_arr[nidx]
             if inactive_idx != active_idx
                 if  numvalued[inactive_idx]
-                    tmp_sum +=  numberstorage[inactive_idx]
+                    tmp_sum += numberstorage[inactive_idx]
                 else
-                    tmp_sum +=  setstorage[inactive_idx]
+                    tmp_sum += setstorage[inactive_idx]
                 end
             end
         end
 
-        active_set =  setstorage[active_idx]
+        active_set = setstorage[active_idx]
         c, a, b = plus_rev(setk, active_set, tmp_sum)
 
         if isempty(a)
@@ -150,7 +149,7 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         elseif isnan(a)
             setstorage[active_idx] = MC{N,T}(a.Intv)
         else
-            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
+            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
         end
     end
 
@@ -164,17 +163,17 @@ Updates storage tapes with reverse evalution of node representing `n = x * y` wh
 """
 function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                   numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                                  is_post::Bool) where {N, T<:RelaxTag}
+                                  x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                                  subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println(" is_post = $is_post")
 
     REVERSE_DEBUG && println("--- start reverse mult binary ---")
+
     # extract values for k
-    #argk_index =  children_arr[k]
-    argk_is_number =  numvalued[k]
+    argk_is_number = numvalued[k]
     if !argk_is_number
-        setk =  setstorage[k]
+        setk = setstorage[k]
         REVERSE_DEBUG && println("setk = $setk")
     end
 
@@ -183,24 +182,24 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
         num1 =  numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 =  setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2
     arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -220,7 +219,7 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
         elseif isnan(a)
             setstorage[arg1_index] = MC{N,T}(a.Intv)
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
         end
         REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
@@ -231,7 +230,7 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
         elseif isnan(b)
             setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
         end
         REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
@@ -246,8 +245,8 @@ Updates storage tapes with reverse evalution of node representing `n = *(x,y,z..
 """
 function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                               numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                              is_post::Bool) where {N, T<:RelaxTag}
+                              x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                              subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse mult narity ---")
     continue_flag = true
@@ -291,7 +290,7 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         elseif isnan(a)
             setstorage[active_idx] = MC{N,T}(a.Intv)
         else
-            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd) : a
+            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
         end
     end
 
@@ -300,11 +299,11 @@ end
 
 function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                        is_post::Bool) where {N, T<:RelaxTag}
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                        subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse minus ---")
-    # extract values for k
+
     #argk_index =  children_arr[k]
     argk_is_number = numvalued[k]
     if !argk_is_number
@@ -321,7 +320,7 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
+    arg1_index = children_arr[idx1]
     arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
@@ -332,13 +331,13 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     # extract values for argument 2
-    arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_index = children_arr[idx2]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -359,7 +358,7 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
             a = MC{N,T}(a.Intv)
             setstorage[arg1_index] = a
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
         end
         REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
@@ -372,7 +371,7 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
             b = MC{N,T}(b.Intv)
             setstorage[arg2_index] = b
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
         end
         REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
@@ -382,14 +381,15 @@ end
 
 function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                         numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                        is_post::Bool) where {N, T<:RelaxTag}
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                        subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse power ---")
+
     # extract values for k
     argk_is_number =  numvalued[k]
     if !argk_is_number
-        setk =  setstorage[k]
+        setk = setstorage[k]
     end
 
     # don't perform a reverse pass if the output was a number
@@ -402,84 +402,8 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
-    if arg1_is_number
-        set1 = zero(MC{N,T})
-        num1 =  numberstorage[arg1_index]
-    else
-        num1 = 0.0
-        set1 =  setstorage[arg1_index]
-    end
-
-    # extract values for argument 2
-    arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
-    if arg2_is_number
-        num2 =  numberstorage[arg2_index]
-        set2 = zero(MC{N,T})
-    else
-        set2 =  setstorage[arg2_index]
-        num2 = 0.0
-    end
-
-    if !arg1_is_number && arg2_is_number
-        c, a, b = power_rev(setk, set1, num2)
-
-    elseif arg1_is_number && !arg2_is_number
-        c, a, b = power_rev(setk, num1, set2)
-
-    else
-        c, a, b = power_rev(setk, set1, set2)
-    end
-
-    if !arg1_is_number
-        if isempty(a)
-            return false
-        elseif isnan(a)
-            setstorage[arg1_index] = MC{N,T}(a.Intv)
-        else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
-        end
-    end
-
-    if !arg2_is_number
-        if isempty(b)
-            return false
-        elseif isnan(b)
-            setstorage[arg2_index] = MC{N,T}(b.Intv)
-        else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
-        end
-    end
-
-    return true
-end
-
-function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
-                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
-                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
-                        is_post::Bool) where {N, T<:RelaxTag}
-
-    REVERSE_DEBUG && println("--- start reverse divide ---")
-    # extract values for k
-    argk_is_number =  numvalued[k]
-    if !argk_is_number
-        setk =  setstorage[k]
-    end
-
-    # don't perform a reverse pass if the output was a number
-    if argk_is_number
-        return true
-    end
-
-    # get row indices
-    idx1 = first(children_idx)
-    idx2 = last(children_idx)
-
-    # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
         num1 = numberstorage[arg1_index]
@@ -489,13 +413,13 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     end
 
     # extract values for argument 2
-    arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_index = children_arr[idx2]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -525,7 +449,84 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
         elseif isnan(b)
             setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd) : b
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+        end
+    end
+
+    return true
+end
+
+function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+                        numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                        x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                        subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
+
+    REVERSE_DEBUG && println("--- start reverse divide ---")
+
+    # extract values for k
+    argk_is_number =  numvalued[k]
+    if !argk_is_number
+        setk = setstorage[k]
+    end
+
+    # don't perform a reverse pass if the output was a number
+    if argk_is_number
+        return true
+    end
+
+    # get row indices
+    idx1 = first(children_idx)
+    idx2 = last(children_idx)
+
+    # extract values for argument 1
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
+    if arg1_is_number
+        set1 = zero(MC{N,T})
+        num1 = numberstorage[arg1_index]
+    else
+        num1 = 0.0
+        set1 = setstorage[arg1_index]
+    end
+
+    # extract values for argument 2
+    arg2_index = children_arr[idx2]
+    arg2_is_number = numvalued[arg2_index]
+    if arg2_is_number
+        num2 = numberstorage[arg2_index]
+        set2 = zero(MC{N,T})
+    else
+        set2 =  setstorage[arg2_index]
+        num2 = 0.0
+    end
+
+    if !arg1_is_number && arg2_is_number
+        c, a, b = power_rev(setk, set1, num2)
+
+    elseif arg1_is_number && !arg2_is_number
+        c, a, b = power_rev(setk, num1, set2)
+
+    else
+        c, a, b = power_rev(setk, set1, set2)
+    end
+
+    if !arg1_is_number
+        if isempty(a)
+            return false
+        elseif isnan(a)
+            setstorage[arg1_index] = MC{N,T}(a.Intv)
+        else
+            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+        end
+    end
+
+    if !arg2_is_number
+        if isempty(b)
+            return false
+        elseif isnan(b)
+            setstorage[arg2_index] = MC{N,T}(b.Intv)
+        else
+            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
         end
     end
 
@@ -533,11 +534,12 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 end
 
 function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::Vector{MC{N,T}}, x::Vector{Float64},
-                             lbd::Vector{Float64}, ubd::Vector{Float64}, is_post::Bool) where {N, T<:RelaxTag}
+                             lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                             subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse reverse_univariate ---")
-    valset =  setstorage[k]
-    argset =  setstorage[arg_indx]
+    valset = setstorage[k]
+    argset = setstorage[arg_indx]
 
     REVERSE_DEBUG && println("valset = $(valset)")
     REVERSE_DEBUG && println("argset = $(argset)")
@@ -549,7 +551,7 @@ function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::V
     elseif isnan(b)
         setstorage[arg_indx] = MC{N,T}(b.Intv)
     else
-        setstorage[arg_indx] = is_post ? set_value_post(x, b, lbd, ubd) : b
+        setstorage[arg_indx] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
     end
 
     return true
@@ -560,7 +562,7 @@ function reverse_set_subexpression!(k::Int64, op::Int64, subexpressions::Vector{
                                     setstorage::Vector{MC{N,T}}, cv_buffer::Vector{Float64},
                                     cc_buffer::Vector{Float64}, func_sparsity::Vector{Int64}) where {N, T<:RelaxTag}
 
-     is_number = subexpression_isnum[nod.index]
+    is_number = subexpression_isnum[nod.index]
     if !is_number
          subexpr_values_set[nod.index] = setstorage[k]
     end
@@ -586,7 +588,8 @@ There is a tacit assumption here that an abstract tree structure is used for pro
 eventually used then each reverse_xxx function will need to keep track of each variables state.
 """
 function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bool,Int64}, x::Vector{Float64},
-                              lbd::Vector{Float64}, ubd::Vector{Float64}, setstorage::Vector{MC{N,T}},
+                              lbd::Vector{Float64}, ubd::Vector{Float64}, sparsity::Vector{Int},
+                              setstorage::Vector{MC{N,T}}, subgrad_tol::Float64,
                               numberstorage::Vector{Float64}, numvalued::Vector{Bool},
                               is_post_input::Bool) where {N, T<:RelaxTag}
 
@@ -595,11 +598,11 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
     is_post = is_post_input
 
     for k = 1:length(nd)
-        #println("K = $k")
 
-         nod = nd[k]
+        println(" ")
+        nod = nd[k]
         ntype = nod.nodetype
-        nvalued =  numvalued[k]
+        nvalued = numvalued[k]
 
         if ntype == JuMP._Derivatives.VALUE      || ntype == JuMP._Derivatives.LOGIC     ||
            ntype == JuMP._Derivatives.COMPARISON || ntype == JuMP._Derivatives.PARAMETER ||
@@ -609,8 +612,6 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             op = nod.index
             REVERSE_DEBUG && println("--- start reverse reverse variable ---")
-            #is_nan = isnan(setstorage[k])
-            #println("is nan = $(is_nan)")
             variable_interval = setstorage[k].Intv
             lower_interval = variable_interval.lo
             upper_interval = variable_interval.hi
@@ -628,10 +629,7 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             lbd[op] = lower_interval
             ubd[op] = upper_interval
 
-            #if is_nan
-            #    setstorage[k] = MC{N,T}(variable_interval)
-            #end
-            REVERSE_DEBUG && println("variable_rev[$op]($continue_flag) at k = $k -> $(setstorage[k])")
+            REVERSE_DEBUG && println("variable_rev[$op][$k] at k = $k -> $(setstorage[k])")
 
         elseif nvalued
             continue
@@ -649,38 +647,48 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
             # :+
             elseif op === 1
+                REVERSE_DEBUG && println("plus_rev[$n_children][$k]   at k = $k -> $(setstorage[k])")
                 if n_children === 2
                     continue_flag &= reverse_plus_binary!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                          setstorage, x, lbd, ubd, is_post)
+                                                          setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
                 else
                     continue_flag &= reverse_plus_narity!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                          setstorage, x, lbd, ubd, is_post)
+                                                          setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
                 end
-                REVERSE_DEBUG && println("plus_rev[$n_children]($continue_flag)   at k = $k -> $(setstorage[k])")
+                REVERSE_DEBUG && !continue_flag && println("Infeasible node encountered.")
+
             # :-
             elseif op === 2
+                REVERSE_DEBUG && println("minus_rev[$k]        at k = $k -> $(setstorage[k])")
                 continue_flag &= reverse_minus!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                setstorage, x, lbd, ubd, is_post)
-                REVERSE_DEBUG && println("minus_rev($continue_flag)        at k = $k -> $(setstorage[k])")
+                                                setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
+                REVERSE_DEBUG && !continue_flag && println("Infeasible node encountered.")
+
             elseif op === 3 # :*
+                REVERSE_DEBUG && println("mult_rev[$n_children][$k]     at k = $k -> $(setstorage[k])")
                 if n_children === 2
                     continue_flag &= reverse_multiply_binary!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                              setstorage, x, lbd, ubd, is_post)
+                                                              setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
                 else
                     continue_flag &= reverse_multiply_narity!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                              setstorage, x, lbd, ubd, is_post)
+                                                              setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
                 end
-                REVERSE_DEBUG && println("mult_rev[$n_children]($continue_flag)     at k = $k -> $(setstorage[k])")
+                REVERSE_DEBUG && !continue_flag && println("Infeasible node encountered.")
+
              # :^
             elseif op === 4
+                REVERSE_DEBUG && println("power_rev[$k]      at k = $k -> $(setstorage[k])")
                 continue_flag &= reverse_power!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                setstorage, x, lbd, ubd, is_post)
-                REVERSE_DEBUG && println("power_rev($continue_flag)       at k = $k -> $(setstorage[k])")
+                                                setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
+                REVERSE_DEBUG && !continue_flag && println("Infeasible node encountered.")
+
             # :/
             elseif op === 5
+                REVERSE_DEBUG && println("power_div[$k]      at k = $k -> $(setstorage[k])")
                 continue_flag &= reverse_divide!(k, children_arr, children_idx, numvalued, numberstorage,
-                                                 setstorage, x, lbd, ubd, is_post)
-                REVERSE_DEBUG && println("power_div($continue_flag)      at k = $k -> $(setstorage[k])")
+                                                 setstorage, x, lbd, ubd, sparsity, subgrad_tol, is_post)
+                REVERSE_DEBUG && !continue_flag && println("Infeasible node encountered.")
+
             # ifelse
             elseif op === 6
                 continue
@@ -689,11 +697,13 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
         # assumes that child is set-valued and thus parent is set-valued (since isnumber already checked)
         elseif nod.nodetype == JuMP._Derivatives.CALLUNIVAR
             op = nod.index
+            REVERSE_DEBUG && println("fop_rev[$op][$k]       at k = $k -> $(setstorage[k])")
             if op <= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
                 arg_indx =  children_arr[adj.colptr[k]]
-                continue_flag &= reverse_univariate!(k, op, arg_indx, setstorage, x, lbd, ubd, is_post)
+                continue_flag &= reverse_univariate!(k, op, arg_indx, setstorage, x, lbd, ubd, sparsity,
+                                                     subgrad_tol, is_post)
             end
-            REVERSE_DEBUG && println("fop_rev[$op]($continue_flag)       at k = $k -> $(setstorage[k])")
+            REVERSE_DEBUG && !continue_flag && println("Infeasible node encountered.")
         end
 
         !continue_flag && break
@@ -713,8 +723,9 @@ reverse propagation yeilded a infeasible point (true = still feasible, false is 
 function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
 
     return reverse_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
-                                evaluator.upper_variable_bounds, d.setstorage,
-                                d.numberstorage, d.isnumber, evaluator.is_post)
+                                evaluator.upper_variable_bounds, d.grad_sparsity,
+                                d.setstorage, evaluator.subgrad_tol, d.numberstorage,
+                                d.isnumber, evaluator.is_post)
 end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V

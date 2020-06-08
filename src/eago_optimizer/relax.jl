@@ -276,7 +276,6 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
             lt = LT(-f.saf.constant + 1E-5)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            #println("ci = $(ci)")
             push!(m._buffered_nonlinear_ci, ci)
         end
     end
@@ -290,11 +289,9 @@ $(TYPEDSIGNATURES)
 function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
     evaluator = m._working_problem._relaxed_evaluator
 
-    #println("relax 1 =")
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
-    #println("relax 2 =")
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
