@@ -61,19 +61,6 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         num2 = 0.0
     end
 
-    printstr = ""
-    if arg1_is_number
-        printstr *= "num1 is $num1"
-    else
-        printstr *= "set1 is $set1"
-    end
-    if arg2_is_number
-        printstr *= "num2 is $num2"
-    else
-        printstr *= "set2 is $set2"
-    end
-    REVERSE_DEBUG && println(printstr)
-
     if !arg1_is_number && arg2_is_number
         c, a, b = plus_rev(setk, set1, num2)
 
@@ -217,19 +204,6 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
         num2 = 0.0
     end
 
-    printstr = ""
-    if arg1_is_number
-        printstr *= "num1 is $num1 \n"
-    else
-        printstr *= "set1 is $set1 \n"
-    end
-    if arg2_is_number
-        printstr *= "num2 is $num2"
-    else
-        printstr *= "set2 is $set2"
-    end
-    REVERSE_DEBUG && println(printstr)
-
     if !arg1_is_number && arg2_is_number
         c, a, b = mult_rev(setk, set1, num2)
 
@@ -368,19 +342,6 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         num2 = 0.0
     end
 
-    printstr = ""
-    if arg1_is_number
-        printstr *= "num1 is $num1"
-    else
-        printstr *= "set1 is $set1"
-    end
-    if arg2_is_number
-        printstr *= "num2 is $num2"
-    else
-        printstr *= "set2 is $set2"
-    end
-    REVERSE_DEBUG && println(printstr)
-
     if !arg1_is_number && arg2_is_number
         c, a, b = minus_rev(setk, set1, num2)
 
@@ -462,19 +423,6 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         num2 = 0.0
     end
 
-    printstr = ""
-    if arg1_is_number
-        printstr *= "num1 is $num1"
-    else
-        printstr *= "set1 is $set1"
-    end
-    if arg2_is_number
-        printstr *= "num2 is $num2"
-    else
-        printstr *= "set2 is $set2"
-    end
-    REVERSE_DEBUG && println(printstr)
-
     if !arg1_is_number && arg2_is_number
         c, a, b = power_rev(setk, set1, num2)
 
@@ -534,10 +482,10 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     arg1_is_number =  numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 =  numberstorage[arg1_index]
+        num1 = numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 =  setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2

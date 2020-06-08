@@ -242,40 +242,44 @@ https://doi.org/10.1007/s10898-016-0450-4
 """
 function obbt!(m::Optimizer)
 
-
-    #println("obbt start node: $(m._current_node)")
-
     feasibility = true
 
     n = m._current_node
     branch_to_sol_map = m._branch_to_sol_map
     relaxed_optimizer = m.relaxed_optimizer
 
+    # set node and reference point if necessary then
     # solve initial problem to feasibility
-    update_relaxed_problem_box!(m)
-    if m._nonlinear_evaluator_created
-        set_node!(m._working_problem._relaxed_evaluator, n)
-        set_node_flag!(m)
-        set_reference_point!(m)
+    if !m._obbt_performed_flag
+        update_relaxed_problem_box!(m)
+        if m._nonlinear_evaluator_created
+            set_node!(m._working_problem._relaxed_evaluator, n)
+            set_node_flag!(m)
+            set_reference_point!(m)
+        end
+        relax_constraints!(m, 1)
+        relax_objective!(m, 1)
+
     end
-
-    relax_constraints!(m, 1)
-    relax_objective!(m, 1)
-
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(relaxed_optimizer)
 
-    # Sets indices to attempt OBBT on (full set...)
+    # Sets indices to attempt OBBT on
     obbt_variable_count = m._obbt_variable_count
     fill!(m._obbt_working_lower_index, true)
     fill!(m._obbt_working_upper_index, true)
 
-    # Prefiltering steps && and sets initial LP values
+    # Filters out any indicies with active bounds on variables
+    # determined by solving the feasibility problem
     trivial_filtering!(m, n)
+
+    # Applies an aggressive filter to eliminate indices that
+    # cannot be tightened by obbt
     if m._parameters.obbt_aggressive_on
         feasibility = aggressive_filtering!(m, n)
     end
 
+    # extracts info from relaxed problem (redundant if aggressive obbt is called)
     m._preprocess_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
     m._preprocess_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
@@ -287,6 +291,8 @@ function obbt!(m::Optimizer)
         return false
     end
 
+    # continue tightening bounds by optimization until all indices have been checked
+    # or the node is empty and the problem is thus proven infeasible
     while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
 
         # Get lower value
@@ -361,8 +367,9 @@ function obbt!(m::Optimizer)
                     break
                 end
 
-            elseif valid_flag
+            elseif valid_flag && !feasible_flag
                 feasibility = false
+                break
 
             else
                 break
@@ -380,7 +387,6 @@ function obbt!(m::Optimizer)
             valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
                                                             m._preprocess_result_status)
 
-            #println("upper arc = $(valid_flag), $(feasible_flag)")
             if valid_flag && feasible_flag
                 xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
                 node_index = branch_to_sol_map[upper_indx]
@@ -404,8 +410,9 @@ function obbt!(m::Optimizer)
                     break
                 end
 
-            elseif valid_flag
+            elseif valid_flag && !feasible_flag
                 feasibility = false
+                break
 
             else
                 break
@@ -416,8 +423,6 @@ function obbt!(m::Optimizer)
         end
         trivial_filtering!(m, n)
     end
-
-    #println("obbt end node: $(m._current_node)")
 
     return feasibility
 end
@@ -458,28 +463,21 @@ function unpack_fbbt_buffer!(m::Optimizer)
             indx = @inbounds sol_to_branch[i]
             if m._lower_fbbt_buffer[i] > lower_variable_bounds[indx]
                 @inbounds lower_variable_bounds[indx] = m._lower_fbbt_buffer[i]
-                #println(:"updated indx low = $indx")
             end
             if upper_variable_bounds[indx] > m._upper_fbbt_buffer[i]
                 @inbounds upper_variable_bounds[indx] = m._upper_fbbt_buffer[i]
-                #println(:"updated indx high = $indx")
             end
 
         else
             if m._working_problem._variable_info[i].lower_bound < m._lower_fbbt_buffer[i]
                 @inbounds m._working_problem._variable_info[i].lower_bound = m._lower_fbbt_buffer[i]
-                #println(:"updated i low = $indx")
             end
             if m._working_problem._variable_info[i].upper_bound > m._upper_fbbt_buffer[i]
                 @inbounds m._working_problem._variable_info[i].upper_bound = m._upper_fbbt_buffer[i]
-                #println(:"updated i high = $indx")
             end
 
         end
     end
-
-    #println("m._lower_fbbt_buffer = $(m._lower_fbbt_buffer)")
-    #println("m._upper_fbbt_buffer = $(m._upper_fbbt_buffer)")
 
     return nothing
 end
@@ -642,21 +640,15 @@ resets the current node with new interval bounds.
 function set_constraint_propagation_fbbt!(m::Optimizer)
     feasible_flag = true
 
-#    println("cp start node: $(m._current_node)")
-    start_node = deepcopy(m._current_node)
-
     evaluator = m._working_problem._relaxed_evaluator
     set_node!(evaluator, m._current_node)
     set_reference_point!(m)
 
-    #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
     for constr in m._working_problem._nonlinear_constr
         if feasible_flag
             forward_pass!(evaluator, constr)
-            #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
             feasible_flag &= reverse_pass!(evaluator, constr)
-            #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
             evaluator.interval_intersect = true
         end
     end
@@ -667,9 +659,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         obj_nonlinear = m._working_problem._objective_nl
         set_node_flag!(obj_nonlinear)
         forward_pass!(evaluator, obj_nonlinear)
-        #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
         feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
-        #set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
         evaluator.interval_intersect = true
     end
 

@@ -708,7 +708,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     # Sets initial feasibility
     feasible_flag = true
     m._obbt_performed_flag = false
-    rept = 0
 
     # compute initial volume
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
@@ -976,30 +975,24 @@ function cut_update!(m::Optimizer)
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
-    #println("obj_val: $(obj_val)")
-    #println("prior_obj_val: $(prior_obj_val)")
 
     if m._cut_iterations <= m._parameters.cut_min_iterations
         m._cut_add_flag = true
         m._lower_termination_status = m._cut_termination_status
         m._lower_result_status = m._cut_result_status
-         m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
-        copyto!(m._lower_solution, m._cut_solution)
-
+        m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
     end
 
     if prior_obj_val < obj_val
         m._cut_objective_value = obj_val
         m._lower_objective_value = obj_val
         set_dual!(m)
+        copyto!(m._lower_solution, m._cut_solution)
 
     else
-        # disable lower dbbt since duals and objective may mismatch (update to store later)
         m._cut_objective_value = prior_obj_val
         m._lower_objective_value = prior_obj_val
         m._cut_add_flag = false
-        fill!(m._lower_lvd, 0.0)
-        fill!(m._lower_uvd, 0.0)
     end
 
     return nothing
@@ -1046,15 +1039,9 @@ function cut_condition(t::ExtensionType, m::Optimizer)
         end
     end
 
-    #println("past sol: $(m._lower_solution)")
-    #println("new cut: $(m._current_xref)")
-
-    if !continue_cut_flag
-        m._working_problem._relaxed_evaluator.is_intersect = false
-        m._working_problem._relaxed_evaluator.interval_intersect = false
-    end
-
-    # check to see if interval bound is preferable
+    # check to see if interval bound is preferable and replaces the objective
+    # value with the interval value if so. Any available dual values are then
+    # set to zero since the interval bounds are by definition constant
     if m._lower_feasibility && !continue_cut_flag
         objective_lo = -Inf
         obj_type = m._working_problem._objective_type

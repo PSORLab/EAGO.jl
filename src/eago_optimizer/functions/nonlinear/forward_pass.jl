@@ -32,13 +32,13 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
 
     for i = 1:N
 
-        x_val =  x_values[i]
         cv_val =  val.cv_grad[i]
         cc_val =  val.cc_grad[i]
 
         i_sol = sparsity[i]
-        lower_bound =  lower_variable_bounds[i_sol]
-        upper_bound =  upper_variable_bounds[i_sol]
+        x_val =  x_values[i_sol]
+        lower_bound = lower_variable_bounds[i_sol]
+        upper_bound = upper_variable_bounds[i_sol]
 
         if lower_refinement
             if cv_val > 0.0
@@ -89,12 +89,16 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
         lower = val.Intv.lo
     elseif !lower_refinement
         lower = val.Intv.lo
+    else
+        lower = sub_round(lower, subgrad_tol, RoundDown)
     end
 
     if upper_refinement && (val.Intv.hi - subgrad_tol < upper)
         upper = val.Intv.hi
     elseif !upper_refinement
         upper = val.Intv.hi
+    else
+        upper = add_round(upper, subgrad_tol, RoundUp)
     end
 
     return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
@@ -136,7 +140,7 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
     elseif !is_post && is_intersect && interval_intersect
         return xMC ∩ past_xMC.Intv
 
-    elseif is_post && is_intersect && !interval_intersect
+    elseif !is_post && is_intersect && !interval_intersect
         return xMC ∩ past_xMC
 
     end
@@ -179,12 +183,6 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         set2 =  setstorage[arg2_index]
         num2 = 0.0
     end
-
-    #println("set1 = $(set1)")
-    #println("set2 = $(set2)")
-
-    #println("num1 = $(num1)")
-    #println("num2 = $(num2)")
 
     output_is_number = arg1_is_number && arg2_is_number
 
@@ -286,7 +284,7 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
 
     # extract values for argument 1
     arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = one(MC{N,T})
         num1 = numberstorage[arg1_index]
@@ -297,7 +295,7 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
 
     # extract values for argument 2
     arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
         num2 = numberstorage[arg2_index]
         set2 = one(MC{N,T})
@@ -305,12 +303,6 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
         set2 = setstorage[arg2_index]
         num2 = 1.0
     end
-
-    #println("set1 = $(set1)")
-    #println("set2 = $(set2)")
-
-    #println("num1 = $(num1)")
-    #println("num2 = $(num2)")
 
     output_is_number = arg1_is_number && arg2_is_number
 
@@ -354,7 +346,6 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
                                   is_post::Bool, is_intersect::Bool, interval_intersect::Bool) where {N,T<:RelaxTag}
     # get row indices
     idx = first(children_idx)
-    #println("children_idx = $(children_idx)")
 
     # extract values for argument 1
     arg_index =  children_arr[idx]
@@ -367,24 +358,16 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         tmp_set = setstorage[arg_index]
     end
 
-    #println("tmp_num = $(tmp_num)")
-    #println("tmp_set = $(tmp_set)")
 
     for idx = 2:length(children_idx)
         cidx =  children_idx[idx]
         arg_index_t =  children_arr[cidx]
         arg_is_number_t = numvalued[arg_index_t]
-        #println("numberstorage[arg_index_t] = $(numberstorage[arg_index_t])")
-        #println("setstorage[arg_index_t] = $(setstorage[arg_index_t])")
-        xorgss = setstorage[arg_index_t]
-        #println("times = $(tmp_set*xorgss)")
         if arg_is_number_t
             tmp_num = tmp_num*numberstorage[arg_index_t]
         else
             tmp_set = tmp_set*setstorage[arg_index_t]
         end
-        #println("tmp_num = $(tmp_num)")
-        #println("tmp_set = $(tmp_set)")
         output_is_number &= arg_is_number_t
     end
 
@@ -478,8 +461,6 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
                         is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool,
                         ctx::GuardCtx) where {N,T<:RelaxTag}
 
-    #println(" power forward")
-    #println(" ")
     # get row indices
     idx1 = first(children_idx)
     idx2 = last(children_idx)
@@ -509,13 +490,6 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     # is output a number (by closure of the reals)?
     output_is_number = arg1_is_number && arg2_is_number
     numvalued[k] = output_is_number
-
-    #println("set1 = $set1")
-#    println("set2 = $set2")
-
-    #println("num1 = $num1")
-    #println("num1 = $num2")
-#    println(" ")
 
     # x^1 = x
     if num2 === 1.0
@@ -557,8 +531,6 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
         end
     end
-    #println("outset = $outset")
-    #println(" ")
 
     if !output_is_number
         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
@@ -815,14 +787,10 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
                                    x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, subgrad_tol::Float64, sparsity::Vector{Int},
                                    is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
-    #println("child_idx = $(child_idx)")
     tmp_set =  setstorage[child_idx]
     outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
-    #println("tmp_set = $(tmp_set)")
-    #println("outset = $(outset)")
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                            interval_intersect)
-    #println("setstorage[k]  = $(setstorage[k])")
     return nothing
 end
 
@@ -846,10 +814,6 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                               cv_grad_buffer::Vector{Float64}, cc_grad_buffer::Vector{Float64},
                               treat_x_as_number::Vector{Bool}, subgrad_tol::Float64) where {N, T<:RelaxTag}
 
-    #println(" ")
-    #println("x = $x")
-    #println("lbd = $lbd")
-    #println("ubd = $ubd")
     children_arr = rowvals(adj)
 
     FORWARD_DEBUG && println(" ")

@@ -73,8 +73,6 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     upper_bounds = n.upper_variable_bounds
     quadratic_constant = func.constant
 
-    #println("x = $x")
-
     # Affine terms only contribute coefficients, so the respective
     # values do not contribute to the cut. Since all quadratic terms
     # are considered to be branch variables we exclude any potential
@@ -218,9 +216,6 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
 
     expr = f.expr
     grad_sparsity = expr.grad_sparsity
-    #println("grad_sparsity = $(grad_sparsity)")
-    #println("upper_bound = $(f.upper_bound)")
-    #println("lower_bound = $(f.lower_bound)")
     if expr.isnumber[1]
         f.saf.constant = expr.numberstorage[1]
         for i = 1:N
@@ -243,12 +238,10 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
                     coef = @inbounds -value.cc_grad[i]
                 end
                 f.saf.terms[i] = SAT(coef, VI(vval))
-                #f.saf.constant -= coef*(@inbounds x[vval])
                 xv = @inbounds x[vval]
                 f.saf.constant = sub_round(f.saf.constant , mul_round(coef, xv, RoundUp), RoundDown)
             end
             if is_constraint
-                #f.saf.constant += use_cvx ? -f.upper_bound : f.lower_bound
                 bnd_used =  use_cvx ? -f.upper_bound : f.lower_bound
                 f.saf.constant = add_round(f.saf.constant, bnd_used, RoundDown)
             end
@@ -264,7 +257,6 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant)
             f.saf.constant = 0.0
-            #println("f.saf = $(f.saf), lt = $lt")
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_nonlinear_ci, ci)
         end
@@ -329,7 +321,6 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
         if !check_safe || is_safe_cut!(m, buffered_nl.saf)
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
             wp._objective_saf.constant = buffered_nl.saf.constant
-            #println("wp._objective_saf $(wp._objective_saf)")
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
     end
@@ -383,7 +374,6 @@ relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
 function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64, check_safe::Bool)
 
-    #println("ran objective cut nonlinear")
     relaxed_optimizer = m.relaxed_optimizer
     relaxed_evaluator = wp._relaxed_evaluator
     buffered_nl = wp._objective_nl
@@ -472,11 +462,6 @@ nonlinear constraints and quadratic constraints.
 """
 function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
-  #println(" ")
-  # println(" ")
-#    println("relax_all_constraints")
-    #println(" ")
-    #println(" ")
     check_safe = (q === 1) ? false : m._parameters.cut_safe_on
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
 
@@ -494,13 +479,9 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
     nl_list = m._working_problem._nonlinear_constr
     for i = 1:m._working_problem._nonlinear_count
-        #println("relax nonlinear i = $i")
-    #   println(" ")
         nl = @inbounds nl_list[i]
         relax!(m, nl, i, check_safe)
     end
-    #println(" ")
-    #println(" finish relaxing constraints")
 
     m._new_eval_constraint = false
 
