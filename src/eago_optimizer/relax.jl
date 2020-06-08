@@ -15,10 +15,12 @@
 """
 $(FUNCTIONNAME)
 
-Applies the safe cut checks detailed in Khajavirad, 2018 [Khajavirad, Aida, and Nikolaos V. Sahinidis. "A hybrid LP/NLP
-paradigm for global optimization relaxations." Mathematical Programming Computation 10.3 (2018): 383-421] to ensure
-that only numerically safe affine relaxations are added. Checks that i) |b| <= safe_b, ii) safe_l <= abs(ai) <= safe_u,
-and iii) violates safe_l <= abs(ai/aj) <= safe_u.
+Applies the safe cut checks detailed in Khajavirad, 2018 [Khajavirad, Aida,
+and Nikolaos V. Sahinidis. "A hybrid LP/NLP paradigm for global optimization
+relaxations." Mathematical Programming Computation 10.3 (2018): 383-421] to
+ensure that only numerically safe affine relaxations are added. Checks that
+i) |b| <= safe_b, ii) safe_l <= abs(ai) <= safe_u, and iii) violates
+safe_l <= abs(ai/aj) <= safe_u.
 """
 function is_safe_cut!(m::Optimizer, f::SAF)
 
@@ -62,8 +64,9 @@ function relax! end
 """
 $(FUNCTIONNAME)
 
-Default routine for relaxing quadratic constraint `func` < `0.0` on node `n`. Takes affine bounds of convex part at
-point `x0` and secant line bounds on concave parts.
+Default routine for relaxing quadratic constraint `func` < `0.0` on node `n`.
+Takes affine bounds of convex part at point `x0` and secant line bounds on
+concave parts.
 """
 function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
                                  n::NodeBB, sol_to_branch_map::Vector{Int},
@@ -162,8 +165,12 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     return true
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
 
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
@@ -178,8 +185,12 @@ function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::B
     return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
@@ -205,6 +216,9 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+"""
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator,
                                  use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {N,T<:RelaxTag}
 
@@ -251,13 +265,18 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     return finite_cut
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
 
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant)
+            lt = LT(-f.saf.constant + 1E-5)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            #println("ci = $(ci)")
             push!(m._buffered_nonlinear_ci, ci)
         end
     end
@@ -265,18 +284,26 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
     return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
     evaluator = m._working_problem._relaxed_evaluator
 
+    #println("relax 1 =")
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
+    #println("relax 2 =")
     finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false, true)
     check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
 
     return nothing
 end
 
+"""
+$(TYPEDSIGNATURES)
+"""
 function bound_objective(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
@@ -305,7 +332,9 @@ function bound_objective(t::ExtensionType, m::Optimizer)
 end
 bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
 
-
+"""
+$(TYPEDSIGNATURES)
+"""
 function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe::Bool)
 
     relaxed_optimizer = m.relaxed_optimizer
@@ -331,7 +360,8 @@ end
 """
 $(TYPEDSIGNATURES)
 
-A rountine that only relaxes the objective.
+Triggers an evaluation of the objective function and then updates
+the affine relaxation of the objective function.
 """
 function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
 
@@ -371,7 +401,11 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
 end
 relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
+"""
 
+Triggers an evaluation of the nonlinear objective function (if necessary)
+and adds the corresponding `<a,x> <= b` objective cut.
+"""
 function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64, check_safe::Bool)
 
     relaxed_optimizer = m.relaxed_optimizer
@@ -384,6 +418,7 @@ function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64,
     relaxed_evaluator.is_first_eval = new_flag
     finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, new_flag, false)
 
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     if finite_cut_generated
         copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
         wp._objective_saf.constant = 0.0
@@ -409,6 +444,7 @@ Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 function objective_cut!(m::Optimizer, check_safe::Bool)
 
     UBD = m._global_upper_bound
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     if m._parameters.objective_cut_on && m._global_upper_bound < Inf
 
         wp = m._working_problem
@@ -417,17 +453,18 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
         if obj_type === SINGLE_VARIABLE
             if !isinf(UBD) && (m._objective_cut_ci_sv.value === -1)
                 m._objective_cut_ci_sv = MOI.add_constraint(m.relaxed_optimizer, wp._objective_sv, LT_ZERO)
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
             else
                 MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
             end
         elseif obj_type === SCALAR_AFFINE
-            wp._objective_saf.constant -= UBD
+            wp._objective_saf.constant -= (UBD + constraint_tol)
             relax!(wp._objective_saf)
             if check_safe && is_safe_cut!(m, wp._objective_saf)
                 ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
                 push!(m._objective_cut_ci_saf, ci_saf)
             end
-            wp._objective_saf.constant += UBD
+            wp._objective_saf.constant += (UBD + constraint_tol)
 
         elseif obj_type === SCALAR_QUADRATIC
             buffered_sqf = wp._objective_sqf
@@ -439,7 +476,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
                 if !check_safe || is_safe_cut!(m, buffered_sqf.saf)
                     copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
                     wp._objective_saf.constant = 0.0
-                    ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant))
+                    ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant + constraint_tol))
                     push!(m._objective_cut_ci_saf, ci_saf)
                 end
             end
@@ -457,8 +494,12 @@ end
 """
 $(TYPEDSIGNATURES)
 
-A rountine that updates the current node for the `Evaluator` and relaxes all
-nonlinear constraints and quadratic constraints.
+A routine that adds relaxations for all nonlinear constraints and quadratic constraints
+corresponding to the current node to the relaxed problem. This adds an objective cut
+(if specified by `objective_cut_on`) and then sets the `_new_eval_constraint` flag
+to false indicating that an initial evaluation of the constraints has occurred. If
+the `objective_cut_on` flag is `true` then the `_new_eval_objective` flag is also
+set to `false` indicating that the objective expression was evaluated.
 """
 function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
 
@@ -493,6 +534,7 @@ relax_constraints!(t::ExtensionType, m::Optimizer, q::Int64) = relax_all_constra
 relax_constraints!(m::Optimizer, q::Int64) = relax_constraints!(m.ext_type, m, q)
 
 """
+$(FUNCTIONNAME)
 
 Deletes all nonlinear constraints added to the relaxed optimizer.
 """
@@ -520,6 +562,8 @@ function delete_nl_constraints!(m::Optimizer)
 end
 
 """
+$(FUNCTIONNAME)
+
 Deletes all scalar-affine objective cuts added to the relaxed optimizer.
 """
 function delete_objective_cuts!(m::Optimizer)
@@ -532,10 +576,11 @@ function delete_objective_cuts!(m::Optimizer)
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
 
+"""
 function set_first_relax_point!(m::Optimizer)
-
-    m._first_relax_point_set = true
 
     m._working_problem._relaxed_evaluator.is_first_eval = true
     m._new_eval_constraint = true

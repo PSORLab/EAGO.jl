@@ -20,7 +20,7 @@
 """
 $(TYPEDEF)
 
-Stores a second-order conen with a buffer.
+Stores a second-order cone with a buffer.
 """
 mutable struct BufferedSOC <: AbstractEAGOConstraint
     variables::VECOFVAR

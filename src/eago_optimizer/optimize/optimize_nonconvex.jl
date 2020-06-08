@@ -24,6 +24,9 @@ function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_
 end
 
 function reset_relaxation!(m::Optimizer)
+
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+
     m._new_eval_objective = true
     m._new_eval_constraint = true
 
@@ -509,7 +512,6 @@ $(SIGNATURES)
 Checks to see if current node should be reprocessed.
 """
 function repeat_check(t::ExtensionType, m::Optimizer)
-    m._first_relax_point_set = false
     return false
 end
 

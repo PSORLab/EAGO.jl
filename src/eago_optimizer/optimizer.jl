@@ -96,6 +96,8 @@ Base.@kwdef mutable struct EAGOParameters
     absolute_tolerance::Float64 = 1E-3
     "Relative tolerance for termination (default = 1E-3)"
     relative_tolerance::Float64 = 1E-3
+    "Absolute constraint feasibility tolerance"
+    absolute_constraint_feas_tolerance::Float64 = 1E-6
     "Perform only a local solve of the problem (default = false)."
     local_solve_only::Bool = false
     feasible_local_continue::Bool = false

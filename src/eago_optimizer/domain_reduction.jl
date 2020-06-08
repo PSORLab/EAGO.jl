@@ -187,6 +187,9 @@ function aggressive_filtering!(m::Optimizer, n::NodeBB)
     return true
 end
 
+"""
+$(FUNCTIONNAME)
+"""
 function set_node_flag!(m::Optimizer)
     for constr in m._working_problem._nonlinear_constr
         set_node_flag!(constr)
@@ -199,6 +202,9 @@ function set_node_flag!(m::Optimizer)
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+"""
 function set_reference_point!(m::Optimizer)
 
     evaluator = m._working_problem._relaxed_evaluator
@@ -248,9 +254,19 @@ function obbt!(m::Optimizer)
     branch_to_sol_map = m._branch_to_sol_map
     relaxed_optimizer = m.relaxed_optimizer
 
-    # set node and reference point if necessary then
-    # solve initial problem to feasibility
-    if !m._obbt_performed_flag
+    # set node and reference point if necessary then solve initial problem to
+    # feasibility. This is repeated `obbt_repetitions` number of times in the
+    # following fashion. Relax the problem, populate affine constraints, run
+    # obbt which contracts variable bounds, delete affine constraints...
+    # update variable bounds and repeat. TODO: Keep track of which variables
+    # participate in which functions and only delete a constraint if a
+    # variable participating in a nonlinear term changes it bounds.
+    if m._obbt_performed_flag
+        reset_relaxation!(m)
+        set_first_relax_point!(m)
+    end
+
+    #if !m._obbt_performed_flag
         update_relaxed_problem_box!(m)
         if m._nonlinear_evaluator_created
             set_node!(m._working_problem._relaxed_evaluator, n)
@@ -259,8 +275,7 @@ function obbt!(m::Optimizer)
         end
         relax_constraints!(m, 1)
         relax_objective!(m, 1)
-
-    end
+    #end
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     MOI.optimize!(relaxed_optimizer)
 
@@ -355,8 +370,8 @@ function obbt!(m::Optimizer)
                 # we assume branching does not occur on fixed variables and interval
                 # constraints are internally bridged by EAGO. So the only L <= x
                 # constraint in the model is a GreaterThan.
-                if updated_value > previous_value
-                    #println("updated value improves lower bound from $previous_value to $updated_value")
+                if updated_value > previous_value && (updated_value - previous_value) > 1E-6
+                    ci_list = MOI.get(relaxed_optimizer, MOI.ListOfConstraintIndices{SAF,LT}())
                     sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
                     MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
                     @inbounds n.lower_variable_bounds[lower_indx] = updated_value
@@ -398,8 +413,7 @@ function obbt!(m::Optimizer)
                 # we assume branching does not occur on fixed variables and interval
                 # constraints are internally bridged by EAGO. So the only U => x
                 # constraint in the model is a LessThan.
-                if updated_value < previous_value
-                    #println("updated value improves lower bound from $previous_value to $updated_value")
+                if updated_value < previous_value && (previous_value - updated_value) > 1E-6
                     sv_leq_ci = m._node_to_sv_leq_ci[upper_indx]
                     MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
                     @inbounds n.upper_variable_bounds[upper_indx] = updated_value
@@ -427,7 +441,9 @@ function obbt!(m::Optimizer)
     return feasibility
 end
 
-
+"""
+$(FUNCTIONNAME)
+"""
 function load_fbbt_buffer!(m::Optimizer)
 
     n = m._current_node
@@ -451,6 +467,9 @@ function load_fbbt_buffer!(m::Optimizer)
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+"""
 function unpack_fbbt_buffer!(m::Optimizer)
 
     n = m._current_node

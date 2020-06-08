@@ -46,7 +46,6 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     !upper_refinement && break
                     lower_refinement = false
                 else
-                    #lower += cv_val*(lower_bound - x_val)
                     delX = sub_round(lower_bound, x_val, RoundDown)
                     lower = add_round(lower, mul_round(cc_val, delX, RoundDown), RoundDown)
                 end
@@ -55,7 +54,6 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     !upper_refinement && break
                     lower_refinement = false
                 else
-                    #lower += cv_val*(upper_bound - x_val)
                     delX = sub_round(upper_bound, x_val, RoundUp)
                     lower = add_round(lower, mul_round(cc_val, delX, RoundDown), RoundDown)
                 end
@@ -68,7 +66,6 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     !lower_refinement && break
                     upper_refinement = false
                 else
-                    #upper += cc_val*(upper_bound - x_val)
                     delX = sub_round(upper_bound, x_val, RoundUp)
                     upper = add_round(upper, mul_round(cc_val, delX, RoundUp), RoundUp)
                 end
@@ -77,7 +74,6 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     !lower_refinement && break
                     upper_refinement = false
                 else
-                    #upper += cc_val*(lower_bound - x_val)
                     delX = sub_round(lower_bound, x_val, RoundDown)
                     upper = add_round(upper, mul_round(cc_val, delX, RoundUp), RoundUp)
                 end
@@ -127,7 +123,7 @@ function overwrite_or_intersect(xMC::MC{N,T}, past_xMC::MC{N,T}, x::Vector{Float
                                 ubd::Vector{Float64}, subgrad_tol::Float64, sparsity::Vector{Int}, is_post::Bool,
                                 is_intersect::Bool,
                                 interval_intersect::Bool) where {N,T<:RelaxTag}
-    #println("is_post = $(is_post), is_intersect = $(is_intersect), interval_intersect = $(interval_intersect)")
+
     if is_post && is_intersect && interval_intersect
         return set_value_post(x, xMC ∩ past_xMC.Intv, lbd, ubd, sparsity, subgrad_tol)
 
@@ -164,23 +160,23 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
 
     # extract values for argument 1
     arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 =  numberstorage[arg1_index]
+        num1 = numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 =  setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_index = children_arr[idx2]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -206,7 +202,6 @@ function forward_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
         # is_first_eval ? (set1 + set2) : plus_kernel(set1, set2, setstorage[k].Intv)
 
     end
-    #println("outset: $(outset)")
 
      numvalued[k] = output_is_number
     if !output_is_number
@@ -352,7 +347,7 @@ function forward_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
     output_is_number =  numvalued[arg_index]
     if output_is_number
         tmp_set = 1.0#one(MC{N,T})
-        tmp_num =  numberstorage[arg_index]
+        tmp_num = numberstorage[arg_index]
     else
         tmp_num = 1.0
         tmp_set = setstorage[arg_index]
@@ -399,21 +394,21 @@ function forward_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 =  numberstorage[arg1_index]
+        num1 = numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 =  setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_index = children_arr[idx2]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
         set2 =  setstorage[arg2_index]
@@ -466,8 +461,8 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
         num1 =  numberstorage[arg1_index]
@@ -478,12 +473,12 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
     # extract values for argument 2
     arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
@@ -557,30 +552,30 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
-    arg1_is_number =  numvalued[arg1_index]
+    arg1_index = children_arr[idx1]
+    arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = zero(MC{N,T})
-        num1 =  numberstorage[arg1_index]
+        num1 = numberstorage[arg1_index]
     else
         num1 = 0.0
-        set1 =  setstorage[arg1_index]
+        set1 = setstorage[arg1_index]
     end
 
     # extract values for argument 2
-    arg2_index =  children_arr[idx2]
-    arg2_is_number =  numvalued[arg2_index]
+    arg2_index = children_arr[idx2]
+    arg2_is_number = numvalued[arg2_index]
     if arg2_is_number
-        num2 =  numberstorage[arg2_index]
+        num2 = numberstorage[arg2_index]
         set2 = zero(MC{N,T})
     else
-        set2 =  setstorage[arg2_index]
+        set2 = setstorage[arg2_index]
         num2 = 0.0
     end
 
     # is output a number (by closure of the reals)?
     output_is_number = arg1_is_number && arg2_is_number
-     numvalued[k] = output_is_number
+    numvalued[k] = output_is_number
 
     # a/b
     if output_is_number
@@ -834,11 +829,15 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
         elseif nod.nodetype == JuMP._Derivatives.VARIABLE
             isa_number =  treat_x_as_number[op]
             numvalued[k] = isa_number
+            xval = x[op]
             if isa_number
-                 numberstorage[k] = x[op]
+                 numberstorage[k] = xval
             else
                 seed_index = reverse_sparsity[op]
-                xMC = MC{N,T}(x[op], Interval{Float64}(lbd[op], ubd[op]), seed_index)
+                seed_grad = seed_gradient(seed_index, Val{N}())
+                xcv_eps = xval
+                xcc_eps = xval
+                xMC = MC{N,T}(xcv_eps, xcc_eps, Interval{Float64}(lbd[op], ubd[op]), seed_grad, seed_grad, false)
                 setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k].Intv)
             end
             FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
