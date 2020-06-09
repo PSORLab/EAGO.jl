@@ -276,7 +276,8 @@ function obbt!(m::Optimizer)
         relax_constraints!(m, 1)
         relax_objective!(m, 1)
     #end
-    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
+    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+
     MOI.optimize!(relaxed_optimizer)
 
     # Sets indices to attempt OBBT on
@@ -478,25 +479,18 @@ function unpack_fbbt_buffer!(m::Optimizer)
     upper_variable_bounds = n.upper_variable_bounds
 
     for i = 1:m._working_problem._variable_count
-        if @inbounds m._branch_variables[i]
-            indx = @inbounds sol_to_branch[i]
+        if m._branch_variables[i]
+            indx = sol_to_branch[i]
             if m._lower_fbbt_buffer[i] > lower_variable_bounds[indx]
-                @inbounds lower_variable_bounds[indx] = m._lower_fbbt_buffer[i]
+                lower_variable_bounds[indx] = m._lower_fbbt_buffer[i]
             end
             if upper_variable_bounds[indx] > m._upper_fbbt_buffer[i]
-                @inbounds upper_variable_bounds[indx] = m._upper_fbbt_buffer[i]
+                upper_variable_bounds[indx] = m._upper_fbbt_buffer[i]
             end
-
-        else
-            if m._working_problem._variable_info[i].lower_bound < m._lower_fbbt_buffer[i]
-                @inbounds m._working_problem._variable_info[i].lower_bound = m._lower_fbbt_buffer[i]
-            end
-            if m._working_problem._variable_info[i].upper_bound > m._upper_fbbt_buffer[i]
-                @inbounds m._working_problem._variable_info[i].upper_bound = m._upper_fbbt_buffer[i]
-            end
-
         end
     end
+
+    println("n = $(n)")
 
     return nothing
 end
