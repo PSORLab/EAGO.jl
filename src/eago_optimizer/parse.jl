@@ -226,6 +226,23 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
 
+    # add subexpressions
+    relax_evaluator = m._working_problem._relaxed_evaluator
+    has_subexpressions = length(evaluator.m.nlp_data.nlexpr) > 0
+    if has_subexpressions
+        for i = 1:length(evaluator.subexpressions)
+            subexpr = evaluator.subexpressions[i]
+            push!(relax_evaluator.subexpressions, NonlinearExpression(subexpr,
+                                                                      evaluator.subexpression_linearity,
+                                                                      m._parameters.relax_tag))
+        end
+    end
+
+    # if nonlinear subexpressions are present, then the tapes for
+    # the nonlinear functions they participate in must be re-sized from
+    # to support the correct length subgradients. Data required for this is extracted here.
+
+
     # scrubs udf functions using Cassette to remove odd data structures...
     # alternatively convert udfs to JuMP scripts...
     m._parameters.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
@@ -251,7 +268,8 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
                                                                               evaluator.subexpression_linearity,
                                                                               m._parameters.relax_tag))
     end
-     m._working_problem._nonlinear_count =  length(m._working_problem._nonlinear_constr)
+
+    m._working_problem._nonlinear_count =  length(m._working_problem._nonlinear_constr)
     return nothing
 end
 
@@ -267,16 +285,6 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
 
     relax_evaluator = m._working_problem._relaxed_evaluator
-    has_subexpressions = length(evaluator.m.nlp_data.nlexpr) > 0
-    if has_subexpressions
-        for i = 1:length(evaluator.subexpressions)
-            subexpr = evaluator.subexpressions[i]
-            push!(relax_evaluator._nonlinear_subexpr, BufferedNonlinearSubexpr(subexpr,
-                                                                               evaluator.subexpression_linearity,
-                                                                               m._parameters.relax_tag))
-        end
-    end
-
     relax_evaluator.variable_count = length(m._working_problem._variable_info)
     relax_evaluator.user_operators = evaluator.m.nlp_data.user_operators
 

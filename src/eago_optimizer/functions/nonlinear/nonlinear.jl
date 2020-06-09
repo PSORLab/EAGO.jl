@@ -82,7 +82,6 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     const_values = copy(sub.const_values)
 
     lenx = length(nd)
-    setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
     numberstorage = zeros(lenx)
     isnumber = fill(false, lenx)
 
@@ -147,6 +146,7 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     dependent_variable_count = length(grad_sparsity)
     N = dependent_variable_count
 
+    setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
     subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
                                                  isnumber, zero(MC{N,T}), false,
                                                  tp1storage, tp2storage,
@@ -361,7 +361,7 @@ function retrieve_node(d::Evaluator)
 end
 
 # Returns false if subexpression has been evaluated at current reference point
-prior_eval(d::Evaluator, i::Int64) = @inbounds subexpressions_eval[i]
+prior_eval(d::Evaluator, i::Int64) = d.subexpressions_eval[i]
 
 #=
 Assumes the sparsities are sorted...

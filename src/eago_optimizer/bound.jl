@@ -22,11 +22,12 @@ function lower_interval_bound(m::Optimizer, f::AffineFunctionIneq, y::NodeBB)
     lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
 
+    sol_branch_map = m._sol_to_branch_map
     lower_interval_bound = f.constant
     for i = 1:f.len
         coeff, indx = @inbounds terms[i]
 
-        if m._branch_variables[vi]
+        if m._branch_variables[indx]
             mapped_vi = @inbounds sol_branch_map[indx]
             xL = @inbounds lo_bnds[mapped_vi]
             xU = @inbounds up_bnds[mapped_vi]
@@ -46,11 +47,13 @@ function interval_bound(m::Optimizer, f::AffineFunctionEq, y::NodeBB)
     lo_bnds = y.lower_variable_bounds
     up_bnds = y.upper_variable_bounds
 
+    sol_branch_map = m._sol_to_branch_map
     lower_interval_bound = f.constant
     upper_interval_bound = f.constant
     for i = 1:f.len
+        coeff, indx = @inbounds terms[i]
 
-        if m._branch_variables[vi]
+        if m._branch_variables[indx]
             mapped_vi = @inbounds sol_branch_map[indx]
             xL = @inbounds lo_bnds[mapped_vi]
             xU = @inbounds up_bnds[mapped_vi]
@@ -134,6 +137,7 @@ end
 
 function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
 
+    sol_branch_map = m._sol_to_branch_map
     lo_bnds = n.lower_variable_bounds
     up_bnds = n.upper_variable_bounds
     val_intv = Interval(f.func.constant)
@@ -214,5 +218,5 @@ function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB
         interval_value = expr.setstorage[1].Intv
     end
 
-    return interval_value
+    return interval_value.lo, interval_value.hi
 end
