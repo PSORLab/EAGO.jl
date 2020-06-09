@@ -609,7 +609,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with forward evalution for node representing `n = user_f(x, y...)`.
 """
-function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
+function forward_user_multivariate!(k::Int64, op::Int64, children_arr::Vector{Int64}, children_idx::UnitRange{Int64},
                                     numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N,T}},
                                     x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, subgrad_tol::Float64,
                                     sparsity::Vector{Int},
@@ -626,13 +626,14 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
     buffer_count = 1
     output_is_number = true
     for c_idx in children_idx
-        arg_index =  children_arr[c_idx]
-        arg_is_number =  numvalued[arg_index]
+        arg_index = children_arr[c_idx]
+        arg_is_number = numvalued[arg_index]
         if arg_is_number
-             num_input[buffer_count] = numberstorage[arg_index]
+            num_input[buffer_count] = numberstorage[arg_index]
         else
-             set_input[buffer_count] = setstorage[arg_index]
+            set_input[buffer_count] = setstorage[arg_index]
         end
+        output_is_number &= arg_is_number
         buffer_count += 1
     end
 
@@ -640,7 +641,7 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
         numberstorage[k] = MOI.eval_objective(evaluator, num_input)
     else
         for i = 1:(buffer_count - 1)
-            if !isinf( num_input[i])
+            if !isinf(num_input[i])
                  set_input[buffer_count] = MC{N,T}(num_input[buffer_count])
             end
         end
@@ -648,7 +649,7 @@ function forward_user_multivariate!(k::Int64, children_arr::Vector{Int64}, child
         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                                interval_intersect)
     end
-     numvalued[k] = output_is_number
+    numvalued[k] = output_is_number
 
     return nothing
 end
@@ -689,7 +690,7 @@ function forward_univariate_tiepnt_1!(k::Int64, op::Int64, child_idx::Int64, set
     tp1 =  tp1storage[tidx1]
     tp2 =  tp2storage[tidx1]
     new_tie_points = tp1 === Inf
-
+    println("is_first_eval = $(is_first_eval)")
     outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, is_first_eval)
 
     if new_tie_points
@@ -751,7 +752,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with forward evalution for node representing `n = user_f(x)`.
 """
-function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
+function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, arg_is_number::Bool, setstorage::Vector{V},
                                   x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, subgrad_tol::Float64, sparsity::Vector{Int},
                                   is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool,
                                   ctx::GuardCtx, user_operators) where V
@@ -837,9 +838,12 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             else
                 seed_index = reverse_sparsity[op]
                 seed_grad = seed_gradient(seed_index, Val{N}())
-                xcv_eps = xval
-                xcc_eps = xval
-                xMC = MC{N,T}(xcv_eps, xcc_eps, Interval{Float64}(lbd[op], ubd[op]), seed_grad, seed_grad, false)
+                lower_bnd_val = lbd[op]
+                upper_bnd_val = ubd[op]
+                xcv_eps = xval - (xval - lower_bnd_val)*1E-8
+                xcc_eps = xval + (upper_bnd_val - xval)*1E-8
+                xMC = MC{N,T}(xcv_eps, xcc_eps, Interval{Float64}(lower_bnd_val, upper_bnd_val),
+                              seed_grad, seed_grad, false)
                 setstorage[k] = is_first_eval ? xMC : (xMC ∩ setstorage[k].Intv)
             end
             FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
@@ -864,12 +868,14 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                                          setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect, interval_intersect)
                 end
                 FORWARD_DEBUG && println("plus[$n]     at k = $k -> $(setstorage[k])")
+
             # :- with arity two
             elseif op === 2
                 forward_minus!(k, children_arr, children_idx, numvalued, numberstorage,
                                setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect, is_first_eval,
                                interval_intersect)
                 FORWARD_DEBUG && println("minus        at k = $k -> $(setstorage[k])")
+
             # :* with arity two or greater
             elseif op === 3
                 n = length(children_idx)
@@ -882,28 +888,31 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                                              numberstorage, setstorage, x, lbd, ubd, subgrad_tol,
                                              sparsity, is_post, is_intersect, interval_intersect)
                 end
+                FORWARD_DEBUG && println("mult[$n]     at k = $k -> $(setstorage[k])")
 
-            FORWARD_DEBUG && println("mult[$n]     at k = $k -> $(setstorage[k])")
             # :^
             elseif op === 4
                 forward_power!(k, children_arr, children_idx, numvalued, numberstorage,
                                setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect, is_first_eval,
                                interval_intersect, ctx)
 
-            FORWARD_DEBUG && println("power       at k = $k -> $(setstorage[k])")
+                FORWARD_DEBUG && println("power       at k = $k -> $(setstorage[k])")
+
             # :/
             elseif op === 5
                 forward_divide!(k, children_arr, children_idx, numvalued, numberstorage,
                                 setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect, is_first_eval,
                                 interval_intersect, ctx)
 
-            FORWARD_DEBUG && println("divide      at k = $k -> $(setstorage[k])")
+                FORWARD_DEBUG && println("divide      at k = $k -> $(setstorage[k])")
+
             # user multivariate function
             elseif op >= JuMP._Derivatives.USER_OPERATOR_ID_START
-                forward_user_multivariate!(k, children_arr, children_idx, numvalued, numberstorage,
-                                           setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect, ctx,
-                                           interval_intersect, user_operators, num_mv_buffer)
-            FORWARD_DEBUG && println("user_mult   at k = $k -> $(setstorage[k])")
+                forward_user_multivariate!(k, op, children_arr, children_idx, numvalued, numberstorage,
+                                           setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
+                                           interval_intersect, ctx, user_operators, num_mv_buffer)
+                FORWARD_DEBUG && println("user_mult   at k = $k -> $(setstorage[k])")
+
             else
                error("Unsupported operation $(operators[op])")
             end
@@ -918,8 +927,9 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
             # performs univariate operators on number valued inputs
             if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-                forward_univariate_user!(k, op, arg_idx, setstorage, x, lbd, ubd, subgrad_tol, sparsity, is_post,
-                                         is_intersect, is_first_eval, interval_intersect, ctx, user_operators)
+                forward_univariate_user!(k, op, arg_idx, arg_is_number, setstorage, x, lbd, ubd, subgrad_tol,
+                                         sparsity, is_post, is_intersect, is_first_eval, interval_intersect, ctx,
+                                         user_operators)
 
             elseif arg_is_number
                 forward_univariate_number!(k, op, arg_idx, numvalued, numberstorage)

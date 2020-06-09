@@ -88,45 +88,65 @@ double_tp_ops = [:sin, :cos, :sind, :cosd, :sech, :dawson]
 double_tp_gate = make_uv_gate(double_tp_ops)
 @eval @inline double_tp(x::Int) = $double_tp_gate
 
-function make_tp_gate_1(symbol_list, ref::Symbol)
+function make_tp_gate_1(symbol_list, x::Symbol, z::Symbol)
     n = Expr(:block)
     for (i, sym) in enumerate(symbol_list)
-        sym_kernel = Symbol(String(sym)*"_kernel")
-        a = :(op == $(univariate_operator_to_id[sym]) && (return (McCormick.$sym_kernel)(x, ($ref).Intv, tp1, tp2)))
+        a = :(op == $(univariate_operator_to_id[sym]) && (return (McCormick.$sym)(x), 0.0, 0.0))
         push!(n.args, a)
     end
     push!(n.args, :(error("No operator")))
-    n
-end
 
-function make_tp_gate_2(symbol_list, ref::Symbol)
-    n = Expr(:block)
+    nd = Expr(:block)
     for (i, sym) in enumerate(symbol_list)
         sym_kernel = Symbol(String(sym)*"_kernel")
-        a = :(op == $(univariate_operator_to_id[sym]) && (return (McCormick.$sym_kernel)(x, ($ref).Intv, tp1, tp2, tp3, tp4)))
+        a = :(op == $(univariate_operator_to_id[sym]) && (return (McCormick.$sym_kernel)(x, z.Intv, tp1, tp2)))
+        push!(nd.args, a)
+    end
+    push!(nd.args, :(error("No operator")))
+
+    qn = quote
+            if flag
+                $n
+            else
+                $nd
+            end
+        end
+    qn
+end
+
+function make_tp_gate_2(symbol_list, x::Symbol, z::Symbol)
+    n = Expr(:block)
+    for (i, sym) in enumerate(symbol_list)
+        a = :(op == $(univariate_operator_to_id[sym]) && (return (McCormick.$sym)(x), 0.0, 0.0, 0.0, 0.0))
         push!(n.args, a)
     end
     push!(n.args, :(error("No operator")))
-    n
+
+    nd = Expr(:block)
+    for (i, sym) in enumerate(symbol_list)
+        sym_kernel = Symbol(String(sym)*"_kernel")
+        a = :(op == $(univariate_operator_to_id[sym]) && (return (McCormick.$sym_kernel)(x, z.Intv, tp1, tp2, tp3, tp4)))
+        push!(nd.args, a)
+    end
+    push!(nd.args, :(error("No operator")))
+
+    qn = quote
+            if flag
+                $n
+            else
+                $nd
+            end
+        end
+    qn
 end
 
-single_tp_expra = make_tp_gate_1(single_tp_ops, :x)
-single_tp_exprb = make_tp_gate_1(single_tp_ops, :z)
+single_tp_expr = make_tp_gate_1(single_tp_ops, :x, :z)
 @eval @inline function single_tp_set(op::Int64, x::MC, z::MC, tp1::Float64,
                                tp2::Float64, flag::Bool)
-    if flag
-        $single_tp_expra
-    else
-        $single_tp_exprb
-    end
+    $single_tp_expr
 end
-double_tp_expra = make_tp_gate_2(double_tp_ops, :x)
-double_tp_exprb = make_tp_gate_2(double_tp_ops, :z)
+double_tp_expr = make_tp_gate_2(double_tp_ops, :x, :z)
 @eval @inline function double_tp_set(op::Int64, x::MC, z::MC, tp1::Float64,
                                tp2::Float64, tp3::Float64, tp4::Float64, flag::Bool)
-    if flag
-        $double_tp_expra
-    else
-        $double_tp_exprb
-    end
+    $double_tp_expr
 end
