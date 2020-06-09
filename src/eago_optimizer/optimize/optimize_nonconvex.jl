@@ -357,6 +357,8 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     # set subgradient refinement flag
     wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
+    wp._relaxed_evaluator.subgrad_tighten = m._parameters.subgrad_tighten
+    wp._relaxed_evaluator.reverse_subgrad_tighten =  m._parameters.reverse_subgrad_tighten
 
     m._presolve_time = time() - m._parse_time
 
@@ -715,14 +717,11 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
 
-    #println("fbbt m.current_node: $(m._current_node)")
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
         for i = 1:m._parameters.fbbt_lp_repetitions
-            #println("fbbt i = $i")
             if feasible_flag
                 for j = 1:wp._saf_leq_count
-                #    println("fbbt leq j = $j")
                     !feasible_flag && break
                     saf_leq =  wp._saf_leq[j]
                     feasible_flag &= fbbt!(m, saf_leq)
@@ -730,7 +729,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
                 !feasible_flag && break
 
                 for j = 1:wp._saf_eq_count
-                #    println("fbbt eq j = $j")
                     !feasible_flag && break
                     saf_eq = wp._saf_eq[j]
                     feasible_flag &= fbbt!(m, saf_eq)
@@ -756,26 +754,34 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         cp_walk_count += 1
         perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
     end
+    #println("m._current_node: $(m._current_node)")
     #println("END CPWALK")
-    check_for_solution!(m._current_node)
 
+    #println("START obbt")
     obbt_count = 0
-    perfom_obbt_flag = feasible_flag
-    perfom_obbt_flag &= (params.obbt_depth >= m._iteration_count)
-    perfom_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
-    while  perfom_obbt_flag
+    perform_obbt_flag = feasible_flag
+    perform_obbt_flag &= (params.obbt_depth >= m._iteration_count)
+    perform_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
+#    println("feasible flag  obbt in = $feasible_flag")
+    while perform_obbt_flag
         feasible_flag &= obbt!(m)
         m._obbt_performed_flag = true
         !feasible_flag && break
         obbt_count += 1
-        perfom_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
+        perform_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
     end
     #println("END obbt")
-    check_for_solution!(m._current_node)
-
+    drop_sol = contains_sol && !check_for_solution!(m, m._current_node)
+    if drop_sol
+        #println("--- DROPPED SOLUTION ---")
+        feasible_flag = false
+        m._global_lower_bound = 0.0
+        m._global_upper_bound = 0.0
+    end
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
                            lower_variable_bounds(m._current_node))
 
+    #println("feasibility = $(feasible_flag)")
     m._preprocess_feasibility = feasible_flag
 
     return nothing
@@ -967,17 +973,20 @@ Updates the internal storage in the optimizer after a valid feasible cut is adde
 function cut_update!(m::Optimizer)
 
     m._cut_feasibility = true
+    println("m._cut_iterations = $(m._cut_iterations)")
 
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
+    println("cut obj value = $(obj_val)")
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
 
-    if m._cut_iterations <= m._parameters.cut_min_iterations
+    #if m._cut_iterations <= m._parameters.cut_min_iterations
         m._cut_add_flag = true
         m._lower_termination_status = m._cut_termination_status
         m._lower_result_status = m._cut_result_status
         m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
-    end
+        println("m._cut_solution: $(m._cut_solution)")
+    #end
 
     if prior_obj_val < obj_val
         m._cut_objective_value = obj_val
@@ -1005,34 +1014,27 @@ interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
 
-    #println("ran cut condition")
+    # always add cut if below the minimum iteration limit, otherwise add cut
+    # the number of cuts is less than the maximum and the distance between
+    # prior solutions exceeded a tolerance.
     continue_cut_flag = m._cut_add_flag
     continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
+
+    # compute distance between prior solutions and compare to tolerances
     n = m._current_node
-    #println("continueing to cut: $(continue_cut_flag)")
-    #println("starting cut: $(m._current_xref)")
+    ns_indx = m._branch_to_sol_map
 
+    cvx_factor =  m._parameters.cut_cvx
+    xsol = (m._cut_iterations > 1) ? m._cut_solution[ns_indx] : m._lower_solution[ns_indx]
+    xnew = (1.0 - cvx_factor)*mid(n) + cvx_factor*xsol
+
+    continue_cut_flag &= (norm((xsol - xnew)/diam(n), 1) > m._parameters.cut_tolerance)
+    continue_cut_flag |= (m._cut_iterations < m._parameters.cut_min_iterations)
+
+    # update reference point for new cut
     if continue_cut_flag
-        cvx_factor =  m._parameters.cut_cvx
-        use_cut = m._cut_iterations > 1
-        for i = 1:m._branch_variable_count
-            si = m._branch_to_sol_map[i]
-            ni_diam = n.lower_variable_bounds[i] + n.upper_variable_bounds[i]
-            cvx_comb = cvx_factor*(use_cut ? (m._cut_solution[si]) : (m._lower_solution[si]))
-            cvx_comb += 0.5*(1.0 - cvx_factor)*ni_diam
-            m._candidate_xref[i] = cvx_comb
-            m._current_xref[i] -= m._candidate_xref[i]
-            m._current_xref[i] /= ni_diam
-        end
-
-        if norm(m._current_xref, 1) > m._parameters.cut_tolerance
-            copyto!(m._current_xref, m._candidate_xref)
-            set_reference_point!(m)
-            m._working_problem._relaxed_evaluator.is_intersect = true
-            m._working_problem._relaxed_evaluator.interval_intersect = true
-        else
-            continue_cut_flag = false
-        end
+        copyto!(m._current_xref, xnew)
+        set_reference_point!(m)
     end
 
     # check to see if interval bound is preferable and replaces the objective
@@ -1056,11 +1058,9 @@ function cut_condition(t::ExtensionType, m::Optimizer)
 
         elseif obj_type === SCALAR_QUADRATIC
             objective_lo = lower_interval_bound(m, m._working_problem._objective_sqf, n)
-            #println("objective_lo = $(objective_lo)")
 
         elseif obj_type === NONLINEAR
             objective_lo = lower_interval_bound(m, m._working_problem._objective_nl, n)
-            #println("objective_lo = $(objective_lo)")
 
         end
 
@@ -1068,9 +1068,9 @@ function cut_condition(t::ExtensionType, m::Optimizer)
             m._lower_objective_value = objective_lo
             fill!(m._lower_lvd, 0.0)
             fill!(m._lower_uvd, 0.0)
-
         end
     end
+
     m._cut_iterations += 1
 
     return continue_cut_flag
@@ -1082,6 +1082,11 @@ $(SIGNATURES)
 Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, m::Optimizer)
+
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    m._working_problem._relaxed_evaluator.is_intersect = false
+    m._new_eval_objective = true
+    m._new_eval_constraint = true
 
     relax_constraints!(m, m._cut_iterations)
     relax_objective!(m, m._cut_iterations)
@@ -1106,7 +1111,7 @@ function add_cut!(t::ExtensionType, m::Optimizer)
         m._cut_add_flag = false
     end
 
-    return
+    return nothing
 end
 
 """

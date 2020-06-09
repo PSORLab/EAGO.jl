@@ -156,8 +156,11 @@ Base.@kwdef mutable struct EAGOParameters
     "Relax Tag used to specify type of McCormick operator"
     relax_tag::RelaxTag = NS()
     "Perform tightening of interval bounds using subgradients at each factor in
-    each nonlinear tape during a forward-reverse pass (default = true)."
+    each nonlinear tape during a forward pass (default = true)."
     subgrad_tighten::Bool = true
+    "Perform tightening of interval bounds using subgradients at each factor in
+    each nonlinear tape during a reverse pass (default = false)."
+    reverse_subgrad_tighten::Bool = false
     subgrad_tol::Float64 = 1E-10
 
     # Tolerance to add cuts and max number of cuts

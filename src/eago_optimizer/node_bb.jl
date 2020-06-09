@@ -73,7 +73,7 @@ function Base.isempty(x::NodeBB)
         @inbounds upper = x.upper_variable_bounds[i]
         (lower >= upper) && (return true)
     end
-    false
+    return false
 end
 
 """
@@ -88,7 +88,7 @@ function same_box(x::NodeBB, y::NodeBB, r::Float64)
         ~isapprox(x.lower_variable_bounds[i], y.lower_variable_bounds[i], atol=r) && (return false)
         ~isapprox(x.upper_variable_bounds[i], y.upper_variable_bounds[i], atol=r) && (return false)
     end
-    true
+    return true
 end
 
 # Compute middle & diameter

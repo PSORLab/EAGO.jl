@@ -15,7 +15,7 @@
 # maximum number to perform reverse operation on associative term by summing
 # and evaluating pairs remaining terms not reversed
 const MAX_ASSOCIATIVE_REVERSE = 6
-const REVERSE_DEBUG = true
+const REVERSE_DEBUG = false
 
 """
 $(FUNCTIONNAME)
@@ -69,6 +69,12 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
 
     else
         c, a, b = plus_rev(setk, set1, set2)
+    end
+
+    if REVERSE_DEBUG
+        println("val out = $(c)")
+        println("arg1 out = $(a)")
+        println("arg2 out = $(b)")
     end
 
     if !arg1_is_number
@@ -144,6 +150,12 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         active_set = setstorage[active_idx]
         c, a, b = plus_rev(setk, active_set, tmp_sum)
 
+        if REVERSE_DEBUG
+            println("val out = $(c)")
+            println("arg1 out = $(a)")
+            println("arg2 out = $(b)")
+        end
+
         if isempty(a)
             return false
         elseif isnan(a)
@@ -211,6 +223,12 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
 
     else
         c, a, b = mult_rev(setk, set1, set2)
+    end
+
+    if REVERSE_DEBUG
+        println("val out = $(c)")
+        println("arg1 out = $(a)")
+        println("arg2 out = $(b)")
     end
 
     if !arg1_is_number
@@ -285,6 +303,12 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
         active_set = setstorage[active_idx]
         c, a, b = mult_rev(setk, active_set, tmp_mul)
 
+        if REVERSE_DEBUG
+            println("val out = $(c)")
+            println("arg1 out = $(a)")
+            println("arg2 out = $(b)")
+        end
+
         if isempty(a)
             return false
         elseif isnan(a)
@@ -351,6 +375,12 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         c, a, b = minus_rev(setk, set1, set2)
     end
 
+    if REVERSE_DEBUG
+        println("val out = $(c)")
+        println("arg1 out = $(a)")
+        println("arg2 out = $(b)")
+    end
+
     if !arg1_is_number
         if isempty(a)
             return false
@@ -364,7 +394,6 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     if !arg2_is_number
-        #println("b = $(b)")
         if isempty(b)
             return false
         elseif isnan(b)
@@ -431,6 +460,12 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
     else
         c, a, b = power_rev(setk, set1, set2)
+    end
+
+    if REVERSE_DEBUG
+        println("val out = $(c)")
+        println("arg1 out = $(a)")
+        println("arg2 out = $(b)")
     end
 
     if !arg1_is_number
@@ -510,6 +545,12 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
         c, a, b = power_rev(setk, set1, set2)
     end
 
+    if REVERSE_DEBUG
+        println("val out = $(c)")
+        println("arg1 out = $(a)")
+        println("arg2 out = $(b)")
+    end
+
     if !arg1_is_number
         if isempty(a)
             return false
@@ -541,10 +582,13 @@ function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::V
     valset = setstorage[k]
     argset = setstorage[arg_indx]
 
-    REVERSE_DEBUG && println("valset = $(valset)")
-    REVERSE_DEBUG && println("argset = $(argset)")
+    REVERSE_DEBUG && println("val set = $(valset)")
+    REVERSE_DEBUG && println("arg set = $(argset)")
 
     a, b = eval_univariate_set_reverse(op, valset, argset)
+
+    REVERSE_DEBUG && println("val out = $(a)")
+    REVERSE_DEBUG && println("arg out = $(b)")
 
     if isempty(b)
         return false
@@ -599,7 +643,7 @@ function reverse_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
     for k = 1:length(nd)
 
-        println(" ")
+        REVERSE_DEBUG && println(" ")
         nod = nd[k]
         ntype = nod.nodetype
         nvalued = numvalued[k]
@@ -725,7 +769,7 @@ function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
     return reverse_pass_kernel!(d.nd, d.adj, evaluator.x, evaluator.lower_variable_bounds,
                                 evaluator.upper_variable_bounds, d.grad_sparsity,
                                 d.setstorage, evaluator.subgrad_tol, d.numberstorage,
-                                d.isnumber, evaluator.is_post)
+                                d.isnumber, evaluator.reverse_subgrad_tighten)
 end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V

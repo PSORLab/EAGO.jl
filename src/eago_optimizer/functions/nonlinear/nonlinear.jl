@@ -313,7 +313,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
     "Context used to guard against domain violations & branch on these violations if necessary"
     subgrad_tighten::Bool = false
-    subgrad_tighten_reverse::Bool = false
+    reverse_subgrad_tighten::Bool = false
     ctx::GuardCtx = GuardCtx()
 
     subexpressions::Vector{NonlinearExpression} = NonlinearExpression[]
