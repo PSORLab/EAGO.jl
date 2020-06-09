@@ -750,11 +750,13 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
             set_reference_point!(m)
         end
         update_relaxed_problem_box!(m)
-        relax_constraints!(m, 1)
     end
     m._working_problem._objective_nl.has_value = false
-    m._working_problem._relaxed_evaluator.interval_intersect = true
+    m._working_problem._relaxed_evaluator.interval_intersect = false
 
+    if !m._obbt_performed_flag
+        relax_constraints!(m, 1)
+    end
     relax_objective!(m, 1)
 
     # Optimizes the object

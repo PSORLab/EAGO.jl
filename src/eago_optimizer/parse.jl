@@ -269,7 +269,9 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
                                                                               m._parameters.relax_tag))
     end
 
-    m._working_problem._nonlinear_count =  length(m._working_problem._nonlinear_constr)
+    m._input_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
+    m._working_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
+
     return nothing
 end
 
@@ -443,7 +445,8 @@ function parse_classify_problem!(m::Optimizer)
     ip = m._input_problem
     integer_variable_number = count(is_integer.(ip._variable_info))
 
-    nl_constraint_number = ip._nonlinear_leq_count + ip._nonlinear_eq_count
+    nl_expr_number = ip._objective_type === NONLINEAR ? 1 : 0
+    nl_expr_number += ip._nonlinear_count
     cone_constraint_number = ip._conic_second_order_count
     quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
@@ -454,11 +457,11 @@ function parse_classify_problem!(m::Optimizer)
     if integer_variable_number === 0
 
         if cone_constraint_number === 0 && quad_constraint_number === 0 &&
-            nl_constraint_number === 0 && linear_or_sv_objective
+            nl_expr_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = LP
 
         elseif quad_constraint_number === 0 && relaxed_supports_soc &&
-               nl_constraint_number === 0 && linear_or_sv_objective
+               nl_expr_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = SOCP
 
         else

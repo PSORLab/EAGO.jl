@@ -110,7 +110,7 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
-    # counts varialbes in subexpression
+    # counts variables in subexpression
     variable_dict = Dict{Int,Bool}()
     for (i,node) in enumerate(nd)
         if node.nodetype === JuMP._Derivatives.VARIABLE

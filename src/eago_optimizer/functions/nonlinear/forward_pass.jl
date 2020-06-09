@@ -36,7 +36,7 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
         cc_val =  val.cc_grad[i]
 
         i_sol = sparsity[i]
-        x_val =  x_values[i_sol]
+        x_val = x_values[i_sol]
         lower_bound = lower_variable_bounds[i_sol]
         upper_bound = upper_variable_bounds[i_sol]
 
@@ -47,7 +47,7 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     lower_refinement = false
                 else
                     delX = sub_round(lower_bound, x_val, RoundDown)
-                    lower = add_round(lower, mul_round(cc_val, delX, RoundDown), RoundDown)
+                    lower = add_round(lower, mul_round(cv_val, delX, RoundDown), RoundDown)
                 end
             else
                 if isinf(upper_bound)
@@ -55,7 +55,7 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     lower_refinement = false
                 else
                     delX = sub_round(upper_bound, x_val, RoundUp)
-                    lower = add_round(lower, mul_round(cc_val, delX, RoundDown), RoundDown)
+                    lower = add_round(lower, mul_round(cv_val, delX, RoundDown), RoundDown)
                 end
             end
         end

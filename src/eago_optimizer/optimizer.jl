@@ -233,8 +233,7 @@ Base.@kwdef mutable struct InputProblem
     _conic_second_order_count::Int = 0
 
     # nonlinear constraint storage
-    _nonlinear_leq_count::Int = 0
-    _nonlinear_eq_count::Int = 0
+    _nonlinear_count::Int = 0
 
     # objective information (set by MOI.set(m, ::ObjectiveFunction...) in optimizer.jl)
     _objective_sv::SV = SV(VI(-1))
