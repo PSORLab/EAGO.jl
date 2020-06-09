@@ -229,24 +229,24 @@ function forward_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
 
     # extract values for argument 1
     arg_index =  children_arr[idx]
-    output_is_number =  numvalued[arg_index]
+    output_is_number = numvalued[arg_index]
     if output_is_number
        tmp_set = zero(MC{N,T})
-       tmp_num =  numberstorage[arg_index]
+       tmp_num = numberstorage[arg_index]
     else
        tmp_num = 0.0
-       tmp_set =  setstorage[arg_index]
+       tmp_set = setstorage[arg_index]
     end
     output_is_number = true
 
     for idx = 2:length(children_idx)
-        cidx =  children_idx[idx]
+        cidx = children_idx[idx]
         arg_index =  children_arr[cidx]
-        arg_is_number =  numvalued[arg_index]
+        arg_is_number = numvalued[arg_index]
         if arg_is_number
-            tmp_num +=  numberstorage[arg_index]
+            tmp_num += numberstorage[arg_index]
         else
-            tmp_set +=  setstorage[arg_index]
+            tmp_set += setstorage[arg_index]
         end
         output_is_number &= arg_is_number
     end
@@ -278,7 +278,7 @@ function forward_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     idx2 = last(children_idx)
 
     # extract values for argument 1
-    arg1_index =  children_arr[idx1]
+    arg1_index = children_arr[idx1]
     arg1_is_number = numvalued[arg1_index]
     if arg1_is_number
         set1 = one(MC{N,T})
@@ -659,13 +659,13 @@ $(FUNCTIONNAME)
 Updates storage tapes with forward evalution for node representing `n = f(c)` where f is standard function
 and `c` is a number.
 """
-function forward_univariate_number!(k::Int64, op::Int64, numvalued::Vector{Bool}, numberstorage::Vector{Float64})
+function forward_univariate_number!(k::Int64, op::Int64, arg_idx::Int, numvalued::Vector{Bool}, numberstorage::Vector{Float64})
 
-    tmp_num =  numberstorage[child_idx]
+    tmp_num = numberstorage[arg_idx]
     outnum = eval_univariate_set(op, tmp_num)
 
-     numberstorage[k] = outnum
-     numvalued[k] = true
+    numberstorage[k] = outnum
+    numvalued[k] = true
 
     return nothing
 end
@@ -676,25 +676,25 @@ $(FUNCTIONNAME)
 Updates storage tapes with forward evalution for node representing `n = f(x)` where f is standard function
 that requires a single tiepoint calculation per convex/concave relaxation (e.g. tan).
 """
-function forward_univariate_tiepnt_1!(k::Int64, child_idx::Int64, setstorage::Vector{V},
+function forward_univariate_tiepnt_1!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
                                       x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, subgrad_tol::Float64,
                                       sparsity::Vector{Int},
                                       tpdict::Dict{Int64, Tuple{Int64,Int64,Int64,Int64}},
                                       tp1storage::Vector{Float64}, tp2storage::Vector{Float64},
                                       is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
-    tmp_set =  setstorage[child_idx]
+    tmp_set = setstorage[child_idx]
 
     tidx1, tidx2 = tpdict[k]
-    tp1 =  tp1storage[tindx1]
-    tp2 =  tp2storage[tindx2]
+    tp1 =  tp1storage[tidx1]
+    tp2 =  tp2storage[tidx1]
     new_tie_points = tp1 === Inf
 
-    outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, first_eval_flag)
+    outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, is_first_eval)
 
     if new_tie_points
-         tp1storage[tindx] = tp1
-         tp1storage[tindx] = tp2
+         tp1storage[tidx1] = tp1
+         tp2storage[tidx1] = tp2
     end
 
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
@@ -708,7 +708,7 @@ $(FUNCTIONNAME)
 Updates storage tapes with forward evalution for node representing `n = f(x)` where f is standard function
 that requires a two tiepoint calculations per convex/concave relaxation (e.g. sin).
 """
-function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Vector{V},
+function forward_univariate_tiepnt_2!(k::Int64, op::Int64, child_idx::Int64, setstorage::Vector{V},
                                       x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64},
                                       subgrad_tol::Float64, sparsity::Vector{Int},
                                       tpdict::Dict{Int64, Tuple{Int64,Int64,Int64,Int64}},
@@ -716,27 +716,29 @@ function forward_univariate_tiepnt_2!(k::Int64, child_idx::Int64, setstorage::Ve
                                       tp3storage::Vector{Float64}, tp4storage::Vector{Float64},
                                       is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
-    tmp_set =  setstorage[child_idx]
+    tmp_set = setstorage[child_idx]
 
     # retreive previously calculated tie-points
     # These are re-initialize to Inf for each box
-    tidx1, tidx2, tidx3, tidx4 = tpdict[k]
-    tp1 =  tp1storage[tidx1]
-    tp2 =  tp2storage[tidx2]
-    tp3 =  tp3storage[tidx3]
-    tp4 =  tp4storage[tidx4]
+    @show tp3storage
+    tidx1, tidx2 = tpdict[k]
+    tp1 = tp1storage[tidx1]
+    tp2 = tp2storage[tidx1]
+    tp3 = tp3storage[tidx2]
+    tp4 = tp4storage[tidx2]
 
     new_tie_points = tp1 === Inf
 
     # Perform an evaluation of the univariate function overdubbed with Cassette.jl
-    outset, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, tmp_set, setstorage[k], tp1, tp2, tp3, tp4, first_eval_flag)
+    outset, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, tmp_set, setstorage[k],
+                                                  tp1, tp2, tp3, tp4, is_first_eval)
 
     # Store new tiepoints if new evaluation
     if new_tie_points
          tp1storage[tidx1] = tp1
-         tp2storage[tidx2] = tp2
-         tp3storage[tidx3] = tp3
-         tp4storage[tidx4] = tp4
+         tp2storage[tidx1] = tp2
+         tp3storage[tidx2] = tp3
+         tp4storage[tidx2] = tp4
     end
 
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
@@ -755,15 +757,15 @@ function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, setstor
                                   ctx::GuardCtx, user_operators) where V
 
     userop = op - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
-     f = user_operators.univariate_operator_f[userop]
+    f = user_operators.univariate_operator_f[userop]
 
     if arg_is_number
-        tmp_num =  setstorage[child_idx]
+        tmp_num = setstorage[child_idx]
         outnum = f(tmp_num)
-         numberstorage[k] = outnum
+        numberstorage[k] = outnum
 
     else
-        tmp_set =  setstorage[child_idx]
+        tmp_set = setstorage[child_idx]
         outnum = Cassette.overdub(ctx, f, tmp_set)
         setstorage[k] = overwrite_or_intersect(outnum, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                                interval_intersect)
@@ -847,7 +849,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
 
-             children_idx = nzrange(adj, k)
+            children_idx = nzrange(adj, k)
             n_children = length(children_idx)
 
             # :+ with arity two or greater
@@ -910,9 +912,9 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
 
             # checks to see if operator is a number
             child_idx = first(nzrange(adj, k))
-             arg_idx = children_arr[adj.colptr[k]]
+            arg_idx = children_arr[adj.colptr[k]]
             arg_is_number =  numvalued[arg_idx]
-             numvalued[k] = arg_is_number
+            numvalued[k] = arg_is_number
 
             # performs univariate operators on number valued inputs
             if op >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
@@ -920,17 +922,17 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                                          is_intersect, is_first_eval, interval_intersect, ctx, user_operators)
 
             elseif arg_is_number
-                forward_univariate_number!(k, op, numvalued, numberstorage)
+                forward_univariate_number!(k, op, arg_idx, numvalued, numberstorage)
 
             # performs set valued operators that require a single tiepoint calculation
             elseif single_tp(op)
-                forward_univariate_tiepnt_1!(k, arg_idx, setstorage, x, lbd, ubd,  subgrad_tol, sparsity, tpdict,
+                forward_univariate_tiepnt_1!(k, op, arg_idx, setstorage, x, lbd, ubd,  subgrad_tol, sparsity, tpdict,
                                              tp1storage, tp2storage, is_post, is_intersect,
                                              is_first_eval, interval_intersect, ctx)
 
             # performs set valued operators that require two tiepoint calculations
             elseif double_tp(op)
-                forward_univariate_tiepnt_2!(k, arg_idx, setstorage, x, lbd, ubd,  subgrad_tol, sparsity, tpdict,
+                forward_univariate_tiepnt_2!(k, op, arg_idx, setstorage, x, lbd, ubd,  subgrad_tol, sparsity, tpdict,
                                              tp1storage, tp2storage, tp3storage, tp4storage,
                                              is_post, is_intersect, is_first_eval,
                                              interval_intersect, ctx)

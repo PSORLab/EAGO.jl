@@ -36,168 +36,6 @@ function reset_relaxation!(m::Optimizer)
     return nothing
 end
 
-
-function check_for_solution!(n)
-    xsol = [0.16666662509163402, 0.0, 0.0, 1.7759562500751098, 2.0, 0.9072011719589772, 0.95,
-    12.0, 2.0, 1.51566550424387, 1.0, 0.9959266654708594, 1.0, 1.002859896026428]
-    contains_sol = true
-    for i = 1:length(xsol)
-        if  (n.lower_variable_bounds[i] > xsol[i]) || (xsol[i] > n.upper_variable_bounds[i])
-            contains_sol = false
-        end
-    end
-
-    if contains_sol
-    #    println("THIS NODE CONTAINS THE GLOBAL SOLUTION")
-        #=
-        for i = 1:length(xsol)
-            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
-        end
-        =#
-    else
-        #println("THIS NODE lacks the GLOBAL SOLUTION")
-        #=
-        for i = 1:length(xsol)
-            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
-        end
-        =#
-    end
-    return nothing
-end
-
-function check_for_storage!(n)
-    xsol = [0.16666662509163402, 0.0, 0.0, 1.7759562500751098, 2.0, 0.9072011719589772, 0.95,
-    12.0, 2.0, 1.51566550424387, 1.0, 0.9959266654708594, 1.0, 1.002859896026428]
-    contains_sol = true
-    for i = 1:length(xsol)
-        if  (n.lower_variable_bounds[i] > xsol[i]) || (xsol[i] > n.upper_variable_bounds[i])
-            contains_sol = false
-        end
-    end
-    if contains_sol
-        println("THIS NODE CONTAINS THE GLOBAL SOLUTION")
-        for i = 1:length(xsol)
-            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
-        end
-    else
-        println("THIS NODE lacks the GLOBAL SOLUTION")
-        for i = 1:length(xsol)
-            println("$(n.lower_variable_bounds[i]) <= $(xsol[i]) <= $(n.upper_variable_bounds[i])")
-        end
-    end
-    =#
-    return nothing
-end
-
-function pretty_print_node!(n, offset, xref)
-    lower_bounds = deepcopy(n.lower_variable_bounds)
-    upper_bounds = deepcopy(n.upper_variable_bounds)
-    if offset
-        pushfirst!(lower_bounds, 0.0)
-        pushfirst!(upper_bounds, 0.0)
-    end
-    for i = 1:length(xref)
-        println(" at x[$i] = $(xref[i]), xL[$i] = $(lower_bounds[i]), xU[$i] = $(upper_bounds[i]),")
-    end
-    return nothing
-end
-
-function pretty_print_mc!(desc, m, xmc, xref, N)
-    println(" -----------------------")
-    println(desc)
-    println(" -----------------------")
-    println(" analytic/eago value is  ")
-    if xmc.cv !== xref.cv
-        println(" cv =  $(xmc.cv) vs. $(xref.cv)")
-    end
-    if xmc.cc !== xref.cc
-        println(" cc =  $(xmc.cc) vs. $(xref.cc)")
-    end
-    if xmc.Intv.lo !== xref.Intv.lo
-        println(" lo =  $(xmc.Intv.lo) vs. $(xref.Intv.lo)")
-    end
-    if xmc.Intv.hi !== xref.Intv.hi
-        println(" hi =  $(xmc.Intv.hi) vs. $(xref.Intv.hi)")
-    end
-    #=
-    for i = 1:N
-        if !iszero(xmc.cv_grad[i]) || !iszero(xmc.cc_grad[i])
-            if xmc.cv_grad[i] !== xref.cv_grad[i]
-                println("convex gradient analytic = $(xmc.cv_grad[i]), eago = $(xref.cc_grad[i])")
-            end
-            if xmc.cv_grad[i] !== xref.cc_grad[i]
-                println("concave gradient analytic = $(xmc.cv_grad[i]), eago = $(xref.cc_grad[i])")
-            end
-        end
-    end
-    =#
-    println(" -----------------------")
-end
-
-function compute_compare_mcs!(m::Optimizer)
-
-    println("  ")
-    println(" start mc compare ")
-    println("  ")
-    n = m._current_node
-
-    xref = deepcopy(m._current_xref)
-    pushfirst!(xref, 0.0)
-    pretty_print_node!(n, true, xref)
-
-    lower_bounds = deepcopy(n.lower_variable_bounds)
-    upper_bounds = deepcopy(n.upper_variable_bounds)
-    pushfirst!(lower_bounds, 0.0)
-    pushfirst!(upper_bounds, 0.0)
-
-    N = 14
-    xval = 0.5*(lower_bounds + upper_bounds)
-    x = [MC{N,NS}(xval[i], Interval(lower_bounds[i], upper_bounds[i]), i) for i=1:length(xval)]
-
-    #=
-    for i = 2:(N+1)
-        println("double X$i = $(x[i]);")
-        println("double XL$i = $(lower_bounds[i]);")
-        println("double XU$i = $(upper_bounds[i]);")
-        println("MC XMC( I(XL$i, XU$i), X$i);")
-        println("XMC.sub($N,$(i-2));")
-    end
-    =#
-
-    refx1 = m._working_problem._nonlinear_constr[1].expr.setstorage[1]
-    refx2 = m._working_problem._nonlinear_constr[2].expr.setstorage[1]
-    refx3 = m._working_problem._nonlinear_constr[3].expr.setstorage[1]
-    refx4 = m._working_problem._nonlinear_constr[4].expr.setstorage[1]
-    refx5 = m._working_problem._nonlinear_constr[5].expr.setstorage[1]
-    refx6 = m._working_problem._nonlinear_constr[6].expr.setstorage[1]
-
-    # - uni, - binary, + binary, + n, ^2, * binary, * n,
-    term1a = 0.01*x[5]*x[10]
-    term1 = 0.98*x[4] - x[7]*(0.01*x[5]*x[10] + x[4])
-    pretty_print_mc!("Term 1 MC = ", m, term1, refx1, N)
-
-    term2 = -x[2]*x[9] + 10*x[3] + x[6]
-    pretty_print_mc!("Term 2 MC = ", m, term2, refx2, N)
-
-    term3 = x[10]*x[14] + 22.2*x[11] - 35.82
-    pretty_print_mc!("Term 3 MC = ", m, term3, refx3, N)
-
-    term4 = x[11]*x[15] - 3*x[8] + 1.33
-    pretty_print_mc!("Term 4 MC = ", m, term4, refx4, N)
-
-    term5 = x[5]*x[12] - x[2]*(1.12 + 0.13167*x[9] - 0.0067*x[9]^2)
-    pretty_print_mc!("Term 5 MC = ", m, term5, refx5, N)
-
-    term6 = x[8]*x[13] - 0.01*(1.098*x[9] - 0.038*x[9]^2) - 0.325*x[7] - 0.57425
-    pretty_print_mc!("Term 6 MC = ", m, term6, refx6, N)
-
-    println("  ")
-    println(" end mc compare ")
-    println("  ")
-
-    return nothing
-end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -393,6 +231,7 @@ from the bound.
 function branch_node!(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
+
     lvbs = n.lower_variable_bounds
     uvbs = n.upper_variable_bounds
 
@@ -701,8 +540,6 @@ constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
 """
 function preprocess!(t::ExtensionType, m::Optimizer)
-    #println("START PREPROCESS")
-    check_for_solution!(m._current_node)
 
     reset_relaxation!(m)
 
@@ -738,10 +575,8 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         end
         unpack_fbbt_buffer!(m)
     end
-    #println("END FBBT")
-    check_for_solution!(m._current_node)
 
-    # done after cp
+    # done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
 
     cp_walk_count = 0
@@ -754,15 +589,12 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         cp_walk_count += 1
         perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
     end
-    #println("m._current_node: $(m._current_node)")
-    #println("END CPWALK")
 
-    #println("START obbt")
     obbt_count = 0
     perform_obbt_flag = feasible_flag
     perform_obbt_flag &= (params.obbt_depth >= m._iteration_count)
     perform_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
-#    println("feasible flag  obbt in = $feasible_flag")
+
     while perform_obbt_flag
         feasible_flag &= obbt!(m)
         m._obbt_performed_flag = true
@@ -770,18 +602,10 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         obbt_count += 1
         perform_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
     end
-    #println("END obbt")
-    drop_sol = contains_sol && !check_for_solution!(m, m._current_node)
-    if drop_sol
-        #println("--- DROPPED SOLUTION ---")
-        feasible_flag = false
-        m._global_lower_bound = 0.0
-        m._global_upper_bound = 0.0
-    end
+
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
                            lower_variable_bounds(m._current_node))
 
-    #println("feasibility = $(feasible_flag)")
     m._preprocess_feasibility = feasible_flag
 
     return nothing
@@ -973,20 +797,15 @@ Updates the internal storage in the optimizer after a valid feasible cut is adde
 function cut_update!(m::Optimizer)
 
     m._cut_feasibility = true
-    println("m._cut_iterations = $(m._cut_iterations)")
 
     relaxed_optimizer = m.relaxed_optimizer
     obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-    println("cut obj value = $(obj_val)")
     prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
 
-    #if m._cut_iterations <= m._parameters.cut_min_iterations
-        m._cut_add_flag = true
-        m._lower_termination_status = m._cut_termination_status
-        m._lower_result_status = m._cut_result_status
-        m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
-        println("m._cut_solution: $(m._cut_solution)")
-    #end
+    m._cut_add_flag = true
+    m._lower_termination_status = m._cut_termination_status
+    m._lower_result_status = m._cut_result_status
+    m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
 
     if prior_obj_val < obj_val
         m._cut_objective_value = obj_val
@@ -1144,7 +963,7 @@ function upper_problem!(t::ExtensionType, m::Optimizer)
         m._upper_objective_value = Inf
 
     else
-        single_nlp_solve!(m)
+        solve_local_nlp!(m)
 
     end
 

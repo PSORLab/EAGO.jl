@@ -174,7 +174,7 @@ function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::B
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant)
+            lt = LT(-f.saf.constant + constraint_tol)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_quadratic_ineq_ci, ci)
@@ -194,7 +194,7 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant)
+            lt = LT(-f.saf.constant + constraint_tol)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_quadratic_eq_ci, ci)
@@ -205,7 +205,7 @@ function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Boo
     finite_cut_generated = affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant)
+            lt = LT(-f.saf.constant + constraint_tol)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_quadratic_eq_ci, ci)
@@ -273,7 +273,7 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
     constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant + 1E-5)
+            lt = LT(-f.saf.constant + constraint_tol)
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._buffered_nonlinear_ci, ci)
@@ -423,10 +423,11 @@ function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64,
             # TODO: When we introduce numerically safe McCormick operators we'll need to replace
             # the UBD - buffered_nl.saf.constant with a correctly rounded version. For now,
             # a small factor is added to the UBD calculation initially which should be sufficient.
-            ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_nl.saf.constant))
+            ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_nl.saf.constant + constraint_tol))
             push!(m._objective_cut_ci_saf, ci_saf)
         end
     end
+    println("relaxed_evaluator: = $(buffered_nl.expr.setstorage[1])")
 
     m._new_eval_objective = false
 

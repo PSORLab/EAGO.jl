@@ -76,10 +76,10 @@ end
 ###
 function NonlinearExpression(sub::JuMP._SubexpressionStorage,
                              subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                             tag::T) where T <: RelaxTag
-    nd = copy(func.nd)
-    adj = copy(func.adj)
-    const_values = copy(func.const_values)
+                             tag::T) where T
+    nd = copy(sub.nd)
+    adj = copy(sub.adj)
+    const_values = copy(sub.const_values)
 
     lenx = length(nd)
     setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
@@ -94,10 +94,10 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
         op = node.index
         if double_tp(op)
             tp1_count += 1
+            tp2_count += 1
             tpdict[i] = (tp1_count, tp1_count, tp2_count, tp2_count)
         elseif single_tp(op)
             tp1_count += 1
-            tp2_count += 1
             tpdict[i] = (tp1_count, tp1_count, -1, -1)
         end
     end
@@ -106,7 +106,7 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     tp3storage = zeros(tp2_count)
     tp4storage = zeros(tp2_count)
 
-    dependent_subexpressions = copy(func.dependent_subexpressions)
+    dependent_subexpressions = copy(sub.dependent_subexpressions)
     dependent_subexpression_count = length(dependent_subexpressions)
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
@@ -163,7 +163,7 @@ function NonlinearExpression()
                                          MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}), false,
                                          Float64[], Float64[], Float64[], Float64[],
                                          Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
-                                         Int64[],  Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT)
+                                         Int64[], Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT)
 end
 
 function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
@@ -209,10 +209,10 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
         op = node.index
         if double_tp(op)
             tp1_count += 1
+            tp2_count += 1
             tpdict[i] = (tp1_count, tp1_count, tp2_count, tp2_count)
         elseif single_tp(op)
             tp1_count += 1
-            tp2_count += 1
             tpdict[i] = (tp1_count, tp1_count, -1, -1)
         end
     end

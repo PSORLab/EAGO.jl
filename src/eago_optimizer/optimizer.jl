@@ -104,11 +104,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
-    cp_depth::Int64 = 1000
-    "Number of times to repeeat forward-reverse pass routine"
-    cp_repetitions::Int64 = 4
-    "Number of repetitions of forward-reverse passes to perform in constraint propagation (default = 3)"
-    cp_forward_reverse_limit::Int64 = 3
+    cp_depth::Int64 = -1
+    "Number of times to repeat forward-reverse pass routine (default = 3)"
+    cp_repetitions::Int64 = 3
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
     this number (default = 0.99)"
     cp_tolerance::Float64 = 0.99
@@ -117,7 +115,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     # obbt options
     "Depth in B&B tree above which OBBT should be disabled (default = 6)"
-    obbt_depth::Int64 = 6
+    obbt_depth::Int64 = 10
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
     obbt_repetitions::Int64 = 4
     "Turn aggresive OBBT on (default = false)"
@@ -136,14 +134,14 @@ Base.@kwdef mutable struct EAGOParameters
     fbbt_lp_repetitions::Int64  = 3
 
     # Options for quadratic bound tightening
-    "Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
     quad_uni_depth::Int64 = -1
-    "Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
     quad_uni_repetitions::Int64 = 2
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which bivariate
     quadratic FBBT should be disabled (default = -1)"
     quad_bi_depth::Int64 = -1
-    "Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
     quad_bi_repetitions::Int64 = 2
 
     # Duality-based bound tightening (DBBT) options
@@ -165,7 +163,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Tolerance to add cuts and max number of cuts
     cut_min_iterations::Int64 = 1
-    cut_max_iterations::Int64 = 1
+    cut_max_iterations::Int64 = 3
     "Convex coefficient used to select point for new added cuts. Branch point is
     given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
     cut_cvx::Float64 = 0.9
@@ -421,8 +419,10 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Upper bounding options (set as a user-specified option)
     upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
-                                                             acceptable_iter = 300, constr_viol_tol = 1E-8,
-                                                             acceptable_constr_viol_tol = 1E-8, print_level = 0)
+                                                             acceptable_iter = 300, constr_viol_tol = 0.000001,
+                                                             acceptable_compl_inf_tol = 0.000001,
+                                                             acceptable_dual_inf_tol = 1.0,
+                                                             acceptable_constr_viol_tol = 0.000001, print_level = 0)
 
     # Extensions (set as user-specified option)
     "Specifies that the optimize_hook! function should be called rather than

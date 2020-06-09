@@ -9,10 +9,10 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eeago_optimizer/optimize/optimize_convex.jl
-# Contains the single_nlp_solve! routine which computes the optimal value
+# Contains the solve_local_nlp! routine which computes the optimal value
 # of a convex function. This is used to compute the upper bound in the
 # branch and bound routine. A number of utility function required for
-# single_nlp_solve! are also included.
+# solve_local_nlp! are also included.
 #############################################################################
 
 """
@@ -53,7 +53,7 @@ $(SIGNATURES)
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
 """
-function single_nlp_solve!(m::Optimizer)
+function solve_local_nlp!(m::Optimizer)
 
     upper_optimizer = m.upper_optimizer
     MOI.empty!(upper_optimizer)
@@ -186,7 +186,7 @@ end
 
 function optimize!(::Val{DIFF_CVX}, m::Optimizer)
 
-    single_nlp_solve!(m)
+    solve_local_nlp!(m)
 
     return nothing
 end
