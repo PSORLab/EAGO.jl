@@ -157,7 +157,6 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._candidate_xref           = fill(0.0, branch_variable_count)
     m._current_objective_xref   = fill(0.0, branch_variable_count)
     m._prior_objective_xref     = fill(0.0, branch_variable_count)
-    m._cut_solution             = fill(0.0, branch_variable_count)
     m._lower_lvd                = fill(0.0, branch_variable_count)
     m._lower_uvd                = fill(0.0, branch_variable_count)
 
@@ -165,6 +164,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     # uses input model for local nlp solves... may adjust this if a convincing reason
     # to use a reformulated upper problem presents itself
     m._lower_solution      = zeros(Float64, m._working_problem._variable_count)
+    m._cut_solution        = zeros(Float64, m._working_problem._variable_count)
     m._continuous_solution = zeros(Float64, m._working_problem._variable_count)
     m._upper_solution      = zeros(Float64, m._working_problem._variable_count)
     m._upper_variables     = fill(VI(-1), m._working_problem._variable_count)

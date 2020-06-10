@@ -32,13 +32,13 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
 
     for i = 1:N
 
-        cv_val =  val.cv_grad[i]
-        cc_val =  val.cc_grad[i]
+        cv_val = @inbounds val.cv_grad[i]
+        cc_val = @inbounds val.cc_grad[i]
 
-        i_sol = sparsity[i]
-        x_val = x_values[i_sol]
-        lower_bound = lower_variable_bounds[i_sol]
-        upper_bound = upper_variable_bounds[i_sol]
+        i_sol = @inbounds sparsity[i]
+        x_val = @inbounds x_values[i_sol]
+        lower_bound = @inbounds lower_variable_bounds[i_sol]
+        upper_bound = @inbounds upper_variable_bounds[i_sol]
 
         if lower_refinement
             if cv_val > 0.0
@@ -46,16 +46,18 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     !upper_refinement && break
                     lower_refinement = false
                 else
-                    delX = sub_round(lower_bound, x_val, RoundDown)
-                    lower = add_round(lower, mul_round(cv_val, delX, RoundDown), RoundDown)
+                    lower += cv_val*(lower_bound - x_val)
+                    #delX = sub_round(lower_bound, x_val, RoundDown)
+                    #lower = add_round(lower, mul_round(cv_val, delX, RoundDown), RoundDown)
                 end
             else
                 if isinf(upper_bound)
                     !upper_refinement && break
                     lower_refinement = false
                 else
-                    delX = sub_round(upper_bound, x_val, RoundUp)
-                    lower = add_round(lower, mul_round(cv_val, delX, RoundDown), RoundDown)
+                    lower += cv_val*(upper_bound - x_val)
+                    #delX = sub_round(upper_bound, x_val, RoundUp)
+                    #lower = add_round(lower, mul_round(cv_val, delX, RoundDown), RoundDown)
                 end
             end
         end
@@ -66,16 +68,18 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
                     !lower_refinement && break
                     upper_refinement = false
                 else
-                    delX = sub_round(upper_bound, x_val, RoundUp)
-                    upper = add_round(upper, mul_round(cc_val, delX, RoundUp), RoundUp)
+                    upper += cc_val*(upper_bound - x_val)
+                    #delX = sub_round(upper_bound, x_val, RoundUp)
+                    #upper = add_round(upper, mul_round(cc_val, delX, RoundUp), RoundUp)
                 end
             else
                 if isinf(upper_bound)
                     !lower_refinement && break
                     upper_refinement = false
                 else
-                    delX = sub_round(lower_bound, x_val, RoundDown)
-                    upper = add_round(upper, mul_round(cc_val, delX, RoundUp), RoundUp)
+                    upper += cc_val*(lower_bound - x_val)
+                    #delX = sub_round(lower_bound, x_val, RoundDown)
+                    #upper = add_round(upper, mul_round(cc_val, delX, RoundUp), RoundUp)
                 end
             end
         end
@@ -86,7 +90,7 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
     elseif !lower_refinement
         lower = val.Intv.lo
     else
-        lower = sub_round(lower, subgrad_tol, RoundDown)
+        lower -= subgrad_tol #sub_round(lower, subgrad_tol, RoundDown)
     end
 
     if upper_refinement && (val.Intv.hi - subgrad_tol < upper)
@@ -94,7 +98,7 @@ function set_value_post(x_values::Vector{Float64}, val::MC{N,T}, lower_variable_
     elseif !upper_refinement
         upper = val.Intv.hi
     else
-        upper = add_round(upper, subgrad_tol, RoundUp)
+        upper += subgrad_tol #add_round(upper, subgrad_tol, RoundUp)
     end
 
     return MC{N,T}(val.cv, val.cc, Interval{Float64}(lower, upper), val.cv_grad, val.cc_grad, val.cnst)
@@ -690,7 +694,6 @@ function forward_univariate_tiepnt_1!(k::Int64, op::Int64, child_idx::Int64, set
     tp1 =  tp1storage[tidx1]
     tp2 =  tp2storage[tidx1]
     new_tie_points = tp1 === Inf
-    println("is_first_eval = $(is_first_eval)")
     outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, is_first_eval)
 
     if new_tie_points
@@ -785,10 +788,11 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
                                    x::Vector{Float64}, lbd::Vector{Float64}, ubd::Vector{Float64}, subgrad_tol::Float64, sparsity::Vector{Int},
                                    is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
-    tmp_set =  setstorage[child_idx]
+    tmp_set = setstorage[child_idx]
     outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                            interval_intersect)
+
     return nothing
 end
 

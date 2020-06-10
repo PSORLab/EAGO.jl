@@ -48,8 +48,8 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
     reverse_sparsity::Vector{Int64}
 
     # role in problem
-    dependent_variable_count::Int
-    dependent_subexpression_count::Int
+    dependent_variable_count::Int64
+    dependent_subexpression_count::Int64
     dependent_subexpressions::Vector{Int64}
     linearity::JuMP._Derivatives.Linearity
 end
@@ -305,8 +305,8 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     node_to_variable_map::Vector{Int64} = Int64[]
     variable_to_node_map::Vector{Int64} = Int64[]
 
-    variable_count::Int = 0
-    node_count::Int = 0
+    variable_count::Int64 = 0
+    node_count::Int64 = 0
 
     cv_grad_buffer::Vector{Float64} = Float64[]
     cc_grad_buffer::Vector{Float64} = Float64[]
