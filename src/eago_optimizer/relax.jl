@@ -455,14 +455,15 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
             else
                 MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
             end
+
         elseif obj_type === SCALAR_AFFINE
-            wp._objective_saf.constant -= (UBD + constraint_tol)
-            relax!(wp._objective_saf)
+            formulated_constant = wp._objective_saf.constant
+            wp._objective_saf.constant = 0.0
             if check_safe && is_safe_cut!(m, wp._objective_saf)
-                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - wp._objective_saf.constant + constraint_tol))
                 push!(m._objective_cut_ci_saf, ci_saf)
             end
-            wp._objective_saf.constant += (UBD + constraint_tol)
+            wp._objective_saf.constant = formulated_constant
 
         elseif obj_type === SCALAR_QUADRATIC
             buffered_sqf = wp._objective_sqf

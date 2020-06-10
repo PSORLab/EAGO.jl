@@ -71,7 +71,7 @@ function Base.isempty(x::NodeBB)
     for i = 1:length(x)
         @inbounds lower = x.lower_variable_bounds[i]
         @inbounds upper = x.upper_variable_bounds[i]
-        (lower >= upper) && (return true)
+        (lower > upper) && (return true)
     end
     return false
 end

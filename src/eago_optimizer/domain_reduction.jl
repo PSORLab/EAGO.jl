@@ -266,18 +266,15 @@ function obbt!(m::Optimizer)
         set_first_relax_point!(m)
     end
 
-    #if !m._obbt_performed_flag
-        update_relaxed_problem_box!(m)
-        if m._nonlinear_evaluator_created
-            set_node!(m._working_problem._relaxed_evaluator, n)
-            set_node_flag!(m)
-            set_reference_point!(m)
-        end
-        relax_constraints!(m, 1)
-        relax_objective!(m, 1)
-    #end
+    update_relaxed_problem_box!(m)
+    if m._nonlinear_evaluator_created
+        set_node!(m._working_problem._relaxed_evaluator, n)
+        set_node_flag!(m)
+        set_reference_point!(m)
+    end
+    relax_constraints!(m, 1)
+    relax_objective!(m, 1)
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
     MOI.optimize!(relaxed_optimizer)
 
     # Sets indices to attempt OBBT on
