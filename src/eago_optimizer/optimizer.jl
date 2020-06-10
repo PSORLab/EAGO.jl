@@ -407,8 +407,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # set as a user-specified option
     "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
     relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
-    "Keyword arguments for the relaxed optimizer."
-    relaxed_optimizer_kwargs::Base.Iterators.Pairs = Base.Iterators.Pairs(NamedTuple(),())
 
     # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     "Variables to perform OBBT on (default: all variables in nonlinear expressions)."

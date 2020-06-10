@@ -16,7 +16,7 @@
 # Load a model in a way that gets rid of any issues with pointers for C references
 # particularly in the EAGO solver...
 function build_model(problem::SIPProblem)
-  model = Model(with_optimizer(problem.optimizer; problem.kwargs...))
+  model = Model(optimizer_with_attributes(problem.optimizer; problem.kwargs...))
   return model
 end
 
@@ -132,7 +132,7 @@ function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}}
       @NLobjective(model_bnd, Min, obj(x...))
   end
 
-  optimize!(model_bnd)
+  JuMP.optimize!(model_bnd)
 
   termination_status = JuMP.termination_status(model_bnd)
   result_status = JuMP.primal_status(model_bnd)

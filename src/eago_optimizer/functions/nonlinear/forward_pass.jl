@@ -822,7 +822,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
     for k = length(nd):-1:1
 
         oldset = setstorage[k]
-        nod =  nd[k]
+        nod = nd[k]
         op = nod.index
 
         if nod.nodetype == JuMP._Derivatives.VALUE
