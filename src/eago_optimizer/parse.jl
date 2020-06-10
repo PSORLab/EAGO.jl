@@ -182,20 +182,16 @@ function label_branch_variables!(m::Optimizer)
     nl_constr = m._working_problem._nonlinear_constr
     for i = 1:m._working_problem._nonlinear_count
         nl_constr_eq = @inbounds nl_constr[i]
-        node_list = nl_constr_eq.expr.nd
-        for node in node_list
-            if node.nodetype === JuMP._Derivatives.VARIABLE
-                @inbounds m._branch_variables[node.index] = true
-            end
+        node_list = nl_constr_eq.expr.grad_sparsity
+        for indx in grad_sparsity
+            @inbounds m._branch_variables[indx] = true
         end
     end
 
     if obj_type === NONLINEAR
-        node_list = m._working_problem._objective_nl.expr.nd
-        for node in node_list
-            if node.nodetype === JuMP._Derivatives.VARIABLE
-                @inbounds m._branch_variables[node.index] = true
-            end
+        grad_sparsity = m._working_problem._objective_nl.expr.grad_sparsity
+        for indx in grad_sparsity
+            @inbounds m._branch_variables[indx] = true
         end
     end
 
@@ -238,22 +234,27 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
 
-    # add subexpressions
+    # add subexpressions (assumes they are already ordered by JuMP)
+    # creates a dictionary that lists the subexpression sparsity
+    # by search each node for variables dict[2] = [2,3] indicates
+    # that subexpression 2 depends on variables 2 and 3
+    # this is referenced when subexpressions are called by other
+    # subexpressions or functions to determine overall sparsity
+    # the sparsity of a function is the collection of indices
+    # in all participating subexpressions and the function itself
+    # it is necessary to define this as such to enable reverse
+    # McCormick constraint propagation
     relax_evaluator = m._working_problem._relaxed_evaluator
     has_subexpressions = length(evaluator.m.nlp_data.nlexpr) > 0
+    dict_sparsity = Dict{Int64,Vector{Int64}}()
     if has_subexpressions
         for i = 1:length(evaluator.subexpressions)
             subexpr = evaluator.subexpressions[i]
-            push!(relax_evaluator.subexpressions, NonlinearExpression(subexpr,
+            push!(relax_evaluator.subexpressions, NonlinearExpression!(subexpr, dict_sparsity, i,
                                                                       evaluator.subexpression_linearity,
                                                                       m._parameters.relax_tag))
         end
     end
-
-    # if nonlinear subexpressions are present, then the tapes for
-    # the nonlinear functions they participate in must be re-sized from
-    # to support the correct length subgradients. Data required for this is extracted here.
-
 
     # scrubs udf functions using Cassette to remove odd data structures...
     # alternatively convert udfs to JuMP scripts...
@@ -267,7 +268,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # add nonlinear objective
     if evaluator.has_nlobj
         m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
-                                                                     evaluator.subexpression_linearity,
+                                                                     dict_sparsity, evaluator.subexpression_linearity,
                                                                      m._parameters.relax_tag)
     end
 
@@ -276,7 +277,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     for i = 1:length(evaluator.constraints)
         constraint = evaluator.constraints[i]
         bnds = constraint_bounds[i]
-        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds,
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
                                                                               m._parameters.relax_tag))
     end
@@ -306,13 +307,18 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator.upper_variable_bounds = zeros(relax_evaluator.variable_count)
     relax_evaluator.x                     = zeros(relax_evaluator.variable_count)
     relax_evaluator.num_mv_buffer         = zeros(relax_evaluator.variable_count)
-    relax_evaluator.cv_grad_buffer        = zeros(relax_evaluator.variable_count)
-    relax_evaluator.cc_grad_buffer        = zeros(relax_evaluator.variable_count)
     relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
     relax_evaluator.ctx                   = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ))
     relax_evaluator.subgrad_tol           = m._parameters.subgrad_tol
 
     m._nonlinear_evaluator_created = true
+
+    return nothing
+end
+
+function add_subexpression_buffers!(m::Optimizer)
+    relax_evaluator = m._working_problem._relaxed_evaluator
+    relax_evaluator.subexpressions_eval = fill(false, length(relax_evaluator.subexpressions))
 
     return nothing
 end
@@ -397,6 +403,7 @@ function initial_parse!(m::Optimizer)
     # to asssess the linearity of subexpressions
     add_nonlinear_evaluator!(m)
     add_nonlinear_functions!(m)
+    add_subexpression_buffers!(m)
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     # this is placed after adding nonlinear functions as this prior routine
@@ -471,11 +478,11 @@ function parse_classify_problem!(m::Optimizer)
         if cone_constraint_number === 0 && quad_constraint_number === 0 &&
             nl_expr_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = LP
-
+            println("LP")
         elseif quad_constraint_number === 0 && relaxed_supports_soc &&
                nl_expr_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = SOCP
-
+            println("SOCP")
         else
             #parse_classify_quadratic!(m)
             #if iszero(m._input_nonlinear_constraint_number)
@@ -487,7 +494,7 @@ function parse_classify_problem!(m::Optimizer)
             #    m._problem_type = parse_classify_nlp(m)
             #end
             m._working_problem._problem_type = MINCVX
-
+            println("MINCVX")
         end
     else
         #=

@@ -13,7 +13,7 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
-const FORWARD_DEBUG = false
+const FORWARD_DEBUG = true
 
 """
 $(FUNCTIONNAME)
@@ -724,7 +724,6 @@ function forward_univariate_tiepnt_2!(k::Int64, op::Int64, child_idx::Int64, set
 
     # retreive previously calculated tie-points
     # These are re-initialize to Inf for each box
-    @show tp3storage
     tidx1, tidx2 = tpdict[k]
     tp1 = tp1storage[tidx1]
     tp2 = tp2storage[tidx1]
@@ -796,6 +795,66 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
     return nothing
 end
 
+"""
+$(FUNCTIONNAME)
+
+"""
+function expand_set(::Type{MC{N2,T}}, x::MC{N1,T}, fsparse::Vector{Int64},
+                    subsparse::Vector{Int64}, cv_buffer::Vector{Float64},
+                    cc_buffer::Vector{Float64}) where {N1 ,N2, T<:RelaxTag}
+
+    # TODO: Perform this in a manner that does not allocate via an ntuple
+    # operator or via generated code
+    cvg = x.cv_grad
+    ccg = x.cc_grad
+    xcount = 1
+    xcurrent = subsparse[1]
+    for i = 1:N2
+        if fsparse[i] === xcurrent
+            cv_buffer[i] = cvg[xcount]
+            cc_buffer[i] = ccg[xcount]
+            xcount += 1
+            if xcount <= N1
+                xcurrent = subsparse[xcount]
+            else
+                break
+            end
+        else
+            cv_buffer[i] = 0.0
+        end
+    end
+    cv_grad = SVector{N2,Float64}(cv_buffer)
+    cc_grad = SVector{N2,Float64}(cc_buffer)
+    return MC{N2,T}(x.cv, x.cc, x.Intv, cv_grad, cc_grad, x.cnst)
+end
+
+"""
+$(FUNCTIONNAME)
+
+Unpacks the `MC{N1,T}` in the subexpression to a `MC{N2,T}` where `N1` is the sparsity of the
+subexpression and `N2` is the sparsity of the function tape. Note that the sparsity of the
+subexpression is less than the sparsity of the function itself. This limits the storage
+required by tapes but prevents reverse mode subgradient propagation through expressions
+[This may be subject to change in the future once the reverse mode propagation becomes
+more robust].
+"""
+function forward_get_subexpression!(k::Int64, active_subexpr::NonlinearExpression{MC{N,T}},
+                                    setstorage::Vector{MC{Q,T}}, numberstorage::Vector{Float64},
+                                    numvalued::Vector{Bool}, fsparsity::Vector{Int64},
+                                    cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64}) where {N,Q,T<:RelaxTag}
+
+    is_number = active_subexpr.isnumber[1]
+    if is_number
+        numberstorage[k] = active_subexpr.setstorage[1]
+    else
+        set_arg = active_subexpr.setstorage[1]
+        setstorage[k] = expand_set(MC{Q,T}, set_arg, fsparsity, active_subexpr.grad_sparsity, cv_buffer, cc_buffer)
+    end
+    numvalued[k] = is_number
+
+    return nothing
+end
+
 const id_to_operator = Dict(value => key for (key, value) in JuMP.univariate_operator_to_id)
 
 """
@@ -813,7 +872,7 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
                               func_sparsity::Vector{Int64}, reverse_sparsity::Vector{Int64},
                               num_mv_buffer::Vector{Float64}, ctx::GuardCtx,
                               is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool,
-                              cv_grad_buffer::Vector{Float64}, cc_grad_buffer::Vector{Float64},
+                              cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64},
                               treat_x_as_number::Vector{Bool}, subgrad_tol::Float64) where {N, T<:RelaxTag}
 
     children_arr = rowvals(adj)
@@ -852,8 +911,9 @@ function forward_pass_kernel!(nd::Vector{JuMP.NodeData}, adj::SparseMatrixCSC{Bo
             end
             FORWARD_DEBUG && println("variable[$op] at k = $k -> $(setstorage[k])")
         elseif nod.nodetype == JuMP._Derivatives.SUBEXPRESSION
-            forward_get_subexpression!(k, op, subexpressions, numvalued, numberstorage, setstorage, cv_buffer,
-                                       cc_buffer, func_sparsity)
+            active_subexpr = subexpressions[op]
+            forward_get_subexpression!(k, active_subexpr, setstorage, numberstorage, numvalued, func_sparsity,
+                                       cv_buffer, cc_buffer)
 
         elseif nod.nodetype == JuMP._Derivatives.CALL
 
@@ -992,7 +1052,7 @@ function forward_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
                          evaluator.num_mv_buffer, evaluator.ctx,
                          evaluator.is_post, evaluator.is_intersect,
                          evaluator.is_first_eval, evaluator.interval_intersect,
-                         evaluator.cv_grad_buffer, evaluator.cc_grad_buffer,
+                         d.cv_grad_buffer, d.cc_grad_buffer,
                          evaluator.treat_x_as_number, evaluator.subgrad_tol)
     return nothing
 end

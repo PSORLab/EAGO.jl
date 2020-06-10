@@ -26,6 +26,7 @@ end
 function reset_relaxation!(m::Optimizer)
 
     m._working_problem._relaxed_evaluator.is_first_eval = true
+    fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
 
     m._new_eval_objective = true
     m._new_eval_constraint = true
@@ -748,6 +749,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
             set_node!(m._working_problem._relaxed_evaluator, n)
             set_node_flag!(m)
             set_reference_point!(m)
+            fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
         end
         update_relaxed_problem_box!(m)
     end
@@ -856,6 +858,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     if continue_cut_flag
         copyto!(m._current_xref, xnew)
         set_reference_point!(m)
+        fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
     end
 
     # check to see if interval bound is preferable and replaces the objective
@@ -904,6 +907,7 @@ Adds a cut for each constraint and the objective function to the subproblem.
 """
 function add_cut!(t::ExtensionType, m::Optimizer)
 
+    fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
     m._working_problem._relaxed_evaluator.is_first_eval = true
     m._working_problem._relaxed_evaluator.is_intersect = false
     m._new_eval_objective = true

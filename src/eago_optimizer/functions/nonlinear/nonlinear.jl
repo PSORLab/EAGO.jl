@@ -52,6 +52,10 @@ mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
     dependent_subexpression_count::Int64
     dependent_subexpressions::Vector{Int64}
     linearity::JuMP._Derivatives.Linearity
+
+    # buffer for subgradients
+    cv_grad_buffer::Vector{Float64}
+    cc_grad_buffer::Vector{Float64}
 end
 
 """
@@ -74,8 +78,8 @@ end
 ###
 ### Constructor definitions
 ###
-function NonlinearExpression(sub::JuMP._SubexpressionStorage,
-                             subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+function NonlinearExpression!(sub::JuMP._SubexpressionStorage, sub_sparsity_dict::Dict{Int64,Vector{Int64}},
+                             subexpr_indx::Int64, subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
                              tag::T) where T
     nd = copy(sub.nd)
     adj = copy(sub.adj)
@@ -85,10 +89,13 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     numberstorage = zeros(lenx)
     isnumber = fill(false, lenx)
 
+    # creates tiepoint storage and populates the sparsity of subexpression
+    # not including dependent subexpressions
     tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
     tp1_count = 0
     tp2_count = 0
     for i = 1:lenx
+        # tiepoint storage part
         node = @inbounds nd[i]
         op = node.index
         if double_tp(op)
@@ -105,12 +112,10 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     tp3storage = zeros(tp2_count)
     tp4storage = zeros(tp2_count)
 
-    dependent_subexpressions = copy(sub.dependent_subexpressions)
-    dependent_subexpression_count = length(dependent_subexpressions)
-
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
-    # counts variables in subexpression
+    # counts variables in subexpression and collects list of subexpressions
+    dependent_subexpressions = Int64[]
     variable_dict = Dict{Int,Bool}()
     for (i,node) in enumerate(nd)
         if node.nodetype === JuMP._Derivatives.VARIABLE
@@ -123,9 +128,26 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
             indx = node.index
             numberstorage[i] = const_values[indx]
         end
+        if node.nodetype === JuMP._Derivatives.SUBEXPRESSION
+            indx = node.index
+            push!(dependent_subexpressions, indx)
+        end
     end
     grad_sparsity = collect(keys(variable_dict))
+    unique!(dependent_subexpressions)
+    sort!(dependent_subexpressions)
+
+    # adds sparsity of dependent subexpressions to sparsity of current subexpression
+    dependent_subexpression_count = length(dependent_subexpressions)
+    for i = 1:dependent_subexpression_count
+        dependent_indx = dependent_subexpressions[i]
+        append!(grad_sparsity, sub_sparsity_dict[dependent_indx])
+    end
+    unique!(grad_sparsity)
     sort!(grad_sparsity)
+
+    # sets subexpression sparsity dictionary
+    sub_sparsity_dict[subexpr_indx] = copy(grad_sparsity)
 
     reverse_sparsity_length = grad_sparsity[end]
     reverse_sparsity = zeros(Int64, reverse_sparsity_length)
@@ -146,6 +168,9 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
     dependent_variable_count = length(grad_sparsity)
     N = dependent_variable_count
 
+    cv_grad_buffer = zeros(dependent_variable_count)
+    cc_grad_buffer = zeros(dependent_variable_count)
+
     setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
     subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
                                                  isnumber, zero(MC{N,T}), false,
@@ -153,8 +178,8 @@ function NonlinearExpression(sub::JuMP._SubexpressionStorage,
                                                  tp3storage, tp4storage, tpdict, grad_sparsity,
                                                  reverse_sparsity, dependent_variable_count,
                                                  dependent_subexpression_count,
-                                                 dependent_subexpressions,
-                                                 JuMP._Derivatives.CONSTANT)
+                                                 dependent_subexpressions, JuMP._Derivatives.CONSTANT,
+                                                 cv_grad_buffer, cc_grad_buffer)
     return subexpression
 end
 
@@ -163,10 +188,12 @@ function NonlinearExpression()
                                          MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}), false,
                                          Float64[], Float64[], Float64[], Float64[],
                                          Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
-                                         Int64[], Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT)
+                                         Int64[], Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT,
+                                         Float64[], Float64[])
 end
 
 function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
+                                   sub_sparsity_dict::Dict{Int64,Vector{Int64}},
                                    subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
                                    tag::T) where T <: RelaxTag
 
@@ -174,7 +201,16 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
     adj = copy(func.adj)
     const_values = copy(func.const_values)
 
-    grad_sparsity = copy(func.grad_sparsity)  # sorted by JUmp, _FunctionStorage
+    # sorted by JuMP, _FunctionStorage but amalagation of the sparsity of the
+    # function and the nonlinear expressions is not necessarily
+    # so we
+    grad_sparsity = copy(func.grad_sparsity)
+    for nd in func.nd
+        if nd.nodetype === JuMP._Derivatives.SUBEXPRESSION
+            append!(grad_sparsity, sub_sparsity_dict[nd.index])
+        end
+    end
+    unique!(grad_sparsity)
     sort!(grad_sparsity)
 
     reverse_sparsity_length = grad_sparsity[end]
@@ -234,13 +270,16 @@ function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBou
 
     linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
 
+    cv_grad_buffer = zeros(dependent_variable_count)
+    cc_grad_buffer = zeros(dependent_variable_count)
+
     expression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
                                               isnumber, zero(MC{N,T}), false,
                                               tp1storage, tp2storage, tp3storage, tp4storage,
                                               tpdict, grad_sparsity, reverse_sparsity,
                                               dependent_variable_count, dependent_subexpression_count,
-                                              dependent_subexpressions,
-                                              JuMP._Derivatives.CONSTANT)
+                                              dependent_subexpressions, JuMP._Derivatives.CONSTANT,
+                                              cv_grad_buffer, cc_grad_buffer)
 
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:length(grad_sparsity)], 0.0)
 
@@ -307,9 +346,6 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
 
     variable_count::Int64 = 0
     node_count::Int64 = 0
-
-    cv_grad_buffer::Vector{Float64} = Float64[]
-    cc_grad_buffer::Vector{Float64} = Float64[]
 
     "Context used to guard against domain violations & branch on these violations if necessary"
     subgrad_tighten::Bool = false
