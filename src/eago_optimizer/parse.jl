@@ -47,13 +47,6 @@ function convert_to_min!(m::Optimizer)
             for i = 3:length(nd)
                 @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
             end
-            I, J, V = findnz(m._working_problem._objective_nl.expr.adj)
-            I .+= 1
-            J .+= 1
-            pushfirst!(I, 2)
-            pushfirst!(J, 1)
-            pushfirst!(V, true)
-            m._working_problem._objective_nl.expr.adj = sparse(I, J, V)
 
             # updates tape used by evaluator for the nonlinear objective (used by the relaxed optimizer)
             nd = m._working_problem._objective_nl.expr.nd
