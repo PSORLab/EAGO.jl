@@ -487,7 +487,7 @@ function unpack_fbbt_buffer!(m::Optimizer)
         end
     end
 
-    println("n = $(n)")
+    #println("n = $(n)")
 
     return nothing
 end
@@ -538,13 +538,13 @@ function fbbt!(m::Optimizer, f::AffineFunctionIneq)
             if aik > 0.0
                 (xh < xL) && return false
                 if xh > xL
-                    @inbounds lower_bounds[indx_k] = xh
+                    @inbounds upper_bounds[indx_k] = xh
                 end
 
             elseif aik < 0.0
                 (xh > xU) && return false
                 if xh < xU
-                    @inbounds upper_bounds[indx_k] = xh
+                    @inbounds lower_bounds[indx_k] = xh
                 end
 
             else
@@ -606,21 +606,21 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
 
             if aik > 0.0
                 (xh_leq < xL) && return false
-                if xh_leq < xU
+                if xh_leq > xL
                     @inbounds upper_bounds[indx_k] = xh_leq
                 end
                 (xh_geq > xU) && return false
-                if (xh_geq > xL)
+                if (xh_geq < xU)
                     @inbounds lower_bounds[indx_k] = xh_geq
                 end
 
             elseif aik < 0.0
                 (xh_leq > xU) && return false
-                if xh_leq > xL
+                if xh_leq < xU
                     @inbounds lower_bounds[indx_k] = xh_leq
                 end
                 (xh_geq < xL) && return false
-                if (xh_geq < xU)
+                if (xh_geq > xL)
                     @inbounds upper_bounds[indx_k] = xh_geq
                 end
 
