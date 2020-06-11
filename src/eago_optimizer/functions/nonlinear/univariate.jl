@@ -43,7 +43,7 @@ end
 # code for defining reverse operators
 univariate_operators_rev = [:plus_rev, :minus_rev]
 for i in 3:length(univariate_operators)
-    string = String(univariate_operators[i])*"_rev"
+    string = "IntervalContractors."*String(univariate_operators[i])*"_rev"
     push!(univariate_operators_rev, Symbol(string))
 end
 

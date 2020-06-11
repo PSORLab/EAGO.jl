@@ -97,14 +97,14 @@ Base.@kwdef mutable struct EAGOParameters
     "Relative tolerance for termination (default = 1E-3)"
     relative_tolerance::Float64 = 1E-3
     "Absolute constraint feasibility tolerance"
-    absolute_constraint_feas_tolerance::Float64 = 1E-8
+    absolute_constraint_feas_tolerance::Float64 = 1E-6
     "Perform only a local solve of the problem (default = false)."
     local_solve_only::Bool = false
     feasible_local_continue::Bool = false
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
-    cp_depth::Int64 = -1
+    cp_depth::Int64 = 20
     "Number of times to repeat forward-reverse pass routine (default = 3)"
     cp_repetitions::Int64 = 3
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
@@ -129,7 +129,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Options for linear bound tightening
     "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
-    fbbt_lp_depth::Int64  = 100000
+    fbbt_lp_depth::Int64  = 1000
     "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
     fbbt_lp_repetitions::Int64  = 3
 

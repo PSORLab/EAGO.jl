@@ -62,14 +62,28 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     end
 
     if !arg1_is_number && arg2_is_number
-        c, a, b = plus_rev(setk, set1, num2)
+        c, a, b = IntervalContractors.plus_rev(setk.Intv, set1.Intv, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b = plus_rev(setk, num1, set2)
+        c, a, b = IntervalContractors.plus_rev(setk.Intv, num1, set2.Intv)
 
     else
-        c, a, b = plus_rev(setk, set1, set2)
+        c, a, b = IntervalContractors.plus_rev(setk.Intv, set1.Intv, set2.Intv)
     end
+
+    #=
+    if isnan(a) || isnan(b)
+        if !arg1_is_number && arg2_is_number
+            c, a, b = plus_rev(setk.Intv, MC{N,T}(set1.Intv), num2)
+
+        elseif arg1_is_number && !arg2_is_number
+            c, a, b = plus_rev(MC{N,T}(setk.Intv), num1, MC{N,T}(set2.Intv))
+
+        else
+            c, a, b = plus_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), MC{N,T}(set2.Intv))
+        end
+    end
+    =#
 
     if REVERSE_DEBUG
         println("val out = $(c)")
@@ -80,10 +94,8 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     if !arg1_is_number
         if isempty(a)
             return false
-        elseif isnan(a)
-            setstorage[arg1_index] = MC{N,T}(a.Intv)
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+            setstorage[arg1_index] = MC{N,T}(a) #set1 ∩ a
         end
         REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
@@ -91,10 +103,8 @@ function reverse_plus_binary!(k::Int64, children_arr::Vector{Int64}, children_id
     if !arg2_is_number
         if isempty(b)
             return false
-        elseif isnan(b)
-            setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+            setstorage[arg2_index] = MC{N,T}(b) # set2 ∩ b
         end
         REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
@@ -148,7 +158,7 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
         end
 
         active_set = setstorage[active_idx]
-        c, a, b = plus_rev(setk, active_set, tmp_sum)
+        c, a, b = IntervalContractors.plus_rev(setk.Intv, active_set.Intv, tmp_sum.Intv)
 
         if REVERSE_DEBUG
             println("val out = $(c)")
@@ -158,10 +168,8 @@ function reverse_plus_narity!(k::Int64, children_arr::Vector{Int64}, children_id
 
         if isempty(a)
             return false
-        elseif isnan(a)
-            setstorage[active_idx] = MC{N,T}(a.Intv)
         else
-            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+            setstorage[active_idx] = MC{N,T}(a) # setk ∩ a
         end
     end
 
@@ -216,14 +224,28 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     end
 
     if !arg1_is_number && arg2_is_number
-        c, a, b = mult_rev(setk, set1, num2)
+        c, a, b = IntervalContractors.mul_rev(setk.Intv, set1.Intv, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b = mult_rev(setk, num1, set2)
+        c, a, b = IntervalContractors.mul_rev(setk.Intv, num1, set2.Intv)
 
     else
-        c, a, b = mult_rev(setk, set1, set2)
+        c, a, b = IntervalContractors.mul_rev(setk.Intv, set1.Intv, set2.Intv)
     end
+
+    #=
+    if isnan(a) || isnan(b)
+        if !arg1_is_number && arg2_is_number
+            c, a, b = mult_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), num2)
+
+        elseif arg1_is_number && !arg2_is_number
+            c, a, b = mult_rev(MC{N,T}(setk.Intv), num1, MC{N,T}(set2.Intv))
+
+        else
+            c, a, b = mult_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), MC{N,T}(set2.Intv))
+        end
+    end
+    =#
 
     if REVERSE_DEBUG
         println("val out = $(c)")
@@ -234,10 +256,8 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     if !arg1_is_number
         if isempty(a)
             return false
-        elseif isnan(a)
-            setstorage[arg1_index] = MC{N,T}(a.Intv)
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+            setstorage[arg1_index] = MC{N,T}(a) #set1 ∩ a
         end
         REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
@@ -245,10 +265,8 @@ function reverse_multiply_binary!(k::Int64, children_arr::Vector{Int64}, childre
     if !arg2_is_number
         if isempty(b)
             return false
-        elseif isnan(b)
-            setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+            setstorage[arg2_index] = MC{N,T}(b) #set2 ∩ b
         end
         REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
@@ -293,15 +311,15 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
             inactive_idx = children_arr[nidx]
             if inactive_idx != active_idx
                 if  numvalued[inactive_idx]
-                    tmp_mul *=  numberstorage[inactive_idx]
+                    tmp_mul *= numberstorage[inactive_idx]
                 else
-                    tmp_mul *=  setstorage[inactive_idx]
+                    tmp_mul *= setstorage[inactive_idx]
                 end
             end
         end
 
         active_set = setstorage[active_idx]
-        c, a, b = mult_rev(setk, active_set, tmp_mul)
+        c, a, b = IntervalContractors.mul_rev(setk.Intv, active_set.Intv, tmp_mul.Intv)
 
         if REVERSE_DEBUG
             println("val out = $(c)")
@@ -311,10 +329,8 @@ function reverse_multiply_narity!(k::Int64, children_arr::Vector{Int64}, childre
 
         if isempty(a)
             return false
-        elseif isnan(a)
-            setstorage[active_idx] = MC{N,T}(a.Intv)
         else
-            setstorage[active_idx] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+            setstorage[active_idx] = MC{N,T}(a) #setstorage[active_idx] ∩ a
         end
     end
 
@@ -366,14 +382,31 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     if !arg1_is_number && arg2_is_number
-        c, a, b = minus_rev(setk, set1, num2)
+        #c, a, b = minus_rev(setk, set1, num2)
+        c, a, b = IntervalContractors.minus_rev(setk.Intv, set1.Intv, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b = minus_rev(setk, num1, set2)
+        #c, a, b = minus_rev(setk, num1, set2)
+        c, a, b = IntervalContractors.minus_rev(setk.Intv, num1, set2.Intv)
 
     else
-        c, a, b = minus_rev(setk, set1, set2)
+        #c, a, b = minus_rev(setk, set1, set2)
+        c, a, b = IntervalContractors.minus_rev(setk.Intv, set1.Intv, set2.Intv)
     end
+
+    #=
+    if isnan(a) || isnan(b)
+        if !arg1_is_number && arg2_is_number
+            c, a, b = minus_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), num2)
+
+        elseif arg1_is_number && !arg2_is_number
+            c, a, b = minus_rev(MC{N,T}(setk.Intv), num1, MC{N,T}(set2.Intv))
+
+        else
+            c, a, b = minus_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), MC{N,T}(set2.Intv))
+        end
+    end
+    =#
 
     if REVERSE_DEBUG
         println("val out = $(c)")
@@ -384,11 +417,8 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     if !arg1_is_number
         if isempty(a)
             return false
-        elseif isnan(a)
-            a = MC{N,T}(a.Intv)
-            setstorage[arg1_index] = a
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+            setstorage[arg1_index] = MC{N,T}(a) #set1 ∩ a
         end
         REVERSE_DEBUG && println("setstorage[arg1_index] = $(setstorage[arg1_index])")
     end
@@ -396,11 +426,8 @@ function reverse_minus!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     if !arg2_is_number
         if isempty(b)
             return false
-        elseif isnan(b)
-            b = MC{N,T}(b.Intv)
-            setstorage[arg2_index] = b
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+            setstorage[arg2_index] = MC{N,T}(b) #set2 ∩ b
         end
         REVERSE_DEBUG && println("setstorage[arg2_index] = $(setstorage[arg2_index])")
     end
@@ -414,7 +441,6 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
                         subgrad_tol::Float64, is_post::Bool) where {N, T<:RelaxTag}
 
     REVERSE_DEBUG && println("--- start reverse power ---")
-
     # extract values for k
     argk_is_number =  numvalued[k]
     if !argk_is_number
@@ -453,14 +479,31 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     end
 
     if !arg1_is_number && arg2_is_number
-        c, a, b = power_rev(setk, set1, num2)
+        #c, a, b = power_rev(setk, set1, num2)
+        c, a, b = IntervalContractors.power_rev(setk.Intv, set1.Intv, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b = power_rev(setk, num1, set2)
+        #c, a, b = power_rev(setk, num1, set2)
+        c, a, b = IntervalContractors.power_rev(setk.Intv, num1, set2.Intv)
 
     else
-        c, a, b = power_rev(setk, set1, set2)
+        #c, a, b = power_rev(setk, set1, set2)
+        c, a, b = IntervalContractors.power_rev(setk.Intv, set1.Intv, set2.Intv)
     end
+
+    #=
+    if isnan(a) || isnan(b)
+        if !arg1_is_number && arg2_is_number
+            c, a, b = power_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), num2)
+
+        elseif arg1_is_number && !arg2_is_number
+            c, a, b = power_rev(MC{N,T}(setk.Intv), num1, MC{N,T}(set2.Intv))
+
+        else
+            c, a, b = power_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), MC{N,T}(set2.Intv))
+        end
+    end
+    =#
 
     if REVERSE_DEBUG
         println("val out = $(c)")
@@ -471,20 +514,16 @@ function reverse_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
     if !arg1_is_number
         if isempty(a)
             return false
-        elseif isnan(a)
-            setstorage[arg1_index] = MC{N,T}(a.Intv)
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd) : a
+            setstorage[arg1_index] = MC{N,T}(a) #setstorage[arg1_index] ∩ a
         end
     end
 
     if !arg2_is_number
         if isempty(b)
             return false
-        elseif isnan(b)
-            setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+            setstorage[arg2_index] = MC{N,T}(b) #setstorage[arg2_index] ∩  b
         end
     end
 
@@ -536,14 +575,28 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     end
 
     if !arg1_is_number && arg2_is_number
-        c, a, b = div_rev(setk, set1, num2)
+        c, a, b = IntervalContractors.div_rev(setk.Intv, set1.Intv, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b = div_rev(setk, num1, set2)
+        c, a, b = IntervalContractors.div_rev(setk.Intv, num1, set2.Intv)
 
     else
-        c, a, b = div_rev(setk, set1, set2)
+        c, a, b = IntervalContractors.div_rev(setk.Intv, set1, set2.Intv)
     end
+
+    #=
+    if isnan(a) || isnan(b)
+        if !arg1_is_number && arg2_is_number
+            c, a, b = div_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), num2)
+
+        elseif arg1_is_number && !arg2_is_number
+            c, a, b = div_rev(MC{N,T}(setk.Intv), num1, MC{N,T}(set2.Intv))
+
+        else
+            c, a, b = div_rev(MC{N,T}(setk.Intv), MC{N,T}(set1.Intv), MC{N,T}(set2.Intv))
+        end
+    end
+    =#
 
     if REVERSE_DEBUG
         println("val out = $(c)")
@@ -554,20 +607,16 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     if !arg1_is_number
         if isempty(a)
             return false
-        elseif isnan(a)
-            setstorage[arg1_index] = MC{N,T}(a.Intv)
         else
-            setstorage[arg1_index] = is_post ? set_value_post(x, a, lbd, ubd, sparsity, subgrad_tol) : a
+            setstorage[arg1_index] = MC{N,T}(a) #setstorage[arg1_index] ∩ a
         end
     end
 
     if !arg2_is_number
         if isempty(b)
             return false
-        elseif isnan(b)
-            setstorage[arg2_index] = MC{N,T}(b.Intv)
         else
-            setstorage[arg2_index] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+            setstorage[arg2_index] = MC{N,T}(b) #setstorage[arg2_index] ∩ b
         end
     end
 
@@ -585,17 +634,19 @@ function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::V
     REVERSE_DEBUG && println("val set = $(valset)")
     REVERSE_DEBUG && println("arg set = $(argset)")
 
-    a, b = eval_univariate_set_reverse(op, valset, argset)
+    #a, b = eval_univariate_set_reverse(op, valset, argset)
+
+#    if isnan(b)
+    a, b = eval_univariate_set_reverse(op, valset.Intv, argset.Intv)
+#    end
 
     REVERSE_DEBUG && println("val out = $(a)")
     REVERSE_DEBUG && println("arg out = $(b)")
 
     if isempty(b)
         return false
-    elseif isnan(b)
-        setstorage[arg_indx] = MC{N,T}(b.Intv)
     else
-        setstorage[arg_indx] = is_post ? set_value_post(x, b, lbd, ubd, sparsity, subgrad_tol) : b
+        setstorage[arg_indx] = MC{N,T}(b) #setstorage[arg_indx] ∩ b
     end
 
     return true
@@ -606,17 +657,8 @@ function reverse_set_subexpression!(k::Int64, op::Int64, subexpressions::Vector{
                                     setstorage::Vector{MC{N,T}}, cv_buffer::Vector{Float64},
                                     cc_buffer::Vector{Float64}, func_sparsity::Vector{Int64}) where {N, T<:RelaxTag}
 
-    is_number = subexpression_isnum[nod.index]
-    if !is_number
-         subexpr_values_set[nod.index] = setstorage[k]
-    end
-
     subexpression = subexpressions[op]
-
     isa_number = subexpression.is_number[1]
-    if !isa_number
-        copy_subexpression_value!(k, op, setstorage, subexpression, cv_grad_buffer, cc_grad_buffer)
-    end
     numvalued[k] = isa_number
 
     return nothing

@@ -660,6 +660,14 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
             evaluator.interval_intersect = true
         end
     end
+
+    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
+    for constr in m._working_problem._nonlinear_constr
+        if feasible_flag
+            forward_pass!(evaluator, constr)
+        end
+    end
+
     evaluator.is_post = m._parameters.subgrad_tighten
 
     m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
@@ -671,10 +679,16 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         evaluator.interval_intersect = true
     end
 
+    if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
+        obj_nonlinear = m._working_problem._objective_nl
+        set_node_flag!(obj_nonlinear)
+        forward_pass!(evaluator, obj_nonlinear)
+    end
+
     m._new_eval_constraint = false
     m._new_eval_objective = false
 
-    m._current_xref = evaluator.x
+    retrieve_x!(m._current_xref, evaluator)
     m._current_node = retrieve_node(evaluator)
 
     return feasible_flag

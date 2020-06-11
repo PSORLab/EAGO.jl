@@ -3,7 +3,7 @@ function build_nlp_kernel!(d::Evaluator{N,T}, src::JuMP.NLPEvaluator, x::Optimiz
     m = src.m::Model
     num_variables_ = JuMP.num_variables(m)
     d.variable_number = num_variables_
-    #nldata = m.nlp_data::JuMP._NLPData
+
     nldata = deepcopy(m.nlp_data)
     parameter_values = nldata.nlparamvalues
 

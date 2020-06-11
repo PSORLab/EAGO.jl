@@ -19,7 +19,7 @@ module EAGO
     import MathOptInterface
 
     using Reexport, Cassette, IntervalArithmetic, NumericIO, DocStringExtensions
-    using FastRounding
+    using FastRounding, IntervalContractors
 
     using JuMP
     import JuMP._Derivatives: operators, NodeData

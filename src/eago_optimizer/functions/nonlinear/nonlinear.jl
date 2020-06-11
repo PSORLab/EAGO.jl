@@ -385,15 +385,32 @@ function set_node!(evaluator::Evaluator, n::NodeBB)
     fill!(evaluator.subexpressions_eval, false)
     evaluator.is_first_eval = true
 
+    #@show node_lower_bounds
+    #@show node_upper_bounds
+    #@show eval_lower_bounds
+    #@show eval_upper_bounds
+
     return nothing
 end
 
 function retrieve_node(d::Evaluator)
     cn = d.current_node
     node_to_variable_map = d.node_to_variable_map
+
     return NodeBB(copy(d.lower_variable_bounds[node_to_variable_map]),
                   copy(d.upper_variable_bounds[node_to_variable_map]),
                   cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
+end
+
+function retrieve_x!(out::Vector{Float64}, d::Evaluator)
+    x = d.x
+    node_to_variable_map = d.node_to_variable_map
+    for i in 1:length(node_to_variable_map)
+        vindx = node_to_variable_map[i]
+        out[i] = x[vindx]
+    end
+
+    return nothing
 end
 
 # Returns false if subexpression has been evaluated at current reference point
