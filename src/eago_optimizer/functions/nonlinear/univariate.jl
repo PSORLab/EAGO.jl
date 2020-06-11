@@ -78,7 +78,7 @@ end
 switchexpr_rev = binaryswitch(1:length(exprs_rev), exprs_rev)
 @eval @inline function eval_univariate_set_reverse(operator_id, y::T, x::T) where T
     $switchexpr_rev
-    error("No match for operator_id")
+    y, x
 end
 
 function make_uv_gate(symbol_list)

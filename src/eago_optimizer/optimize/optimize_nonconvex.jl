@@ -861,8 +861,10 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     # update reference point for new cut
     if continue_cut_flag
         copyto!(m._current_xref, xnew)
-        set_reference_point!(m)
-        fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
+        if m._nonlinear_evaluator_created
+            set_reference_point!(m)
+            fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
+        end
     end
 
     # check to see if interval bound is preferable and replaces the objective

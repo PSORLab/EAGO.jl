@@ -449,7 +449,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
 
         if obj_type === SINGLE_VARIABLE
             if !isinf(UBD) && (m._objective_cut_ci_sv.value === -1)
-                m._objective_cut_ci_sv = MOI.add_constraint(m.relaxed_optimizer, wp._objective_sv, LT_ZERO)
+                m._objective_cut_ci_sv = CI{SV,LT}(wp._objective_sv.variable.value)
                 MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
             else
                 MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))

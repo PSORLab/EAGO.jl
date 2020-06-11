@@ -581,7 +581,7 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
         c, a, b = IntervalContractors.div_rev(setk.Intv, num1, set2.Intv)
 
     else
-        c, a, b = IntervalContractors.div_rev(setk.Intv, set1, set2.Intv)
+        c, a, b = IntervalContractors.div_rev(setk.Intv, set1.Intv, set2.Intv)
     end
 
     #=
@@ -637,6 +637,7 @@ function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::V
     #a, b = eval_univariate_set_reverse(op, valset, argset)
 
 #    if isnan(b)
+    @show op
     a, b = eval_univariate_set_reverse(op, valset.Intv, argset.Intv)
 #    end
 

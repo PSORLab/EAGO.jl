@@ -648,48 +648,51 @@ resets the current node with new interval bounds.
 function set_constraint_propagation_fbbt!(m::Optimizer)
     feasible_flag = true
 
-    evaluator = m._working_problem._relaxed_evaluator
-    set_node!(evaluator, m._current_node)
-    set_reference_point!(m)
+    if m._nonlinear_evaluator_created
+        evaluator = m._working_problem._relaxed_evaluator
+        set_node!(m._working_problem._relaxed_evaluator, m._current_node)
+        set_node_flag!(m)
+        set_reference_point!(m)
 
-    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    for constr in m._working_problem._nonlinear_constr
-        if feasible_flag
-            forward_pass!(evaluator, constr)
-            feasible_flag &= reverse_pass!(evaluator, constr)
+        m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
+        for constr in m._working_problem._nonlinear_constr
+            if feasible_flag
+                forward_pass!(evaluator, constr)
+                feasible_flag &= reverse_pass!(evaluator, constr)
+                evaluator.interval_intersect = true
+            end
+        end
+
+        m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
+        for constr in m._working_problem._nonlinear_constr
+            if feasible_flag
+                forward_pass!(evaluator, constr)
+            end
+        end
+
+        evaluator.is_post = m._parameters.subgrad_tighten
+
+        m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
+        if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
+            obj_nonlinear = m._working_problem._objective_nl
+            set_node_flag!(obj_nonlinear)
+            forward_pass!(evaluator, obj_nonlinear)
+            feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
             evaluator.interval_intersect = true
         end
-    end
 
-    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    for constr in m._working_problem._nonlinear_constr
-        if feasible_flag
-            forward_pass!(evaluator, constr)
+        if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
+            obj_nonlinear = m._working_problem._objective_nl
+            set_node_flag!(obj_nonlinear)
+            forward_pass!(evaluator, obj_nonlinear)
         end
+
+        m._new_eval_constraint = false
+        m._new_eval_objective = false
+
+        retrieve_x!(m._current_xref, evaluator)
+        m._current_node = retrieve_node(evaluator)
     end
-
-    evaluator.is_post = m._parameters.subgrad_tighten
-
-    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
-    if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
-        obj_nonlinear = m._working_problem._objective_nl
-        set_node_flag!(obj_nonlinear)
-        forward_pass!(evaluator, obj_nonlinear)
-        feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
-        evaluator.interval_intersect = true
-    end
-
-    if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
-        obj_nonlinear = m._working_problem._objective_nl
-        set_node_flag!(obj_nonlinear)
-        forward_pass!(evaluator, obj_nonlinear)
-    end
-
-    m._new_eval_constraint = false
-    m._new_eval_objective = false
-
-    retrieve_x!(m._current_xref, evaluator)
-    m._current_node = retrieve_node(evaluator)
 
     return feasible_flag
 end

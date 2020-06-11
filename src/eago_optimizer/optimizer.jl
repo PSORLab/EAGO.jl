@@ -570,7 +570,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _buffered_nonlinear_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
     # set initially in TODO, reset in objective_cut in relax.jl
-    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
+    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1)
 
     # initialized to empty in constructor (or via MOI.empty), filled in objective_cut in relax.jl
     # called by obbt in domain_reduction.jl, lower_problem, and add_cut in optimize_nonconvex.jl,

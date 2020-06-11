@@ -602,8 +602,10 @@ function forward_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
 
     end
 
-     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
-                                                     interval_intersect)
+    if !output_is_number
+        setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post,
+                                               is_intersect, interval_intersect)
+    end
 
     return nothing
 end
