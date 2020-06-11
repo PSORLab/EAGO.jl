@@ -536,13 +536,13 @@ function reverse_divide!(k::Int64, children_arr::Vector{Int64}, children_idx::Un
     end
 
     if !arg1_is_number && arg2_is_number
-        c, a, b = power_rev(setk, set1, num2)
+        c, a, b = div_rev(setk, set1, num2)
 
     elseif arg1_is_number && !arg2_is_number
-        c, a, b = power_rev(setk, num1, set2)
+        c, a, b = div_rev(setk, num1, set2)
 
     else
-        c, a, b = power_rev(setk, set1, set2)
+        c, a, b = div_rev(setk, set1, set2)
     end
 
     if REVERSE_DEBUG

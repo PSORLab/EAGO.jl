@@ -39,7 +39,7 @@ function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
     @NLobjective(model_llp1, Min, -gmulti(p1...))
   end
 
-  optimize!(model_llp1)
+  JuMP.optimize!(model_llp1)
   termination_status = JuMP.termination_status(model_llp1)
   result_status = JuMP.primal_status(model_llp1)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
@@ -75,7 +75,7 @@ function sipRes_llp2(xbar::Vector{Float64}, result::SIPResult,
     @NLobjective(model_llp2, Min, -gmulti(p2...))
   end
 
-  optimize!(model_llp2)
+  JuMP.optimize!(model_llp2)
   termination_status = JuMP.termination_status(model_llp2)
   result_status = JuMP.primal_status(model_llp2)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)

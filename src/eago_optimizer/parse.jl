@@ -182,7 +182,7 @@ function label_branch_variables!(m::Optimizer)
     nl_constr = m._working_problem._nonlinear_constr
     for i = 1:m._working_problem._nonlinear_count
         nl_constr_eq = @inbounds nl_constr[i]
-        node_list = nl_constr_eq.expr.grad_sparsity
+        grad_sparsity = nl_constr_eq.expr.grad_sparsity
         for indx in grad_sparsity
             @inbounds m._branch_variables[indx] = true
         end
@@ -478,11 +478,11 @@ function parse_classify_problem!(m::Optimizer)
         if cone_constraint_number === 0 && quad_constraint_number === 0 &&
             nl_expr_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = LP
-            println("LP")
+            #println("LP")
         elseif quad_constraint_number === 0 && relaxed_supports_soc &&
                nl_expr_number === 0 && linear_or_sv_objective
             m._working_problem._problem_type = SOCP
-            println("SOCP")
+            #println("SOCP")
         else
             #parse_classify_quadratic!(m)
             #if iszero(m._input_nonlinear_constraint_number)
@@ -494,7 +494,7 @@ function parse_classify_problem!(m::Optimizer)
             #    m._problem_type = parse_classify_nlp(m)
             #end
             m._working_problem._problem_type = MINCVX
-            println("MINCVX")
+            #println("MINCVX")
         end
     else
         #=
