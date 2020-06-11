@@ -58,8 +58,6 @@ const DEFINED_REVERSES = [:plus_rev, :minus_rev, :inv_rev,
 univariate_operators_rev = [:plus_rev, :minus_rev]
 for i in 3:length(univariate_operators)
     string = String(univariate_operators[i])*"_rev"
-#    if string == "IntervalContractors."
-    @show string
     push!(univariate_operators_rev, Symbol(string))
 end
 

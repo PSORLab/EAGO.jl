@@ -636,10 +636,7 @@ function reverse_univariate!(k::Int64, op::Int64, arg_indx::Int64, setstorage::V
 
     #a, b = eval_univariate_set_reverse(op, valset, argset)
 
-#    if isnan(b)
-    @show op
     a, b = eval_univariate_set_reverse(op, valset.Intv, argset.Intv)
-#    end
 
     REVERSE_DEBUG && println("val out = $(a)")
     REVERSE_DEBUG && println("arg out = $(b)")
