@@ -19,7 +19,7 @@ module EAGO
     import MathOptInterface
 
     using Reexport, Cassette, IntervalArithmetic, NumericIO, DocStringExtensions
-    using FastRounding, IntervalContractors
+    using FastRounding
 
     using JuMP
     import JuMP._Derivatives: operators, NodeData
@@ -34,7 +34,22 @@ module EAGO
     import IntervalArithmetic: mid
 
     @reexport using McCormick
-    @reexport using ReverseMcCormick
+    #@reexport using ReverseMcCormick
+
+    #using IntervalContractors
+    using IntervalContractors
+    #=
+    using IntervalContractors: plus_rev, minus_rev, inv_rev,
+       mul_rev, div_rev, power_rev,
+       max_rev, min_rev,
+        sqr_rev, sqrt_rev, abs_rev,
+        exp_rev, exp2_rev, exp10_rev, expm1_rev,
+        log_rev, log2_rev, log10_rev, log1p_rev,
+        sin_rev, cos_rev, tan_rev,
+        asin_rev, acos_rev, atan_rev,
+        sinh_rev, cosh_rev, tanh_rev,
+        asinh_rev, acosh_rev, atanh_rev
+        =#
 
     const MOI = MathOptInterface
 

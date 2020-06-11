@@ -40,10 +40,26 @@ switchexpr = binaryswitch(1:length(exprs), exprs)
     error("No match for operator_id")
 end
 
+#=
+null_interval_rev(y::Interval{T}, x::Interval{T}) where T = y, x
+const DEFINED_REVERSES = [:plus_rev, :minus_rev, :inv_rev,
+                          :mul_rev, :div_rev, power_rev,
+                          :sign_rev, max_rev, min_rev,
+                          :sqr_rev, sqrt_rev, abs_rev,
+                          :exp_rev, exp2_rev, exp10_rev, expm1_rev,
+                          :log_rev, log2_rev, log10_rev, log1p_rev,
+                          :sin_rev, cos_rev, tan_rev,
+                          :asin_rev, acos_rev, atan_rev,
+                          :sinh_rev, cosh_rev, tanh_rev,
+                          :asinh_rev, acosh_rev, atanh_rev]
+                          =#
+
 # code for defining reverse operators
 univariate_operators_rev = [:plus_rev, :minus_rev]
 for i in 3:length(univariate_operators)
-    string = "IntervalContractors."*String(univariate_operators[i])*"_rev"
+    string = String(univariate_operators[i])*"_rev"
+#    if string == "IntervalContractors."
+    @show string
     push!(univariate_operators_rev, Symbol(string))
 end
 

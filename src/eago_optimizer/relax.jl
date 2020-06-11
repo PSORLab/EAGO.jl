@@ -427,7 +427,6 @@ function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64,
             push!(m._objective_cut_ci_saf, ci_saf)
         end
     end
-    println("relaxed_evaluator: = $(buffered_nl.expr.setstorage[1])")
 
     m._new_eval_objective = false
 
