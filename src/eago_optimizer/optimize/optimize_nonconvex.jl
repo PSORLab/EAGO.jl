@@ -54,8 +54,8 @@ function create_initial_node!(m::Optimizer)
     for i = 1:m._working_problem._variable_count
         vi =  variable_info[i]
         if vi.branch_on === BRANCH
-             lower_bound[branch_count] = vi.lower_bound
-             upper_bound[branch_count] = vi.upper_bound
+            lower_bound[branch_count] = vi.lower_bound
+            upper_bound[branch_count] = vi.upper_bound
             branch_count += 1
         end
     end
@@ -269,16 +269,18 @@ function branch_node!(t::ExtensionType, m::Optimizer)
         branch_pnt = cvx_g*lvb + (1.0 - cvx_g)*uvb
     end
 
+    # rounds into branch points, which in turn prevents the
+    # solution at the branch point from being discarded
     N1::Interval{Float64} = Interval{Float64}(lvb, branch_pnt)
     N2::Interval{Float64} = Interval{Float64}(branch_pnt, uvb)
     lvb_1 = copy(lvbs)
     uvb_1 = copy(uvbs)
     lvb_2 = copy(lvbs)
     uvb_2 = copy(uvbs)
-     lvb_1[max_pos] = N1.lo
-     uvb_1[max_pos] = N1.hi
-     lvb_2[max_pos] = N2.lo
-     uvb_2[max_pos] = N2.hi
+    lvb_1[max_pos] = N1.lo
+    uvb_1[max_pos] = N1.hi
+    lvb_2[max_pos] = N2.lo
+    uvb_2[max_pos] = N2.hi
 
     lower_bound = max(n.lower_bound, m._lower_objective_value)
     upper_bound = min(n.upper_bound, m._upper_objective_value)
@@ -311,7 +313,8 @@ function single_storage!(t::ExtensionType, m::Optimizer)
     upper_bound = min(y.upper_bound, m._upper_objective_value)
     push!(m._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
                            lower_bound, upper_bound, y.depth, y.id))
-    return
+
+    return nothing
 end
 
 """
@@ -345,7 +348,8 @@ function fathom!(t::ExtensionType, m::Optimizer)
 
         end
     end
-    return
+
+    return nothing
 end
 
 """

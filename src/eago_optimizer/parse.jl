@@ -141,7 +141,10 @@ _branch_variables storage array.
 function label_branch_variables!(m::Optimizer)
 
     m._user_branch_variables = !isempty(m._branch_variables)
-    m._user_branch_variables && (return nothing)
+    if m._user_branch_variables
+        m._branch_variables = m._parameters.branch_variable
+        return nothing
+    end
 
     append!(m._branch_variables, fill(false, m._working_problem._variable_count))
 
@@ -347,7 +350,7 @@ function initial_parse!(m::Optimizer)
     linear_geq = ip._linear_geq_constraints
     for i = 1:ip._linear_geq_count
         linear_func, geq_set = @inbounds linear_geq[i]
-        push!(m._working_problem._saf_leq, AffineFunctionEq(linear_func, geq_set))
+        push!(m._working_problem._saf_leq, AffineFunctionIneq(linear_func, geq_set))
         m._working_problem._saf_leq_count += 1
     end
 

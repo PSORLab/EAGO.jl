@@ -14,32 +14,20 @@
 
     m._global_lower_bound = 4.0
     m._global_upper_bound = 6.0
-    m._optimization_sense = MOI.MIN_SENSE
+    m._input_problem._optimization_sense = MOI.MIN_SENSE
     @test isapprox(MOI.get(m, MOI.RelativeGap()), 0.33333333, atol=1E-5)
 
-    m._optimization_sense = MOI.MAX_SENSE
+    m._input_problem._optimization_sense = MOI.MAX_SENSE
     @test MOI.get(m, MOI.RelativeGap()) === 0.5
     @test MOI.get(m, MOI.ObjectiveBound()) === -4.0
 
-    m.verbosity = 2
-    m.log_on = true
+    m._parameters.verbosity = 2
+    m._parameters.log_on = true
     MOI.set(m, MOI.Silent(), 1)
-    @test m.verbosity === 0
-    @test m.log_on === false
+    @test m._parameters.verbosity === 0
+    @test m._parameters.log_on === false
 
     @test MOI.supports(m, MOI.ObjectiveSense())
-end
-
-@testset "Evaluate Functions" begin
-    @test EAGO.eval_function(MOI.SingleVariable(MOI.VariableIndex(2)), [1.0 2.0]) == 2.0
-    aff = MOI.ScalarAffineFunction{Float64}([MOI.ScalarAffineTerm{Float64}(2.1,MOI.VariableIndex(2)),
-                                             MOI.ScalarAffineTerm{Float64}(1.4,MOI.VariableIndex(3))], 3.3)
-    @test EAGO.eval_function(aff, [0.0 2.0 3.0]) == 11.7
-    quad = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(2.1,MOI.VariableIndex(2)),
-                                                 MOI.ScalarAffineTerm{Float64}(1.4,MOI.VariableIndex(3))],
-                                                [MOI.ScalarQuadraticTerm{Float64}(2.1,MOI.VariableIndex(1),MOI.VariableIndex(2)),
-                                                 MOI.ScalarQuadraticTerm{Float64}(1.4,MOI.VariableIndex(3),MOI.VariableIndex(3))], 3.3)
-    @test isapprox(EAGO.eval_function(quad, [1.0 2.0 3.0]), 20.1, atol=1E-5)
 end
 
 @testset "Get Termination Code " begin
@@ -77,8 +65,6 @@ end
 
     @test_nowarn @inferred EAGO.check_inbounds!(model, MOI.VariableIndex(1))
     @test_throws ErrorException @inferred EAGO.check_inbounds!(model,MOI.VariableIndex(6))
-
-    @test EAGO.is_integer_feasible(model)
 end
 
 @testset "Add Variable Bounds" begin
@@ -95,26 +81,26 @@ end
     @inferred MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-1.0))
     @inferred MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(2.0))
 
-    @test model._variable_info[1].is_integer == false
-    @test model._variable_info[1].lower_bound == -1.0
-    @test model._variable_info[1].has_lower_bound == true
-    @test model._variable_info[1].upper_bound == Inf
-    @test model._variable_info[1].has_upper_bound == false
-    @test model._variable_info[1].is_fixed == false
+    @test model._input_problem._variable_info[1].is_integer == false
+    @test model._input_problem._variable_info[1].lower_bound == -1.0
+    @test model._input_problem._variable_info[1].has_lower_bound == true
+    @test model._input_problem._variable_info[1].upper_bound == Inf
+    @test model._input_problem._variable_info[1].has_upper_bound == false
+    @test model._input_problem._variable_info[1].is_fixed == false
 
-    @test model._variable_info[2].is_integer == false
-    @test model._variable_info[2].lower_bound == -Inf
-    @test model._variable_info[2].has_lower_bound == false
-    @test model._variable_info[2].upper_bound == -1.0
-    @test model._variable_info[2].has_upper_bound == true
-    @test model._variable_info[2].is_fixed == false
+    @test model._input_problem._variable_info[2].is_integer == false
+    @test model._input_problem._variable_info[2].lower_bound == -Inf
+    @test model._input_problem._variable_info[2].has_lower_bound == false
+    @test model._input_problem._variable_info[2].upper_bound == -1.0
+    @test model._input_problem._variable_info[2].has_upper_bound == true
+    @test model._input_problem._variable_info[2].is_fixed == false
 
-    @test model._variable_info[3].is_integer == false
-    @test model._variable_info[3].lower_bound == 2.0
-    @test model._variable_info[3].has_lower_bound == true
-    @test model._variable_info[3].upper_bound == 2.0
-    @test model._variable_info[3].has_upper_bound == true
-    @test model._variable_info[3].is_fixed == true
+    @test model._input_problem._variable_info[3].is_integer == false
+    @test model._input_problem._variable_info[3].lower_bound == 2.0
+    @test model._input_problem._variable_info[3].has_lower_bound == true
+    @test model._input_problem._variable_info[3].upper_bound == 2.0
+    @test model._input_problem._variable_info[3].has_upper_bound == true
+    @test model._input_problem._variable_info[3].is_fixed == true
 end
 
 @testset "Add Linear Constraint " begin

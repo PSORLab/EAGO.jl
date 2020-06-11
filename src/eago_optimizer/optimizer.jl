@@ -696,8 +696,8 @@ end
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
 
-     m.verbosity = 0
-     m.log_on = false
+     m._parameters.verbosity = 0
+     m._parameters.log_on = false
      return nothing
 
 end

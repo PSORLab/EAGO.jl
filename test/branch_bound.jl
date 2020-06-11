@@ -1,10 +1,12 @@
 @testset "Test Stack Management Functions" begin
-    x = EAGO.Optimizer(verbosity = 0)
-    x._variable_number = 2
+    x = EAGO.Optimizer()
+    x._parameters.verbosity = 0
+    x._branch_variable_count = 2
+    x._branch_to_sol_map = [1; 2]
     x._fixed_variable = [false, false]
-    x.branch_variable = [true, true]
-    x._variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false),
-                       EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
+    x._parameters.branch_variable = [true, true]
+    x._working_problem._variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false,EAGO.BRANCH),
+                       EAGO.VariableInfo(false,2.0,false,6.0,false,false,EAGO.BRANCH)]
     x._lower_solution = [1.4, 5.3]
     y = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1)
     x._current_node = y
@@ -42,12 +44,10 @@
 
     @test length(x._stack) == 1
 
-    @inferred EAGO.Optimizer(verbosity = 0)
     @inferred EAGO.branch_node!(x)
     @inferred EAGO.node_selection!(x.ext_type, x)
     @inferred EAGO.set_global_lower_bound!(x)
     @inferred EAGO.fathom!(x)
-
 
     @test ~isless(EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1), EAGO.NodeBB(Float64[2.0,5.0], Float64[5.0,6.0], -5.0, 4.0, 2, 1))
     @test length(EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1)) == 2
@@ -58,48 +58,49 @@
 end
 
 @testset "Test B&B Checks" begin
-    x = EAGO.Optimizer(verbosity = 0)
-    x._variable_number = 2
-    x._variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false),
-                      EAGO.VariableInfo(false,2.0,false,6.0,false,false)]
+    x = EAGO.Optimizer()
+    x._parameters.verbosity = 0
+    x._branch_variable_count = 2
+    x._working_problem._variable_info = [EAGO.VariableInfo(false,1.0,false,2.0,false,false,EAGO.BRANCH),
+                      EAGO.VariableInfo(false,2.0,false,6.0,false,false,EAGO.BRANCH)]
     y = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -Inf, Inf, 2, 1)
 
     @test EAGO.repeat_check(EAGO.DefaultExt(), x) == false
 
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == true
 
-    push!(x._stack, y); x.iteration_limit = -1; x._iteration_count = 2
+    push!(x._stack, y); x._parameters.iteration_limit = -1; x._iteration_count = 2
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == true
 
-    x.iteration_limit = 1E8; x.node_limit = -1;
+    x._parameters.iteration_limit = 1E8; x._parameters.node_limit = -1;
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == true
 
-    x.node_limit = 1E8; x._lower_objective_value = 1.1;
-    x._upper_objective_value = 1.1 + 1.0E-6; x.absolute_tolerance = 1.0E-4
+    x._parameters.node_limit = 1E8; x._lower_objective_value = 1.1;
+    x._upper_objective_value = 1.1 + 1.0E-6; x._parameters.absolute_tolerance = 1.0E-4
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
-    x.absolute_tolerance = 1.0E-1; x.relative_tolerance = 1.0E-12
+    x._parameters.absolute_tolerance = 1.0E-1; x._parameters.relative_tolerance = 1.0E-12
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x._lower_objective_value = -Inf;  x._upper_objective_value = Inf
-    x.relative_tolerance = 1.0E10;
+    x._parameters.relative_tolerance = 1.0E10;
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
     x._lower_objective_value = 2.1;  x._upper_objective_value = 2.1+1E-9
-    x.relative_tolerance = 1.0E10; x.absolute_tolerance = 1.0E-6
+    x._parameters.relative_tolerance = 1.0E10; x._parameters.absolute_tolerance = 1.0E-6
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
-    x.relative_tolerance = 1.0E-30; x.absolute_tolerance = 1.0E10
+    x._parameters.relative_tolerance = 1.0E-30; x._parameters.absolute_tolerance = 1.0E10
     @test EAGO.termination_check(EAGO.DefaultExt(), x) == false
 
-    x.relative_tolerance = 1.0E-20; x.absolute_tolerance = 1.0E-20
+    x._parameters.relative_tolerance = 1.0E-20; x._parameters.absolute_tolerance = 1.0E-20
     @test EAGO.termination_check(EAGO.DefaultExt(),x) == false
 
     @inferred EAGO.repeat_check(x)
     @inferred EAGO.termination_check(x)
 
     x._run_time = 100.0
-    x.time_limit = 10.0
+    x._parameters.time_limit = 10.0
     @test EAGO.termination_check(EAGO.DefaultExt(),x)
     @test x._termination_status_code === MOI.TIME_LIMIT
 
