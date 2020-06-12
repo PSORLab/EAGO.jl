@@ -1,8 +1,22 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_semiinfinite/sip_explicit.jl
+# An implementation of the SIPres algorithm.
+#############################################################################
+
 
 # Load a model in a way that gets rid of any issues with pointers for C references
 # particularly in the EAGO solver...
 function build_model(problem::SIPProblem)
-  model = Model(with_optimizer(problem.optimizer; problem.kwargs...))
+  model = Model(optimizer_with_attributes(problem.optimizer; problem.kwargs...))
   return model
 end
 
@@ -25,7 +39,7 @@ function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
     @NLobjective(model_llp1, Min, -gmulti(p1...))
   end
 
-  optimize!(model_llp1)
+  JuMP.optimize!(model_llp1)
   termination_status = JuMP.termination_status(model_llp1)
   result_status = JuMP.primal_status(model_llp1)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
@@ -61,7 +75,7 @@ function sipRes_llp2(xbar::Vector{Float64}, result::SIPResult,
     @NLobjective(model_llp2, Min, -gmulti(p2...))
   end
 
-  optimize!(model_llp2)
+  JuMP.optimize!(model_llp2)
   termination_status = JuMP.termination_status(model_llp2)
   result_status = JuMP.primal_status(model_llp2)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
@@ -118,7 +132,7 @@ function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}}
       @NLobjective(model_bnd, Min, obj(x...))
   end
 
-  optimize!(model_bnd)
+  JuMP.optimize!(model_bnd)
 
   termination_status = JuMP.termination_status(model_bnd)
   result_status = JuMP.primal_status(model_bnd)

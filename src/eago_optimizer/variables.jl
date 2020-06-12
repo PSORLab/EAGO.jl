@@ -12,24 +12,17 @@
 # Defines single variable constraints supported by optimizer and how to store.
 #############################################################################
 
+##### Access variable information from MOI variable index
+has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_upper_bound
+has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_lower_bound
+is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].is_fixed
+is_integer(m::Optimizer, i::Int64) = is_integer(m._input_problem._variable_info[i])
+
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
-    m._variable_number += 1
-    if ~m._user_branch_variables
-        push!(m.branch_variable, false)
-    end
-    push!(m.obbt_variable_values, false)
-    push!(m._obbt_working_lower_index, false)
-    push!(m._obbt_working_upper_index, false)
-    push!(m._lower_indx_diff, false)
-    push!(m._upper_indx_diff, false)
-    push!(m._old_low_index, false)
-    push!(m._old_upp_index, false)
-    push!(m._new_low_index, false)
-    push!(m._new_upp_index, false)
-    push!(m._fixed_variable, false)
-    push!(m._variable_info, VariableInfo())
-    return VI(m._variable_number)
+    m._input_problem._variable_count += 1
+    push!(m._input_problem._variable_info, VariableInfo())
+    return VI(m._input_problem._variable_count)
 end
 MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
 
@@ -43,11 +36,11 @@ function MOI.add_constraint(m::Optimizer, v::SV, zo::ZO)
     has_upper_bound(m, vi) && error("Upper bound on variable $vi already exists.")
     has_lower_bound(m, vi) && error("Lower bound on variable $vi already exists.")
     is_fixed(m, vi) && error("Variable $vi is fixed. Cannot also set upper bound.")
-    m._variable_info[vi.value].lower_bound = 0.0
-    m._variable_info[vi.value].upper_bound = 1.0
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    m._variable_info[vi.value].is_integer = true
+    m._input_problem._variable_info[vi.value].lower_bound = 0.0
+    m._input_problem._variable_info[vi.value].upper_bound = 1.0
+    m._input_problem._variable_info[vi.value].has_lower_bound = true
+    m._input_problem._variable_info[vi.value].has_upper_bound = true
+    m._input_problem._variable_info[vi.value].is_integer = true
     return CI{SV, MOI.ZO}(vi.value)
 end
 
@@ -63,8 +56,8 @@ function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
     if is_fixed(m, vi)
         error("Variable $vi is fixed. Cannot also set upper bound.")
     end
-    m._variable_info[vi.value].upper_bound = lt.upper
-    m._variable_info[vi.value].has_upper_bound = true
+    m._input_problem._variable_info[vi.value].upper_bound = lt.upper
+    m._input_problem._variable_info[vi.value].has_upper_bound = true
     return CI{SV, LT}(vi.value)
 end
 
@@ -80,8 +73,8 @@ function MOI.add_constraint(m::Optimizer, v::SV, gt::GT)
     if is_fixed(m, vi)
         error("Variable $vi is fixed. Cannot also set lower bound.")
     end
-    m._variable_info[vi.value].lower_bound = gt.lower
-    m._variable_info[vi.value].has_lower_bound = true
+    m._input_problem._variable_info[vi.value].lower_bound = gt.lower
+    m._input_problem._variable_info[vi.value].has_lower_bound = true
     return CI{SV, GT}(vi.value)
 end
 
@@ -100,10 +93,10 @@ function MOI.add_constraint(m::Optimizer, v::SV, eq::ET)
     if is_fixed(m, vi)
         error("Variable $vi is already fixed.")
     end
-    m._variable_info[vi.value].lower_bound = eq.value
-    m._variable_info[vi.value].upper_bound = eq.value
-    m._variable_info[vi.value].has_lower_bound = true
-    m._variable_info[vi.value].has_upper_bound = true
-    m._variable_info[vi.value].is_fixed = true
+    m._input_problem._variable_info[vi.value].lower_bound = eq.value
+    m._input_problem._variable_info[vi.value].upper_bound = eq.value
+    m._input_problem._variable_info[vi.value].has_lower_bound = true
+    m._input_problem._variable_info[vi.value].has_upper_bound = true
+    m._input_problem._variable_info[vi.value].is_fixed = true
     return CI{SV, ET}(vi.value)
 end

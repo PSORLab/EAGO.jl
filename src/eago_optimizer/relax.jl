@@ -1,471 +1,436 @@
-#=
-struct ConvexSQF{S}
-    x::Vector{Float64}
-    xT::Adjoint{Float64,Vector{Float64}}
-    Qx::Vector{Float64}
-    Q::
-    xindx::Vector{Int}
-    lin_terms::Vector{Float64}
-    vi::Vector{VI}
-    constant::Float64
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/relax.jl
+# Defines routines used construct the relaxed subproblem.
+#############################################################################
 
-    quad_coeff::Vector{Float64}
-
-    sqf::SQF
-    set::S
-    coeffs_buffer
-    quad_terms::Vector{Tuple{Float64,Int,Int}}
-    saf_terms::Vector{Float64}
-    n::Int
-end
 """
 $(FUNCTIONNAME)
 
-Stores the kernel of the calculation required to relax convex quadratic
-constraints using the immutable dictionary to label terms.
+Applies the safe cut checks detailed in Khajavirad, 2018 [Khajavirad, Aida,
+and Nikolaos V. Sahinidis. "A hybrid LP/NLP paradigm for global optimization
+relaxations." Mathematical Programming Computation 10.3 (2018): 383-421] to
+ensure that only numerically safe affine relaxations are added. Checks that
+i) |b| <= safe_b, ii) safe_l <= abs(ai) <= safe_u, and iii) violates
+safe_l <= abs(ai/aj) <= safe_u.
 """
-function relax_convex_kernel!(b::SQF, x0::Vector{Float64})
-    @__dot__ b.x = x0[b.x0_indx]
-    @__dot__ b.x = b.xT
-    mul!(b.Qx, b.Q, b.x)
-    @__dot__ b.saf.terms = SAT(b.lin_terms + 2.0*b.Qx, b.vi)
-    saf.constant = sqf.constant + mapreduce((x,y)-> x*y, +, b.quad_coeff, b.x0_buffer)
-    nothing
-end
-=#
+function is_safe_cut!(m::Optimizer, f::SAF)
 
-function relax_convex_kernel(func::SQF, vi::Vector{VI}, cvx_dict::ImmutableDict{Int64,Int64},
-                             nx::Int64, x0::Vector{Float64})
+    safe_l = m._parameters.cut_safe_l
+    safe_u = m._parameters.cut_safe_u
+    safe_b = m._parameters.cut_safe_b
 
-    # initialize storage terms
-    terms_coeff = zeros(nx)
-    term_constant = func.constant
+    # violates |b| <= safe_b
+    (abs(f.constant) > safe_b) && return false
 
-    # iterate over quadratic terms to build convex quadratic cut
-    for term in func.quadratic_terms
+    term_count = length(f.terms)
+    for i = 1:term_count
 
-        coeff = term.coefficient
-        indx1 = cvx_dict[term.variable_index_1.value]
-        indx2 = cvx_dict[term.variable_index_2.value]
-        @inbounds temp_constant = x0[indx1]
-        @inbounds temp_constant *= x0[indx2]
-        term_constant -= coeff*temp_constant
+        ai = (@inbounds f.terms[i]).coefficient
+        if ai !== 0.0
 
-        @inbounds terms_coeff[indx1] += 2.0*coeff*x0[indx1]
+            # violates safe_l <= abs(ai) <= safe_u
+            ai_abs = abs(ai)
+            !(safe_l <= abs(ai) <= safe_u) && return false
+
+            # violates safe_l <= abs(ai/aj) <= safe_u
+            for j = i:term_count
+                aj = (@inbounds f.terms[j]).coefficient
+                if aj !== 0.0
+                    !(safe_l <= abs(ai/aj) <= safe_u) && return false
+                end
+            end
+        end
     end
 
-    # Adds affine terms
-    for term in func.affine_terms
-        coeff = term.coefficient
-        indx1 = cvx_dict[term.variable_index.value]
-        @inbounds terms_coeff[indx1] += coeff
-    end
-
-    saf = SAF(SAT.(terms_coeff, vi), term_constant)
-
-    return saf
+    return true
 end
 
 """
 $(FUNCTIONNAME)
 
-Stores the kernel of the calculation required to relax nonconvex quadratic
-constraints using the immutable dictionary to label terms.
+Relaxs the constraint by adding an affine constraint to the model.
 """
-function relax_nonconvex_kernel(func::SQF, vi::Vector{VI}, n::NodeBB,
-                                cvx_dict::ImmutableDict{Int64,Int64}, nx::Int64, x0::Vector{Float64})
+function relax! end
 
-    terms_coeff = zeros(nx)
+"""
+$(FUNCTIONNAME)
 
-    lvb = n.lower_variable_bounds
-    uvb = n.upper_variable_bounds
+Default routine for relaxing quadratic constraint `func` < `0.0` on node `n`.
+Takes affine bounds of convex part at point `x0` and secant line bounds on
+concave parts.
+"""
+function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
+                                 n::NodeBB, sol_to_branch_map::Vector{Int},
+                                 x::Vector{Float64})
+
+    lower_bounds = n.lower_variable_bounds
+    upper_bounds = n.upper_variable_bounds
     quadratic_constant = func.constant
+
+    # Affine terms only contribute coefficients, so the respective
+    # values do not contribute to the cut. Since all quadratic terms
+    # are considered to be branch variables we exclude any potential
+    # need to retrieve variable bounds from locations other than
+    # the node.
     for term in func.quadratic_terms
+
         a = term.coefficient
-        nidx1 = term.variable_index_1.value
-        nidx2 = term.variable_index_2.value
-        vidx1 = cvx_dict[nidx1]
-        vidx2 = cvx_dict[nidx2]
-        @inbounds xL1 = lvb[nidx1]
-        @inbounds xU1 = uvb[nidx1]
-        @inbounds x01 = x0[nidx1]
-        if nidx1 == nidx2               # quadratic terms
-            if (a > 0.0)
-                @inbounds terms_coeff[vidx1] = 2.0*a*x01
-                quadratic_constant -= x01*x01
+        idx1 = term.variable_index_1.value
+        idx2 = term.variable_index_2.value
+        sol_idx1 = sol_to_branch_map[idx1]
+        sol_idx2 = sol_to_branch_map[idx2]
+        x0_1 = x[sol_idx1]
+        xL_1 = lower_bounds[sol_idx1]
+        xU_1 = upper_bounds[sol_idx1]
+
+        if idx1 === idx2
+
+            if a > 0.0
+                buffer[idx1] += a*x0_1
+                quadratic_constant -= 0.5*a*x0_1*x0_1
+
             else
-                @inbounds terms_coeff[vidx1] = a*(xL1 + xU1)
-                quadratic_constant -= a*xL1*xU1
-            end
-        else
-            @inbounds xL2 = lvb[nidx2]
-            @inbounds xU2 = uvb[nidx2]
-            @inbounds x02 = x0[nidx2]
-            if (a > 0.0)
-                check_ref = (xU1 - xL1)*x02 + (xU2 - xL2)*x01
-                if (check_ref - xU1*xU2 + xL1*xL2) <= 0.0
-                    @inbounds terms_coeff[vidx1] += a*xL2
-                    @inbounds terms_coeff[vidx2] += a*xL1
-                    quadratic_constant -= a*xL1*xL2
+                if !isinf(xL_1) && !isinf(xU_1)
+                    buffer[idx1] += 0.5*a*(xL_1 + xU_1)
+                    quadratic_constant -= 0.5*a*xL_1*xU_1
                 else
-                    @inbounds terms_coeff[vidx1] += a*xU2
-                    @inbounds terms_coeff[vidx2] += a*xU1
-                    quadratic_constant -= a*xU1*xU2
+                    return false
+                end
+            end
+
+        else
+            x0_2 = x[sol_idx2]
+            xL_2 = lower_bounds[sol_idx2]
+            xU_2 = upper_bounds[sol_idx2]
+
+            if a > 0.0
+                if (!isinf(xL_1) && !isinf(xL_2)) &&
+                   ((xU_1 - xL_1)*x0_2 + (xU_2 - xL_2)*x0_1 <= xU_1*xU_2 - xL_1*xL_2)
+                    buffer[idx1] += a*xL_2
+                    buffer[idx2] += a*xL_1
+                    quadratic_constant -= a*xL_1*xL_2
+
+                elseif !isinf(xU_1) && !isinf(xU_2)
+                    buffer[idx1] += a*xU_2
+                    buffer[idx2] += a*xU_1
+                    quadratic_constant -= a*xU_1*xU_2
+
+                else
+                    return false
+
                 end
             else
-                check_ref = (xU1 - xL1)*x02 - (xU2 - xL2)*x01
-                if check_ref <= (xU1*xL2 - xL1*xU2)
-                    @inbounds terms_coeff[vidx1] += a*xL2
-                    @inbounds terms_coeff[vidx2] += a*xU1
-                    quadratic_constant -= a*xU1*xL2
+                if (!isinf(xU_1) && !isinf(xL_2)) &&
+                   ((xU_1 - xL_1)*x0_2 - (xU_2 - xL_2)*x0_1 <= xU_1*xL_2 - xL_1*xU_2)
+
+                    buffer[idx1] += a*xL_2
+                    buffer[idx2] += a*xU_1
+                    quadratic_constant -= a*xU_1*xL_2
+
+                elseif !isinf(xL_1) && !isinf(xU_2)
+                    buffer[idx1] += a*xU_2
+                    buffer[idx2] += a*xL_1
+                    quadratic_constant -= a*xL_1*xU_2
+
                 else
-                    @inbounds terms_coeff[vidx1] += a*xU2
-                    @inbounds terms_coeff[vidx2] += a*xL1
-                    quadratic_constant -= a*xL1*xU2
+                    return false
                 end
             end
         end
     end
 
     for term in func.affine_terms
-        nidx1 = term.variable_index.value
-        vidx1 = cvx_dict[nidx1]
-        @inbounds terms_coeff[vidx1] += term.coefficient
+        a0 = term.coefficient
+        idx = term.variable_index.value
+        buffer[idx] += a0
     end
 
-    saf = SAF(SAT.(terms_coeff, vi), quadratic_constant)
+    count = 1
+    for (key, value) in buffer
+        saf.terms[count] = SAT(value, VI(key))
+        buffer[key] = 0.0
+        count += 1
+    end
+    saf.constant = quadratic_constant
 
-    return saf
+    return true
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
+
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
+    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant + constraint_tol)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_quadratic_ineq_ci, ci)
+        end
+    end
+    #m.relaxed_to_problem_map[ci] = indx
+
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
+
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
+    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant + constraint_tol)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_quadratic_eq_ci, ci)
+        end
+    end
+    #m.relaxed_to_problem_map[ci] = indx
+
+    finite_cut_generated = affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant + constraint_tol)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_quadratic_eq_ci, ci)
+        end
+    end
+    #m.relaxed_to_problem_map[ci] = indx
+
+    return nothing
 end
 
 """
 $(FUNCTIONNAME)
-
-Default routine for relaxing nonconvex quadratic constraint `lower` < `func` < `upper`
-on node `n`. Takes affine bounds of convex part at point `x0` and secant line
-bounds on concave parts.
 """
-function relax_quadratic_gen_saf(func::SQF, vi::Vector{VI}, n::NodeBB,
-                                 nx::Int64, x0::Vector{Float64},
-                                 cvx_dict::ImmutableDict{Int64,Int64}, flag::Bool)
-    if flag
-        saf = relax_convex_kernel(func, vi, cvx_dict, nx, x0)
-    else
-        saf = relax_nonconvex_kernel(func, vi, n, cvx_dict, nx, x0)
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator,
+                                 use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {N,T<:RelaxTag}
+
+    if new_pass
+        forward_pass!(evaluator, f)
     end
-    return saf
-end
-function store_ge_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
-                             lower::Float64, i::Int64, q::Int64)
-    opt = x.relaxed_optimizer
-    if (q == 1) & x.relaxed_inplace_mod
-        for (i, term) in enumerate(saf.terms)
-            MOI.modify(opt, ci, SCoefC(term.variable_index, term.coefficient))
+    x = evaluator.x
+    finite_cut = true
+
+    expr = f.expr
+    grad_sparsity = expr.grad_sparsity
+    if expr.isnumber[1]
+        f.saf.constant = expr.numberstorage[1]
+        for i = 1:N
+            vval = @inbounds grad_sparsity[i]
+            f.saf.terms[i] = SAT(0.0, VI(vval))
         end
-        MOI.set(opt, MOI.ConstraintSet(), ci, LT(-lower - saf.constant))
+
     else
-        c = saf.constant
-        saf.constant = 0.0
-        x._quadratic_ci_geq[q][i] = MOI.add_constraint(opt, saf, LT(-lower - c))
-    end
-    return
-end
-function store_le_quadratic!(x::Optimizer, ci::CI{SAF,LT}, saf::SAF,
-                            upper::Float64, i::Int64, q::Int64)
-    opt = x.relaxed_optimizer
-    if (q == 1) & x.relaxed_inplace_mod
-        opt = x.relaxed_optimizer
-        for (i, term) in enumerate(saf.terms)
-            MOI.modify(opt, ci, SCoefC(term.variable_index, term.coefficient))
+        setvalue = expr.setstorage[1]
+        finite_cut &= !(isempty(setvalue) || isnan(setvalue))
+
+        if finite_cut
+            value = f.expr.setstorage[1]
+            f.saf.constant = use_cvx ? value.cv : -value.cc
+            for i = 1:N
+                vval = @inbounds grad_sparsity[i]
+                if use_cvx
+                    coef = @inbounds value.cv_grad[i]
+                else
+                    coef = @inbounds -value.cc_grad[i]
+                end
+                f.saf.terms[i] = SAT(coef, VI(vval))
+                xv = @inbounds x[vval]
+                f.saf.constant = sub_round(f.saf.constant , mul_round(coef, xv, RoundUp), RoundDown)
+            end
+            if is_constraint
+                bnd_used =  use_cvx ? -f.upper_bound : f.lower_bound
+                f.saf.constant = add_round(f.saf.constant, bnd_used, RoundDown)
+            end
         end
-        MOI.set(opt, MOI.ConstraintSet(), ci, LT(upper - saf.constant))
+    end
 
-    else
-        c = saf.constant
-        saf.constant = 0.0
-        new_set = LT(upper - c)
-        cindxo = MOI.add_constraint(opt, saf, new_set)
-        x._quadratic_ci_leq[q][i] = cindxo
-    end
-    return
-end
-function store_eq_quadratic!(x::Optimizer, ci1::CI{SAF,LT}, ci2::CI{SAF,LT},
-                            saf1::SAF, saf2::SAF, value::Float64, i::Int64,
-                            q::Int64)
-    opt = x.relaxed_optimizer
-    if (q == 1) & x.relaxed_inplace_mod
-        store_ge_quadratic!(x, ci1, saf1, value, i, q)
-        store_le_quadratic!(x, ci2, saf2, value, i, q)
-    else
-        c1 = saf1.constant
-        c2 = saf2.constant
-        saf1.constant = 0.0
-        saf2.constant = 0.0
-        c1 = MOI.add_constraint(opt, saf1, LT(value - c1))
-        c2 = MOI.add_constraint(opt, saf2, LT(-value + c2))
-        x._quadratic_ci_eq[q][i] = (c1,c2)
-    end
-    return
+    return finite_cut
 end
 
 """
-$(FUNCTIONNAME)
-
-Relaxes all quadratic constraints in `x` optimizer.
+$(TYPEDSIGNATURES)
 """
-function relax_quadratic!(x::Optimizer, x0::Vector{Float64}, q::Int64)
+function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
 
-    n = x._current_node
-
-    # Relax Convex Constraint Terms TODO: place all quadratic info into one vector of tuples?
-    for i = 1:length(x._quadratic_leq_constraints)
-        func, set = x._quadratic_leq_constraints[i]
-        cvx_dict = x._quadratic_leq_dict[i]
-        vi = x._quadratic_leq_sparsity[i]
-        nz = x._quadratic_leq_gradnz[i]
-        ci1 = x._quadratic_ci_leq[q][i]
-        flag1 = x._quadratic_leq_convexity[i]
-
-        saf = relax_quadratic_gen_saf(func, vi, n, nz, x0, cvx_dict, flag1)
-        store_le_quadratic!(x, ci1, saf, set.upper, i, q)
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, f.saf)
+            lt = LT(-f.saf.constant + constraint_tol)
+            f.saf.constant = 0.0
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            push!(m._buffered_nonlinear_ci, ci)
+        end
     end
 
-    for i = 1:length(x._quadratic_geq_constraints)
-        func, set = x._quadratic_geq_constraints[i]
-        cvx_dict = x._quadratic_geq_dict[i]
-        vi = x._quadratic_geq_sparsity[i]
-        nz = x._quadratic_geq_gradnz[i]
-        ci1 = x._quadratic_ci_geq[q][i]
-        flag1 = x._quadratic_geq_convexity[i]
-        vec_sat = SAT[SAT(-t.coefficient, t.variable_index) for t in func.affine_terms]
-        vec_sqt = SQT[SQT(-t.coefficient, t.variable_index_1, t.variable_index_2) for t in func.quadratic_terms]
-        func_minus = SQF(vec_sat, vec_sqt, -func.constant)
-        saf = relax_quadratic_gen_saf(func_minus, vi, n, nz, x0, cvx_dict, flag1)
-        store_ge_quadratic!(x, ci1, saf, set.lower, i, q)
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
+    evaluator = m._working_problem._relaxed_evaluator
+
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true, true)
+    check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
+
+    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false, true)
+    check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
+
+    return nothing
+end
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function bound_objective(t::ExtensionType, m::Optimizer)
+
+    n = m._current_node
+    sb_map = m._sol_to_branch_map
+    wp = m._working_problem
+    obj_type = wp._objective_type
+
+    if obj_type === NONLINEAR
+
+        # assumes current node has already been loaded into evaluator
+        objective_lo = lower_interval_bound(wp._objective_nl)
+
+    elseif obj_type === SINGLE_VARIABLE
+        obj_indx = @inbounds sb_map[wp._objective_sv.variable.value]
+        objective_lo = @inbounds n.lower_variable_bounds[obj_indx]
+
+    elseif obj_type === SCALAR_AFFINE
+        objective_lo = lower_interval_bound(wp._objective_saf_parsed, n)
+
+    elseif obj_type === SCALAR_QUADRATIC
+        objective_lo = lower_interval_bound(wp._objective_sqf, n)
+
     end
 
-    for i = 1:length(x._quadratic_eq_constraints)
-        func, set = x._quadratic_eq_constraints[i]
-        cvx_dict = x._quadratic_eq_dict[i]
-        vi = x._quadratic_eq_sparsity[i]
-        nz = x._quadratic_eq_gradnz[i]
-        ci1, ci2 = x._quadratic_ci_eq[q][i]
-        flag1 = x._quadratic_eq_convexity_1[i]
-        flag2 = x._quadratic_eq_convexity_2[i]
-        saf1 = relax_quadratic_gen_saf(func, vi, n, nz, x0, cvx_dict, flag1)
-        vec_sat = SAT[SAT(-t.coefficient, t.variable_index) for t in func.affine_terms]
-        vec_sqt = SQT[SQT(-t.coefficient, t.variable_index_1, t.variable_index_2) for t in func.quadratic_terms]
-        func_minus = SQF(vec_sat, vec_sqt, -func.constant)
-        saf2 = relax_quadratic_gen_saf(func_minus, vi, n, nz, x0, cvx_dict, flag2)
-        store_eq_quadratic!(x, ci1, ci2, saf1, saf2, set.value, i, q)
+    return objective_lo
+end
+bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
+
+"""
+$(TYPEDSIGNATURES)
+"""
+function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe::Bool)
+
+    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_evaluator = wp._relaxed_evaluator
+    buffered_nl = wp._objective_nl
+
+    new_flag = m._new_eval_objective
+    relaxed_evaluator.is_first_eval = new_flag
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, new_flag, false)
+    relaxed_evaluator.is_first_eval = false
+
+    if finite_cut_generated
+        if !check_safe || is_safe_cut!(m, buffered_nl.saf)
+            copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
+            wp._objective_saf.constant = buffered_nl.saf.constant
+            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+        end
     end
 
-
-    return
+    return nothing
 end
 
 """
 $(TYPEDSIGNATURES)
 
-A rountine that only relaxes the objective.
+Triggers an evaluation of the objective function and then updates
+the affine relaxation of the objective function.
 """
-function relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
+function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
 
-    nx = x._variable_number
-    opt = x.relaxed_optimizer
-    @inbounds vi = x._lower_variable_index[1:nx]
+    relaxed_optimizer = m.relaxed_optimizer
+    m._working_problem._relaxed_evaluator
 
     # Add objective
-    if x._objective_is_sv
-        MOI.set(opt, MOI.ObjectiveFunction{SV}(), x._objective_sv)
-        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    wp = m._working_problem
+    obj_type = wp._objective_type
+    check_safe = (q === 1) ? false : m._parameters.cut_safe_on
 
-    elseif x._objective_is_saf
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), x._objective_saf)
-        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    if obj_type === SINGLE_VARIABLE
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), wp._objective_sv)
 
-    elseif x._objective_is_sqf
-        if x._objective_convexity
-            saf = relax_convex_kernel(x._objective_sqf, vi, nx, x0)
-        else
-            saf = relax_nonconvex_kernel(x._objective_sqf, vi, x._current_node, x._quadratic_obj_dict, nx, x0)
-        end
+    elseif obj_type === SCALAR_AFFINE
+        MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
 
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), saf)
-        MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-    else
-        if x._objective_is_nlp
-
-            evaluator = x._relaxed_evaluator
-
-            # Calculates convex relaxation
-            f = MOI.eval_objective(evaluator, x0)
-
-            # calculates the convex relaxation subgradient
-            df = zeros(nx)
-            MOI.eval_objective_gradient(evaluator, df, x0)
-
-            # Add objective relaxation to model
-            saf_const = f
-            grad_c = 0.0
-            x0_c = 0.0
-
-            for i in 1:nx
-                @inbounds grad_c = df[i]
-                @inbounds x0_c = x0[i]
-                @inbounds vindx = vi[i]
-                saf_const -= x0_c*grad_c
-                MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SCoefC(vindx, grad_c))
-            end
-            MOI.modify(opt,  MOI.ObjectiveFunction{SAF}(), SConsC(saf_const))
-            MOI.set(opt, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-        end
-    end
-    return
-end
-
-"""
-$(FUNCTIONNAME)
-
-A rountine that relaxes all nonlinear constraints excluding
-constraints specified as quadratic.
-"""
-function relax_nlp!(x::Optimizer, v::Vector{Float64}, q::Int64)
-
-    evaluator = x._relaxed_evaluator
-
-    if ~isempty(x.branch_variable)
-
-        if MOI.supports(x.relaxed_optimizer, MOI.NLPBlock())
-
-            _nlp_data = MOI.NLPBlockData(x._nlp_data.constraint_bounds,
-                                         evaluator,
-                                         x._nlp_data.has_objective)
-            MOI.set(x._relaxed_optimizer, MOI.NLPBlock(), _nlp_data)
-
-        else
-            # Add other affine constraints
-            constraint_bounds = x._relaxed_constraint_bounds
-            leng = length(constraint_bounds)
-            if leng > 0
-                nx = x._variable_number
-                vi = x._lower_variable_index
-
-                g = zeros(leng)
-                dg = zeros(leng, nx)
-
-                g_cc = zeros(leng)
-                dg_cc = zeros(leng, nx)
-
-                MOI.eval_constraint(evaluator, g, v)
-                MOI.eval_constraint_jacobian(evaluator, dg, v)
-
-                eval_constraint_cc(evaluator, g_cc, v)
-                eval_constraint_cc_grad(evaluator, dg_cc, v)
-
-                lower_nlp_affine = x._lower_nlp_affine[q]
-                upper_nlp_affine = x._upper_nlp_affine[q]
-                lower_nlp_sparsity = x._lower_nlp_sparsity
-                upper_nlp_sparsity = x._upper_nlp_sparsity
-                lower_nlp_affine_indx = x._lower_nlp_affine_indx
-                upper_nlp_affine_indx = x._upper_nlp_affine_indx
-                if (q == 1) & x.relaxed_inplace_mod
-                    for i = 1:length(lower_nlp_affine_indx)
-                        @inbounds g_indx = lower_nlp_affine_indx[i]
-                        @inbounds aff_ci = lower_nlp_affine[i]
-                        @inbounds nzidx = lower_nlp_sparsity[i]
-                        @inbounds nzvar = vi[nzidx]
-                        @inbounds constant = g[g_indx]
-                        dg_cv_val = 0.0
-                        for j in nzidx
-                            @inbounds dg_cv_val = dg[i,j]
-                            @inbounds vindx = vi[j]
-                            @inbounds constant -= v[j]*dg_cv_val
-                            MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cv_val))
-                        end
-                        set = LT(-constant)
-                        MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
-                    end
-                    for i = 1:length(upper_nlp_affine_indx)
-                        @inbounds g_indx = upper_nlp_affine_indx[i]
-                        @inbounds aff_ci = upper_nlp_affine[i]
-                        @inbounds nzidx = upper_nlp_sparsity[i]
-                        @inbounds nzvar = vi[nzidx]
-                        @inbounds constant = g_cc[g_indx]
-                        dg_cc_val = 0.0
-                        for j in nzidx
-                            @inbounds dg_cc_val = -dg_cc[i,j]
-                            @inbounds vindx = vi[j]
-                            @inbounds constant += v[j]*dg_cc_val
-                            MOI.modify(x.relaxed_optimizer, aff_ci, SCoefC(vindx, dg_cc_val))
-                        end
-                        set = LT(constant)
-                        MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), aff_ci, set)
-                    end
-                else
-                    for i = 1:length(lower_nlp_affine_indx)
-                        @inbounds g_indx = lower_nlp_affine_indx[i]
-                        @inbounds aff_ci = lower_nlp_affine[i]
-                        @inbounds nzidx = lower_nlp_sparsity[i]
-                        @inbounds nzvar = vi[nzidx]
-                        @inbounds constant = g[g_indx]
-                        dg_cv_val = 0.0
-                        coeff = zeros(Float64,length(nzidx))
-                        vindices = vi[nzidx]
-                        for j in 1:length(nzidx)
-                            @inbounds indx = nzidx[j]
-                            @inbounds coeff[j] = dg[i,indx]
-                            @inbounds constant -= v[indx]*coeff[j]
-                        end
-                        set = LT(-constant)
-                        saf = SAF(SAT.(coeff,vindices), 0.0)
-                        x._lower_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
-                                                                   saf, set)
-                    end
-                    for i = 1:length(upper_nlp_affine_indx)
-                        @inbounds g_indx = upper_nlp_affine_indx[i]
-                        @inbounds aff_ci = upper_nlp_affine[i]
-                        @inbounds nzidx = upper_nlp_sparsity[i]
-                        @inbounds nzvar = vi[nzidx]
-                        @inbounds constant = g_cc[g_indx]
-                        dg_cc_val = 0.0
-                        coeff = zeros(Float64,length(nzidx))
-                        @inbounds vindices = vi[nzidx]
-                        for j in 1:length(nzidx)
-                            @inbounds indx = nzidx[j]
-                            @inbounds dg_cc_val = -dg_cc[i,indx]
-                            @inbounds coeff[j] = dg_cc_val
-                            @inbounds constant += v[indx]*dg_cc_val
-                        end
-                        set = LT(constant)
-                        saf = SAF(SAT.(coeff,vindices), 0.0)
-                        x._upper_nlp_affine[q][i] = MOI.add_constraint(x.relaxed_optimizer,
-                                                                   saf, set)
-                    end
-                end
+    elseif obj_type === SCALAR_QUADRATIC
+        buffered_sqf = wp._objective_sqf
+        finite_cut_generated = affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer, buffered_sqf.saf,
+                                m._current_node, m._sol_to_branch_map, m._current_xref)
+        if finite_cut_generated
+            if !check_safe || is_safe_cut!(m, buffered_sqf.saf)
+                copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
+                wp._objective_saf.constant = buffered_sqf.saf.constant
+                MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
             end
         end
+
+    elseif obj_type === NONLINEAR
+        relax_objective_nonlinear!(m, wp, check_safe)
     end
-    return
+
+    m._new_eval_objective = false
+
+    return nothing
 end
+relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
 """
-$(TYPEDSIGNATURES)
 
-A rountine that updates the current node for the `Evaluator` and relaxes all
-nonlinear constraints and quadratic constraints.
+Triggers an evaluation of the nonlinear objective function (if necessary)
+and adds the corresponding `<a,x> <= b` objective cut.
 """
-function relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::Int64)
+function objective_cut_nonlinear!(m::Optimizer, wp::ParsedProblem, UBD::Float64, check_safe::Bool)
 
-    evaluator = x._relaxed_evaluator
-    if q == 1
-        set_current_node!(evaluator, x._current_node)
+    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_evaluator = wp._relaxed_evaluator
+    buffered_nl = wp._objective_nl
+
+    # if the objective cut is the first evaluation of the objective expression
+    # then perform a a forward pass
+    new_flag = m._new_eval_objective
+    relaxed_evaluator.is_first_eval = new_flag
+    finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, new_flag, false)
+
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
+    if finite_cut_generated
+        copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
+        wp._objective_saf.constant = 0.0
+        if !check_safe || is_safe_cut!(m,  buffered_nl.saf)
+            # TODO: When we introduce numerically safe McCormick operators we'll need to replace
+            # the UBD - buffered_nl.saf.constant with a correctly rounded version. For now,
+            # a small factor is added to the UBD calculation initially which should be sufficient.
+            ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_nl.saf.constant + constraint_tol))
+            push!(m._objective_cut_ci_saf, ci_saf)
+        end
     end
-    relax_quadratic!(x, v, q)
-    relax_nlp!(x, v, q)
 
-    return
+    m._new_eval_objective = false
+
+    return nothing
 end
 
 """
@@ -473,87 +438,155 @@ $(FUNCTIONNAME)
 
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
-function objective_cut_linear!(x::Optimizer, q::Int64)
-    if x._global_upper_bound < Inf
-        if (x._objective_cut_set == -1) || (q > 1) ||  ~x.relaxed_inplace_mod
-            z = (x._objective_cut_set == -1) ? 1 : q
-            set = LT(x._global_upper_bound)
-            if x._objective_is_sv
-                ci_sv = x._objective_cut_ci_sv
-                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
-            elseif x._objective_is_saf
-                ci_saf = MOI.add_constraint(x.relaxed_optimizer, x._objective_saf, set)
-                x._objective_cut_ci_saf[z] = ci_saf
-            elseif x._objective_is_sqf || x._objective_is_nlp
-                saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                set = LT(x._global_upper_bound - saf.constant)
-                saf.constant = 0.0
-                ci_saf = MOI.add_constraint(x.relaxed_optimizer, saf, set)
-                x._objective_cut_ci_saf[z] = ci_saf
-            end
-            x._objective_cut_set = x._iteration_count
-        elseif q == 1
-            if ~x._objective_is_sv
-                ci_saf = x._objective_cut_ci_saf[1]
-                saf = MOI.get(x.relaxed_optimizer, MOI.ObjectiveFunction{SAF}())
-                for term in saf.terms
-                    term_coeff = term.coefficient
-                    term_indx = term.variable_index
-                    MOI.modify(x.relaxed_optimizer, ci_saf, SCoefC(term_indx, term_coeff))
-                end
-                #MOI.modify(x.relaxed_optimizer, ci_saf, SConsC(0.0))
-                set = LT(x._global_upper_bound - saf.constant)
-                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_saf, set)
+function objective_cut!(m::Optimizer, check_safe::Bool)
+
+    UBD = m._global_upper_bound
+    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
+    if m._parameters.objective_cut_on && m._global_upper_bound < Inf
+
+        wp = m._working_problem
+        obj_type = wp._objective_type
+
+        if obj_type === SINGLE_VARIABLE
+            if !isinf(UBD) && (m._objective_cut_ci_sv.value === -1)
+                m._objective_cut_ci_sv = CI{SV,LT}(wp._objective_sv.variable.value)
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
             else
-                ci_sv = x._objective_cut_ci_sv
-                set = LT(x._global_upper_bound)
-                MOI.set(x.relaxed_optimizer, MOI.ConstraintSet(), ci_sv, set)
+                MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
             end
-        end
-    end
-    return
-end
 
-relax_problem!(x::Optimizer, v::Vector{Float64}, q::Int64) = relax_problem!(x.ext_type, x, v, q)
-relax_objective!(x::Optimizer, v::Vector{Float64}) = relax_objective!(x.ext_type, x, v)
+        elseif obj_type === SCALAR_AFFINE
+            formulated_constant = wp._objective_saf.constant
+            wp._objective_saf.constant = 0.0
+            if check_safe && is_safe_cut!(m, wp._objective_saf)
+                ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - wp._objective_saf.constant + constraint_tol))
+                push!(m._objective_cut_ci_saf, ci_saf)
+            end
+            wp._objective_saf.constant = formulated_constant
 
-#=
-work on new constraint relaxation
-"""
-Takes the optimizer and constraint index and computes a relaxation inplace if
-possible (no prior relaxation) and no set.
-"""
+        elseif obj_type === SCALAR_QUADRATIC
+            buffered_sqf = wp._objective_sqf
+            finite_cut_generated =  affine_relax_quadratic!(buffered_sqf.func, buffered_sqf.buffer,
+                                                            buffered_sqf.saf, m._current_node, m._sol_to_branch_map,
+                                                            m._current_xref)
 
-function copy_add_from_buffer!(x::Optimizer, c::CI{})
-end
-function relax_to_buffer!(x, c)
-end
-function is_safe_relax(x, c)
-    buffer = x.buffer[x.buffer_indx[c]]
-    coeffs = buffer.coeffs
-    flag = abs(buffer.b) < x.cut_safe_b
-    ~flag && (return flag)
-    for i=1:length(coeffs)
-        ai = coeffs[i]
-        if ~iszero(ai)
-            (x.cut_safe_l > abs(ai)) && (flag = false; break)
-            (x.cut_safe_u < abs(ai)) && (flag = false; break)
-            for j=1:length(coeffs)
-                aj = coeffs[j]
-                if ~iszero(coeffs[j])
-                    d = abs(ai/aj)
-                    (x.cut_safe_l > d) && (flag = false; break)
-                    (x.cut_safe_u < d) && (flag = false; break)
+            if finite_cut_generated
+                if !check_safe || is_safe_cut!(m, buffered_sqf.saf)
+                    copyto!(wp._objective_saf.terms, buffered_sqf.saf.terms)
+                    wp._objective_saf.constant = 0.0
+                    ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant + constraint_tol))
+                    push!(m._objective_cut_ci_saf, ci_saf)
                 end
             end
+
+        elseif obj_type === NONLINEAR
+            objective_cut_nonlinear!(m, wp, UBD, check_safe)
         end
+
+        m._new_eval_objective = false
     end
-    return flag
+
+    return nothing
 end
-function relax_expr!(x::Optimizer, c::CI)
-    relax_to_buffer!(x, c)
-    is_safe_relax(x, c) && copy_add_from_buffer!(x, c)
-    x._cut_number[x] += 1
-    nothing
+
+"""
+$(TYPEDSIGNATURES)
+
+A routine that adds relaxations for all nonlinear constraints and quadratic constraints
+corresponding to the current node to the relaxed problem. This adds an objective cut
+(if specified by `objective_cut_on`) and then sets the `_new_eval_constraint` flag
+to false indicating that an initial evaluation of the constraints has occurred. If
+the `objective_cut_on` flag is `true` then the `_new_eval_objective` flag is also
+set to `false` indicating that the objective expression was evaluated.
+"""
+function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
+
+    check_safe = (q === 1) ? false : m._parameters.cut_safe_on
+    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
+
+    sqf_leq_list = m._working_problem._sqf_leq
+    for i = 1:m._working_problem._sqf_leq_count
+        sqf_leq = @inbounds sqf_leq_list[i]
+        relax!(m, sqf_leq, i, check_safe)
+    end
+
+    sqf_eq_list = m._working_problem._sqf_eq
+    for i = 1:m._working_problem._sqf_eq_count
+        sqf_eq = @inbounds sqf_eq_list[i]
+        relax!(m, sqf_eq, i, check_safe)
+    end
+
+    nl_list = m._working_problem._nonlinear_constr
+    for i = 1:m._working_problem._nonlinear_count
+        nl = @inbounds nl_list[i]
+        relax!(m, nl, i, check_safe)
+    end
+
+    m._new_eval_constraint = false
+
+    objective_cut!(m, check_safe)
+
+    return nothing
 end
-=#
+relax_constraints!(t::ExtensionType, m::Optimizer, q::Int64) = relax_all_constraints!(t, m, q)
+relax_constraints!(m::Optimizer, q::Int64) = relax_constraints!(m.ext_type, m, q)
+
+"""
+$(FUNCTIONNAME)
+
+Deletes all nonlinear constraints added to the relaxed optimizer.
+"""
+function delete_nl_constraints!(m::Optimizer)
+
+    # delete affine relaxations added from quadratic inequality
+    for ci in m._buffered_quadratic_ineq_ci
+        MOI.delete(m.relaxed_optimizer, ci)
+    end
+    empty!(m._buffered_quadratic_ineq_ci)
+
+    # delete affine relaxations added from quadratic equality
+    for ci in m._buffered_quadratic_eq_ci
+        MOI.delete(m.relaxed_optimizer, ci)
+    end
+    empty!(m._buffered_quadratic_eq_ci)
+
+    # delete affine relaxations added from nonlinear inequality
+    for ci in m._buffered_nonlinear_ci
+        MOI.delete(m.relaxed_optimizer, ci)
+    end
+    empty!(m._buffered_nonlinear_ci)
+
+    return nothing
+end
+
+"""
+$(FUNCTIONNAME)
+
+Deletes all scalar-affine objective cuts added to the relaxed optimizer.
+"""
+function delete_objective_cuts!(m::Optimizer)
+
+    for ci in m._objective_cut_ci_saf
+        MOI.delete(m.relaxed_optimizer, ci)
+    end
+    empty!(m._objective_cut_ci_saf)
+
+    return nothing
+end
+
+"""
+$(FUNCTIONNAME)
+
+"""
+function set_first_relax_point!(m::Optimizer)
+
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    m._new_eval_constraint = true
+    m._new_eval_objective = true
+
+    n = m._current_node
+    @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+
+    return nothing
+end

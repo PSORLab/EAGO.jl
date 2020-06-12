@@ -44,6 +44,17 @@ Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
                               copy(x.upper_variable_bounds),
                               x.lower_bound, x.upper_bound, x.depth, x.id)
 
+# using alternative name as to not interfere with ordering...
+function uninitialized(x::NodeBB)
+    flag = isempty(x.lower_variable_bounds)
+    flag &= isempty(x.upper_variable_bounds)
+    flag &= x.lower_bound === -Inf
+    flag &= x.upper_bound === Inf
+    flag &= x.depth === 0
+    flag &= x.id === 1
+    return flag
+end
+
 # Access functions for broadcasting data easily
 lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
 upper_variable_bounds(x::NodeBB) = x.upper_variable_bounds
@@ -60,9 +71,9 @@ function Base.isempty(x::NodeBB)
     for i = 1:length(x)
         @inbounds lower = x.lower_variable_bounds[i]
         @inbounds upper = x.upper_variable_bounds[i]
-        (lower >= upper) && (return true)
+        (lower > upper) && (return true)
     end
-    false
+    return false
 end
 
 """
@@ -77,7 +88,7 @@ function same_box(x::NodeBB, y::NodeBB, r::Float64)
         ~isapprox(x.lower_variable_bounds[i], y.lower_variable_bounds[i], atol=r) && (return false)
         ~isapprox(x.upper_variable_bounds[i], y.upper_variable_bounds[i], atol=r) && (return false)
     end
-    true
+    return true
 end
 
 # Compute middle & diameter

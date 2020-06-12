@@ -2,13 +2,27 @@
 
 ## High-level functions
 ```@docs
-  implicit_relax_h!
+implicit_relax_h!
+```
+
+## DataStructures
+```@docs
+McCormick.AbstractContractorMC
+NewtonGS
+KrawczykCW
+McCormick.AbstractPreconditionerMC
+DenseMidInv
+McCormick.AbstractMCCallback
+MCCallback
 ```
 
 ## Subroutines
 ```@docs
-    affine_exp!
-    correct_exp!
-    final_cut
-    gen_expansion_params!
+preconditioner_storage
+affine_exp!
+correct_exp!
+contract!
+precond_and_contract!
+final_cut
+gen_expansion_params!
 ```

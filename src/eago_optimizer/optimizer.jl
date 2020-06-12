@@ -9,34 +9,9 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/optimizer.jl
-# Defines optimizer structure used by EAGO, storage functions, and access functions.
+# Defines optimizer structure used by EAGO. Namely, ObjectiveType, ProblemType
+# EAGOParameters, InputProblem, ParsedProblem, and Optimizer.
 #############################################################################
-
-"""
-$(TYPEDEF)
-
-A structure used to store information related to the bounds assigned to each
-variable.
-
-$(TYPEDFIELDS)
-"""
-mutable struct VariableInfo
-    "Is the variable integer valued?"
-    is_integer::Bool
-    "Lower bounds. May be -Inf."
-    lower_bound::Float64
-    "Boolean indicating whether finite lower bound exists."
-    has_lower_bound::Bool
-    "Upper bounds. May be Inf."
-    upper_bound::Float64
-    "Boolean indicating whether finite upper bound exists."
-    has_upper_bound::Bool
-    "Boolean indicating variable is fixed to a finite value."
-    is_fixed::Bool
-end
-VariableInfo() = VariableInfo(false,-Inf, false, Inf, false, false)
-lower_bound(x::VariableInfo) = x.lower_bound
-upper_bound(x::VariableInfo) = x.upper_bound
 
 """
 $(TYPEDEF)
@@ -48,45 +23,17 @@ structure to the `Optimizer` in the `ext_type` field.
 abstract type ExtensionType end
 struct DefaultExt <: ExtensionType end
 
-struct EmptyNLPEvaluator <: MOI.AbstractNLPEvaluator
-    _current_node::NodeBB
-    has_nlobj::Bool
-end
-EmptyNLPEvaluator() = EmptyNLPEvaluator(NodeBB(),false)
-set_current_node!(x::EmptyNLPEvaluator, n::NodeBB) = ()
+@enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
+@enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
 
-MOI.features_available(::EmptyNLPEvaluator) = [:Grad, :Jac, :Hess]
-MOI.initialize(::EmptyNLPEvaluator, features) = nothing
-MOI.eval_objective(::EmptyNLPEvaluator, x) = NaN
-function MOI.eval_constraint(::EmptyNLPEvaluator, g, x)
-    @assert length(g) == 0
-    return
-end
-MOI.eval_objective_gradient(::EmptyNLPEvaluator, g, x) = nothing
-MOI.jacobian_structure(::EmptyNLPEvaluator) = Tuple{Int64,Int64}[]
-MOI.hessian_lagrangian_structure(::EmptyNLPEvaluator) = Tuple{Int64,Int64}[]
-function MOI.eval_constraint_jacobian(::EmptyNLPEvaluator, J, x)
-    @assert length(J) == 0
-    return
-end
-function MOI.eval_hessian_lagrangian(::EmptyNLPEvaluator, H, x, σ, μ)
-    @assert length(H) == 0
-    return
-end
-
-empty_nlp_data() = MOI.NLPBlockData([], EmptyNLPEvaluator(), false)
-
-export Optimizer
 """
 $(TYPEDEF)
 
-The main optimizer object used by EAGO to solve problems during the optimization
-routine. The following commonly used options are described below and can be set
-via keyword arguments in the JuMP/MOI model:
+Storage for parameters that do not change during a global solve.
 
 $(TYPEDFIELDS)
 """
-Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
+Base.@kwdef mutable struct EAGOParameters
 
     # Presolving options
     presolve_scrubber_flag::Bool = false
@@ -95,9 +42,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Apply the epigraph reformulation
     to the problem (default = false)."
     presolve_epigraph_flag::Bool = false
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Enable common subexpression
-    elimination for DAG (default = false)."
-    presolve_cse_flag::Bool = false
     "Rerranges the DAG using registered transformations (default = false)"
     presolve_flatten_flag::Bool = false
 
@@ -105,93 +49,25 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     "Attempt to bridge convex constraint to second order cone"
     conic_convert_quadratic::Bool = false
 
-    # Options for constraint propagation
-    "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
-    cp_depth::Int64 = 1000
-    "Number of repetitions of forward-reverse passes to perform in constraint propagation (default = 3)"
-    cp_repetitions::Int64 = 4
-    "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
-    this number (default = 0.99)"
-    cp_tolerance::Float64 = 0.99
-    "Use only valid interval bounds during constraint propagation (default = false)"
-    cp_interval_only::Bool = false
+    # Iteration logging options
+    "Turns logging on records global bounds, node count and run time. Additional
+     options are available for recording information specific to subproblems (default = false)."
+    log_on::Bool = false
+    "Turns on logging of times and feasibility of subproblems (default = false)"
+    log_subproblem_info::Bool = false
+    "Log data every `log_interval` iterations (default = 1)."
+    log_interval::Int64 = 1
 
-    # Options for optimality-based bound tightening
-    "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
-    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
-    "Keyword arguments for the relaxed optimizer."
-    relaxed_optimizer_kwargs::Base.Iterators.Pairs = Base.Iterators.Pairs(NamedTuple(),())
-    relaxed_inplace_mod::Bool = true
-
-    "Depth in B&B tree above which OBBT should be disabled (default = 6)"
-    obbt_depth::Int64 = 6
-    "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
-    obbt_repetitions::Int64 = 4
-    "Turn aggresive OBBT on (default = false)"
-    obbt_aggressive_on::Bool = false
-    "Maximum iteration to perform aggresive OBBT (default = 2)"
-    obbt_aggressive_max_iteration::Int64 = 2
-    "Minimum dimension to perform aggresive OBBT (default = 2)"
-    obbt_aggressive_min_dimension::Int64 = 2
-    "Tolerance to consider bounds equal (default = 1E-9)"
-    obbt_tolerance::Float64 = 1E-9
-    "Variables to perform OBBT on (default: all variables in nonlinear expressions)."
-    obbt_variable_values::Vector{Bool} = Bool[]
-
-    # Options for linear bound tightening
-    "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
-    lp_depth::Int64  = 100000
-    "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
-    lp_repetitions::Int64  = 3
-
-    # Options for quadratic bound tightening
-    "Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
-    quad_uni_depth::Int64 = -1
-    "Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
-    quad_uni_repetitions::Int64 = 2
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which bivariate
-    quadratic FBBT should be disabled (default = -1)"
-    quad_bi_depth::Int64 = -1
-    "Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
-    quad_bi_repetitions::Int64 = 2
-
-    # Subgradient tightening flag
-    "Perform tightening of interval bounds using subgradients at each factor in
-    each nonlinear tape during a forward-reverse pass (default = true)."
-    subgrad_tighten::Bool = true
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Used to enable/disable subgradient
-    tightening of interval bounds on the reverse pass (default = true)"
-    subgrad_tighten_reverse::Bool = false
-
-    # Tolerance to add cuts and max number of cuts
-    cut_max_iterations::Int64 = 3
-    "Convex coefficient used to select point for new added cuts. Branch point is
-    given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
-    cut_cvx::Float64 = 0.9
-    "Add cut if the L1 distance from the prior cutting point to the new cutting
-    point normalized by the box volume is greater than the tolerance (default = 0.05)."
-    cut_tolerance::Float64 = 0.05
-    "Adds an objective cut to the relaxed problem (default = true)."
-    objective_cut_on::Bool = true
-    "Lower tolerance for safe-lp cut, Khajavirad 2018"
-    cut_safe_l::Float64 = 1E-8
-    "Upper tolerance for safe-lp cut, Khajavirad 2018"
-    cut_safe_u::Float64 = 1E8
-    "Constant tolerance for safe-lp cut, Khajavirad 2018"
-    cut_safe_b::Float64 = 1E9
-
-    # Upper bounding options
-    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(print_level = 0)
-    upper_factory::JuMP.OptimizerFactory = with_optimizer(Ipopt.Optimizer, print_level = 0)
-    "Solve upper problem for every node with depth less than `upper_bounding_depth`
-    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 4)"
-    upper_bounding_depth::Int64 = 6
-
-    # Duality-based bound tightening (DBBT) options
-    "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
-    dbbt_depth::Int64 = 10^10
-    "New bound is considered equal to the prior bound if within dbbt_tolerance (default = 1E-9)."
-    dbbt_tolerance::Float64 = 1E-8
+    # Optimizer display options
+    "The amount of information that should be printed to console while solving
+    values range from 0 - 4: 0 is silent, 1 shows iteration summary statistics
+    only, 2-4 show varying degrees of details about calculations within each
+    iteration (default = 1)."
+    verbosity::Int64 = 1
+    "Display summary of iteration to console every `output_iterations` (default = 10)"
+    output_iterations::Int64 = 1000
+    "Display header for summary to console every `output_iterations` (default = 100)"
+    header_iterations::Int64 = 10000
 
     # Node branching options
     "Convex coefficient used to select branch point. Branch point is given by
@@ -220,31 +96,330 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     absolute_tolerance::Float64 = 1E-3
     "Relative tolerance for termination (default = 1E-3)"
     relative_tolerance::Float64 = 1E-3
+    "Absolute constraint feasibility tolerance"
+    absolute_constraint_feas_tolerance::Float64 = 1E-6
     "Perform only a local solve of the problem (default = false)."
     local_solve_only::Bool = false
     feasible_local_continue::Bool = false
 
-    # Iteration logging options
-    "Turns logging on records global bounds, node count and run time. Additional
-     options are available for recording information specific to subproblems (default = false)."
-    log_on::Bool = false
-    "Turns on logging of times and feasibility of subproblems (default = false)"
-    log_subproblem_info::Bool = false
-    "Log data every `log_interval` iterations (default = 1)."
-    log_interval::Int64 = 1
+    # Options for constraint propagation
+    "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
+    cp_depth::Int64 = 20
+    "Number of times to repeat forward-reverse pass routine (default = 3)"
+    cp_repetitions::Int64 = 3
+    "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
+    this number (default = 0.99)"
+    cp_tolerance::Float64 = 0.99
+    "Use only valid interval bounds during constraint propagation (default = false)"
+    cp_interval_only::Bool = false
 
-    # Optimizer display options
-    "The amount of information that should be printed to console while solving
-    values range from 0 - 4: 0 is silent, 1 shows iteration summary statistics
-    only, 2-4 show varying degrees of details about calculations within each
-    iteration (default = 1)."
-    verbosity::Int64 = 1
-    "Display summary of iteration to console every `output_iterations` (default = 10)"
-    output_iterations::Int64 = 1000
-    "Display header for summary to console every `output_iterations` (default = 100)"
-    header_iterations::Int64 = 10000
+    # obbt options
+    "Depth in B&B tree above which OBBT should be disabled (default = 6)"
+    obbt_depth::Int64 = 4
+    "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
+    obbt_repetitions::Int64 = 20
+    "Turn aggresive OBBT on (default = false)"
+    obbt_aggressive_on::Bool = true
+    "Maximum iteration to perform aggresive OBBT (default = 2)"
+    obbt_aggressive_max_iteration::Int64 = 2
+    "Minimum dimension to perform aggresive OBBT (default = 2)"
+    obbt_aggressive_min_dimension::Int64 = 2
+    "Tolerance to consider bounds equal (default = 1E-9)"
+    obbt_tolerance::Float64 = 1E-9
 
-    # Debug
+    # Options for linear bound tightening
+    "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
+    fbbt_lp_depth::Int64  = 1000
+    "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
+    fbbt_lp_repetitions::Int64  = 3
+
+    # Options for quadratic bound tightening
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
+    quad_uni_depth::Int64 = -1
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
+    quad_uni_repetitions::Int64 = 2
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which bivariate
+    quadratic FBBT should be disabled (default = -1)"
+    quad_bi_depth::Int64 = -1
+    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
+    quad_bi_repetitions::Int64 = 2
+
+    # Duality-based bound tightening (DBBT) options
+    "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
+    dbbt_depth::Int64 = 10^10
+    "New bound is considered equal to the prior bound if within dbbt_tolerance (default = 1E-9)."
+    dbbt_tolerance::Float64 = 1E-8
+
+    # Subgradient tightening flag
+    "Relax Tag used to specify type of McCormick operator"
+    relax_tag::RelaxTag = NS()
+    "Perform tightening of interval bounds using subgradients at each factor in
+    each nonlinear tape during a forward pass (default = true)."
+    subgrad_tighten::Bool = true
+    "Perform tightening of interval bounds using subgradients at each factor in
+    each nonlinear tape during a reverse pass (default = false)."
+    reverse_subgrad_tighten::Bool = false
+    subgrad_tol::Float64 = 1E-10
+
+    # Tolerance to add cuts and max number of cuts
+    cut_min_iterations::Int64 = 1
+    cut_max_iterations::Int64 = 3
+    "Convex coefficient used to select point for new added cuts. Branch point is
+    given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
+    cut_cvx::Float64 = 0.9
+    "Add cut if the L1 distance from the prior cutting point to the new cutting
+    point normalized by the box volume is greater than the tolerance (default = 0.05)."
+    cut_tolerance::Float64 = 0.05
+    "Adds an objective cut to the relaxed problem (default = true)."
+    objective_cut_on::Bool = true
+
+    "Use tolerances to determine safe cuts in a Khajavirad 2018 manner"
+    cut_safe_on::Bool = true
+    "Lower tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_l::Float64 = 1E-8
+    "Upper tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_u::Float64 = 1E8
+    "Constant tolerance for safe-lp cut, Khajavirad 2018"
+    cut_safe_b::Float64 = 1E9
+
+    "Solve upper problem for every node with depth less than `upper_bounding_depth`
+    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
+    upper_bounding_depth::Int64 = 6
+
+    # handling for domain violations
+    domain_violation_ϵ::Float64 = 1E-9
+end
+
+"""
+$(TYPEDEF)
+
+A structure used to hold objectives and constraints added to EAGO model.
+The constraints generally aren't used for relaxations.
+
+$(TYPEDFIELDS)
+"""
+Base.@kwdef mutable struct InputProblem
+
+    # variables (set by MOI.add_variable in variables.jl)
+    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _variable_count::Int64 = 0
+
+    # last constraint index added
+    _last_constraint_index::Int = 0
+
+    # linear constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
+    _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
+    _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
+    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
+
+    _linear_leq_count::Int = 0
+    _linear_geq_count::Int = 0
+    _linear_eq_count::Int = 0
+
+    # quadratic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
+    _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
+    _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
+    _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
+
+    _quadratic_leq_count::Int = 0
+    _quadratic_geq_count::Int = 0
+    _quadratic_eq_count::Int = 0
+
+    # conic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
+    _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
+
+    _conic_second_order_count::Int = 0
+
+    # nonlinear constraint storage
+    _nonlinear_count::Int = 0
+
+    # objective information (set by MOI.set(m, ::ObjectiveFunction...) in optimizer.jl)
+    _objective_sv::SV = SV(VI(-1))
+    _objective_saf::SAF = SAF(SAT[], 0.0)
+    _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
+    _objective_type::ObjectiveType = UNSET
+
+    # nlp constraints (set by MOI.set(m, ::NLPBlockData...) in optimizer.jl)
+    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+
+    # objective sense information (set by MOI.set(m, ::ObjectiveSense...) in optimizer.jl)
+    _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
+end
+
+function Base.isempty(x::InputProblem)
+
+    is_empty_flag = true
+    new_input_problem = InputProblem()
+
+    for field in fieldnames(InputProblem)
+
+        field_value = getfield(x, field)
+
+        if field_value isa Array
+            if !isempty(field_value)
+                is_empty_flag = false
+                break
+            end
+
+        elseif field_value isa Number
+            if getfield(new_input_problem, field) !== field_value
+                is_empty_flag = false
+                break
+            end
+
+        end
+    end
+
+    is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
+    is_empty_flag &= !x._nlp_data.has_objective
+    is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
+
+    is_empty_flag &= isempty(x._objective_saf.terms)
+    is_empty_flag &= x._objective_saf.constant === 0.0
+
+    is_empty_flag &= isempty(x._objective_sqf.quadratic_terms)
+    is_empty_flag &= isempty(x._objective_sqf.affine_terms)
+    is_empty_flag &= x._objective_sqf.constant === 0.0
+
+    return is_empty_flag
+end
+
+"""
+$(TYPEDEF)
+"""
+Base.@kwdef mutable struct ParsedProblem
+
+    # Problem classification (set in parse_classify_problem!)
+    _problem_type::ProblemType = UNCLASSIFIED
+
+    # objectives (set in initial_parse)
+    _objective_sv::SV = SV(VI(-1))
+    "_objective_saf stores the objective and is used for constructing linear affine cuts
+     of any ObjectiveType"
+    _objective_saf::SAF = SAF(SAT[], 0.0)
+    _objective_saf_parsed::AffineFunctionIneq = AffineFunctionIneq()
+    _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
+    _objective_nl::BufferedNonlinearFunction = BufferedNonlinearFunction()
+    _objective_type::ObjectiveType = UNSET
+
+    # objective sense information (set by convert_to_min in parse.jl)
+    _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
+
+    # non-single variable constraints (set in initial_parse)
+    _saf_leq::Vector{AffineFunctionIneq} = AffineFunctionIneq[]
+    _saf_eq::Vector{AffineFunctionEq} = AffineFunctionEq[]
+    _sqf_leq::Vector{BufferedQuadraticIneq} = BufferedQuadraticIneq[]
+    _sqf_eq::Vector{BufferedQuadraticEq} = BufferedQuadraticEq[]
+    _conic_second_order::Vector{BufferedSOC} = BufferedSOC[]
+
+    # count of non-single variable constraints (set in initial_parse)
+    _saf_leq_count::Int = 0
+    _saf_eq_count::Int = 0
+    _sqf_leq_count::Int = 0
+    _sqf_eq_count::Int = 0
+    _conic_second_order_count::Int = 0
+
+    # nlp constraints (set in initial_parse)
+    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+
+    # storage for nonlinear functions
+    _nonlinear_constr::Vector{BufferedNonlinearFunction} = BufferedNonlinearFunction[]
+
+    # nonlinear constraint storage
+    _nonlinear_count::Int = 0
+
+    # nonlinear evaluator
+    _relaxed_evaluator = Evaluator()
+
+    # variables (set in initial_parse)
+    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _variable_count::Int = 0
+
+    # count of single variable constraint types (set in load_relaxed_problem!)
+    _var_leq_count::Int = 0
+    _var_geq_count::Int = 0
+    _var_eq_count::Int = 0
+end
+
+function Base.isempty(x::ParsedProblem)
+
+    is_empty_flag = true
+
+    new_input_problem = ParsedProblem()
+    for field in fieldnames(ParsedProblem)
+
+        field_value = getfield(x, field)
+        if field_value isa Array
+            if !isempty(field_value)
+                is_empty_flag = false
+                break
+            end
+
+        elseif field_value isa Number
+            if getfield(new_input_problem, field) !== field_value
+                is_empty_flag = false
+                break
+            end
+        end
+    end
+
+    is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
+    is_empty_flag &= !x._nlp_data.has_objective
+    is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
+
+    is_empty_flag &= isempty(x._objective_saf.terms)
+    is_empty_flag &= x._objective_saf.constant === 0.0
+
+    is_empty_flag &= isempty(x._objective_saf.terms)
+    is_empty_flag &= x._objective_saf.constant === 0.0
+    is_empty_flag &= isempty(x._objective_saf_parsed.terms)
+    is_empty_flag &= x._objective_saf_parsed.constant === 0.0
+    is_empty_flag &= x._objective_saf_parsed.len === 0
+
+    is_empty_flag &= isempty(x._objective_sqf.func.quadratic_terms)
+    is_empty_flag &= isempty(x._objective_sqf.func.affine_terms)
+    is_empty_flag &= x._objective_sqf.func.constant === 0.0
+
+    is_empty_flag &= isempty(x._objective_sqf.buffer)
+    is_empty_flag &= isempty(x._objective_sqf.saf.terms)
+    is_empty_flag &= x._objective_sqf.saf.constant === 0.0
+    is_empty_flag &= x._objective_sqf.len === 0
+
+    return is_empty_flag
+end
+
+export Optimizer
+"""
+$(TYPEDEF)
+
+The main optimizer object used by EAGO to solve problems during the optimization
+routine. The following commonly used options are described below and can be set
+via keyword arguments in the JuMP/MOI model. The raw parameter interface however
+is likely preferable. The Optimizer is organized in the following manner. Parameters
+which are expected to be constant over the entire solve are stored in
+`_parameters::EAGOParameters` field,
+
+$(TYPEDFIELDS)
+"""
+Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
+
+    # Options for optimality-based bound tightening
+    # set as a user-specified option
+    "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
+    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
+
+    # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
+    "Variables to perform OBBT on (default: all variables in nonlinear expressions)."
+    obbt_variable_values::Vector{Bool} = Bool[]
+
+    # Upper bounding options (set as a user-specified option)
+    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
+                                                             acceptable_iter = 300, constr_viol_tol = 0.000001,
+                                                             acceptable_compl_inf_tol = 0.000001,
+                                                             acceptable_dual_inf_tol = 1.0,
+                                                             acceptable_constr_viol_tol = 0.000001, print_level = 0)
+
+    # Extensions (set as user-specified option)
     "Specifies that the optimize_hook! function should be called rather than
     throw the problem to the standard B&B routine (default = false)."
     enable_optimize_hook::Bool = false
@@ -255,68 +430,83 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     new custom subroutines (default = DefaultExt())."
     ext_type::ExtensionType = DefaultExt()
 
-    # handling for domain violations
-    domain_violation_ϵ::Float64 = 1E-9
+    # set as user-specified option
+    _parameters::EAGOParameters = EAGOParameters()
 
-    _current_node::NodeBB = NodeBB()
-    _current_xref::Vector{Float64} = Float64[]
+    # set by MOI manipulations (see Input problem structure)
+    _input_problem::InputProblem = InputProblem()
 
-    _variable_number::Int64 = 0
-    _state_variables::Int64 = 0
-    _continuous_variable_number::Int64 = 0
-    _integer_variable_number::Int64 = 0
+    # loaded from _input_problem by TODO
+    _working_problem::ParsedProblem = ParsedProblem()
 
-    _user_branch_variables::Bool = false
-    _fixed_variable::Vector{Bool} = Bool[]
-
-    _continuous_solution::Vector{Float64} = Float64[]
-
-    _integer_variables::Vector{Int64} = Int64[]
-    _variable_info::Vector{VariableInfo} = VariableInfo[]
-    _upper_variables::Vector{VI} =  VI[]
+    _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
+    _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
 
     _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
 
-    _lower_variable::Vector{SV} = SV[]
-    _lower_variable_index::Vector{VI} = VI[]
-    _lower_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
-    _lower_variable_lt::Vector{CI{SV, LT}} = CI{SV, LT}[]
-    _lower_variable_gt::Vector{CI{SV, GT}} = CI{SV, GT}[]
-    _lower_variable_et_indx::Vector{Int64} = Int64[]
-    _lower_variable_lt_indx::Vector{Int64} = Int64[]
-    _lower_variable_gt_indx::Vector{Int64} = Int64[]
+    # set in node_selection!
+    _current_node::NodeBB = NodeBB()
 
+    _first_relax_point_set::Bool = false
+    _current_xref::Vector{Float64} = Float64[]
+    _candidate_xref::Vector{Float64} = Float64[]
+
+    _use_prior_objective_xref::Bool = false
+    _current_objective_xref::Vector{Float64} = Float64[]
+    _prior_objective_xref::Vector{Float64} = Float64[]
+
+    # set in label_branch_variables! and label_fixed_variables! respectively in parse.jl
+    _user_branch_variables::Bool = false
+    _fixed_variable::Vector{Bool} = Bool[]
+    _branch_variable_count::Int = 0
+    _branch_to_sol_map::Vector{Int} = Int[]
+    _sol_to_branch_map::Vector{Int} = Int[]
+
+    _continuous_solution::Vector{Float64} = Float64[]
+
+    # all subproblem immutable subproblem status are set in global_solve in corresponding routines
+    # in optimize_nonconvex.jl
     _preprocess_feasibility::Bool = true
     _preprocess_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _preprocess_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
 
     _lower_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _lower_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _lower_feasibility::Bool = false
+    _lower_feasibility::Bool = true
     _lower_objective_value::Float64 = -Inf
+
+    # set in TODO
     _lower_solution::Vector{Float64} = Float64[]
     _lower_lvd::Vector{Float64} = Float64[]
     _lower_uvd::Vector{Float64} = Float64[]
 
     _cut_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _cut_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _cut_solution::Vector{Float64} = Float64[]
     _cut_objective_value::Float64 = -Inf
-    _cut_feasibility::Bool = false
+    _cut_feasibility::Bool = true
+
+    # set in TODO
+    _cut_solution::Vector{Float64} = Float64[]
 
     _upper_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _upper_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _upper_feasibility::Bool = false
+    _upper_feasibility::Bool = true
     _upper_objective_value::Float64 = Inf
+
+    # array is initialized to correct size in TODO, reset in single_nlp_solve! in optimize_convex.jl
+    _upper_variables::Vector{VI} =  VI[]
+
+    # set in TODO
     _upper_solution::Vector{Float64} = Float64[]
 
-    _best_upper_value::Float64 = Inf
+    _postprocess_feasibility::Bool = true
 
-    _postprocess_feasibility::Bool = false
+    # set to time limit in initial_parse! in parse.jl, decremented throughout global_solve in optimize_nonconvex.jl
+    _time_left::Float64 = 1000.0
 
+    # set constructor reset on empty! and  to zero in initial parse! in parse.jl
     _start_time::Float64 = 0.0
     _run_time::Float64 = 0.0
-    _time_left::Float64 = 1000.0
     _parse_time::Float64 = 0.0
     _presolve_time::Float64 = 0.0
     _last_preprocess_time::Float64 = 0.0
@@ -324,99 +514,22 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _last_upper_problem_time::Float64 = 0.0
     _last_postprocessing_time::Float64 = 0.0
 
-    _objective_sv = nothing
-    _objective_saf = nothing
-    _objective_sqf = nothing
-    _objective_is_sv::Bool = false
-    _objective_is_saf::Bool = false
-    _objective_is_sqf::Bool = false
-    _objective_is_nlp::Bool = false
-
-    #_objective::Union{Nothing, SV, SAF, SQF} = nothing
-
-    _objective_convexity::Bool = false
-
-    _objective_cut_set::Int64 = -1
-    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1.0)
-    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
-
-    _last_constraint_index::Int = 0
-
-    _conic_norm_infinity::Vector{Tuple{VECOFVAR, MOI.NormInfinityCone}} = Tuple{VECOFVAR, MOI.NormInfinityCone}[]
-    _conic_norm_one::Vector{Tuple{VECOFVAR, MOI.NormOneCone}} = Tuple{VECOFVAR, MOI.NormOneCone}[]
-    _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
-    _conic_rotated_second_order::Vector{Tuple{VECOFVAR, MOI.RotatedSecondOrderCone}} = Tuple{VECOFVAR, MOI.RotatedSecondOrderCone}[]
-    _conic_geometric_mean::Vector{Tuple{VECOFVAR, MOI.GeometricMeanCone}} = Tuple{VECOFVAR, MOI.GeometricMeanCone}[]
-    _conic_exponential::Vector{Tuple{VECOFVAR, MOI.ExponentialCone}} = Tuple{VECOFVAR, MOI.ExponentialCone}[]
-    _conic_dual_exponential::Vector{Tuple{VECOFVAR, MOI.DualExponentialCone}} = Tuple{VECOFVAR, MOI.DualExponentialCone}[]
-    _conic_power_cone::Vector{Tuple{VECOFVAR, MOI.PowerCone}} = Tuple{VECOFVAR, MOI.PowerCone}[]
-    _conic_dual_power::Vector{Tuple{VECOFVAR, MOI.DualPowerCone}} = Tuple{VECOFVAR, MOI.DualPowerCone}[]
-    _conic_relative_entropy::Vector{Tuple{VECOFVAR, MOI.RelativeEntropyCone}} = Tuple{VECOFVAR, MOI.RelativeEntropyCone}[]
-    _conic_norm_spectral::Vector{Tuple{VECOFVAR, MOI.NormSpectralCone}} = Tuple{VECOFVAR, MOI.NormSpectralCone}[]
-    _conic_norm_nuclear::Vector{Tuple{VECOFVAR, MOI.NormNuclearCone}} = Tuple{VECOFVAR, MOI.NormNuclearCone}[]
-
-    _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
-    _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
-    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
-
-    _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
-    _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
-    _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
-
-    _quadratic_leq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
-    _quadratic_geq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
-    _quadratic_eq_dict::Vector{ImmutableDict{Int64,Int64}} = ImmutableDict{Int64,Int64}[]
-    _quadratic_obj_dict::ImmutableDict{Int64,Int64} = ImmutableDict{Int64,Int64}()
-
-    _quadratic_ci_leq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
-    _quadratic_ci_geq::Vector{Vector{CI{SAF,LT}}} = CI{SAF,LT}[]
-    _quadratic_ci_eq::Vector{Vector{Tuple{CI{SAF,LT},CI{SAF,LT}}}} = Tuple{CI{SAF,LT},CI{SAF,LT}}[]
-
-    _quadratic_leq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
-    _quadratic_geq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
-    _quadratic_eq_sparsity::Vector{Vector{VI}} = Vector{VI}[]
-
-    _quadratic_leq_gradnz::Vector{Int64} = Int64[]
-    _quadratic_geq_gradnz::Vector{Int64} = Int64[]
-    _quadratic_eq_gradnz::Vector{Int64} = Int64[]
-
-    _quadratic_leq_convexity::Vector{Bool} = Bool[]
-    _quadratic_geq_convexity::Vector{Bool} = Bool[]
-    _quadratic_eq_convexity_1::Vector{Bool} = Bool[]
-    _quadratic_eq_convexity_2::Vector{Bool} = Bool[]
-
-    _lower_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
-    _upper_nlp_affine::Vector{Vector{CI{SAF,LT}}} = Vector{CI{SAF,LT}}[]
-
-    _lower_nlp_affine_indx::Vector{Int64} = Int64[]
-    _upper_nlp_affine_indx::Vector{Int64} = Int64[]
-
-    _lower_nlp_sparsity::Vector{Vector{Int64}} = Vector{Int64}[]
-    _upper_nlp_sparsity::Vector{Vector{Int64}} = Vector{Int64}[]
-
-    _univariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}} = Tuple{Float64,Float64,Float64,Int64}[]
-    _univariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}} = Tuple{Float64,Float64,Float64,Int64}[]
-    _univariate_quadratic_eq_constraints::Vector{Tuple{Float64,Float64,Float64,Int64}} = Tuple{Float64,Float64,Float64,Int64}[]
-    _bivariate_quadratic_leq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}} = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
-    _bivariate_quadratic_geq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}} = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
-    _bivariate_quadratic_eq_constraints::Vector{Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}} = Tuple{Float64,Float64,Float64,Float64,Float64,Float64,Int64,Int64}[]
-
+    # reset in initial_parse! in parse.jl
     _global_lower_bound::Float64 = -Inf
     _global_upper_bound::Float64 = Inf
     _maximum_node_id::Int64 = 0
     _iteration_count::Int64 = 0
     _node_count::Int64 = 0
 
-    # Storage for output
+    # Storage for output, reset in initial_parse! in parse.jl
     _solution_value::Float64 = 0.0
     _feasible_solution_found::Bool = false
     _first_solution_node::Int64 = -1
-    _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
     _objective_value::Float64 = -Inf
-    _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _best_upper_value::Float64 = Inf
 
     # Optimality-Based Bound Tightening (OBBT) Options
+    # set in TODO
     _obbt_working_lower_index::Vector{Bool} = Bool[]
     _obbt_working_upper_index::Vector{Bool} = Bool[]
     _lower_indx_diff::Vector{Bool} = Bool[]
@@ -426,9 +539,15 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _new_low_index::Vector{Bool} = Bool[]
     _new_upp_index::Vector{Bool} = Bool[]
     _obbt_variables::Vector{VI} = VI[]
+    _obbt_variable_count::Int = 0
     _obbt_performed_flag::Bool = false
 
+    # Buffers for fbbt, set in presolve, used in preprocess
+    _lower_fbbt_buffer::Vector{Float64} = Float64[]
+    _upper_fbbt_buffer::Vector{Float64} = Float64[]
+
     # Feasibility-Based Bound Tightening Options
+    # set in set_constraint_propagation_fbbt in domain_reduction.jl
     _cp_improvement::Float64 = 0.0
     _cp_evaluation_reverse::Bool = false
 
@@ -436,6 +555,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _cut_add_flag::Bool = false
 
     # Options for Repetition (If DBBT Performed Well)
+    # set in within preprocess in optimize_nonconvex.jl
     _node_repetitions::Int64 = 0
     _initial_volume::Float64 = 0.0
     _final_volume::Float64 = 0.0
@@ -443,43 +563,113 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Log
     _log::Log = Log()
 
-    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+    # set in TODO
+    _buffered_quadratic_ineq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+    _buffered_quadratic_eq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
-    _relaxed_evaluator::Evaluator = Evaluator{1,NS}()
-    _relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
-    _relaxed_eval_has_objective::Bool = false
+    _buffered_nonlinear_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+
+    # set initially in TODO, reset in objective_cut in relax.jl
+    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1)
+
+    # initialized to empty in constructor (or via MOI.empty), filled in objective_cut in relax.jl
+    # called by obbt in domain_reduction.jl, lower_problem, and add_cut in optimize_nonconvex.jl,
+    # emptied in delete_objective_cuts! in relax.jl
+    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+
+    # need to retreive primal _relaxed_variable_index
+    # set in TODO
+    "Number of variables actively branched on in B&B routine (exludes linear and fixed)"
+    _relaxed_variable_number::Int = 0
+    _relaxed_variable_index::Vector{VI} = VI[]
+    _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
+    _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
+    _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
+
+    # set as user-input
+    _branch_variables::Vector{Bool} = Bool[]
+
+    _new_eval_constraint::Bool = false
+    _new_eval_objective::Bool = false
+
+    _node_to_sv_leq_ci::Vector{CI{SV,LT}} = CI{SV,LT}[]
+    _node_to_sv_geq_ci::Vector{CI{SV,GT}} = CI{SV,GT}[]
+
+    "Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
+    _nonlinear_evaluator_created::Bool = false
+
+    #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
+    #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
 
+#####
+#####
+##### General MOI utilities required
+#####
+#####
+
+const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
+                                         :enable_optimize_hook, :ext, :ext_type, :_parameters]
+const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem]
+const EAGO_MODEL_NOT_STRUCT_ATTRIBUTES = setdiff(fieldnames(Optimizer), union(EAGO_OPTIMIZER_ATTRIBUTES,
+                                                                              EAGO_MODEL_STRUCT_ATTRIBUTES))
+
 function MOI.empty!(m::Optimizer)
-    m = Optimizer()
-    nothing
+
+    # create a new empty optimizer and copy fields to m
+    new_optimizer = Optimizer()
+    for field in union(EAGO_MODEL_STRUCT_ATTRIBUTES, EAGO_MODEL_NOT_STRUCT_ATTRIBUTES)
+        setfield!(m, field, getfield(new_optimizer, field))
+    end
+
+    return nothing
 end
 
 function MOI.is_empty(m::Optimizer)
 
-    flag = true
-    flag &= isempty(m._variable_info)
-    flag &= m._optimization_sense == MOI.MIN_SENSE
-    flag &= m._termination_status_code == MOI.OPTIMIZE_NOT_CALLED
+    is_empty_flag = uninitialized(m._current_node)
+    is_empty_flag &= isempty(m._stack)
+    is_empty_flag &= isempty(m._log)
+    is_empty_flag &= isempty(m._input_problem)
+    is_empty_flag &= isempty(m._working_problem)
 
-    return flag
-end
-
-##### Utilities for checking that JuMP model contains variables used in expression
-function check_inbounds!(m::Optimizer, vi::VI)
-    if !(1 <= vi.value <= m._variable_number)
-        error("Invalid variable index $vi. ($(m._variable_numbe) variables in the model.)")
+    new_optimizer = Optimizer()
+    for field in EAGO_MODEL_NOT_STRUCT_ATTRIBUTES
+        if getfield(m, field) != getfield(new_optimizer, field)
+            is_empty_flag = false
+            break
+        end
     end
-    return
+
+    return is_empty_flag
 end
+
+function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
+    return MOI.Utilities.default_copy_to(model, src, copy_names)
+end
+
+#####
+#####
+##### Utilities for checking that JuMP model contains variables used in expression
+#####
+#####
+
+function check_inbounds!(m::Optimizer, vi::VI)
+    if !(1 <= vi.value <= m._input_problem._variable_count)
+        error("Invalid variable index $vi. ($(m._input_problem._variable_count) variables in the model.)")
+    end
+    return nothing
+end
+
 check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
 
 function check_inbounds!(m::Optimizer, aff::SAF)
     for term in aff.terms
         check_inbounds!(m, term.variable_index)
     end
-    return
+    return nothing
 end
+
 function check_inbounds!(m::Optimizer, quad::SQF)
     for term in quad.affine_terms
         check_inbounds!(m, term.variable_index)
@@ -488,281 +678,161 @@ function check_inbounds!(m::Optimizer, quad::SQF)
         check_inbounds!(m, term.variable_index_1)
         check_inbounds!(m, term.variable_index_2)
     end
-    return
+    return nothing
 end
-#=
+
 function check_inbounds!(m::Optimizer, vov::VECOFVAR)
     for vi in vov.variables
         check_inbounds!(m, vi)
     end
     return
 end
-=#
-##### Access variable information from MOI variable index
-has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_upper_bound
-has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].has_lower_bound
-is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._variable_info[vi.value].is_fixed
 
-function is_integer_feasible(m::Optimizer)
-    flag = true
-    for var in m._integer_variables
-        @inbounds val = m._lower_solution[var]
-        if (0.0 < val < 1.0)
-            flag = false
-            break
-        end
-    end
-    return flag
-end
-
-is_integer_variable(m::Optimizer, i::Int64) = m._variable_info[i].is_integer
-
-function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
-    return MOI.Utilities.default_copy_to(model, src, copy_names)
-end
-
-function label_nonlinear_variables!(m::Optimizer)
-    _nlpdata = m._nlp_data
-    x = _nlpdata.evaluator
-
-    # scans subexpressions, objective, and constraints for nonlinear terms
-    if ~isa(x, EmptyNLPEvaluator)
-        if x.has_nlobj
-            if (x.objective.linearity != JuMP._Derivatives.LINEAR) &&
-               (x.objective.linearity != JuMP._Derivatives.CONSTANT)
-                for i in 1:length(x.objective.nd)
-                    nd = x.objective.nd[i]
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-        for i in 1:length(x.constraints)
-            if (x.constraints[i].linearity != JuMP._Derivatives.LINEAR) &&
-               (x.constraints[i].linearity != JuMP._Derivatives.CONSTANT)
-                for j in 1:length(x.constraints[i].nd)
-                    nd = x.constraints[i].nd[j]
-                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-        for i in 1:length(x.subexpressions)
-            if (x.subexpressions[i].linearity != JuMP._Derivatives.LINEAR) &&
-               (x.subexpressions[i].linearity != JuMP._Derivatives.CONSTANT)
-                for j in 1:length(x.subexpressions[i].nd)
-                    nd = x.subexpressions[i].nd[j]
-                    bool1 = (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                    if (nd.nodetype == JuMP._Derivatives.VARIABLE)
-                        m.branch_variable[nd.index] = true
-                        m.obbt_variable_values[nd.index] = true
-                    end
-                end
-            end
-        end
-    end
-    return
-end
+#####
+#####
+##### Set & get attributes of model
+#####
+#####
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
-     m.verbosity = 0
-     m.log_on = false
-     return
+
+     m._parameters.verbosity = 0
+     m._parameters.log_on = false
+     return nothing
+
 end
 
-#=
+function MOI.set(m::Optimizer, p::MOI.RawParameter, value)
+
+    if p.name isa String
+        psym = Symbol(p.name)
+    elseif p.name isa Symbol
+        psym = p.name
+    else
+        error("EAGO only supports raw parameters with Symbol or String names.")
+    end
+
+    if hasfield(EAGOParameters, psym)
+        setfield!(m._parameters, psym, value)
+    else
+        setfield!(m, psym, value)
+    end
+
+    return nothing
+end
+
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
     m.time_limit = Inf
-    return
+    return nothing
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
     m.time_limit = value
-    return
+    return nothing
 end
-=#
 
-MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [MOI.VariableIndex(i) for i = 1:length(m._variable_info)]
+function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
+    return [MOI.VariableIndex(i) for i = 1:length(m._input_problem._variable_info)]
+end
+
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
     mult = 1.0
-    if m._optimization_sense === MOI.MAX_SENSE
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
         mult *= -1.0
     end
     return mult*m._objective_value
 end
-MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._variable_number
+
+MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
+
 function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
-    if m._optimization_sense === MOI.MAX_SENSE
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
         bound = -m._global_lower_bound
     else
         bound = m._global_upper_bound
     end
     return bound
 end
+
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
     LBD = m._global_lower_bound
     UBD = m._global_upper_bound
-    if m._optimization_sense === MOI.MAX_SENSE
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
         gap = abs(UBD - LBD)/abs(LBD)
     else
         gap = abs(UBD - LBD)/abs(UBD)
     end
     return gap
 end
+
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._maximum_node_id
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
+MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m.time_limit
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
     return model._continuous_solution[vi.value]
 end
 
-MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
+function MOI.get(m::Optimizer, p::MOI.RawParameter)
+    if p.name isa String
+        psym = Symbol(p.name)
+    elseif p.name isa Symbol
+        psym = p.name
+    else
+        error("EAGO only supports raw parameters with Symbol or String names.")
+    end
 
+    if hasfield(EAGOParameters, psym)
+        return getfield(m._parameters, psym, value)
+    else
+        return getfield!(m, psym, value)
+    end
+end
+
+#####
+#####
+##### Support, set, and evaluate objective functions
+#####
+#####
+
+MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
-    m._objective_is_sv = false
-    m._objective_is_saf = false
-    m._objective_is_sqf = false
-    m._objective_is_nlp = nlp_data.has_objective
-    m._nlp_data = nlp_data
-    return
+    if nlp_data.has_objective
+        m._input_problem._objective_type = NONLINEAR
+    end
+    m._input_problem._nlp_data = nlp_data
+    return nothing
 end
 
-##### Support, set, and evaluate objective functions
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV,SAF,SQF}} = true
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
     check_inbounds!(m, func)
-    m._objective_sv = func
-    m._objective_is_sv = true
-    m._objective_is_saf = false
-    m._objective_is_sqf = false
-    m._objective_is_nlp = false
-    return
+    m._input_problem._objective_sv = func
+    m._input_problem._objective_type = SINGLE_VARIABLE
+    return nothing
 end
+
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
     check_inbounds!(m, func)
-    m._objective_saf = func
-    m._objective_is_saf = true
-    m._objective_is_sv = false
-    m._objective_is_sqf = false
-    m._objective_is_nlp = false
-    return
+    m._input_problem._objective_saf = func
+    m._input_problem._objective_type = SCALAR_AFFINE
+    return nothing
 end
+
 function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
     check_inbounds!(m, func)
-    m._objective_sqf = func
-    m._objective_is_sqf = true
-    m._objective_is_sv = false
-    m._objective_is_saf = false
-    m._objective_is_nlp = false
-    for term in func.quadratic_terms
-        @inbounds m.branch_variable[term.variable_index_1.value] = true
-        @inbounds m.branch_variable[term.variable_index_1.value] = true
-    end
-    #for term in func.affine_terms
-    #    m.branch_variable[term.variable_index] = true
-    #end
-    return
+    m._input_problem._objective_sqf = func
+    m._input_problem._objective_type = SCALAR_QUADRATIC
+    return nothing
 end
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
-    m._optimization_sense = sense
-    return
-end
-
-# Defines single variable objective function
-eval_function(var::SV, x) = x[var.variable.value]
-
-function eval_function(aff::SAF, x)
-    function_value = aff.constant
-    for term in aff.terms
-        @inbounds function_value += term.coefficient*x[term.variable_index.value]
-    end
-    return function_value
-end
-
-function eval_function(quad::SQF, x)
-    function_value = quad.constant
-    for term in quad.affine_terms
-        @inbounds function_value += term.coefficient*x[term.variable_index.value]
-    end
-    for term in quad.quadratic_terms
-        row_idx = term.variable_index_1
-        col_idx = term.variable_index_2
-        coefficient = term.coefficient
-        function_value += 0.5*coefficient*x[row_idx.value]*x[col_idx.value]
-    end
-    return function_value
-end
-
-function eval_objective(m::Optimizer, x)
-    @assert !(m._nlp_data.has_objective && isa(m._objective,Nothing))
-    if m._nlp_data.has_objective
-        return MOI.eval_objective(m._nlp_data.evaluator, x)
-    elseif m._objective_is_sv
-        return eval_function(m._objective_sv, x)
-    elseif m._objective_is_saf
-        return eval_function(m._objective_saf, x)
-    elseif m._objective_is_sqf
-        return eval_function(m._objective_sqf, x)
-    end
-    return 0.0
-end
-
-
-"""
-    log_iteration!(x::Optimizer)
-
-If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
-'run_time', and 'node_count' are stored every 'log_interval'. If
-'log_subproblem_info' then the lower bound, feasibility and run times of the
-subproblems are logged every 'log_interval'.
-"""
-function log_iteration!(x::Optimizer)
-
-    if x.log_on
-        log = x._log
-        if (mod(x._iteration_count, x.log_interval) == 0 || x._iteration_count == 1)
-            if x.log_subproblem_info
-                if x._optimization_sense === MOI.MIN_SENSE
-                    push!(log.current_lower_bound, x._lower_objective_value)
-                    push!(log.current_upper_bound, x._upper_objective_value)
-                else
-                    push!(log.current_lower_bound, -x._upper_objective_value)
-                    push!(log.current_upper_bound, -x._lower_objective_value)
-                end
-
-                push!(log.preprocessing_time, x._last_preprocess_time)
-                push!(log.lower_problem_time, x._last_lower_problem_time)
-                push!(log.upper_problem_time, x._last_upper_problem_time)
-                push!(log.postprocessing_time, x._last_postprocessing_time)
-
-                push!(log.preprocess_feasibility, x._preprocess_feasibility)
-                push!(log.lower_problem_feasibility, x._lower_feasibility)
-                push!(log.upper_problem_feasibility, x._upper_feasibility)
-                push!(log.postprocess_feasibility, x._postprocess_feasibility)
-            end
-
-            if x._optimization_sense === MOI.MIN_SENSE
-                push!(log.global_lower_bound, x._global_lower_bound)
-                push!(log.global_upper_bound, x._global_upper_bound)
-            else
-                push!(log.global_lower_bound, -x._global_upper_bound)
-                push!(log.global_upper_bound, -x._global_lower_bound)
-            end
-            push!(log.run_time, x._run_time)
-            push!(log.node_count, x._node_count)
-        end
-    end
-    return
+    m._input_problem._optimization_sense = sense
+    return nothing
 end

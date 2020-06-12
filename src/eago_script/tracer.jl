@@ -1,3 +1,16 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_script/tracer.jl
+# Utilities for tracing a user-defined function.
+#############################################################################
 
 struct NodeInfo
     nodetype::NodeType
@@ -5,6 +18,7 @@ struct NodeInfo
     children::Vector{Int64}
 end
 children(x::NodeInfo) = x.children
+
 # convert method assumes that the children connectivity using in Tracer has
 # has been converted to an area hold a single parent value as is used in JuMP
 convert(::Type{NodeData}, x::NodeInfo) = NodeData(x.nodetype, x.index, x.children[1])
@@ -39,9 +53,9 @@ end
 Tape() = Tape(NodeInfo[], Float64[], Dict{Int,Bool}(), 0, 0)
 
 function Tape(n::Int)
-    node_list = [NodeInfo(VARIABLE,i,[-1]) for i in 1:n]
+    node_list = [NodeInfo(VARIABLE,i,[-1]) for i = 1:n]
     num_valued = Dict{Int,Bool}()
-    for i in 1:n
+    for i = 1:n
         num_valued[i] = false
     end
     Tape(node_list, Float64[], num_valued, n, 0)
@@ -142,8 +156,8 @@ overdub(ctx::TraceCtx, ::typeof(getindex), A::Array, i::Int) = getindex(A,i)
 overdub(ctx::TraceCtx, ::typeof(getindex), A::SetTraceSto, i::Int) = getindex(A,i)
 
 function overdub(ctx::TraceCtx, ::typeof(typeassert), x::Real, type::Type)
-    if ~isa(x,SetTrace)
-        typeassert(x,type)
+    if !isa(x,SetTrace)
+        typeassert(x, type)
     end
     return x
 end
@@ -156,7 +170,7 @@ end
 function trace_script(f::Function, n::Int)
     tape = Tape(n)
     if n > 1
-        x = SetTraceSto(SetTrace[SetTrace(i) for i=1:n])
+        x = SetTraceSto(SetTrace[SetTrace(i) for i = 1:n])
         overdub(TraceCtx(metadata = tape), f, x)
     else
         overdub(TraceCtx(metadata = tape), f, SetTrace(1))

@@ -1,3 +1,17 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_script/substitute.jl
+# Utilities that are used to substitute expressions in the computational tape.
+#############################################################################
+
 """
     Template_Node
 
@@ -384,24 +398,22 @@ Flattens (usually) the dag by making all registered substitutions for every
 nonlinear term in the Optimizer.
 """
 function dag_flattening!(x::T) where T <: AbstractOptimizer
+
     if isa(x._nlp_data.evaluator, NLPEvaluator)
         nlp_data = x._nlp_data.evaluator.m.nlp_data
         params = nlp_data.nlparamvalues
         if ~isnothing(nlp_data.nlobj)
             flatten_expression!(nlp_data.nlobj, params)
         end
-        for i in 1:length(nlp_data.nlconstr)
-            for j in 1:length(nlp_data.nlconstr[i].terms.nd)
-                println("starting constraint[$i] term[$j]: $(nlp_data.nlconstr[i].terms.nd[j])")
-            end
+
+        for i = 1:length(nlp_data.nlconstr)
             flatten_expression!(nlp_data.nlconstr[i].terms, params)
-            for j in 1:length(nlp_data.nlconstr[i].terms.nd)
-                println("ending constraint[$i] term[$j]: $(nlp_data.nlconstr[i].terms.nd[j])")
-            end
         end
-        for i in 1:length(nlp_data.nlexpr)
+
+        for i = 1:length(nlp_data.nlexpr)
             flatten_expression!(nlp_data.nlexpr[i], params)
         end
     end
-    return
+
+    return nothing
 end

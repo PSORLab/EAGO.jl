@@ -8,11 +8,22 @@ of all user-facing options has been provided in the docstring.
 Optimizer
 ```
 
+## Storage for Input Parameters
+```@docs
+EAGO.EAGOParameters
+```
+
 ## Internal Storage Structures
 ```@docs
 VariableInfo
 ExtensionType
 Log
+```
+
+## Internal Problem Representations
+```@docs
+EAGO.InputProblem
+EAGO.ParsedProblem
 ```
 
 ## Extending EAGO

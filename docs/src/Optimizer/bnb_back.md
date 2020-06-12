@@ -17,8 +17,6 @@ All components of the branch-and-bound routine can be customized by the individu
     EAGO.cut_condition(t::ExtensionType, x::Optimizer)
     EAGO.fathom!(t::ExtensionType, d::Optimizer)
     EAGO.lower_problem!(t::ExtensionType, x::Optimizer)
-    EAGO.relax_objective!(t::ExtensionType, x::Optimizer, x0::Vector{Float64})
-    EAGO.relax_problem!(t::ExtensionType, x::Optimizer, v::Vector{Float64}, q::Int64)
     EAGO.node_selection!(t::ExtensionType, x::Optimizer)
     EAGO.optimize_hook!(t::ExtensionType, x::Optimizer)
     EAGO.postprocess!(t::ExtensionType, x::Optimizer)
@@ -31,17 +29,16 @@ All components of the branch-and-bound routine can be customized by the individu
 
 ## Internal Subroutines
 ```@docs
-    EAGO.cut_update(x::Optimizer)
-    EAGO.default_nlp_heurestic(x::Optimizer, y::NodeBB)
+    EAGO.cut_update!(x::Optimizer)
     EAGO.interval_bound
-    EAGO.interval_lower_bound!(x::Optimizer, y::NodeBB)
+    EAGO.lower_interval_bound
     EAGO.is_globally_optimal(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
     EAGO.is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
     EAGO.log_iteration!(x::Optimizer)
     EAGO.same_box(x::NodeBB,y::NodeBB, atol::Float64)
     EAGO.solve_local_nlp!(x::Optimizer)
     EAGO.set_dual!(x::Optimizer)
-    EAGO.update_relaxed_problem_box!(x::Optimizer, y::NodeBB)
+    EAGO.update_relaxed_problem_box!
 ```
 
 ## Functions for generating console output
@@ -50,4 +47,15 @@ All components of the branch-and-bound routine can be customized by the individu
     EAGO.print_node!
     EAGO.print_results!
     EAGO.print_solution!
+```
+
+## Interval Representations of Expressions
+```@docs
+    EAGO.AbstractEAGOConstraint
+    EAGO.AffineFunctionEq
+    EAGO.AffineFunctionIneq
+    EAGO.BufferedQuadraticIneq
+    EAGO.BufferedQuadraticEq
+    EAGO.NonlinearExpression
+    EAGO.BufferedNonlinearFunction
 ```

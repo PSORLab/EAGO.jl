@@ -5,8 +5,8 @@ In order to bound a function using a McCormick relaxation. You first construct
 structure that bounds the input variables then you construct pass these variables
 two a function.
 
-In the example below, convex/concave relaxations of the function f(x)=sin(2x)+exp(x)-x
-are calculated at x = 1 on the interval [-2,3].
+In the example below, convex/concave relaxations of the function `f(x) = sin(2x) + exp(x) - x`
+are calculated at `x = 1` on the interval `[-2,3]`.
 
 ```julia
 using EAGO, IntervalArithmetic
@@ -39,9 +39,7 @@ at the middle of X.
 
 
 If we instead use the constructor `xMC = MC{1,Diff}(x,Intv,1)` in the above code, and then re-plot we arrive at the below graph
-```julia
-set_diff_relax!(1)
-```
+
 
 ![Figure_2](Figure_2.png)
 

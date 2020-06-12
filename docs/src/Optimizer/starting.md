@@ -37,7 +37,7 @@ We now formulate the problem using standard JuMP[3] syntax and optimize it. Note
 
 ```julia
 # Model construction
-model = Model(with_optimizer(EAGO.Optimizer, absolute_tolerance = 0.001))
+model = Model(optimizer_with_attributes(EAGO.Optimizer, "absolute_tolerance" => 0.001))
 @variable(model, xLBD[i] <= x[i=1:8] <= xUBD[i])
 @NLexpression(model, prop[i=1:3], B1[i] + sum(W[i,j]*x[i] for j in 1:8))
 @NLobjective(model, Max, B2 + sum(D[i]*(2/(1+exp(-2*prop[i]))) for i=1:3))

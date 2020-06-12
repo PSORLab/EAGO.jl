@@ -1,3 +1,18 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This work is licensed under the Creative Commons Attribution-NonCommercial-
+# ShareAlike 4.0 International License. To view a copy of this license, visit
+# http://creativecommons.org/licenses/by-nc-sa/4.0/ or send a letter to Creative
+# Commons, PO Box 1866, Mountain View, CA 94042, USA.
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_script/scrubber.jl
+# A context used to "scrub" type specific storage, assertions, and other
+# language features from a user-defined function.
+#############################################################################
+
 @context ScrubCtx
 
 # Cassette specific functions for scrubbing udfs of objects that interfere with overloading
@@ -72,6 +87,7 @@ end
 Applies scrub to every user-defined function in the a `_NLPData` structure.
 """
 function scrub!(d::_NLPData)
+
     # scrub multivariant
     user_ops = d.user_operators
     mvop_num = length(user_ops.multivariate_operator_evaluator)
@@ -88,6 +104,7 @@ function scrub!(d::_NLPData)
 
     # scrub univariants
     svop_num = length(user_ops.univariate_operator_f)
+
     for i in 1:svop_num
         flag, fnew = scrub(user_ops.univariate_operator_f[i], 1)
         user_ops.univariate_operator_f[i] = fnew
@@ -97,6 +114,7 @@ function scrub!(d::_NLPData)
             user_ops.univariate_operator_fprime[i] = fprime
             user_ops.univariate_operator_fprimeprime[i] = x -> derivative(fprime, x)
         end
+
         fnew = scrub(user_ops.univariate_operator_fprime[i], 1)
         user_ops.univariate_operator_fprime[i] = fnew
         fnew = scrub(user_ops.univariate_operator_fprimeprime[i], 1)
