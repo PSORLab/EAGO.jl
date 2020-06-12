@@ -47,7 +47,7 @@ This model can be formulated using JuMP code as
 ```julia
 using JuMP, EAGO
 
-m = Model(with_optimizer(EAGO.Optimizer))
+m = Model(EAGO.Optimizer)
 
 # Define bounded variables
 xL = [10.0; 0.0; 0.0; 0.0; 0.0; 85.0; 90.0; 3.0; 1.2; 145.0]
@@ -123,7 +123,6 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Separates McCormick and ReverseMcCormick libraries (now [McCormick.jl](https://github.com/PSORLab/McCormick.jl) and [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl))
     from main package.  McCormick.jl is reexported.
   - Relaxation calculations now return NaN values on a domain violation.
-  - Introduces a guarded relaxation feature to deal with domain violations that occur due to expansiveness of relaxations in intermediate terms.
   - Tolerance based validation of cuts has been added to generate numerically safe cuts.
   - Significantly simplify internal codebase for `EAGO.Optimizer` (no changes to API): fully decouples input problem specifications from the formulation used internally, stack only stores variables that are branched on, and a number of internal rearrangements to clearly delineate different routines.
   - Add problem classification preprocessing that throws to simpler routines if LP problem types are detected (enables future support for SOCP, MILP, MISOCP, and Convex forms).

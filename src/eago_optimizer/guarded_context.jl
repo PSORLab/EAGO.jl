@@ -14,12 +14,16 @@
 # expansiveness of the bounds of the nonlinear terms not the underlying model.
 #############################################################################
 
+const USE_GUARD_CONTEXT = false
+
 Cassette.@context GuardCtx
 
 struct GuardTracker
     domain_tol::Float64
 end
 
+if USE_GUARD_CONTEXT
+#=
 function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag}
     if (y.Intv.lo <= -ctx.metadata.domain_tol) && (y.Intv.hi >= ctx.metadata.domain_tol)
         z = MC{N,T}(union(x.Intv/Interval{Float64}(y.Intv.lo, -ctx.metadata.domain_tol),
@@ -92,4 +96,6 @@ for f in (acos, asin, atanh)
         end
         z
     end
+end
+=#
 end

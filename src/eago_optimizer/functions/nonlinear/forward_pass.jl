@@ -515,17 +515,17 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
 
         # x^b
         elseif !arg1_is_number && arg2_is_number
-            outset = pow(set1, num2)
+            outset = set1^num2
             #is_first_eval ? pow(set1, num2) : ^(set1, num2, setstorage[k].Intv)
 
         # a^y
         elseif arg1_is_number  && !arg2_is_number
-            outset = overdub(ctx, pow, num1, set2)
+            outset = num1^set2 # overdub(ctx, pow, num1, set2)
             #is_first_eval ? overdub(ctx, pow, num1, set2) : overdub(ctx, ^, num1, set2, setstorage[k].Intv)
 
         # x^y
         elseif !arg1_is_number && !arg2_is_number
-            outset = overdub(ctx, pow, set1, set2)
+            outset = set1^set2 #overdub(ctx, pow, set1, set2)
             #is_first_eval ? overdub(ctx, pow, set1, set2) : overdub(ctx, ^, set1, set2, setstorage[k].Intv)
 
         end
@@ -651,7 +651,7 @@ function forward_user_multivariate!(k::Int64, op::Int64, children_arr::Vector{In
                  set_input[buffer_count] = MC{N,T}(num_input[buffer_count])
             end
         end
-        outset = Cassette.overdub(ctx, MOI.eval_objective, evaluator, set_input)
+        outset = MOI.eval_objective(evaluator, set_input) #Cassette.overdub(ctx, MOI.eval_objective, evaluator, set_input)
         setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                                interval_intersect)
     end
@@ -696,7 +696,8 @@ function forward_univariate_tiepnt_1!(k::Int64, op::Int64, child_idx::Int64, set
     tp1 =  tp1storage[tidx1]
     tp2 =  tp2storage[tidx1]
     new_tie_points = tp1 === Inf
-    outset, tp1, tp2 = Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, is_first_eval)
+    outset, tp1, tp2 = single_tp_set(op, tmp_set, setstorage[k], tp1, tp2, is_first_eval)
+    #Cassette.overdub(ctx, single_tp_set, op, tmp_set, setstorage[k], tp1, tp2, is_first_eval)
 
     if new_tie_points
          tp1storage[tidx1] = tp1
@@ -735,8 +736,8 @@ function forward_univariate_tiepnt_2!(k::Int64, op::Int64, child_idx::Int64, set
     new_tie_points = tp1 === Inf
 
     # Perform an evaluation of the univariate function overdubbed with Cassette.jl
-    outset, tp1, tp2, tp3, tp4 = Cassette.overdub(ctx, double_tp_set, op, tmp_set, setstorage[k],
-                                                  tp1, tp2, tp3, tp4, is_first_eval)
+    outset, tp1, tp2, tp3, tp4 = double_tp_set(op, tmp_set, setstorage[k], tp1, tp2, tp3, tp4, is_first_eval)
+    #Cassette.overdub(ctx, double_tp_set, op, tmp_set, setstorage[k], tp1, tp2, tp3, tp4, is_first_eval)
 
     # Store new tiepoints if new evaluation
     if new_tie_points
@@ -771,7 +772,7 @@ function forward_univariate_user!(k::Int64, op::Int64, child_idx::Int64, arg_is_
 
     else
         tmp_set = setstorage[child_idx]
-        outnum = Cassette.overdub(ctx, f, tmp_set)
+        outnum = f(tmp_set) #Cassette.overdub(ctx, f, tmp_set)
         setstorage[k] = overwrite_or_intersect(outnum, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                                interval_intersect)
     end
@@ -790,7 +791,7 @@ function forward_univariate_other!(k::Int64, op::Int64, child_idx::Int64, setsto
                                    is_post::Bool, is_intersect::Bool, is_first_eval::Bool, interval_intersect::Bool, ctx::GuardCtx) where V
 
     tmp_set = setstorage[child_idx]
-    outset = Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
+    outset = eval_univariate_set(op, tmp_set) #Cassette.overdub(ctx, eval_univariate_set, op, tmp_set)
     setstorage[k] = overwrite_or_intersect(outset, setstorage[k], x, lbd, ubd, subgrad_tol, sparsity, is_post, is_intersect,
                                            interval_intersect)
 
