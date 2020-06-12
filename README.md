@@ -149,7 +149,7 @@ generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 pkg> add JuMP
 ```
 
-EAGO v0.3 is the current version requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house
+EAGO v0.3.1 is the current tagged version and requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house
 testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
 for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
