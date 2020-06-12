@@ -22,7 +22,7 @@ The interval contractor and reverse McCormick relaxation-based contractors are
 currently available.
 
 ```@docs
-set_constraint_propagation_fbbt!
+EAGO.set_constraint_propagation_fbbt!
 ```
 
 ## Optimization-Based Bound Tightening

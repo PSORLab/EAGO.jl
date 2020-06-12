@@ -663,8 +663,6 @@ function reverse_set_subexpression!(k::Int64, op::Int64, subexpressions::Vector{
 end
 
 """
-$(TYPEDSIGNATURES)
-
 Performs a reverse McCormick/interval pass. If a NaN value is computed for the McCormick relaxation then the
 routine defaults to the interval value instead.
 

@@ -16,7 +16,6 @@
 #############################################################################
 
 """
-$(SIGNATURES)
 
 Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_tolerance/100.0)*f* + absolute_tolerance/100.0`.
 This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
@@ -48,7 +47,6 @@ function add_soc_constraints_as_quad!(m::Optimizer, opt::T) where T
 end
 
 """
-$(SIGNATURES)
 
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
