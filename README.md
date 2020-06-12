@@ -132,7 +132,7 @@ For a full list of EAGO release news, see click [**here**](https://github.com/PS
 
 ## Installing EAGO
 
-**We recommend using v0.4.0 (the current master) as a it includes a number of bug fixes and performance updates. We're currrently in the process of registering it (pending McCormick.jl merging into the meta-data). This is usable in the mean time by cloning and developing v0.6.1 of McCormick.jl and then cloning and developing EAGO via the package manager.**
+**We recommend using v0.4.0 (the current master) as a it includes a number of bug fixes and performance updates. We're currently in the process of registering it (pending McCormick.jl merging into the meta-data). This is usable in the mean time by cloning and developing v0.6.1 of McCormick.jl and then cloning and developing EAGO via the package manager.**
 
 EAGO is registered Julia package. It can be installed using the Julia package manager.
 From the Julia REPL, type ] to enter the Pkg REPL mode and run the following command
