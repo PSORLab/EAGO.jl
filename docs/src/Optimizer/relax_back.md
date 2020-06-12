@@ -1,39 +1,55 @@
 # Relaxation Backend
 
-## Quadratic Relaxations
+# Nonlinear Evaluation
+
+EAGO makes use of a specialized tape structure for each function in order to compute valid
+composite bounds and relaxations. The details of this are included below:
+
+## Forward Operator Updates
+
+### Main routine
 ```@docs
-    EAGO.relax_convex_kernel
-    EAGO.relax_nonconvex_kernel
-    EAGO.relax_quadratic_gen_saf
-    EAGO.relax_quadratic!
+EAGO.forward_pass_kernel!
 ```
 
-## Nonlinear Relaxation
+### Subroutines to evaluation expression
 ```@docs
-EAGO.relax_nlp!
-EAGO.objective_cut_linear!
+ EAGO.forward_plus_narity!
+ EAGO.forward_plus_binary!
+ EAGO.forward_minus!
+ EAGO.forward_multiply_binary!
+ EAGO.forward_multiply_narity!
+ EAGO.forward_divide!
+ EAGO.forward_power!
+ EAGO.forward_univariate_user!
+ EAGO.forward_univariate_number!
+ EAGO.forward_univariate_tiepnt_1!
+ EAGO.forward_univariate_tiepnt_2!
+ EAGO.forward_univariate_other!
+ EAGO.forward_user_multivariate!
+ EAGO.forward_get_subexpression!
 ```
 
-## Nonlinear Storage Structures
+## Reverse Operator Updates
+
+### Main routine
 ```@docs
-    FunctionSetStorage
-    SubexpressionSetStorage
+EAGO.reverse_pass!
+EAGO.reverse_pass_kernel!
 ```
 
-## Nonlinear Evaluator
+### Subroutines to evaluation expression
+This list is not yet complete future documentation to
+be added.
 ```@docs
-    Evaluator
+EAGO.reverse_plus_binary!
+EAGO.reverse_plus_narity!
+EAGO.reverse_multiply_binary!
+EAGO.reverse_multiply_narity!
 ```
 
-## Internal Functions Used by Evaluator
+## Other routines
 ```@docs
-    set_current_node!(x::Evaluator, n::NodeBB)
-    eval_objective_lo(d::Evaluator)
-    eval_constraint_cc(d::Evaluator, g::Vector{Float64}, y::Vector{Float64})
-    eval_constraint_lo!(d::Evaluator, g::Vector{Float64})
-    eval_constraint_hi!(d::Evaluator, g::Vector{Float64})
-    eval_constraint_cc_grad(d::Evaluator, g, y)
-    get_node_lower(d::FunctionSetStorage, i::Int64)
-    get_node_upper(d::FunctionSetStorage, i::Int64)
-    forward_reverse_pass(d::Evaluator, x::Vector{Float64})
+EAGO.set_value_post
+EAGO.overwrite_or_intersect
 ```

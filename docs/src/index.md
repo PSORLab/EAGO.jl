@@ -23,7 +23,7 @@ From the Julia REPL, type ] to enter the Pkg REPL mode and run the following com
 pkg> add EAGO
 ```
 
-Currently, EAGO is tied to a 0.19 or greater version of JuMP. This allows a replication
+Currently, EAGO is tied to a 0.21.2+ or greater version of JuMP. This allows a replication
 of some of the internal features shared by EAGO and JuMP's AD scheme aka
 generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 
@@ -31,7 +31,7 @@ generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 pkg> add JuMP
 ```
 
-Once JuMP 0.19+ is registered EAGO will be updated to eliminate the need for this.
+EAGO v0.4 is the current version requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house testing has occured using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/) for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version). If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
 ## Examples
 A few examples are provided in the documentation website. More involved

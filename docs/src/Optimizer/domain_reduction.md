@@ -12,10 +12,7 @@ Bound tightening for linear forms, univariate quadratic forms, and
 bivariate quadratic forms are also supported.
 
 ```@docs
-classify_quadratics!
-lp_bound_tighten
-univariate_kernel
-univariate_quadratic
+EAGO.fbbt!
 ```
 
 ## Constraint Propagation
@@ -25,19 +22,18 @@ The interval contractor and reverse McCormick relaxation-based contractors are
 currently available.
 
 ```@docs
-cpwalk
+set_constraint_propagation_fbbt!
 ```
 
 ## Optimization-Based Bound Tightening
 
 EAGO makes use of an optimization-based bound tightening scheme using filtering
 and greedy ordering as detailed in: Gleixner, A.M., Berthold, T., Müller, B.
-et al. J Glob Optim (2017) 67: 731. https://doi.org/10.1007/s10898-016-0450-4
+et al. J Glob Optim (2017) 67: 731. https://doi.org/10.1007/s10898-016-0450-4.
 
 ```@docs
-aggressive_filtering!
-aggressive_obbt_on_heurestic
-bool_indx_diff
-obbt
+EAGO.obbt!
 trivial_filtering!
+aggressive_filtering!
+bool_indx_diff
 ```
