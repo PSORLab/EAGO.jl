@@ -118,7 +118,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Subroutines are now customized by creating a subtype of 'ExtensionType' and defining subroutines which dispatch on this new structure.
   - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
   - JIT compilation time has been reduced sub
-- 6/7/2020: [**EAGO v0.4.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.0))
+- 6/7/2020: [**EAGO v0.4.0 is on the master (tagging in progress)**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.0))
   - Support for new MOI/JuMP `RawParameter` input and a number of new attributes.
   - Separates McCormick and ReverseMcCormick libraries (now [McCormick.jl](https://github.com/PSORLab/McCormick.jl) and [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl))
     from main package.  McCormick.jl is reexported.
