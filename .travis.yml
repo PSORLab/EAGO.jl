@@ -2,11 +2,9 @@ language: julia
 codecov: true
 coveralls: true
 
-sudo: required
-
 os:
   - linux
-  #- osx
+  - osx
 
 julia:
   - 1.2
