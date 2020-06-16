@@ -17,9 +17,6 @@ matrix:
 notifications:
   email: false
 
-after_success:
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())
-
 addons:
   apt_packages:
     - gfortran
@@ -36,4 +33,4 @@ jobs:
         include("docs/make.jl");'
     after_success: skip
 
- fast_finish: true
+fast_finish: true
