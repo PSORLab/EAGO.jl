@@ -491,6 +491,7 @@ function unpack_fbbt_buffer!(m::Optimizer)
 end
 
 """
+$(FUNCTIONNAME)
 
 Performs feasibility-based bound tightening on a back-end constraint and returns `true` if it is feasible or
 `false` if it is infeasible.
