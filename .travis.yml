@@ -1,6 +1,4 @@
 language: julia
-codecov: true
-coveralls: true
 
 os:
   - linux
@@ -14,27 +12,28 @@ julia:
 
 matrix:
   allow_failures:
-  - julia: 1.4
   - julia: nightly
-
-#env:
-#  global:
-#    - DOCUMENTER_DEBUG=true
 
 notifications:
   email: false
+
+after_success:
+  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())
 
 addons:
   apt_packages:
     - gfortran
 
-#jobs:
-  #include:
-  #  - stage: "Documentation"
-  #    julia: 1.0
-  #    os: linux
-  #    script:
-  #      - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd()));
-  #                                             Pkg.instantiate()'
-  #      - julia --project=docs/ docs/make.jl
-  #    after_success: skip
+jobs:
+  include:
+  - stage: "Documentation"
+    julia: 1.4
+    os: linux
+    script: julia --project=docs -e '
+        using Pkg;
+        Pkg.develop(PackageSpec(path=pwd()));
+        Pkg.instantiate();
+        include("docs/make.jl");'
+    after_success: skip
+
+ fast_finish: true

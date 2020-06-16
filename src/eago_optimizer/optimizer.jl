@@ -36,6 +36,7 @@ $(TYPEDFIELDS)
 Base.@kwdef mutable struct EAGOParameters
 
     # Presolving options
+    "Should EAGO attempt to remove type assert issues for user-defined functions (default = false)"
     presolve_scrubber_flag::Bool = false
     "Create and use DAG representations of user-defined function (default = false)."
     presolve_to_JuMP_flag::Bool = false
@@ -100,6 +101,7 @@ Base.@kwdef mutable struct EAGOParameters
     absolute_constraint_feas_tolerance::Float64 = 1E-6
     "Perform only a local solve of the problem (default = false)."
     local_solve_only::Bool = false
+    "[TO BE REMOVED] Flag stops B&B loop if feasible point found."
     feasible_local_continue::Bool = false
 
     # Options for constraint propagation
@@ -159,10 +161,13 @@ Base.@kwdef mutable struct EAGOParameters
     "Perform tightening of interval bounds using subgradients at each factor in
     each nonlinear tape during a reverse pass (default = false)."
     reverse_subgrad_tighten::Bool = false
+    "Outer round computed subgradient bounds by this amount"
     subgrad_tol::Float64 = 1E-10
 
     # Tolerance to add cuts and max number of cuts
+    "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
     cut_min_iterations::Int64 = 1
+    "Maximum number of cuts at each node to attempt"
     cut_max_iterations::Int64 = 3
     "Convex coefficient used to select point for new added cuts. Branch point is
     given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
@@ -187,6 +192,7 @@ Base.@kwdef mutable struct EAGOParameters
     upper_bounding_depth::Int64 = 6
 
     # handling for domain violations
+    "[FUTURE FEATURE]: Amount about a domain violation to ignore when propagating bounds."
     domain_violation_ϵ::Float64 = 1E-9
 end
 
@@ -195,8 +201,6 @@ $(TYPEDEF)
 
 A structure used to hold objectives and constraints added to EAGO model.
 The constraints generally aren't used for relaxations.
-
-$(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct InputProblem
 
@@ -286,6 +290,9 @@ end
 
 """
 $(TYPEDEF)
+
+A structure used to expressions and problem descriptions EAGO uses to formulate
+relaxed problems.
 """
 Base.@kwdef mutable struct ParsedProblem
 
@@ -397,19 +404,21 @@ routine. The following commonly used options are described below and can be set
 via keyword arguments in the JuMP/MOI model. The raw parameter interface however
 is likely preferable. The Optimizer is organized in the following manner. Parameters
 which are expected to be constant over the entire solve are stored in
-`_parameters::EAGOParameters` field,
-
-$(TYPEDFIELDS)
+`_parameters::EAGOParameters` field. User-facing keywords not in EAGOParameters field:
+- `relaxed_optimizer::MOI.AbstractOptimizer`: An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())
+- `obbt_variable_values::Vector{Bool}`: Variables to perform OBBT on (default: all variables in nonlinear expressions).
+- `upper_optimizer::MOI.AbstractOptimizer`: Optimizer used to solve upper bounding problems. (default = Ipopt.Optimizer)
+- `enable_optimize_hook::Bool`: Specifies that the optimize_hook! function should be called rather than throw the problem to the standard B&B routine (default = false).
+- `ext::Dict{Symbol, Any}`: Holds additional storage needed for constructing extensions to EAGO (default = Dict{Symbol,Any}).
+- `ext_type::ExtensionType`: Holds an instance of a subtype of `EAGO.ExtensionType` used to define new custom subroutines (default = DefaultExt()).
 """
 Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Options for optimality-based bound tightening
     # set as a user-specified option
-    "An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())"
     relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
 
     # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
-    "Variables to perform OBBT on (default: all variables in nonlinear expressions)."
     obbt_variable_values::Vector{Bool} = Bool[]
 
     # Upper bounding options (set as a user-specified option)
@@ -420,14 +429,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
                                                              acceptable_constr_viol_tol = 0.000001, print_level = 0)
 
     # Extensions (set as user-specified option)
-    "Specifies that the optimize_hook! function should be called rather than
-    throw the problem to the standard B&B routine (default = false)."
     enable_optimize_hook::Bool = false
-    "Holds additional storage needed for constructing extensions to EAGO
-    (default = Dict{Symbol,Any})."
     ext::Dict{Symbol, Any} = Dict{Symbol,Any}()
-    "Holds an instance of a subtype of `EAGO.ExtensionType` used to define
-    new custom subroutines (default = DefaultExt())."
     ext_type::ExtensionType = DefaultExt()
 
     # set as user-specified option
@@ -579,7 +582,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # need to retreive primal _relaxed_variable_index
     # set in TODO
-    "Number of variables actively branched on in B&B routine (exludes linear and fixed)"
+    #"Number of variables actively branched on in B&B routine (excludes linear and fixed)"
     _relaxed_variable_number::Int = 0
     _relaxed_variable_index::Vector{VI} = VI[]
     _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
@@ -595,7 +598,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _node_to_sv_leq_ci::Vector{CI{SV,LT}} = CI{SV,LT}[]
     _node_to_sv_geq_ci::Vector{CI{SV,GT}} = CI{SV,GT}[]
 
-    "Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
+    #"Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
     _nonlinear_evaluator_created::Bool = false
 
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
