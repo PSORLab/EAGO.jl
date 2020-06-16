@@ -131,6 +131,9 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
 ## Installing EAGO
+
+**We recommend using v0.4.0 (the current master) as a it includes a number of bug fixes and performance updates. We're currently in the process of registering it (pending McCormick.jl merging into the meta-data). This is usable in the mean time by cloning and developing v0.6.1 of McCormick.jl and then cloning and developing EAGO via the package manager.**
+
 EAGO is registered Julia package. It can be installed using the Julia package manager.
 From the Julia REPL, type ] to enter the Pkg REPL mode and run the following command
 
@@ -146,7 +149,7 @@ generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 pkg> add JuMP
 ```
 
-EAGO v0.4 is the current version requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house
+EAGO v0.3.1 is the current tagged version and requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house
 testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
 for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
