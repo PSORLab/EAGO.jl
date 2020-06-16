@@ -223,10 +223,10 @@ $(SIGNATURES)
 
 Creates two nodes from current\_node using information available the `x`
 and stores them to the stack. By default, relative width bisection is perfomed
-at a point `branch\_pnt` which is a convex combination
-(parameter: `branch\_cvx_factor`) of the solution to the relaxation and
-the midpoint of the node. If this solution lies within `branch\_offset/width` of
-a bound then the branch point is moved to a distance of `branch\_offset/width`
+at a point `branch_pnt` which is a convex combination
+(parameter: `branch_cvx_factor`) of the solution to the relaxation and
+the midpoint of the node. If this solution lies within `branch_offset/width` of
+a bound then the branch point is moved to a distance of `branch_offset/width`
 from the bound.
 """
 function branch_node!(t::ExtensionType, m::Optimizer)
