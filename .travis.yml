@@ -10,15 +10,11 @@ julia:
   - 1.4
   - nightly
 
-matrix:
-  allow_failures:
+allow_failures:
   - julia: nightly
 
 notifications:
   email: false
-
-after_success:
-  - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())
 
 addons:
   apt_packages:
@@ -35,5 +31,3 @@ jobs:
         Pkg.instantiate();
         include("docs/make.jl");'
     after_success: skip
-
- fast_finish: true
