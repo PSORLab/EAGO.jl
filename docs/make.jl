@@ -44,4 +44,4 @@ makedocs(modules = [EAGO, McCormick],
                      "Citing EAGO" => "cite.md"]
 )
 
-deploydocs(; repo = "github.com/PSORLab/EAGO.jl",)
+deploydocs(; repo = "github.com/PSORLab/EAGO.jl", push_preview = true)
