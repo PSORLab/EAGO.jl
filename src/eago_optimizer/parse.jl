@@ -16,8 +16,8 @@
 """
 $(TYPEDSIGNATURES)
 
-Converts MOI.MAX_SENSE objective to equivalent MOI.MIN_SENSE objective
-max(f) = - min(-f).
+Converts `MOI.MAX_SENSE` objective to equivalent `MOI.MIN_SENSE` objective
+`max(f) = -min(-f)`.
 """
 function convert_to_min!(m::Optimizer)
 
@@ -126,7 +126,7 @@ end
 $(TYPEDSIGNATURES)
 
 Detects any variables set to a fixed value by equality or inequality constraints
-and populates the _fixed_variable storage array.
+and populates the `_fixed_variable` storage array.
 """
 function label_fixed_variables!(m::Optimizer)
     map!(x -> check_set_is_fixed(x), m._fixed_variable, m._working_problem._variable_info)
@@ -136,7 +136,7 @@ end
 $(TYPEDSIGNATURES)
 
 Detects any variables participating in nonconvex terms and populates the
-_branch_variables storage array.
+`_branch_variables` storage array.
 """
 function label_branch_variables!(m::Optimizer)
 
