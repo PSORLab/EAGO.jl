@@ -10,8 +10,7 @@ julia:
   - 1.4
   - nightly
 
-matrix:
-  allow_failures:
+allow_failures:
   - julia: nightly
 
 notifications:
@@ -32,5 +31,3 @@ jobs:
         Pkg.instantiate();
         include("docs/make.jl");'
     after_success: skip
-
-fast_finish: true
