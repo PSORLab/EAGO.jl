@@ -221,7 +221,7 @@ end
 """
 $(SIGNATURES)
 
-Creates two nodes from current\_node using information available the `x`
+Creates two nodes from `current_node` using information available the `x`
 and stores them to the stack. By default, relative width bisection is perfomed
 at a point `branch_pnt` which is a convex combination
 (parameter: `branch_cvx_factor`) of the solution to the relaxation and

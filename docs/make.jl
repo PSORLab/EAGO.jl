@@ -19,6 +19,7 @@ makedocs(modules = [EAGO, McCormick],
          doctest = false,
          format = Documenter.HTML(),
          authors = "Matthew Wilhelm",
+         #repo = "https://github.com/PSORLab/EAGO.jl/blob/{commit}{path}#L{line}",
          sitename = "EAGO.jl: Easy Advanced Global Optimization",
          pages = Any["Introduction" => "index.md",
                      "McCormick Operator Library" => Any["McCormick/overview.md",
@@ -43,4 +44,4 @@ makedocs(modules = [EAGO, McCormick],
                      "Citing EAGO" => "cite.md"]
 )
 
-deploydocs(repo = "github.com/PSORLab/EAGO.jl.git")
+deploydocs(; repo = "github.com/PSORLab/EAGO.jl",)
