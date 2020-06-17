@@ -188,6 +188,31 @@ function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
 end
 
 ###
+### SECOND-ORDER CONE
+###
+function lower_interval_bound(m::Optimizer, d::BufferedSOC, n::NodeBB)
+
+    sol_branch_map = m._sol_to_branch_map
+    lo_bnds = n.lower_variable_bounds
+    up_bnds = n.upper_variable_bounds
+    vec_of_vi = d.variables.variables
+
+    norm_bound = Interval(0.0)
+    for i = 2:length(vec_of_vi)
+        mapped_vi = @inbounds sol_branch_map[vec_of_vi[i].value]
+        x = Interval{Float64}(lo_bnds[mapped_vi], up_bnds[mapped_vi])
+        norm_bound += pow(x, 2)
+    end
+    norm_bound = sqrt(norm_bound)
+
+    mapped_vi = @inbounds sol_branch_map[vec_of_vi[1].value]
+    lower_bound = norm_bound.lo -(@inbounds up_bnds[mapped_vi])
+
+    return lower_bound
+end
+
+
+###
 ### NONLINEAR FUNCTIONS
 ###
 

@@ -40,9 +40,5 @@ function BufferedSOC(func::VECOFVAR, set::SOC)
 end
 
 ###
-### Interval bounding definitions
-###
-
-###
 ### Parsing definitions
 ###
