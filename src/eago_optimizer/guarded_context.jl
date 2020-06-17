@@ -139,7 +139,7 @@ end
 for f in (abs, exp, exp2, exp10, sin, tan, cos, tan, sec, csc,
           sech, csch, coth, acsch, acoth, asech, step, sign,
           asinh, tanh, atan, cosh, sind, cosd, tand, secd, cscd, cotd,
-          atand, asecd, acscd, acotd, isone, isnan, empty
+          atand, asecd, acscd, acotd, isone, isnan, empty,
           convert, in, isempty, one, zero, real, eps, rad2deg, deg2rad)
     @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFltIntv} = f(x)
     @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}) where {N,T<:RelaxTag} = f(x)
