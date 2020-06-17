@@ -192,7 +192,9 @@ Base.@kwdef mutable struct EAGOParameters
     upper_bounding_depth::Int64 = 6
 
     # handling for domain violations
-    "[FUTURE FEATURE]: Amount about a domain violation to ignore when propagating bounds."
+    "Amount about a domain violation to ignore when propagating bounds."
+    domain_violation_guard_on::Bool = false
+    "Amount about a domain violation to ignore when propagating bounds."
     domain_violation_ϵ::Float64 = 1E-9
 end
 
