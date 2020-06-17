@@ -26,6 +26,13 @@ if USE_GUARD_CONTEXT
 #=
 const IntFltIntv = Union{Int16, Int32, Int64, Float16, Float32, Float64, Interval{Float64}}
 
+for f in (+, *, -, max, min)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag} = f(x, y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::S) where {S <: IntFloatIntv} =  f(x,y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S<:IntFltIntv} = f(x,y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S<:IntFltIntv} = f(x,y)
+end
+
 function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag}
     if (y.Intv.lo <= -ctx.metadata.domain_tol) && (y.Intv.hi >= ctx.metadata.domain_tol)
         z = MC{N,T}(union(x.Intv/Interval{Float64}(y.Intv.lo, -ctx.metadata.domain_tol),
@@ -46,13 +53,6 @@ function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::Float64, y::MC{N,T}) wh
     z
 end
 
-for f in (+, *, -, max, min)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag} = f(x, y)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::S) where {S <: IntFloatIntv} =  f(x,y)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S<:IntFltIntv} = f(x,y)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S<:IntFltIntv} = f(x,y)
-end
-
 Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::S, y::S) where {S <: IntFloatIntv} =  f(x,y)
 Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S <: IntFltIntv} =  f(x,y)
 Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S <: IntFltIntv} =  f(x,y)
@@ -66,6 +66,7 @@ function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::MC{N,T}) wh
     end
     z
 end
+
 function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::Float64) where {N, T<:RelaxTag}
     if (y < 0.0) && ((x.Intv.lo <= -ctx.metadata.domain_tol) && (x.Intv.hi >= ctx.metadata.domain_tol))
         z = MC{N,T}(union(Interval{Float64}(x.Intv.lo, -ctx.metadata.domain_tol),
@@ -75,6 +76,8 @@ function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::Float64) wh
     end
     z
 end
+
+Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::S, y::S) where {S<:IntFloatIntv} = f(x,y)
 
 for f in (log, log2, log10, sqrt)
     @eval function Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}) where {N, T<:RelaxTag}
