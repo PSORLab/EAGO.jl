@@ -136,7 +136,7 @@ for f in (log, log2, log10, sqrt, log1p, acosh, acos, asin, atanh, acosd, asind)
     @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFltIntv} = f(x)
 end
 
-for f in (abs, exp, exp2, exp10, sin, tan, cos, tan, sec, csc,
+for f in (abs, exp, exp2, exp10, sin, tan, cos, sec, csc,
           sech, csch, coth, acsch, acoth, asech, step, sign,
           asinh, tanh, atan, cosh, sind, cosd, tand, secd, cscd, cotd,
           atand, asecd, acscd, acotd, isone, isnan, empty,
