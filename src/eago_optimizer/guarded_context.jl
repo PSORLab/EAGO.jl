@@ -113,5 +113,10 @@ for f in (acos, asin, atanh)
         z
     end
 end
+
+for f in (log, log2, log10, sqrt, log1p, acosh, acos, asin, atanh)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFloatIntv} = f(x)
+end
+
 =#
 end
