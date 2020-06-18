@@ -109,7 +109,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 - 7/5/2019: [**EAGO v0.2.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.1). This contains fixes for a few minor issues.
   - Bug fix for explicit SIP solving routine that occurred for uncertainty sets of dimension greater than 1.
   - Bug fix for Max objective sense.
-- 11/1/2019: [**EAGO v0.3.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.3.0): This update is intended to be the last to create a large number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
+- 11/1/2019: [**EAGO v0.3.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.3.0). This update is intended to be the last to create a large number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
   - A number of performance improvements have been made to the underlying McCormick relaxation library.
   - The optimizer used to construct relaxations is now modified in place.
   - All subproblem storage has been moved to the Optimizer object and storage types (e.g. LowerInfo) have been removed.
@@ -118,7 +118,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Subroutines are now customized by creating a subtype of 'ExtensionType' and defining subroutines which dispatch on this new structure.
   - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
   - JIT compilation time has been reduced sub
-- 6/7/2020: [**EAGO v0.4.0 is on the master**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.0))
+- 6/7/2020: [**EAGO v0.4.0 is on the master**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.0).
   - Support for new MOI/JuMP `RawParameter` input and a number of new attributes.
   - Separates McCormick and ReverseMcCormick libraries (now [McCormick.jl](https://github.com/PSORLab/McCormick.jl) and [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl))
     from main package.  McCormick.jl is reexported.
