@@ -1,11 +1,9 @@
 
 ## Citing EAGO
 
-A paper about the EAGO software package is currently under preparation. In the
-meantime, please feel free to cite the conference presentation below:
+Please cite the following paper when using EAGO.jl:
 
 ```
-Wilhelm, Matthew; Stuber, Matthew (October 2017) Easy Advanced Global
-Optimization (EAGO): An Open-Source Platform for Robust and Global Optimization
-in Julia. Presented at the AIChE Annual Meeting in Minneapolis, MN.
+ M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia, 
+ Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566 
 ```
