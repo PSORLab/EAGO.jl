@@ -168,10 +168,27 @@ Please report bugs or feature requests by opening an issue using the Github [**i
 
 ## Citing EAGO
 
+Please cite the following paper when using EAGO. In plain tex form this is:
 ```
-Wilhelm, Matthew; Stuber, Matthew (October 2017) Easy Advanced Global
-Optimization (EAGO): An Open-Source Platform for Robust and Global Optimization
-in Julia. Presented at the AIChE Annual Meeting in Minneapolis, MN.
+ M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia, 
+ Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566 
+```
+
+A corresponding bibtex entry text is given below and a corresponding .bib file is given in citation.bib.
+```
+@article{doi:10.1080/10556788.2020.1786566,
+author = { M. E.   Wilhelm  and  M. D.   Stuber },
+title = {EAGO.jl: easy advanced global optimization in Julia},
+journal = {Optimization Methods and Software},
+volume = {0},
+number = {0},
+pages = {1-26},
+year  = {2020},
+publisher = {Taylor & Francis},
+doi = {10.1080/10556788.2020.1786566},
+URL = {https://doi.org/10.1080/10556788.2020.1786566},
+eprint = {https://doi.org/10.1080/10556788.2020.1786566}
+}
 ```
 
 ## Related Packages
