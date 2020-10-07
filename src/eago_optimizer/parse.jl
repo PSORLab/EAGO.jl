@@ -140,9 +140,9 @@ Detects any variables participating in nonconvex terms and populates the
 """
 function label_branch_variables!(m::Optimizer)
 
-    m._user_branch_variables = !isempty(m._branch_variables)
+    m._user_branch_variables = !isempty(m._parameters.branch_variable)
     if m._user_branch_variables
-        m._branch_variables = m._parameters.branch_variable
+        append!(m._branch_variables, m._parameters.branch_variable)
         return nothing
     end
 

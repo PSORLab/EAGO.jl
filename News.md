@@ -15,7 +15,7 @@
   - A more intuitive API for McCormick relaxation construction.
 
 ## v0.2.1
-- 7/5/2019: []**EAGO v0.2.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.1). This contains fixes for a few minor issues.
+- 7/5/2019: [**EAGO v0.2.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.1). This contains fixes for a few minor issues.
   - Bug fix for explicit SIP solving routine that occurred for uncertainty sets of dimension greater than 1.
   - Bug fix for Max objective sense.
 

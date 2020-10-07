@@ -11,6 +11,14 @@
 # Defines the a function used to register nonstandard nonlinear terms.
 #############################################################################
 
+"""
+register_eago_operators!
+
+Registers all nonstandard nonlinear terms available in EAGO in a JuMP. Uses of
+these is generally preferable in EAGO as the relaxations EAGO will generate
+will usually be tighter (speeding up convergence time). Note that this will
+work can be used by other nonlinear solvers (Ipopt for instance).
+"""
 function register_eago_operators!(m::JuMP.Model)
 
     # register activation functions w/o parameters

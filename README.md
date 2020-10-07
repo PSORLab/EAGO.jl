@@ -100,25 +100,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 ## Recent News
 
-- 6/14/2019: [**EAGO v0.2.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.0). This update creates a number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
-  - Updated to support Julia 1.0+, MathOptInterface (MOI), and MOI construction of subproblems.
-  - Additional domain reduction routines available.
-  - Support for specialized handling of linear and quadratic terms.
-  - Significant performance improvements due to pre-allocation of Wengert tapes and MOI support.
-  - A more intuitive API for McCormick relaxation construction.
-- 7/5/2019: [**EAGO v0.2.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.1). This contains fixes for a few minor issues.
-  - Bug fix for explicit SIP solving routine that occurred for uncertainty sets of dimension greater than 1.
-  - Bug fix for Max objective sense.
-- 11/1/2019: [**EAGO v0.3.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.3.0). This update is intended to be the last to create a large number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
-  - A number of performance improvements have been made to the underlying McCormick relaxation library.
-  - The optimizer used to construct relaxations is now modified in place.
-  - All subproblem storage has been moved to the Optimizer object and storage types (e.g. LowerInfo) have been removed.
-  - A MinMax heap structure is now used to store nodes.
-  - Speed and aesthetics for logging and printing utilities have been updated.
-  - Subroutines are now customized by creating a subtype of 'ExtensionType' and defining subroutines which dispatch on this new structure.
-  - Parametric interval methods and the Implicit optimizer have been move to a separate package (to be tagged shortly.)
-  - JIT compilation time has been reduced sub
-- 6/7/2020: [**EAGO v0.4.0 is on the master**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.0).
+- 6/7/2020: [**EAGO v0.4.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.0).
   - Support for new MOI/JuMP `RawParameter` input and a number of new attributes.
   - Separates McCormick and ReverseMcCormick libraries (now [McCormick.jl](https://github.com/PSORLab/McCormick.jl) and [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl))
     from main package.  McCormick.jl is reexported.
@@ -127,6 +109,9 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Significantly simplify internal codebase for `EAGO.Optimizer` (no changes to API): fully decouples input problem specifications from the formulation used internally, stack only stores variables that are branched on, and a number of internal rearrangements to clearly delineate different routines.
   - Add problem classification preprocessing that throws to simpler routines if LP problem types are detected (enables future support for SOCP, MILP, MISOCP, and Convex forms).
   - Fix multiple bugs and add more transparent error codes.
+
+- [**EAGO v0.4.1 has been tagged**] Contains minor bug releases.
+- [**EAGO v0.4.2 has been tagged**] Support for Julia v1.5.
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
@@ -170,8 +155,8 @@ Please report bugs or feature requests by opening an issue using the Github [**i
 
 Please cite the following paper when using EAGO. In plain tex form this is:
 ```
- M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia, 
- Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566 
+ M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia,
+ Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566
 ```
 
 A corresponding bibtex entry text is given below and a corresponding .bib file is given in citation.bib.
