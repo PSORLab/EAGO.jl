@@ -15,6 +15,7 @@
 # copy_subexpression_value!, eliminate_fixed_variables!
 #############################################################################
 
+include("register_special.jl")
 include("empty_evaluator.jl")
 include("univariate.jl")
 

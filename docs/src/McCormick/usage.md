@@ -1,6 +1,6 @@
 # Basic Usage
 
-## **Bounding a function via smooth McCormick objects**
+## **Bounding a function via McCormick operators**
 In order to bound a function using a McCormick relaxation. You first construct
 structure that bounds the input variables then you construct pass these variables
 two a function.

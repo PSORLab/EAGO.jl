@@ -23,6 +23,10 @@ Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported:
 - [x] **Inverse Trignometric Functions** (asin, acos, atan)
 - [x] **Hyperbolic Functions** (sinh, cosh, tanh)
 - [x] **Inverse Hyperbolic Functions** (asinh, acosh, atanh)
+- [x] **Common Activation Functions** (relu, leaky_relu, param_relu, sigmoid, bisigmoid,
+                                       softsign, softplus, maxtanh, pentanh,
+                                       GeLU, ELU, SELU, Swish-1)
+- [x] **Special Functions** (erf)
 
 ### **Bivariate Operators: McCormick & McCormick**
 
@@ -37,6 +41,32 @@ Arbitrarily differentiable relaxations can be constructed for the following oper
 - [x] **subtraction** (-)
 - [x] **minimization** (min)
 - [x] **maximization** (max)
+
+### Activation Functions Supported
+```@docs
+relu
+leaky_relu
+param_relu
+sigmoid
+bisigmoid
+softsign
+softplus
+maxtanh
+pentanh
+gelu
+elu
+selu
+swish1
+```
+
+### Bound Setting Functions
+```@docs
+positive
+negative
+lower_bnd
+upper_bnd
+bnd
+```
 
 ### References
 - **Khan KA, Watson HAJ, Barton PI (2017).** Differentiable McCormick relaxations. *Journal of Global Optimization*, 67(4):687-729.
