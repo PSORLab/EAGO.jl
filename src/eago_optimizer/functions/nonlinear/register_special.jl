@@ -45,6 +45,9 @@ function register_eago_operators!(m::JuMP.Model)
     # register other functions
     #JuMP.register(m, :xlogx, 1, xlogx, xlogx_deriv, xlogx_deriv2)
     JuMP.register(m, :erf, 1, erf, McCormick.erf_deriv, McCormick.erf_deriv2)
+    JuMP.register(m, :erfinv, 1, erfinv, McCormick.erfinv_deriv, McCormick.erfinv_deriv2)
+    JuMP.register(m, :erfc, 1, erfc, McCormick.erfc_deriv, McCormick.erfc_deriv2)
+    JuMP.register(m, :erfcinv, 1, erfcinv, x -> -McCormick.erfinv_deriv(1.0 - x), x -> McCormick.erfinv_deriv2(1.0 - x))
 
     # register bounding functions
     d_lower_bnd = JuMP._UserFunctionEvaluator(lower_bnd, McCormick.d_lower_bnd_grad, 2)
