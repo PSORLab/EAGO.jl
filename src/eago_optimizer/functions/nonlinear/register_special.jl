@@ -43,11 +43,16 @@ function register_eago_operators!(m::JuMP.Model)
     JuMP._Derivatives.register_multivariate_operator!(m.nlp_data.user_operators, :selu, d_selu)
 
     # register other functions
-    #JuMP.register(m, :xlogx, 1, xlogx, xlogx_deriv, xlogx_deriv2)
+    JuMP.register(m, :xlogx, 1, xlogx, McCormick.xlogx_deriv, McCormick.xlogx_deriv2)
     JuMP.register(m, :erf, 1, erf, McCormick.erf_deriv, McCormick.erf_deriv2)
     JuMP.register(m, :erfinv, 1, erfinv, McCormick.erfinv_deriv, McCormick.erfinv_deriv2)
     JuMP.register(m, :erfc, 1, erfc, McCormick.erfc_deriv, McCormick.erfc_deriv2)
     JuMP.register(m, :erfcinv, 1, erfcinv, x -> -McCormick.erfinv_deriv(1.0 - x), x -> McCormick.erfinv_deriv2(1.0 - x))
+
+    d_arh = JuMP._UserFunctionEvaluator(McCormick.arh, McCormick.arh_grad, 2)
+    d_xexpax = JuMP._UserFunctionEvaluator(McCormick.xexpax, McCormick.xexpax_grad, 2)
+    JuMP._Derivatives.register_multivariate_operator!(m.nlp_data.user_operators, :arh, d_arh)
+    JuMP._Derivatives.register_multivariate_operator!(m.nlp_data.user_operators, :xexpax, d_xexpax)
 
     # register bounding functions
     d_lower_bnd = JuMP._UserFunctionEvaluator(lower_bnd, McCormick.d_lower_bnd_grad, 2)
