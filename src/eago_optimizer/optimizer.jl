@@ -795,7 +795,7 @@ function MOI.get(m::Optimizer, p::MOI.RawParameter)
     if hasfield(EAGOParameters, psym)
         return getfield(m._parameters, psym, value)
     else
-        return getfield!(m, psym, value)
+        return getfield(m, psym, value)
     end
 end
 
