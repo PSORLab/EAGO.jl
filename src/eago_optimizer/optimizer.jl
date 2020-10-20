@@ -22,6 +22,8 @@ structure to the `Optimizer` in the `ext_type` field.
 """
 abstract type ExtensionType end
 struct DefaultExt <: ExtensionType end
+MOIU.map_indices(::Function, x::ExtensionType) = x
+MOIU.map_indices(::Function, x::DefaultExt) = x
 
 @enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
 @enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
@@ -793,9 +795,9 @@ function MOI.get(m::Optimizer, p::MOI.RawParameter)
     end
 
     if hasfield(EAGOParameters, psym)
-        return getfield(m._parameters, psym, value)
+        return getfield(m._parameters, psym)
     else
-        return getfield(m, psym, value)
+        return getfield(m, psym)
     end
 end
 
