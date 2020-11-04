@@ -15,45 +15,6 @@
 """
 $(TYPEDSIGNATURES)
 
-Performs `any(f.(x))` in an unsafe manner. Assumes `n == length(x)`. About 4x
-faster for small arrays (n < 1000).
-"""
-function unsafe_any(f, x::Vector{T}, n::Int) where T
-    i = 1
-    m = n + 1
-    while i < m
-        v = f(@inbounds x[i])
-        if v
-            return true
-        end
-        i += 1
-    end
-    return false
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Performs `any(f.(x, y))` in an unsafe manner. Assumes `n == length(x) == length(y)`.
-About 2x faster for small arrays (n < 1000) than `any(x -> (x[1] && x[2]), zip(x, y))`.
-"""
-function unsafe_any(f, x::Vector{T}, y::Vector{T}, n::Int) where T
-    i = 1
-    m = n + 1
-    while i < m
-        v = f(@inbounds x[i], @inbounds y[i])
-        if v
-            return true
-        end
-        i += 1
-    end
-    return false
-end
-
-
-"""
-$(TYPEDSIGNATURES)
-
 Performs `map!(f, y, x)` in an unsafe manner if y[i] is true, else no-op.
 Assumes `n == length(x) == length(y)`. About 2x faster for small arrays (n < 1000).
 """

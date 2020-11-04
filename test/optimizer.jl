@@ -101,6 +101,25 @@ end
     @test model._input_problem._variable_info[3].upper_bound == 2.0
     @test model._input_problem._variable_info[3].has_upper_bound == true
     @test model._input_problem._variable_info[3].is_fixed == true
+
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(NaN))
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.LessThan(NaN))
+
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-3.5))
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.EqualTo(-3.5))
+    #@test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.ZeroOne())
+
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-3.5))
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.EqualTo(-3.5))
+    #@test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.ZeroOne())
+
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.GreaterThan(-3.5))
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.LessThan(-3.5))
+    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(-3.5))
+    #@test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.ZeroOne())
+
+    #MOI.add_constraint(model, MOI.SingleVariable(z), MOI.ZeroOne())
+    #@test is_integer(model, 4)
 end
 
 @testset "Add Linear Constraint " begin
@@ -585,7 +604,7 @@ end
     optimize!(m)
     @test isapprox(JuMP.objective_value(m), 1.0652212400578724, atol=1E-3)
 
-    m = Model(with_optimizer(EAGO.Optimizer))
+    m = Model(EAGO.Optimizer)
     xL = [-2.0 0.0]; xU = [2.0 4.0]
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])
     @NLobjective(m, Max, x[2]^2 + x[1]^2 + x[1]*x[2])

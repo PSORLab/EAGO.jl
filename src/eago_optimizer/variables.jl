@@ -30,6 +30,7 @@ MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
 const INEQ_SETS = Union{LT, GT, ET}
 MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: INEQ_SETS} = true
 
+#=
 function MOI.add_constraint(m::Optimizer, v::SV, zo::ZO)
     vi = v.variable
     check_inbounds!(m, vi)
@@ -41,8 +42,9 @@ function MOI.add_constraint(m::Optimizer, v::SV, zo::ZO)
     m._input_problem._variable_info[vi.value].has_lower_bound = true
     m._input_problem._variable_info[vi.value].has_upper_bound = true
     m._input_problem._variable_info[vi.value].is_integer = true
-    return CI{SV, MOI.ZO}(vi.value)
+    return CI{SV, ZO}(vi.value)
 end
+=#
 
 function MOI.add_constraint(m::Optimizer, v::SV, lt::LT)
     vi = v.variable
