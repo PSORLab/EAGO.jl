@@ -444,6 +444,12 @@ function convergence_check(t::ExtensionType, m::Optimizer)
       t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
   end
 
+  if t && m._min_converged_value < Inf
+      m._min_converged_value = min(m._min_converged_value, L)
+  else
+      m._min_converged_value = L
+  end
+
   return t
 end
 

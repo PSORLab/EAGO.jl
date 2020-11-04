@@ -522,6 +522,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _last_postprocessing_time::Float64 = 0.0
 
     # reset in initial_parse! in parse.jl
+    _min_converged_value::Float64 = Inf
     _global_lower_bound::Float64 = -Inf
     _global_upper_bound::Float64 = Inf
     _maximum_node_id::Int64 = 0

@@ -27,6 +27,11 @@ function print_solution!(m::Optimizer)
     if m._parameters.verbosity > 0
         println(" ")
         println("First Solution Found at Node $(m._first_solution_node)")
+        lower_bound = m._min_converged_value
+        if (m._input_problem._optimization_sense !== MOI.MIN_SENSE)
+            lower_bound *= -1.0
+        end
+        println("LBD = $(lower_bound)")
         println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         println("Solution is :")
         if m._feasible_solution_found
