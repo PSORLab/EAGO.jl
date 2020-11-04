@@ -1146,6 +1146,7 @@ function global_solve!(m::Optimizer)
         m._iteration_count += 1
     end
 
+    revert_adjusted_upper_bound!(m)
     m._objective_value = m._global_upper_bound
 
     # Prints the solution
