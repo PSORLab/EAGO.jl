@@ -550,7 +550,7 @@ end
     @NLobjective(m, Min, nl_expr)
     JuMP.optimize!(m)
 
-    @test isapprox(JuMP.objective_value(m), 0.5404086991071391, atol=1E-6)
+    @test isapprox(JuMP.objective_value(m), 0.5403032960741783, atol=1E-3)
     @test JuMP.termination_status(m) === MOI.OPTIMAL
     @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
 
@@ -573,7 +573,7 @@ end
     # ----- Objective ----- #
     @objective(m, Min, x[9])
     optimize!(m)
-    @test isapprox(objective_value(m), 7049.31835811113, atol=1E-2)
+    @test isapprox(objective_value(m), 7049.247765631681, atol=1E0)
 
     m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0, "output_iterations" => 0, "absolute_tolerance" => 1.0E-2))
 
