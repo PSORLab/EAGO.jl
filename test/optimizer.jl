@@ -633,6 +633,100 @@ end
     @test_throws AssertionError MOI.eval_hessian_lagrangian(x, [0.0], 0.0, 0.0, 0.0)
     MOI.eval_hessian_lagrangian(x, [], 0.0, 0.0, 0.0) === nothing
 end
+
+@testset "Register special expressions" begin
+    raw_index(v::MOI.VariableIndex) = v.value
+
+    model = Model()
+    @variable(model, x)
+    @variable(model, y)
+    register_eago_operators!(model)
+
+    @NLconstraint(model, c1, relu(x) <= 0.0)
+    @NLconstraint(model, c2, leaky_relu(x) <= 0.0)
+    @NLconstraint(model, c3, maxsig(x) <= 0.0)
+    @NLconstraint(model, c4, maxtanh(x) <= 0.0)
+    @NLconstraint(model, c5, softplus(x) <= 0.0)
+    @NLconstraint(model, c6, pentanh(x) <= 0.0)
+
+    @NLconstraint(model, c7, sigmoid(x) <= 0.0)
+    @NLconstraint(model, c8, bisigmoid(x) <= 0.0)
+
+    @NLconstraint(model, c9, softsign(x) <= 0.0)
+    @NLconstraint(model, c10, gelu(x) <= 0.0)
+    @NLconstraint(model, c11, swish1(x) <= 0.0)
+
+    @NLconstraint(model, c12, positive(x) <= 0.0)
+    @NLconstraint(model, c13, negative(x) <= 0.0)
+
+    @NLconstraint(model, c14, xlogx(x) <= 0.0)
+
+    @NLconstraint(model, c15, param_relu(x, 0.3) <= 0.0)
+    @NLconstraint(model, c16, elu(x, 0.3) <= 0.0)
+    @NLconstraint(model, c17, selu(x, 1.1, 0.3) <= 0.0)
+
+    @NLconstraint(model, c18, lower_bnd(x, -1.0) <= 0.0)
+    @NLconstraint(model, c19, upper_bnd(x, 1.0) <= 0.0)
+    @NLconstraint(model, c20, bnd(x, -1.0, 1.0) <= 0.0)
+
+    @NLconstraint(model, c21, arh(x, 3.0) <= 0.0)
+    @NLconstraint(model, c22, xexpax(x, 2.0) <= 0.0)
+
+    #@NLconstraint(model, c23, SpecialFunctions.erf(x) <= 0.0)
+    #@NLconstraint(model, c24, erfinv(x) <= 0.0)
+    #@NLconstraint(model, c25, erfc(x) <= 0.0)
+    #@NLconstraint(model, c26, erfcinv(x) <= 0.0)
+
+    values = zeros(2)
+    x_index = raw_index(JuMP.index(x))
+    y_index = raw_index(JuMP.index(y))
+    values[x_index] = 2.0
+    values[y_index] = 2.0
+
+    d = NLPEvaluator(model)
+    MOI.initialize(d, Symbol[:Grad])
+    out = zeros(26)
+    MOI.eval_constraint(d, out, values)
+
+    @test isapprox(out[1], 2.0, atol = 1E-3)
+    @test isapprox(out[2], 2.0, atol = 1E-3)
+    @test isapprox(out[3], 2.0, atol = 1E-3)
+    @test isapprox(out[4], 2.0, atol = 1E-3)
+    @test isapprox(out[5], 2.1269280110429727, atol = 1E-3)
+    @test isapprox(out[6], 0.9640275800758169, atol = 1E-3)
+    @test isapprox(out[7], 0.8807970779778823, atol = 1E-3)
+    @test isapprox(out[8], 0.7615941559557649, atol = 1E-3)
+    @test isapprox(out[9], 0.6666666666666666, atol = 1E-3)
+    @test isapprox(out[10], 1.9544997361036416, atol = 1E-3)
+    @test isapprox(out[11], 1.7615941559557646, atol = 1E-3)
+    @test isapprox(out[12], 2.0, atol = 1E-3)
+    @test isapprox(out[13], 2.0, atol = 1E-3)
+    @test isapprox(out[14], 1.3862943611198906, atol = 1E-3)
+    @test isapprox(out[15], 2.0, atol = 1E-3)
+    @test isapprox(out[16], 2.0, atol = 1E-3)
+    @test isapprox(out[17], 0.6, atol = 1E-3)
+    @test isapprox(out[18], 2.0, atol = 1E-3)
+    @test isapprox(out[19], 2.0, atol = 1E-3)
+    @test isapprox(out[20], 2.0, atol = 1E-3)
+    @test isapprox(out[21], 0.22313016014842982, atol = 1E-3)
+    @test isapprox(out[22], 109.19630006628847, atol = 1E-3)
+    #@test isapprox(out[23], 0.0, atol = 1E-3)
+    #@test isapprox(out[24], 0.0, atol = 1E-3)
+    #@test isapprox(out[25], 0.0, atol = 1E-3)
+    #@test isapprox(out[26], 0.0, atol = 1E-3)
+end
+
+@testset "Display Testset" begin
+    m = EAGO.Optimizer()
+    @test_nowarn EAGO.print_solution!(m)
+    @test_nowarn EAGO.print_results!(m, true)
+    @test_nowarn EAGO.print_results!(m, false)
+    @test_nowarn EAGO.print_results_post_cut!(m)
+    @test_nowarn EAGO.print_solution!(m)
+    @test_nowarn EAGO.print_iteration!(m)
+    @test_nowarn EAGO.print_node!(m)
+end
+
 #=
 @testset "User Defined Function Scrubber" begin
     gamma1_x1(z) = z[1]*(1253/z[3])/(1 + 2.62*(z[1]/z[2]))^2

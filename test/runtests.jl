@@ -2,7 +2,7 @@
 
 using Test
 using EAGO, JuMP, MathOptInterface, Ipopt, ForwardDiff
-using IntervalArithmetic
+using IntervalArithmetic, SpecialFunctions
 const MOI = MathOptInterface
 using ForwardDiff: Dual, Partials
 

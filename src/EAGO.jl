@@ -19,7 +19,7 @@ module EAGO
     import MathOptInterface
 
     using Reexport, Cassette, IntervalArithmetic, NumericIO, DocStringExtensions
-    using FastRounding
+    using FastRounding, SpecialFunctions
 
     using JuMP
     import JuMP._Derivatives: operators, NodeData
@@ -34,6 +34,7 @@ module EAGO
     import IntervalArithmetic: mid
 
     @reexport using McCormick
+    @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
 
     #using IntervalContractors
@@ -135,5 +136,4 @@ module EAGO
     # routines for solving SIPs
     export SIP_Options, SIP_Result, explicit_sip_solve
     include("eago_semiinfinite/semi_infinite.jl")
-
 end
