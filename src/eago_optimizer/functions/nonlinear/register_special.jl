@@ -45,10 +45,10 @@ function register_eago_operators!(m::JuMP.Model)
 
     # register other functions
     JuMP.register(m, :xlogx, 1, xlogx, McCormick.xlogx_deriv, McCormick.xlogx_deriv2)
-    JuMP.register(m, :f_erf, 1, SpecialFunctions.erf, McCormick.erf_deriv, McCormick.erf_deriv2)
-    JuMP.register(m, :f_erfinv, 1, SpecialFunctions.erfinv, McCormick.erfinv_deriv, McCormick.erfinv_deriv2)
-    JuMP.register(m, :f_erfc, 1, SpecialFunctions.erfc, McCormick.erfc_deriv, McCormick.erfc_deriv2)
-    JuMP.register(m, :f_erfcinv, 1, SpecialFunctions.erfcinv, x -> -McCormick.erfinv_deriv(1.0 - x), x -> McCormick.erfinv_deriv2(1.0 - x))
+    JuMP.register(m, :f_erf, 1, x -> erf(x), McCormick.erf_deriv, McCormick.erf_deriv2)
+    JuMP.register(m, :f_erfinv, 1, x -> erfinv(x), McCormick.erfinv_deriv, McCormick.erfinv_deriv2)
+    JuMP.register(m, :f_erfc, 1, x -> erfc(x), McCormick.erfc_deriv, McCormick.erfc_deriv2)
+    JuMP.register(m, :f_erfcinv, 1, x -> erfcinv(x), x -> -McCormick.erfinv_deriv(1.0 - x), x -> McCormick.erfinv_deriv2(1.0 - x))
 
     d_arh = JuMP._UserFunctionEvaluator(x -> McCormick.arh(x...), (g,x) -> McCormick.arh_grad(g,x...), 2)
     d_xexpax = JuMP._UserFunctionEvaluator(x -> McCormick.xexpax(x...), (g,x) -> McCormick.xexpax_grad(g,x...), 2)
