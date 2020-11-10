@@ -807,7 +807,7 @@ end
 ##### Support, set, and evaluate objective functions
 #####
 #####
-
+MOI.supports(::Optimizer, ::MOI.TimeLimitSec) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
 
