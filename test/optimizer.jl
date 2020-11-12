@@ -1,3 +1,10 @@
+@testset "MOI Utilities" begin
+    struct NewExtType <: EAGO.ExtensionType
+    end
+    @test MOIU.map_indices(exp, NewExtType()) == NewExtType()
+    @test MOIU.map_indices(exp, EAGO.DefaultExt()) == EAGO.DefaultExt()
+end
+
 @testset "Set/Get Attributes" begin
 
     m = EAGO.Optimizer()
@@ -28,6 +35,13 @@
     @test m._parameters.log_on === false
 
     @test MOI.supports(m, MOI.ObjectiveSense())
+    @test MOI.supports(m, MOI.TimeLimitSec())
+
+    MOI.set(m, MOI.TimeLimitSec(), 1.1)
+    @test m._parameters.time_limit == 1.1
+
+    MOI.set(m, MOI.TimeLimitSec(), nothing)
+    @test m._parameters.time_limit == Inf
 end
 
 @testset "Get Termination Code " begin
@@ -67,7 +81,7 @@ end
     @test_throws ErrorException @inferred EAGO.check_inbounds!(model,MOI.VariableIndex(6))
 end
 
-@testset "Add Variable Bounds" begin
+@testset "Variable Bounds" begin
     model = EAGO.Optimizer()
 
     @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.LessThan{Float64})
@@ -120,6 +134,9 @@ end
 
     #MOI.add_constraint(model, MOI.SingleVariable(z), MOI.ZeroOne())
     #@test is_integer(model, 4)
+
+    @test EAGO.lower_bound(EAGO.VariableInfo(false,2.0,false,6.0,false,false,EAGO.BRANCH)) == 2.0
+    @test EAGO.upper_bound(EAGO.VariableInfo(false,2.0,false,6.0,false,false,EAGO.BRANCH)) == 6.0
 end
 
 @testset "Add Linear Constraint " begin
@@ -718,6 +735,8 @@ end
 
 @testset "Display Testset" begin
     m = EAGO.Optimizer()
+    MOI.set(m, MOI.RawParameter(:verbosity), 2)
+    #MOI.set(m, MOI.ObjectiveSense(), MIN_SENSE)
     @test_nowarn EAGO.print_solution!(m)
     @test_nowarn EAGO.print_results!(m, true)
     @test_nowarn EAGO.print_results!(m, false)
@@ -725,6 +744,12 @@ end
     @test_nowarn EAGO.print_solution!(m)
     @test_nowarn EAGO.print_iteration!(m)
     @test_nowarn EAGO.print_node!(m)
+
+    #MOI.set(m, MOI.ObjectiveSense(), MAX_SENSE)
+    #@test_nowarn EAGO.print_results!(m, true)
+    #@test_nowarn EAGO.print_results!(m, false)
+    #@test_nowarn EAGO.print_results_post_cut!(m)
+    #@test_nowarn EAGO.print_iteration!(m)
 end
 
 #=

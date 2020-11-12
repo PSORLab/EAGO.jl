@@ -9,11 +9,11 @@
     p_u = [1.0]
 
     # Create optimizer for use in solving SIP
-    opt = with_optimizer(EAGO.Optimizer, cut_max_iterations = 0,
-                                             subgrad_tighten = false,
-                                             absolute_tolerance = 1E-4,
-                                             relative_tolerance = 1E-4,
-                                             verbosity = 0)
+    opt = optimizer_with_attributes(EAGO.Optimizer, "cut_max_iterations" => 0,
+                                                    "subgrad_tighten" => false,
+                                                    "absolute_tolerance" => 1E-4,
+                                                    "relative_tolerance" => 1E-4,
+                                                    "verbosity" => 0)
     m = JuMP.Model(opt)
     sip_result = explicit_sip_solve(x_l, x_u, p_l, p_u, f, [gSIP], sip_absolute_tolerance = 1E-3)
 

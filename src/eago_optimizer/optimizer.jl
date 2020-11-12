@@ -730,12 +730,12 @@ function MOI.set(m::Optimizer, p::MOI.RawParameter, value)
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
-    m.time_limit = Inf
+    m._parameters.time_limit = Inf
     return nothing
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
-    m.time_limit = value
+    m._parameters.time_limit = value
     return nothing
 end
 
