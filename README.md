@@ -5,7 +5,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Documentation**                                                | **Linux/OS/Windows**                                                                     |
 |:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://travis-ci.org/PSORLab/EAGO.jl.svg?branch=master)](https://travis-ci.org/PSORLab/EAGO.jl) |
+| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) |
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
@@ -112,6 +112,24 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 - [**EAGO v0.4.1 has been tagged**] Contains minor bug releases.
 - [**EAGO v0.4.2 has been tagged**] Support for Julia v1.5.
+- XX/XX/2020: [**EAGO v0.5 has been tagged**]()
+  - Introduces the `register_eago_operators!(m::JuMP.Model)` which can be used
+    to register all nonstandard nonlinear terms used in EAGO in any JuMP model.
+  - Introduces `positive`, `negative`, `lower_bnd`, `upper_bnd`, and `bnd`
+    functions which can be used to enforce bounds on intermediate terms in
+    nonlinear expressions (EAGO.Optimizer only).
+  - Adds envelopes: `abs2`, `sinpi`, `cospi`, `fma`, `cbrt`.
+  - Adds envelopes and functions: `xlogx`
+  - Adds envelopes of special functions: `erf`, `erfc`, `erfinv`, `erfcinv`
+  - Adds envelopes of activation functions: `relu`, `gelu`, `elu`, `selu`, `swish1`,
+                                             `sigmoid`, `softsign`, `softplus`,
+                                             `bisigmoid`, `pentanh`, `leaky_relu`,
+                                             `param_relu`.
+  - Error messages in `sip_explicit` have been made more transparent.
+  - Fixes some issues with documentation renders and links.
+  - Add support for polyhedra and ellipsodial uncertainty sets in `sip_explicit`.
+  - Drops appveyor CI in favor of Travis CI.
+
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
