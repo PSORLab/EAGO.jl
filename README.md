@@ -9,7 +9,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
-|[![Coverage Status](https://coveralls.io/repos/github/PSORLab/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/PSORLab/EAGO.jl?branch=master) [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
+| [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 
 ## EAGO's Optimizer Capabilities
 
@@ -149,7 +149,7 @@ generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 pkg> add JuMP
 ```
 
-EAGO v0.5.0 is the current tagged version and requires Julia 1.2+. Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
+EAGO v0.5.1 is the current tagged version and requires Julia 1.2+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
 for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
