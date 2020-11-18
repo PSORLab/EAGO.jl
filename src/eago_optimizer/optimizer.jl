@@ -720,7 +720,7 @@ function MOI.set(m::Optimizer, p::MOI.RawParameter, value)
         error("EAGO only supports raw parameters with Symbol or String names.")
     end
 
-    if hasfield(EAGOParameters, psym)
+    if psym in fieldnames(EAGOParameters)
         setfield!(m._parameters, psym, value)
     else
         setfield!(m, psym, value)
@@ -795,7 +795,7 @@ function MOI.get(m::Optimizer, p::MOI.RawParameter)
         error("EAGO only supports raw parameters with Symbol or String names.")
     end
 
-    if hasfield(EAGOParameters, psym)
+    if psym in fieldnames(EAGOParameters)
         return getfield(m._parameters, psym)
     else
         return getfield(m, psym)
