@@ -112,7 +112,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 - 06/17/2020: [**EAGO v0.4.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/commit/9c1bcf024a19840a0ac49c8c6da13619a5f3845f#comments) Contains minor bug releases.
 - 08/29/2020: [**EAGO v0.4.2 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.2) Support for Julia v1.5.
-- 11/18/2020: [**EAGO v0.5 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.0)
+- 11/18/2020: [**EAGO v0.5.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.0)
   - Introduces the `register_eago_operators!(m::JuMP.Model)` which can be used
     to register all nonstandard nonlinear terms used in EAGO in any JuMP model.
   - Introduces `positive`, `negative`, `lower_bnd`, `upper_bnd`, and `bnd`
@@ -128,7 +128,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Error messages in `sip_explicit` have been made more transparent.
   - Fixes some issues with documentation image rendering and links.
   - Drops appveyor CI and Travis CI in favor of Github Actions.
-
+- 11/18/2020 [**EAGO v0.5.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.1) Support for Julia ~1 (with limited functionality for Julia 1.0, 1.1).
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
