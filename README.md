@@ -5,7 +5,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Documentation**                                                | **Linux/OS/Windows**                                                                     | **Persistent DOI**                                                                     |
 |:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | Zenodo Badge |
+| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | [![DOI](https://zenodo.org/badge/108954118.svg)](https://zenodo.org/badge/latestdoi/108954118) |
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
@@ -110,9 +110,9 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Add problem classification preprocessing that throws to simpler routines if LP problem types are detected (enables future support for SOCP, MILP, MISOCP, and Convex forms).
   - Fix multiple bugs and add more transparent error codes.
 
-- [**EAGO v0.4.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/commit/9c1bcf024a19840a0ac49c8c6da13619a5f3845f#comments) Contains minor bug releases.
-- [**EAGO v0.4.2 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.2) Support for Julia v1.5.
-- 11/18/2020: [**EAGO v0.5 has been tagged**]()
+- 06/17/2020: [**EAGO v0.4.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/commit/9c1bcf024a19840a0ac49c8c6da13619a5f3845f#comments) Contains minor bug releases.
+- 08/29/2020: [**EAGO v0.4.2 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.2) Support for Julia v1.5.
+- 11/18/2020: [**EAGO v0.5 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.0)
   - Introduces the `register_eago_operators!(m::JuMP.Model)` which can be used
     to register all nonstandard nonlinear terms used in EAGO in any JuMP model.
   - Introduces `positive`, `negative`, `lower_bnd`, `upper_bnd`, and `bnd`
@@ -149,7 +149,7 @@ generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 pkg> add JuMP
 ```
 
-EAGO v0.4.0 is the current tagged version and requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
+EAGO v0.5.0 is the current tagged version and requires Julia 1.2+. Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
 for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
