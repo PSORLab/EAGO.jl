@@ -3,13 +3,13 @@
 # EAGO: Easy-Advanced Global Optimization
 EAGO is an open-source development environment for **robust and global optimization** in Julia.
 
-| **Documentation**                                                | **Linux/OS/Windows**                                                                     |
-|:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) |
+| **Documentation**                                                | **Linux/OS/Windows**                                                                     | **Persistent DOI**                                                                     |
+|:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
+| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | [![DOI](https://zenodo.org/badge/108954118.svg)](https://zenodo.org/badge/latestdoi/108954118) |
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
-|[![Coverage Status](https://coveralls.io/repos/github/PSORLab/EAGO.jl/badge.svg?branch=master)](https://coveralls.io/github/PSORLab/EAGO.jl?branch=master) [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
+| [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl) | [![Join the chat at https://gitter.im/EAGODevelopment](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/EAGODevelopment/Lobby?utm_source=share-link&utm_medium=link&utm_campaign=share-link)
 
 ## EAGO's Optimizer Capabilities
 
@@ -110,9 +110,9 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Add problem classification preprocessing that throws to simpler routines if LP problem types are detected (enables future support for SOCP, MILP, MISOCP, and Convex forms).
   - Fix multiple bugs and add more transparent error codes.
 
-- [**EAGO v0.4.1 has been tagged**] Contains minor bug releases.
-- [**EAGO v0.4.2 has been tagged**] Support for Julia v1.5.
-- XX/XX/2020: [**EAGO v0.5 has been tagged**]()
+- 06/17/2020: [**EAGO v0.4.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/commit/9c1bcf024a19840a0ac49c8c6da13619a5f3845f#comments) Contains minor bug releases.
+- 08/29/2020: [**EAGO v0.4.2 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.4.2) Support for Julia v1.5.
+- 11/18/2020: [**EAGO v0.5.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.0)
   - Introduces the `register_eago_operators!(m::JuMP.Model)` which can be used
     to register all nonstandard nonlinear terms used in EAGO in any JuMP model.
   - Introduces `positive`, `negative`, `lower_bnd`, `upper_bnd`, and `bnd`
@@ -126,10 +126,9 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
                                              `bisigmoid`, `pentanh`, `leaky_relu`,
                                              `param_relu`.
   - Error messages in `sip_explicit` have been made more transparent.
-  - Fixes some issues with documentation renders and links.
-  - Add support for polyhedra and ellipsodial uncertainty sets in `sip_explicit`.
-  - Drops appveyor CI in favor of Travis CI.
-
+  - Fixes some issues with documentation image rendering and links.
+  - Drops appveyor CI and Travis CI in favor of Github Actions.
+- 11/18/2020 [**EAGO v0.5.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.1) Support for Julia ~1 (with limited functionality for Julia 1.0, 1.1).
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
@@ -150,7 +149,7 @@ generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
 pkg> add JuMP
 ```
 
-EAGO v0.4.0 is the current tagged version and requires Julia 1.2+. Use with version 1.4 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
+EAGO v0.5.1 is the current tagged version and requires Julia 1.2+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
 for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
