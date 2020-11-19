@@ -143,58 +143,58 @@ function label_branch_variables!(m::Optimizer)
     m._user_branch_variables = !isempty(m._parameters.branch_variable)
     if m._user_branch_variables
         append!(m._branch_variables, m._parameters.branch_variable)
-        return nothing
-    end
+    else
 
-    append!(m._branch_variables, fill(false, m._working_problem._variable_count))
+        append!(m._branch_variables, fill(false, m._working_problem._variable_count))
 
-    # adds nonlinear terms in quadratic constraints
-    sqf_leq = m._working_problem._sqf_leq
-    for i = 1:m._working_problem._sqf_leq_count
-        quad_ineq = @inbounds sqf_leq[i]
-        for term in quad_ineq.func.quadratic_terms
-            variable_index_1 = term.variable_index_1.value
-            variable_index_2 = term.variable_index_2.value
-            @inbounds m._branch_variables[variable_index_1] = true
-            @inbounds m._branch_variables[variable_index_2] = true
+        # adds nonlinear terms in quadratic constraints
+        sqf_leq = m._working_problem._sqf_leq
+        for i = 1:m._working_problem._sqf_leq_count
+            quad_ineq = @inbounds sqf_leq[i]
+            for term in quad_ineq.func.quadratic_terms
+                variable_index_1 = term.variable_index_1.value
+                variable_index_2 = term.variable_index_2.value
+                @inbounds m._branch_variables[variable_index_1] = true
+                @inbounds m._branch_variables[variable_index_2] = true
+            end
         end
-    end
 
-    sqf_eq = m._working_problem._sqf_eq
-    for i = 1:m._working_problem._sqf_eq_count
-        quad_eq = @inbounds sqf_eq[i]
-        for term in quad_eq.func.quadratic_terms
-            variable_index_1 = term.variable_index_1.value
-            variable_index_2 = term.variable_index_2.value
-            @inbounds m._branch_variables[variable_index_1] = true
-            @inbounds m._branch_variables[variable_index_2] = true
+        sqf_eq = m._working_problem._sqf_eq
+        for i = 1:m._working_problem._sqf_eq_count
+            quad_eq = @inbounds sqf_eq[i]
+            for term in quad_eq.func.quadratic_terms
+                variable_index_1 = term.variable_index_1.value
+                variable_index_2 = term.variable_index_2.value
+                @inbounds m._branch_variables[variable_index_1] = true
+                @inbounds m._branch_variables[variable_index_2] = true
+            end
         end
-    end
 
-    obj_type = m._working_problem._objective_type
-    if obj_type === SCALAR_QUADRATIC
-        for term in m._working_problem._objective_sqf.func.quadratic_terms
-            variable_index_1 = term.variable_index_1.value
-            variable_index_2 = term.variable_index_2.value
-            @inbounds m._branch_variables[variable_index_1] = true
-            @inbounds m._branch_variables[variable_index_2] = true
+        obj_type = m._working_problem._objective_type
+        if obj_type === SCALAR_QUADRATIC
+            for term in m._working_problem._objective_sqf.func.quadratic_terms
+                variable_index_1 = term.variable_index_1.value
+                variable_index_2 = term.variable_index_2.value
+                @inbounds m._branch_variables[variable_index_1] = true
+                @inbounds m._branch_variables[variable_index_2] = true
+            end
         end
-    end
 
-    # label nonlinear branch variables (assumes affine terms have been extracted)
-    nl_constr = m._working_problem._nonlinear_constr
-    for i = 1:m._working_problem._nonlinear_count
-        nl_constr_eq = @inbounds nl_constr[i]
-        grad_sparsity = nl_constr_eq.expr.grad_sparsity
-        for indx in grad_sparsity
-            @inbounds m._branch_variables[indx] = true
+        # label nonlinear branch variables (assumes affine terms have been extracted)
+        nl_constr = m._working_problem._nonlinear_constr
+        for i = 1:m._working_problem._nonlinear_count
+            nl_constr_eq = @inbounds nl_constr[i]
+            grad_sparsity = nl_constr_eq.expr.grad_sparsity
+            for indx in grad_sparsity
+                @inbounds m._branch_variables[indx] = true
+            end
         end
-    end
 
-    if obj_type === NONLINEAR
-        grad_sparsity = m._working_problem._objective_nl.expr.grad_sparsity
-        for indx in grad_sparsity
-            @inbounds m._branch_variables[indx] = true
+        if obj_type === NONLINEAR
+            grad_sparsity = m._working_problem._objective_nl.expr.grad_sparsity
+            for indx in grad_sparsity
+                @inbounds m._branch_variables[indx] = true
+            end
         end
     end
 
