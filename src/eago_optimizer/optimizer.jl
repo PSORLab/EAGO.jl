@@ -399,6 +399,23 @@ function Base.isempty(x::ParsedProblem)
     return is_empty_flag
 end
 
+
+function default_nlp_solver()
+    
+    upper_optimizer = Ipopt.Optimizer()
+
+    MOI.set(upper_optimizer, MOI.RawParameter("max_iter"),3000)
+    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_tol"), 1E30)
+    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_iter"), 300)
+    MOI.set(upper_optimizer, MOI.RawParameter("constr_viol_tol"), 0.000001)
+    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_compl_inf_tol"), 0.000001)
+    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_dual_inf_tol"), 1.0)
+    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_constr_viol_tol"), 0.000001)
+    MOI.set(upper_optimizer, MOI.RawParameter("print_level"), 0)
+
+    return upper_optimizer
+end
+
 export Optimizer
 """
 $(TYPEDEF)
@@ -426,11 +443,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     obbt_variable_values::Vector{Bool} = Bool[]
 
     # Upper bounding options (set as a user-specified option)
-    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer(max_iter = 3000, acceptable_tol = 1E30,
-                                                             acceptable_iter = 300, constr_viol_tol = 0.000001,
-                                                             acceptable_compl_inf_tol = 0.000001,
-                                                             acceptable_dual_inf_tol = 1.0,
-                                                             acceptable_constr_viol_tol = 0.000001, print_level = 0)
+    upper_optimizer::MOI.AbstractOptimizer = default_nlp_solver()
 
     # Extensions (set as user-specified option)
     enable_optimize_hook::Bool = false
