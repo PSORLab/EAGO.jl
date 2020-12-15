@@ -58,6 +58,9 @@ mutable struct SIPProblem
     print_interval::Int64
     verbosity::Int64
 
+    #polyhedral_uncertainty_set
+    #ellipsodial_uncertainty_set
+
     optimizer
     kwargs
   end
@@ -91,13 +94,22 @@ mutable struct SIPProblem
         end
       end
 
+      #polyhedral_uncertainty_set = nothing
+    #  ellipsodial_uncertainty_set = nothing
+      #conic_uncertainty_set = nothing
+    #  convex_uncertainty_set = nothing
+
       nSIP = length(gSIP)
 
       SIPProblem(x_l, x_u, p_l, p_u, np, nSIP, nx, sense, init_lower_disc,
                  init_upper_disc, absolute_tolerance, constraint_tolerance,
                  iteration_limit,
                  initial_eps_g, initial_r, return_hist, header_interval,
-                 print_interval, verbosity, optimizer, opt_dict)
+                 print_interval, verbosity,
+                 #polyhedral_uncertainty_set,
+                 #llipsodial_uncertainty_set, conic_uncertainty_set,
+                 #convex_uncertainty_set,
+                 optimizer, opt_dict)
   end
 
   function print_int!(verbosity::Int64, hdr_intv::Int64, prt_intv::Int64,

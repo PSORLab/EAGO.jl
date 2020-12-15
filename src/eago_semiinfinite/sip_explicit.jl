@@ -16,8 +16,23 @@
 # Load a model in a way that gets rid of any issues with pointers for C references
 # particularly in the EAGO solver...
 function build_model(problem::SIPProblem)
-  model = Model(optimizer_with_attributes(problem.optimizer; problem.kwargs...))
+  model = Model(problem.optimizer)
+  for (k,v) in problem.kwargs
+      MOI.set(model, MOI.RawParameter(String(k)), v)
+  end
   return model
+end
+
+function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
+    if !isnothing(model.polyhedral_uncertainty_set)
+        #@constraint(model, )
+    end
+
+    if !isnothing(model.ellipsodial_uncertainty_set)
+        #@constraint(model, )
+    end
+
+    return
 end
 
 function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
@@ -38,6 +53,10 @@ function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
     register(model_llp1, :gmulti, np, gmulti, autodiff=true)
     @NLobjective(model_llp1, Min, -gmulti(p1...))
   end
+
+  #=
+  add_uncertainty_constraint!(model_llp1, problem)
+  =#
 
   JuMP.optimize!(model_llp1)
   termination_status = JuMP.termination_status(model_llp1)
@@ -75,6 +94,10 @@ function sipRes_llp2(xbar::Vector{Float64}, result::SIPResult,
     @NLobjective(model_llp2, Min, -gmulti(p2...))
   end
 
+  #=
+  add_uncertainty_constraint!(model_llp2, problem)
+  =#
+
   JuMP.optimize!(model_llp2)
   termination_status = JuMP.termination_status(model_llp2)
   result_status = JuMP.primal_status(model_llp2)
@@ -105,15 +128,15 @@ function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}}
   model_bnd = build_model(problem_storage)
   @variable(model_bnd, xL[i] <= x[i=1:nx] <= xU[i])
   initialize_extras(model_bnd, x)
-  for i in 1:problem_storage.nSIP
-    for j in 1:length(disc_set)
+  for i = 1:problem_storage.nSIP
+    for j = 1:length(disc_set)
         gi = Symbol("g$i$j")
         g(x...) = cb.gSIP[i](x, disc_set[j][i])
         register(model_bnd, gi, nx, g, autodiff=true)
         func_call = Expr(:call)
         args = []
         push!(args, gi)
-        for i in 1:nx
+        for i = 1:nx
           push!(args, JuMP.VariableRef(model_bnd, MathOptInterface.VariableIndex(i)))
         end
         func_call.args = args
@@ -201,7 +224,7 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
     # solve inner program  and update lower discretization set
     non_positive_flag = true
     temp_lower_disc = Vector{Float64}[]
-    for i in 1:nSIP
+    for i = 1:nSIP
       llp_out = sipRes_llp1(result.xsol, result, prob, cb, i)
       print_summary!(verbosity, llp_out[1], llp_out[2], llp_out[3], "Lower LLP$i")
       if (llp_out[1] + tolerance > 0.0)
@@ -222,7 +245,7 @@ function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
     if feas
       non_positive_flag = true
       temp_upper_disc = Vector{Float64}[]
-      for i in 1:nSIP
+      for i = 1:nSIP
         llp2_out = sipRes_llp2(result.xsol, result, prob, cb, i)
         print_summary!(verbosity, llp2_out[1], llp2_out[2], llp2_out[3], "Upper LLP$i")
         if (llp2_out[1] + tolerance/10.0 > 0.0)
@@ -287,9 +310,9 @@ function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
   cb = SIPCallback(f, gSIP)
 
   if (algo === :sipRes)
-    sip_sto = sipRes(init_bnd, prob, result, cb)
+      sip_sto = sipRes(init_bnd, prob, result, cb)
   else
-    error("Desired algorithm unsupported.")
+      error("Desired algorithm unsupported.")
   end
   return sip_sto
 end
