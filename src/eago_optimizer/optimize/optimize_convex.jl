@@ -8,7 +8,7 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eeago_optimizer/optimize/optimize_convex.jl
+# src/eago_optimizer/optimize/optimize_convex.jl
 # Contains the solve_local_nlp! routine which computes the optimal value
 # of a convex function. This is used to compute the upper bound in the
 # branch and bound routine. A number of utility function required for
@@ -33,7 +33,10 @@ function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
     return nothing
 end
 
-function revert_adjusted_upper_bound!(d::Optimizer)
+
+revert_adjusted_upper_bound!(t::ExtensionType, d::Optimizer) = nothing
+
+function revert_adjusted_upper_bound!(t::DefaultExt, d::Optimizer)
 
     adj_atol = d._parameters.absolute_tolerance/100.0
     adj_rtol = d._parameters.relative_tolerance/100.0

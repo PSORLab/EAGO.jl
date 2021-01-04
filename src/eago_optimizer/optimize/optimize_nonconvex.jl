@@ -1058,6 +1058,7 @@ postprocess!(m::Optimizer) = postprocess!(m.ext_type, m)
 single_storage!(m::Optimizer) = single_storage!(m.ext_type, m)
 branch_node!(m::Optimizer) = branch_node!(m.ext_type, m)
 fathom!(m::Optimizer) = fathom!(m.ext_type, m)
+revert_adjusted_upper_bound!(m::Optimizer) = revert_adjusted_upper_bound!(m.ext_type, m)
 
 """
 $(TYPEDSIGNATURES)
