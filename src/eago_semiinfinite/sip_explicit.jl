@@ -62,7 +62,13 @@ function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
   termination_status = JuMP.termination_status(model_llp1)
   result_status = JuMP.primal_status(model_llp1)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
-  (~valid_result) && error("Error encountered in lower level problem.")
+  if problem.local_solver && ~((termination_status === MOI.LOCALLY_SOLVED) || (termination_status === MOI.ALMOST_LOCALLY_SOLVED))
+      error("Lower problem did not solve to local optimality.")
+  elseif ~valid_result
+      error("Error encountered in lower level problem.
+             Termination status is $termination_status.
+             Primal status is $result_status.")
+  end
 
   obj_val = -JuMP.objective_value(model_llp1)
   if np == 1
@@ -102,7 +108,12 @@ function sipRes_llp2(xbar::Vector{Float64}, result::SIPResult,
   termination_status = JuMP.termination_status(model_llp2)
   result_status = JuMP.primal_status(model_llp2)
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
-  (~valid_result) && error("Error encountered in lower level problem.")
+
+  if problem.local_solver && ~((termination_status === MOI.LOCALLY_SOLVED) || (termination_status === MOI.ALMOST_LOCALLY_SOLVED))
+      error("Lower problem did not solve to local optimality.")
+  elseif ~problem.local_solver && (~valid_result)
+      error("Error encountered in lower level problem.")
+  end
 
   obj_val = -JuMP.objective_value(model_llp2)
   if np == 1
@@ -162,15 +173,18 @@ function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}}
   valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
   sip_storage.solution_time = MOI.get(model_bnd, MOI.SolveTime())
 
-  if (~(valid_result && is_feasible) && eps_g == 0.0)
-    error("Lower problem did not solve to global optimality.")
+  if (~(valid_result && is_feasible) && eps_g == 0.0) && ~problem_storage.local_solver
+      error("Lower problem did not solve to global optimality.")
+  elseif (~(valid_result && is_feasible) && eps_g == 0.0) && problem_storage.local_solver &&
+       ~((termination_status === MOI.LOCALLY_SOLVED) || (termination_status === MOI.ALMOST_LOCALLY_SOLVED))
+      error("Lower problem did not solve to local optimality.")
   else
-    if (problem_storage.sense === :min && eps_g == 0.0)
-      objective_value = obj_factor*JuMP.objective_value(model_bnd)
-    else
-      objective_value = obj_factor*JuMP.objective_bound(model_bnd)
-    end
-    xsol = JuMP.value.(x)
+      if (problem_storage.sense === :min && eps_g == 0.0)
+          objective_value = obj_factor*JuMP.objective_value(model_bnd)
+      else
+          objective_value = obj_factor*JuMP.objective_bound(model_bnd)
+      end
+      xsol = JuMP.value.(x)
   end
 
   return objective_value, xsol, is_feasible

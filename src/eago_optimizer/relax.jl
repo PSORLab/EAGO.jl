@@ -311,7 +311,7 @@ function bound_objective(t::ExtensionType, m::Optimizer)
     if obj_type === NONLINEAR
 
         # assumes current node has already been loaded into evaluator
-        objective_lo = lower_interval_bound(wp._objective_nl)
+        objective_lo = lower_interval_bound(m, wp._objective_nl, n)
 
     elseif obj_type === SINGLE_VARIABLE
         obj_indx = @inbounds sb_map[wp._objective_sv.variable.value]
