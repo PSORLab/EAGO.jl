@@ -58,6 +58,8 @@ mutable struct SIPProblem
     print_interval::Int64
     verbosity::Int64
 
+    local_solver::Bool
+
     #polyhedral_uncertainty_set
     #ellipsodial_uncertainty_set
 
@@ -81,6 +83,7 @@ mutable struct SIPProblem
       header_interval = haskey(kwargs, :sip_header_interval) ? kwargs[:sip_header_interval] : 20
       print_interval = haskey(kwargs, :sip_print_interval) ? kwargs[:sip_print_interval] : 1
       verbosity = haskey(kwargs, :sip_verbosity) ? kwargs[:sip_verbosity] : 1
+      local_solver = haskey(kwargs, :sip_local_solver) ?  kwargs[:sip_local_solver] : false
 
       sense = haskey(kwargs, :sip_sense) ? kwargs[:sip_sense] : :min
       init_lower_disc = haskey(kwargs, :sip_init_lower_disc) ? kwargs[:sip_init_lower_disc] : Vector{Vector{Float64}}[]
@@ -105,7 +108,7 @@ mutable struct SIPProblem
                  init_upper_disc, absolute_tolerance, constraint_tolerance,
                  iteration_limit,
                  initial_eps_g, initial_r, return_hist, header_interval,
-                 print_interval, verbosity,
+                 print_interval, verbosity, local_solver,
                  #polyhedral_uncertainty_set,
                  #llipsodial_uncertainty_set, conic_uncertainty_set,
                  #convex_uncertainty_set,
@@ -160,7 +163,7 @@ mutable struct SIPProblem
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-        max_len = 15
+        max_len = 18
         temp_str = string(round((ubd-lbd)/abs(ubd), digits = 6))
         len_str = length(temp_str)
         print_str *= (" "^(max_len - len_str))*temp_str*" |"
