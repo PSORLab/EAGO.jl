@@ -20,7 +20,7 @@ EAGO is a deterministic global optimizer designed to address a wide variety of o
 
 ## EAGO's Relaxations
 
-For each nonlinear term EAGO makes use of factorable representation to construct bounds and relaxations. In the case of F = y(y-1)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
+For each nonlinear term EAGO makes use of factorable representation to construct bounds and relaxations. In the case of F = y(y-5)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
 
 - *v*<sub>1</sub> = y
 - *v*<sub>2</sub> = *v*<sub>1</sub> - 5
