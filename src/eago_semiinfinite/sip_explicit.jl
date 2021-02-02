@@ -9,291 +9,242 @@
 # An implementation of the SIPres algorithm.
 #############################################################################
 
+abstract type AbstractSubproblemType end
+struct DefaultSubproblem <: AbstractSubproblemType end
 
 # Load a model in a way that gets rid of any issues with pointers for C references
 # particularly in the EAGO solver...
-function build_model(problem::SIPProblem)
-  model = Model(problem.optimizer)
-  for (k,v) in problem.kwargs
-      MOI.set(model, MOI.RawParameter(String(k)), v)
-  end
-  return model
+function build_model_llp(::DefaultSubproblem, prob::SIPProblem)
+    model = Model(prob.optimizer)
+    @variable(model, prob.p_l[i] <= p[i=1:prob.np] <=  prob.p_u[i])
+    for (k,v) in prob.kwargs
+        MOI.set(model, MOI.RawParameter(String(k)), v)
+    end
+    return model, p
+end
+
+function build_model_bnd(::DefaultSubproblem, prob::SIPProblem)
+    model = Model(prob.optimizer)
+    @variable(model, prob.x_l[i] <= x[i=1:prob.nx] <=  prob.x_u[i])
+    for (k,v) in prob.kwargs
+        MOI.set(model, MOI.RawParameter(String(k)), v)
+    end
+    return model, x
 end
 
 function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
-    if !isnothing(model.polyhedral_uncertainty_set)
+    #if !isnothing(model.polyhedral_uncertainty_set)
         #@constraint(model, )
-    end
-
-    if !isnothing(model.ellipsodial_uncertainty_set)
+    #end
+    #if !isnothing(model.ellipsodial_uncertainty_set)
         #@constraint(model, )
-    end
-
-    return
+    #end
+    return nothing
 end
 
-function sipRes_llp1(xbar::Vector{Float64}, result::SIPResult,
-                    problem::SIPProblem, cb::SIPCallback, indx::Int64)
+function llp_check(is_local::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalResultCode)
+    valid_result, is_feasible = is_globally_optimal(t, r)
+    if is_local
+        if (t_status != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED)
+            error("Lower problem did not solve to local optimality.")
+        end
+    elseif !valid_result
+        error("Error encountered in lower level problem. Termination status
+               is $t. Primal status is $r.")
+    end
+    return is_feasible
+end
+function sipRes_llp!(t::DefaultSubproblem, result::SIPResult, buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback, indx::Int64)
+    # build the model
+    m_llp, p = build_model_llp(t, prob)
 
-  pL = problem.p_l
-  pU = problem.p_u
-  np = problem.np
-
-  model_llp1 = build_model(problem)
-  @variable(model_llp1, pL[i] <= p1[i=1:np] <= pU[i])
-  if np == 1
+    # define the objective
     g(p...) = cb.gSIP[indx](xbar, p)
-    register(model_llp1, :g, np, g, autodiff=true)
-    @NLobjective(model_llp1, Min, -g(p1[1]))
-  else
-    gmulti(p...) = cb.gSIP[indx](xbar, p)
-    register(model_llp1, :gmulti, np, gmulti, autodiff=true)
-    @NLobjective(model_llp1, Min, -gmulti(p1...))
-  end
+    register(m_llp, :g, prob.np, g, autodiff=true)
+    nl_obj = prob.np == 1 ? :(-($g)(p[1])) :(-($g)(p...))
+    set_NL_objective(m_llp, MOI.MIN_SENSE, nl_obj)
 
-  #=
-  add_uncertainty_constraint!(model_llp1, problem)
-  =#
+    add_uncertainty_constraint!(m_llp, problem)
 
-  JuMP.optimize!(model_llp1)
-  termination_status = JuMP.termination_status(model_llp1)
-  result_status = JuMP.primal_status(model_llp1)
-  valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
-  if problem.local_solver && ~((termination_status === MOI.LOCALLY_SOLVED) || (termination_status === MOI.ALMOST_LOCALLY_SOLVED))
-      error("Lower problem did not solve to local optimality.")
-  elseif ~valid_result
-      error("Error encountered in lower level problem.
-             Termination status is $termination_status.
-             Primal status is $result_status.")
-  end
+    # optimize model and check status
+    JuMP.optimize!(m_llp)
+    tstatus = JuMP.termination_status(m_llp)
+    rstatus = JuMP.primal_status(m_llp)
+    is_feasible = llp_check(prob.local_solver, tstatus, rstatus)
 
-  obj_val = -JuMP.objective_value(model_llp1)
-  if np == 1
-    p_bar = JuMP.value.(p1)
-  else
-    p_bar = JuMP.value.(p1)
-  end
-  result.solution_time += MOI.get(model_llp1, MOI.SolveTime())
+    # fill buffer with subproblem result info
+    buffer.is_feasible = is_feasible
+    buffer.obj_value = -JuMP.objective_value(m_llp)
+    @__dot__ buffer.p_bar = JuMP.value(p)
+    result.solution_time += MOI.get(model_llp, MOI.SolveTime())
 
-  return obj_val, p_bar, is_feasible
+    return nothing
+end
+function sipRes_llp!(t::AbstractSubproblemType, result::SIPResult, buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback, indx::Int64)
+    sipRes_llp!(DefaultSubproblem(), result, buffer, prob, cb, indx)
 end
 
-function sipRes_llp2(xbar::Vector{Float64}, result::SIPResult,
-                    problem::SIPProblem, cb::SIPCallback, indx::Int64)
+function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
+                   r::MOI.PrimalResultCode, eps_g::Float64)
+    valid_result, is_feasible = is_globally_optimal(t, r)
+    if (!(valid_result && is_feasible) && iszero(eps_g)) && !is_local
+        error("Lower problem did not solve to global optimality.
+               Termination status = $t. Primal status = $r")
+    elseif (!(valid_result && is_feasible) && iszero(eps_g)) && is_local &&
+           !((t == MOI.LOCALLY_SOLVED) || (t == MOI.ALMOST_LOCALLY_SOLVED))
+        error("Lower problem did not solve to local optimality.")
+    end
+    return is_feasible
+end
 
-  pL = problem.p_l
-  pU = problem.p_u
-  np = problem.np
-
-  model_llp2 = build_model(problem)
-  @variable(model_llp2, pL[i] <= p2[i=1:np] <= pU[i])
-  if np == 1
-    g(p) = cb.gSIP[indx](xbar, p)
-    register(model_llp2, :g, np, g, autodiff=true)
-    @NLobjective(model_llp2, Min, -g(p2[1]))
-  else
-    gmulti(p...) = cb.gSIP[indx](xbar, p)
-    register(model_llp2, :gmulti, np, gmulti, autodiff=true)
-    @NLobjective(model_llp2, Min, -gmulti(p2...))
-  end
-
-  #=
-  add_uncertainty_constraint!(model_llp2, problem)
-  =#
-
-  JuMP.optimize!(model_llp2)
-  termination_status = JuMP.termination_status(model_llp2)
-  result_status = JuMP.primal_status(model_llp2)
-  valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
-
-  if problem.local_solver && ~((termination_status === MOI.LOCALLY_SOLVED) || (termination_status === MOI.ALMOST_LOCALLY_SOLVED))
-      error("Lower problem did not solve to local optimality.")
-  elseif ~problem.local_solver && (~valid_result)
-      error("Error encountered in lower level problem.")
-  end
-
-  obj_val = -JuMP.objective_value(model_llp2)
-  if np == 1
-    p_bar = JuMP.value.(p2)
-  else
-    p_bar = JuMP.value.(p2)
-  end
-  result.solution_time += MOI.get(model_llp2, MOI.SolveTime())
-
-  return obj_val, p_bar, is_feasible
+function sipRes_bnd(t::AbstractSubproblemType, buffer, initialize_extras, disc_set::Vector{Vector{Vector{Float64}}},
+                    eps_g::Float64, sip_storage::SIPResult, prob::SIPProblem, flag::Bool, cb::SIPCallback)
+    sipRes_bnd(t, buffer, initialize_extras, disc_set, eps_g, sip_storage, prob, flag, cb)
 end
 
 # should be done
-function sipRes_bnd(initialize_extras, disc_set::Vector{Vector{Vector{Float64}}},
+function sipRes_bnd(t::DefaultSubproblem, buffer, initialize_extras, disc_set::Vector{Vector{Vector{Float64}}},
                     eps_g::Float64, sip_storage::SIPResult,
-                    problem_storage::SIPProblem, flag::Bool, cb::SIPCallback)
+                    prob::SIPProblem, flag::Bool, cb::SIPCallback)
 
-  nx = problem_storage.nx
-  xL = problem_storage.x_l
-  xU = problem_storage.x_u
+    # create JuMP model
+    m_bnd = build_model(prob)
+    @variable(m_bnd, prob.x_l[i] <= x[i=1:prob.nx] <= prob.x_u[i])
+    initialize_extras(m_bnd, x)                    # TODO: Still worth having this feature?
 
-  # create JuMP model
-  model_bnd = build_model(problem_storage)
-  @variable(model_bnd, xL[i] <= x[i=1:nx] <= xU[i])
-  initialize_extras(model_bnd, x)
-  for i = 1:problem_storage.nSIP
-    for j = 1:length(disc_set)
-        gi = Symbol("g$i$j")
-        g(x...) = cb.gSIP[i](x, disc_set[j][i])
-        register(model_bnd, gi, nx, g, autodiff=true)
-        func_call = Expr(:call)
-        args = []
-        push!(args, gi)
-        for i = 1:nx
-          push!(args, JuMP.VariableRef(model_bnd, MathOptInterface.VariableIndex(i)))
+    for i = 1:prob.nSIP
+        for j = 1:length(disc_set)
+            gi = Symbol("g$i$j")
+            g(x...) = cb.gSIP[i](x, disc_set[j][i])
+            register(m_bnd, gi, nx, g, autodiff=true)
+            xids = VariableRef[VariableRef(m_bnd, MOI.VI(i)) for i = 1:prob.nx]
+            JuMP.add_NL_constraint(m_bnd, :($(gi)($(tuple(xids...))) + $ep_g <= 0))
         end
-        func_call.args = args
-        ineq_call = Expr(:call)
-        ineq_call.args = [:(<=); func_call; -eps_g]
-        JuMP.add_NL_constraint(model_bnd, ineq_call)
-    end
-  end
-
-  obj_factor = problem_storage.sense === :min ? 1.0 : -1.0
-  obj(x...) =  obj_factor*cb.f(x)
-  register(model_bnd, :obj, nx, obj, autodiff=true)
-  if nx == 1
-      @NLobjective(model_bnd, Min, obj(x[1]))
-  else
-      @NLobjective(model_bnd, Min, obj(x...))
-  end
-
-  JuMP.optimize!(model_bnd)
-
-  termination_status = JuMP.termination_status(model_bnd)
-  result_status = JuMP.primal_status(model_bnd)
-  valid_result, is_feasible = is_globally_optimal(termination_status, result_status)
-  sip_storage.solution_time = MOI.get(model_bnd, MOI.SolveTime())
-
-  if (~(valid_result && is_feasible) && eps_g == 0.0) && ~problem_storage.local_solver
-      error("Lower problem did not solve to global optimality.
-            Termination status = $(termination_status).
-            Primal status = $(result_status)")
-  elseif (~(valid_result && is_feasible) && eps_g == 0.0) && problem_storage.local_solver &&
-       ~((termination_status === MOI.LOCALLY_SOLVED) || (termination_status === MOI.ALMOST_LOCALLY_SOLVED))
-      error("Lower problem did not solve to local optimality.")
-  else
-      if (problem_storage.sense === :min && eps_g == 0.0)
-          objective_value = obj_factor*JuMP.objective_value(model_bnd)
-      else
-          objective_value = obj_factor*JuMP.objective_bound(model_bnd)
-      end
-      xsol = JuMP.value.(x)
-  end
-
-  return objective_value, xsol, is_feasible
-end
-
-function sipRes(init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
-
-
-  verbosity = prob.verbosity
-  header_interval = prob.header_interval
-  print_interval = prob.print_interval
-  abs_tolerance = prob.absolute_tolerance
-
-  # initializes solution
-  LBD = -Inf
-  UBD = Inf
-  k = 0
-
-  xbar = (prob.x_u + prob.x_l)/2.0
-  pbar = (prob.p_u + prob.p_l)/2.0
-  nx = prob.nx
-  np = prob.np
-  nSIP = prob.nSIP
-  tolerance = prob.constraint_tolerance
-  ismin = prob.sense === :min
-
-  eps_g =  prob.initial_eps_g
-  r = prob.initial_r
-  lower_disc = prob.init_lower_disc
-  upper_disc = prob.init_upper_disc
-  feas = true
-  xstar = fill(NaN,(nx,))
-  new_disc_points = fill(zeros(Float64, np), )
-
-  # checks for convergence
-  for k = 1:prob.iteration_limit
-
-    # check for termination
-    check_convergence(result.lower_bound, result.upper_bound, abs_tolerance, verbosity) && (break)
-
-    # solve lower bounding problem and check feasibility
-    val, result.xsol[:], feas = sipRes_bnd(init_bnd, lower_disc, 0.0, result, prob, true, cb)
-    result.lower_bound = val
-    if (~feas)
-      result.feasibility = feas
-      println("Lower Bounding Problem Not Feasible. Algorithm Terminated")
-      break
-    end
-    print_summary!(verbosity, result.lower_bound, result.xsol, result.feasibility, "LBD")
-
-    # solve inner program  and update lower discretization set
-    non_positive_flag = true
-    temp_lower_disc = Vector{Float64}[]
-    for i = 1:nSIP
-      llp_out = sipRes_llp1(result.xsol, result, prob, cb, i)
-      print_summary!(verbosity, llp_out[1], llp_out[2], llp_out[3], "Lower LLP$i")
-      if (llp_out[1] + tolerance > 0.0)
-        non_positive_flag = false
-      end
-      push!(temp_lower_disc, llp_out[2])
-    end
-    push!(lower_disc, temp_lower_disc)
-    if non_positive_flag
-      result.feasibility = true
-      break
     end
 
-    # solve upper bounding problem, if feasible solve lower level problem,
-    # and potentially update upper discretization set
-    val, result.xsol[:], feas = sipRes_bnd(init_bnd, upper_disc, eps_g, result, prob, false, cb)
-    print_summary!(verbosity, val, result.xsol, feas, "UBD")
-    if feas
-      non_positive_flag = true
-      temp_upper_disc = Vector{Float64}[]
-      for i = 1:nSIP
-        llp2_out = sipRes_llp2(result.xsol, result, prob, cb, i)
-        print_summary!(verbosity, llp2_out[1], llp2_out[2], llp2_out[3], "Upper LLP$i")
-        if (llp2_out[1] + tolerance/10.0 > 0.0)
-          non_positive_flag = false
-        end
-        push!(temp_upper_disc, llp2_out[2])
-      end
-      if non_positive_flag
-          if (val <= result.upper_bound) && ismin
-              result.upper_bound = val
-              xstar .= result.xsol
-          elseif (val <= result.upper_bound) && ~ismin && (result.upper_bound === Inf)
-            result.upper_bound = val
-            xstar .= result.xsol
-          elseif (val >= result.upper_bound) && ~ismin
-            result.upper_bound = val
-            xstar .= result.xsol
-          end
-          eps_g = eps_g/r
-      else
-          push!(upper_disc, temp_upper_disc)
-      end
-    else
-      eps_g = eps_g/r
-    end
+    # define the objective
+    obj_factor = prob.sense == :min ? 1.0 : -1.0
+    obj(x...) =  obj_factor*cb.f(x)
+    register(m_bnd, :obj, prob.nx, obj, autodiff=true)
+    nl_obj = isone(prob.nx) ? :(($obj)(x[1])) :(($obj)(x...))
+    set_NL_objective(m_bnd, MOI.MIN_SENSE, nl_obj)
 
-    # print iteration information and advance
-    print_int!(verbosity, header_interval, print_interval, k, result.lower_bound, result.upper_bound, eps_g, r, ismin)
-    result.iteration_number = k
-  end
+    # optimize model and check status
+    JuMP.optimize!(m_bnd)
+    termination_status = JuMP.termination_status(m_bnd)
+    result_status = JuMP.primal_status(m_bnd)
+    is_feasible = bnd_check(prob.local_solver, termination_status, result_status, eps_g)
 
-  return result
+    # fill buffer with subproblem result info
+    buffer.is_feasible = is_feasible
+    buffer.obj_value = obj_factor*JuMP.objective_bound(m_bnd)
+    @__dot__ buffer.x_bar = JuMP.value(x)
+    result.solution_time += MOI.get(model_llp, MOI.SolveTime())
+
+    return false
 end
 
 no_init_bnd(m::JuMP.Model, x::Vector{JuMP.VariableRef}) = ()
+
+function sip_solve!(t::AbstractSIPAlgo, init_bnd, prob, result, cb)
+    error("Algorithm $t not supported by explicit_sip_solve.")
+end
+
+function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
+
+    verb = prob.verbosity
+    header_interval = prob.header_interval
+    print_interval = prob.print_interval
+    abs_tolerance = prob.absolute_tolerance
+
+    # initializes solution
+    xbar = (prob.x_u + prob.x_l)/2.0
+    pbar = (prob.p_u + prob.p_l)/2.0
+    nx = prob.nx
+    np = prob.np
+    tolerance = prob.constraint_tolerance
+    ismin = prob.sense === :min
+
+    eps_g =  prob.initial_eps_g
+    r = prob.initial_r
+    feas = true
+    xstar = fill(NaN,(nx,))
+    new_disc_points = fill(zeros(Float64, np), )
+
+    # checks for convergence
+    for k = 1:prob.iteration_limit
+
+        # check for termination
+        check_convergence(result.lower_bound, result.upper_bound, abs_tolerance, verb) && (break)
+
+        # solve lower bounding problem and check feasibility
+        sipRes_bnd!(buffer, init_bnd, prob.lower_disc, 0.0, result, prob, true, cb)
+        result.lower_bound = buffer.objective_value
+        if !is_feasible(buffer)
+            result.feasibility = feas
+            println("Lower Bounding Problem Not Feasible. Algorithm Terminated")
+            break
+        end
+        print_summary!(verb, result.lower_bound, result.xsol, result.feasibility, "LBD")
+
+        # solve inner program  and update lower discretization set
+        non_positive_flag = true
+        for i = 1:prob.nSIP
+            sipRes_llp!(buffer, result.xsol, result, prob, cb, i)
+            if (verb == 1) || (verb == 2)
+                print_summary!(buffer, "Lower LLP$i")
+            end
+            if (llp_out[1] + tolerance > 0.0)
+                non_positive_flag = false
+            end
+            buffer.lower_disc[i] .= buffer.pbar
+        end
+        push!(prob.lower_disc, deepcopy(buffer.lower_disc))
+        if non_positive_flag
+            result.feasibility = true
+            break
+        end
+
+        # solve upper bounding problem, if feasible solve lower level problem,
+        # and potentially update upper discretization set
+        sipRes_bnd!(buffer, init_bnd, prob.upper_disc, eps_g, result, prob, false, cb)
+        print_summary!(verb, buffer, :x, "UBD")
+        if is_feasible(buffer)
+            non_positive_flag = true
+            for i = 1:prob.nSIP
+                sipRes_llp!(buffer, result.xsol, result, prob, cb, i)
+                print_summary!(verb, buffer, :p, "Upper LLP$i")
+                if llp2_out[1] + tolerance/10.0 > 0.0
+                    non_positive_flag = false
+                end
+                buffer.upper_disc[i] .= buffer.pbar
+            end
+            if non_positive_flag
+                if (val <= result.upper_bound) && ismin
+                    result.upper_bound = val
+                    xstar .= result.xsol
+                elseif (val <= result.upper_bound) && ~ismin && (result.upper_bound === Inf)
+                    result.upper_bound = val
+                    xstar .= result.xsol
+                elseif (val >= result.upper_bound) && ~ismin
+                    result.upper_bound = val
+                    xstar .= result.xsol
+                end
+                eps_g /= r
+            else
+                push!(prob.upper_disc, deepcopy(buffer.upper_disc))
+            end
+        else
+            eps_g /= r
+        end
+
+        # print iteration information and advance
+        print_int!(verb, header_interval, print_interval, k, result.lower_bound, result.upper_bound, eps_g, r, ismin)
+        result.iteration_number = k
+    end
+
+    return nothing
+end
 
 """
   explicit_sip_solve
@@ -302,36 +253,32 @@ Solve an SIP with decision variable bounds `x_l` to `x_u`, uncertain variable
 bounds `p_l` to `p_u`, an objective function of `f`, and `gSIP` seminfiniite
 constraint(s).
 """
-function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
-                            p_l::Vector{Float64}, p_u::Vector{Float64},
-                            f::Function, gSIP; kwargs...)
+function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
+                   p_l::Vector{Float64}, p_u::Vector{Float64},
+                   f::Function, gSIP; kwargs...) where T <: AbstractSIPAlgo
 
-  @assert length(p_l) == length(p_u)
-  @assert length(x_l) == length(x_u)
+    @assert length(p_l) == length(p_u)
+    @assert length(x_l) == length(x_u)
 
-  # collects all keyword arguments of the form :gSIP1, gSIP24234, :gSIPHello
-  init_bnd = haskey(kwargs, :sip_init_bnd) ? kwargs[:sip_init_bnd] : no_init_bnd
-  algo = haskey(kwargs, :sip_algo) ? kwargs[:sip_algo] : :sipRes
-  m = haskey(kwargs, :sip_optimizer) ? kwargs[:sip_optimizer] : EAGO.Optimizer
+    # collects all keyword arguments of the form :gSIP1, gSIP24234, :gSIPHello
+    init_bnd = haskey(kwargs, :sip_init_bnd) ? kwargs[:sip_init_bnd] : no_init_bnd
+    algo = haskey(kwargs, :sip_algo) ? kwargs[:sip_algo] : :sipRes
+    m = haskey(kwargs, :sip_optimizer) ? kwargs[:sip_optimizer] : EAGO.Optimizer
 
-  prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, m, kwargs)
-  check_inputs!(prob.initial_r, prob.initial_eps_g)
-  result = SIPResult()
-  result.xsol = fill(0.0, (prob.nx,))
-  result.psol = fill(0.0, (prob.np,))
+    prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, m, kwargs)
+    check_inputs!(prob.initial_r, prob.initial_eps_g)
+    result = SIPResult()
+    result.xsol = fill(0.0, (prob.nx,))
+    result.psol = fill(0.0, (prob.np,))
 
-  cb = SIPCallback(f, gSIP)
+    cb = SIPCallback(f, gSIP)
 
-  if (algo === :sipRes)
-      sip_sto = sipRes(init_bnd, prob, result, cb)
-  else
-      error("Desired algorithm unsupported.")
-  end
-  return sip_sto
+    sip_solve!(t, init_bnd, prob, result, cb)
+    return result
 end
 
-function explicit_sip_solve(x_l::Vector{Float64}, x_u::Vector{Float64},
+function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
                             p_l::Vector{Float64}, p_u::Vector{Float64},
-                            f::Function, gSIP::Function; kwargs...)
-    explicit_sip_solve(x_l, x_u, p_l, p_u, f, [gSIP], kwargs...)
+                            f::Function, gSIP::Function; kwargs...) where T <: AbstractSIPAlgo
+    return sip_solve(t, x_l, x_u, p_l, p_u, f, [gSIP], kwargs...)
 end

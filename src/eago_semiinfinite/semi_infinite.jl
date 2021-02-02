@@ -9,6 +9,10 @@
 # Defines utilities for generic SIP routines.
 #############################################################################
 
+abstract type AbstractSIPAlgo end
+
+struct SIPRes <: AbstractSIPAlgo end
+
 """
       SIPResult
 
@@ -108,7 +112,7 @@ function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
                initial_eps_g, initial_r, return_hist, header_interval,
                print_interval, verbosity, local_solver,
                #polyhedral_uncertainty_set,
-               #llipsodial_uncertainty_set, conic_uncertainty_set,
+               #ellipsodial_uncertainty_set, conic_uncertainty_set,
                #convex_uncertainty_set,
                optimizer, opt_dict)
 end
@@ -169,32 +173,37 @@ function print_int!(verbosity::Int64, hdr_intv::Int64, prt_intv::Int64,
             println(print_str)
         end
     end
-    return
+    return nothing
 end
 
 function print_summary!(verb::Int64, val::Float64, x::Vector{Float64},
                           feas::Bool, desc::String)
     (verb == 2 || verb == 1) && println("solved $desc: ", val, " ", x, " ", feas)
-    return
+    return nothing
 end
 
 function check_inputs!(initial_r::Float64, initial_eps_g::Float64)
     (initial_r <= 1.0) && error("initial_r must be greater than 1")
     (initial_eps_g <= 0.0) && error("eps_g must be greater than 0")
-    return
+    return nothing
 end
 
 function check_convergence(LBD::Float64, UBD::Float64, atol::Float64, verb::Int64)
-    if (abs(UBD - LBD) < atol)
+    if abs(UBD - LBD) < atol
         (verb == 2 || verb == 1) && println("Algorithm Converged")
         return true
     end
     return false
-  end
+end
 
 struct SIPCallback
     f
     gSIP
+end
+
+mutable struct SIPBuffer
+    pbar
+    xbar
 end
 
 include("sip_explicit.jl")
