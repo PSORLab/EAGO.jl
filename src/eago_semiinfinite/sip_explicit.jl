@@ -10,26 +10,35 @@
 #############################################################################
 
 abstract type AbstractSubproblemType end
-struct DefaultSubproblem <: AbstractSubproblemType end
+struct LowerLevel1 <: AbstractSubproblemType end
+struct LowerLevel2 <: AbstractSubproblemType end
+struct LowerProblem <: AbstractSubproblemType end
+struct UpperProblem <: AbstractSubproblemType end
+
+get_sip_optimizer(t::DefaultExt, alg::SIPRes, s::S) where S <: AbstractSubproblemType = EAGO.Optimizer
+get_sip_optimizer(t::ExtensionType, alg::SIPRes, s::AbstractSubproblemType) = get_sip_optimizer(DefaultExt(), s)
+
+get_sip_kwargs(alg::SIPRes, s::LowerLevel1, p::SIPProblem) = p.kwargs_llp1
+get_sip_kwargs(alg::SIPRes, s::LowerLevel2, p::SIPProblem) = p.kwargs_llp2
+get_sip_kwargs(alg::SIPRes, s::LowerProblem, p::SIPProblem) = p.kwargs_lbd
+get_sip_kwargs(alg::SIPRes, s::UpperProblem, p::SIPProblem) = p.kwargs_ubd
+
+get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.pL, p.pU. p.np
+get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.xL, p.xU. p.nx
 
 # Load a model in a way that gets rid of any issues with pointers for C references
 # particularly in the EAGO solver...
-function build_model_llp(::DefaultSubproblem, prob::SIPProblem)
-    model = Model(prob.optimizer)
-    @variable(model, prob.p_l[i] <= p[i=1:prob.np] <=  prob.p_u[i])
-    for (k,v) in prob.kwargs
+function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+    model = Model(get_sip_optimizer(t,a,s))
+    for (k,v) in get_sip_kwargs(a,s,p)
         MOI.set(model, MOI.RawParameter(String(k)), v)
     end
-    return model, p
+    vL, vU, nv = get_bnds(s,a,p)
+    @variable(model, vL[i] <= v[i=1:nv] <= vU[i])
+    return model, v
 end
-
-function build_model_bnd(::DefaultSubproblem, prob::SIPProblem)
-    model = Model(prob.optimizer)
-    @variable(model, prob.x_l[i] <= x[i=1:prob.nx] <=  prob.x_u[i])
-    for (k,v) in prob.kwargs
-        MOI.set(model, MOI.RawParameter(String(k)), v)
-    end
-    return model, x
+function build_model(t::ExtensionType, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+    build_model(DefaultExt(), s, p)
 end
 
 function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
@@ -42,28 +51,30 @@ function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
     return nothing
 end
 
-function llp_check(is_local::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalResultCode)
-    valid_result, is_feasible = is_globally_optimal(t, r)
-    if is_local
-        if (t_status != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED)
-            error("Lower problem did not solve to local optimality.")
-        end
+function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalResultCode)
+    valid, feasible = is_globally_optimal(t, r)
+    if islocal && ((t != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED))
+        error("Lower problem did not solve to local optimality.")
     elseif !valid_result
-        error("Error encountered in lower level problem. Termination status
-               is $t. Primal status is $r.")
+        error("Error in lower level problem. Termination status = $t, primal status = $r.")
     end
     return is_feasible
 end
-function sipRes_llp!(t::DefaultSubproblem, result::SIPResult, buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback, indx::Int64)
+
+function sipRes_llp!(t::DefaultExt, alg::SIPRes, s::S, result::SIPResult,
+                     buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback,
+                     indx::Int64) where S <: AbstractSubproblemType
+
     # build the model
-    m_llp, p = build_model_llp(t, prob)
+    m_llp, p = build_model_llp(t, alg, s, prob)
 
     # define the objective
     g(p...) = cb.gSIP[indx](xbar, p)
     register(m_llp, :g, prob.np, g, autodiff=true)
-    nl_obj = prob.np == 1 ? :(-($g)(p[1])) :(-($g)(p...))
+    nl_obj = isone(prob.np) ? :(-($g)(p[1])) :  :(-($g)(p...))
     set_NL_objective(m_llp, MOI.MIN_SENSE, nl_obj)
 
+    # add uncertainty constraints
     add_uncertainty_constraint!(m_llp, problem)
 
     # optimize model and check status
@@ -76,12 +87,14 @@ function sipRes_llp!(t::DefaultSubproblem, result::SIPResult, buffer::SIPBuffer,
     buffer.is_feasible = is_feasible
     buffer.obj_value = -JuMP.objective_value(m_llp)
     @__dot__ buffer.p_bar = JuMP.value(p)
-    result.solution_time += MOI.get(model_llp, MOI.SolveTime())
+    result.solution_time += MOI.get(m_llp, MOI.SolveTime())
 
     return nothing
 end
-function sipRes_llp!(t::AbstractSubproblemType, result::SIPResult, buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback, indx::Int64)
-    sipRes_llp!(DefaultSubproblem(), result, buffer, prob, cb, indx)
+function sipRes_llp!(t::ExtensionType, alg::SIPRes, s::S, result::SIPResult,
+                     buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback,
+                     indx::Int64) where S <: AbstractSubproblemType
+    sipRes_llp!(DefaultSubproblem(), als, s, result, buffer, prob, cb, indx)
 end
 
 function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
@@ -144,8 +157,6 @@ function sipRes_bnd(t::DefaultSubproblem, buffer, initialize_extras, disc_set::V
     return false
 end
 
-no_init_bnd(m::JuMP.Model, x::Vector{JuMP.VariableRef}) = ()
-
 function sip_solve!(t::AbstractSIPAlgo, init_bnd, prob, result, cb)
     error("Algorithm $t not supported by explicit_sip_solve.")
 end
@@ -190,7 +201,7 @@ function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb
         # solve inner program  and update lower discretization set
         non_positive_flag = true
         for i = 1:prob.nSIP
-            sipRes_llp!(buffer, result.xsol, result, prob, cb, i)
+            sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
             if (verb == 1) || (verb == 2)
                 print_summary!(buffer, "Lower LLP$i")
             end
@@ -212,7 +223,7 @@ function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb
         if is_feasible(buffer)
             non_positive_flag = true
             for i = 1:prob.nSIP
-                sipRes_llp!(buffer, result.xsol, result, prob, cb, i)
+                sipRes_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
                 print_summary!(verb, buffer, :p, "Upper LLP$i")
                 if llp2_out[1] + tolerance/10.0 > 0.0
                     non_positive_flag = false
@@ -261,16 +272,11 @@ function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
     @assert length(x_l) == length(x_u)
 
     # collects all keyword arguments of the form :gSIP1, gSIP24234, :gSIPHello
-    init_bnd = haskey(kwargs, :sip_init_bnd) ? kwargs[:sip_init_bnd] : no_init_bnd
-    algo = haskey(kwargs, :sip_algo) ? kwargs[:sip_algo] : :sipRes
-    m = haskey(kwargs, :sip_optimizer) ? kwargs[:sip_optimizer] : EAGO.Optimizer
+    m = haskey(kwargs, :sip_optimizer) ? kwargs[:sip_optimizer] : EAGO.Optimizer       # TODO: Optimizer type is runtime variable... need to key to type...
 
     prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, m, kwargs)
-    check_inputs!(prob.initial_r, prob.initial_eps_g)
-    result = SIPResult()
-    result.xsol = fill(0.0, (prob.nx,))
-    result.psol = fill(0.0, (prob.np,))
-
+    buffer = SIPBuffer(prob.np, prob.nx)
+    result = SIPResult(prob.nx, prob.np)
     cb = SIPCallback(f, gSIP)
 
     sip_solve!(t, init_bnd, prob, result, cb)

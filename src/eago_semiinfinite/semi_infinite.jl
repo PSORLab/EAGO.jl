@@ -28,6 +28,8 @@ mutable struct SIPResult
     solution_time::Float64
 end
 SIPResult() = SIPResult(1, Inf, -Inf, true, Float64[], Float64[], 0.0)
+SIPResult(nx::Int, np::Int) = SIPResult(1, Inf, -Inf, true, zeros(nx), zeros(np), 0.0)
+
 
 """
       SIPProblem
@@ -72,20 +74,23 @@ function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
                     p_l::Vector{Float64}, p_u::Vector{Float64},
                     gSIP, optimizer, kwargs)
 
-    np = length(p_l)
-    nx = length(x_l)
+    initial_eps_g = haskey(kwargs, :sip_initial_eps_g) ? kwargs[:sip_initial_eps_g] : 1.0
+    initial_r = haskey(kwargs, :sip_initial_r) ? kwargs[:sip_initial_r] : 2.0
+
+    (initial_r <= 1.0) && error("initial_r must be greater than 1")
+    (initial_eps_g <= 0.0) && error("eps_g must be greater than 0")
 
     absolute_tolerance = haskey(kwargs, :sip_absolute_tolerance) ? kwargs[:sip_absolute_tolerance] : 1E-3
     constraint_tolerance = haskey(kwargs, :sip_constraint_tolerance) ? kwargs[:sip_constraint_tolerance] : 1E-3
     iteration_limit = haskey(kwargs, :sip_iteration_limit) ? kwargs[:sip_iteration_limit] : 100
-    initial_eps_g = haskey(kwargs, :sip_initial_eps_g) ? kwargs[:sip_initial_eps_g] : 1.0
-    initial_r = haskey(kwargs, :sip_initial_r) ? kwargs[:sip_initial_r] : 2.0
-
     return_hist = haskey(kwargs, :sip_return_hist) ? kwargs[:sip_return_hist] : false
     header_interval = haskey(kwargs, :sip_header_interval) ? kwargs[:sip_header_interval] : 20
     print_interval = haskey(kwargs, :sip_print_interval) ? kwargs[:sip_print_interval] : 1
     verbosity = haskey(kwargs, :sip_verbosity) ? kwargs[:sip_verbosity] : 1
     local_solver = haskey(kwargs, :sip_local_solver) ?  kwargs[:sip_local_solver] : false
+
+    np = length(p_l)
+    nx = length(x_l)
 
     sense = haskey(kwargs, :sip_sense) ? kwargs[:sip_sense] : :min
     init_lower_disc = haskey(kwargs, :sip_init_lower_disc) ? kwargs[:sip_init_lower_disc] : Vector{Vector{Float64}}[]
@@ -117,24 +122,23 @@ function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
                optimizer, opt_dict)
 end
 
-function print_int!(verbosity::Int64, hdr_intv::Int64, prt_intv::Int64,
-                      k_int::Int64, lbd::Float64, ubd::Float64,
-                      eps::Float64, r::Float64, ismin::Bool)
+function print_int!(prob::SIPProblem, k::Int64, lbd::Float64, ubd::Float64,
+                    eps::Float64, r::Float64, ismin::Bool)
 
-    if (verbosity == 1 || verbosity == 2)
+    if (prob.verbosity == 1 || prob.verbosity == 2)
 
         # prints header line every hdr_intv times
-        if (mod(k_int, hdr_intv) == 0 || k_int == 1)
+        if (mod(k, prob.hdr_intv) == 0 || k == 1)
             println("| Iteration | Lower Bound | Upper Bound |   eps   |   r   |  Gap  |  Ratio  |")
         end
 
         # prints iteration summary every prnt_intv times
-        if mod(k_int, prt_intv) == 0
+        if mod(k, prob.prt_intv) == 0
 
             print_str = "| "
 
             max_len = 15
-            temp_str = string(k_int)
+            temp_str = string(k)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
@@ -182,12 +186,6 @@ function print_summary!(verb::Int64, val::Float64, x::Vector{Float64},
     return nothing
 end
 
-function check_inputs!(initial_r::Float64, initial_eps_g::Float64)
-    (initial_r <= 1.0) && error("initial_r must be greater than 1")
-    (initial_eps_g <= 0.0) && error("eps_g must be greater than 0")
-    return nothing
-end
-
 function check_convergence(LBD::Float64, UBD::Float64, atol::Float64, verb::Int64)
     if abs(UBD - LBD) < atol
         (verb == 2 || verb == 1) && println("Algorithm Converged")
@@ -202,8 +200,21 @@ struct SIPCallback
 end
 
 mutable struct SIPBuffer
-    pbar
-    xbar
+    xbar::Vector{Float64}
+    pbar::Vector{Float64}
+    obj_value::Float64
+    is_feasible::Bool
+    lower_disc::Vector{Vector{Float64}}
+    upper_disc::Vector{Vector{Float64}}
+end
+function SIPBuffer(nx::Int, np::Int, ng::Int)
+    lower_disc = Vector{Float64}[]
+    upper_disc = Vector{Float64}[]
+    for _ in 1:ng
+        push!(lower_disc, zeros(np))
+        push!(upper_disc, zeros(np))
+    end
+    SIPBuffer(zeros(nx), zeros(np), 0.0, true, lower_disc, upper_disc)
 end
 
 include("sip_explicit.jl")
