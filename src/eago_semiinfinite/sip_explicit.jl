@@ -66,7 +66,7 @@ function sipRes_llp!(t::DefaultExt, alg::SIPRes, s::S, result::SIPResult,
                      indx::Int64) where S <: AbstractSubproblemType
 
     # build the model
-    m_llp, p = build_model_llp(t, alg, s, prob)
+    m_llp, p = build_model(t, alg, s, prob)
 
     # define the objective
     g(p...) = cb.gSIP[indx](xbar, p)
@@ -110,20 +110,23 @@ function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
     return is_feasible
 end
 
-function sipRes_bnd(t::AbstractSubproblemType, buffer, initialize_extras, disc_set::Vector{Vector{Vector{Float64}}},
-                    eps_g::Float64, sip_storage::SIPResult, prob::SIPProblem, flag::Bool, cb::SIPCallback)
-    sipRes_bnd(t, buffer, initialize_extras, disc_set, eps_g, sip_storage, prob, flag, cb)
+function sipRes_bnd(t::ExtensionType, alg::SIPRes, s::S, buffer::SIPBuffer,
+                    eps_g::Float64, result::SIPResult, prob::SIPProblem,
+                    cb::SIPCallback) where S <: AbstractSubproblemType
+    sipRes_bnd!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
 end
 
 # should be done
-function sipRes_bnd(t::DefaultSubproblem, buffer, initialize_extras, disc_set::Vector{Vector{Vector{Float64}}},
-                    eps_g::Float64, sip_storage::SIPResult,
-                    prob::SIPProblem, flag::Bool, cb::SIPCallback)
+get_disc_set(s::LowerProblem, prob::SIPProblem) = prob.lower_disc
+get_disc_set(s::UpperProblem, prob::SIPProblem) = prob.upper_disc
+
+function sipRes_bnd!(t::DefaultExt, alg::SIPRes, s::S, buffer::SIPBuffer,
+                    eps_g::Float64, result::SIPResult, prob::SIPProblem,
+                    cb::SIPCallback) where S <: AbstractSubproblemType
 
     # create JuMP model
-    m_bnd = build_model(prob)
-    @variable(m_bnd, prob.x_l[i] <= x[i=1:prob.nx] <= prob.x_u[i])
-    initialize_extras(m_bnd, x)                    # TODO: Still worth having this feature?
+    m_bnd, x = build_model(t, alg, s, prob)
+    disc_set = get_disc_set(s, prob)
 
     for i = 1:prob.nSIP
         for j = 1:length(disc_set)
@@ -139,34 +142,31 @@ function sipRes_bnd(t::DefaultSubproblem, buffer, initialize_extras, disc_set::V
     obj_factor = prob.sense == :min ? 1.0 : -1.0
     obj(x...) =  obj_factor*cb.f(x)
     register(m_bnd, :obj, prob.nx, obj, autodiff=true)
-    nl_obj = isone(prob.nx) ? :(($obj)(x[1])) :(($obj)(x...))
+    nl_obj = isone(prob.nx) ? :(($obj)(x[1])) : :(($obj)(x...))
     set_NL_objective(m_bnd, MOI.MIN_SENSE, nl_obj)
 
     # optimize model and check status
     JuMP.optimize!(m_bnd)
-    termination_status = JuMP.termination_status(m_bnd)
-    result_status = JuMP.primal_status(m_bnd)
-    is_feasible = bnd_check(prob.local_solver, termination_status, result_status, eps_g)
+    t_status = JuMP.termination_status(m_bnd)
+    r_status = JuMP.primal_status(m_bnd)
+    is_feasible = bnd_check(prob.local_solver, t_status, r_status, eps_g)
 
     # fill buffer with subproblem result info
     buffer.is_feasible = is_feasible
     buffer.obj_value = obj_factor*JuMP.objective_bound(m_bnd)
     @__dot__ buffer.x_bar = JuMP.value(x)
-    result.solution_time += MOI.get(model_llp, MOI.SolveTime())
+    result.solution_time += MOI.get(m_bnd, MOI.SolveTime())
 
-    return false
+    return nothing
 end
 
 function sip_solve!(t::AbstractSIPAlgo, init_bnd, prob, result, cb)
     error("Algorithm $t not supported by explicit_sip_solve.")
 end
 
-function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
+function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
 
     verb = prob.verbosity
-    header_interval = prob.header_interval
-    print_interval = prob.print_interval
-    abs_tolerance = prob.absolute_tolerance
 
     # initializes solution
     xbar = (prob.x_u + prob.x_l)/2.0
@@ -186,10 +186,10 @@ function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb
     for k = 1:prob.iteration_limit
 
         # check for termination
-        check_convergence(result.lower_bound, result.upper_bound, abs_tolerance, verb) && (break)
+        check_convergence(result.lower_bound, result.upper_bound, prob.absolute_tolerance, verb) && (break)
 
         # solve lower bounding problem and check feasibility
-        sipRes_bnd!(buffer, init_bnd, prob.lower_disc, 0.0, result, prob, true, cb)
+        sipRes_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
         result.lower_bound = buffer.objective_value
         if !is_feasible(buffer)
             result.feasibility = feas
@@ -218,7 +218,7 @@ function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb
 
         # solve upper bounding problem, if feasible solve lower level problem,
         # and potentially update upper discretization set
-        sipRes_bnd!(buffer, init_bnd, prob.upper_disc, eps_g, result, prob, false, cb)
+        sipRes_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
         print_summary!(verb, buffer, :x, "UBD")
         if is_feasible(buffer)
             non_positive_flag = true
@@ -250,7 +250,7 @@ function sip_solve!(t::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb
         end
 
         # print iteration information and advance
-        print_int!(verb, header_interval, print_interval, k, result.lower_bound, result.upper_bound, eps_g, r, ismin)
+        print_int!(verb, prob.header_interval, prob.print_interval, k, result.lower_bound, result.upper_bound, eps_g, r, ismin)
         result.iteration_number = k
     end
 
