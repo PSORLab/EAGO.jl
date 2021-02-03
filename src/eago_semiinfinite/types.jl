@@ -3,12 +3,13 @@ abstract type AbstractSIPAlgo end
 abstract type AbstractSubproblemType end
 struct LowerLevel1 <: AbstractSubproblemType end
 struct LowerLevel2 <: AbstractSubproblemType end
+struct LowerLevel3 <: AbstractSubproblemType end
 struct LowerProblem <: AbstractSubproblemType end
 struct UpperProblem <: AbstractSubproblemType end
 struct ResProblem <: AbstractSubproblemType end
 
 """
-      SIPResult
+    SIPResult
 
 Structure storing the results of the SIPres algorithm.
 """
@@ -128,12 +129,12 @@ struct SIPCallback
 end
 
 """
-    SIPResBuffer
+    SIPBuffer
 
 Hold objective value, solution, discretization set, and feasibility status of
 each subproblem encountered by SIP algorithm.
 """
-@Base.kwdef mutable struct SIPResBuffer
+@Base.kwdef mutable struct SIPSubResult
     lbd_x::Vector{Float64} = Float64[]
     ubd_x::Vector{Float64} = Float64[]
     res_x::Vector{Float64} = Float64[]
@@ -147,8 +148,8 @@ each subproblem encountered by SIP algorithm.
     obj_value_llp2::Float64 = 0.0
     obj_value_llp3::Float64 = 0.0
     is_feasible_lbd::Bool = false
-    is_feasible_lbd::Bool = false
     is_feasible_ubd::Bool = false
+    is_feasible_res::Bool = false
     is_feasible_llp1::Bool = false
     is_feasible_llp2::Bool = false
     is_feasible_llp3::Bool = false
@@ -156,8 +157,8 @@ each subproblem encountered by SIP algorithm.
     ubd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
     res_disc::Vector{Vector{Float64}} = Vector{Float64}[]
 end
-function SIPResBuffer(nx::Int, np::Int, ng::Int)
-    buffer = SIPBuffer()
+function SIPSubResult(nx::Int, np::Int, ng::Int)
+    buffer = SIPSubResult()
     append!(buffer.lbd_x, zeros(nx))
     append!(buffer.ubd_x, zeros(nx))
     append!(buffer.res_x, zeros(nx))
@@ -172,14 +173,49 @@ function SIPResBuffer(nx::Int, np::Int, ng::Int)
     return buffer
 end
 
-get_disc_set(s::LowerProblem, prob::SIPProblem) = prob.lower_disc
-get_disc_set(s::UpperProblem, prob::SIPProblem) = prob.upper_disc
+function load!(::LowerProblem, subresult::SIPSubResult, feas::Bool,
+                               objval::Float64, x::Vector{Float64})
+    subresult.is_feasible_lbd = feas
+    subresult.obj_value_lbd = objval
+    subresult.lbd_x .= x
+    return nothing
+end
+function load!(::UpperProblem, subresult::SIPSubResult, feas::Bool,
+                               objval::Float64, x::Vector{Float64})
+    subresult.is_feasible_ubd = feas
+    subresult.obj_value_ubd = objval
+    subresult.ubd_x .= x
+    return nothing
+end
+function load!(::ResProblem, subresult::SIPSubResult, feas::Bool,
+                             objval::Float64, x::Vector{Float64})
+    subresult.is_feasible_res = feas
+    subresult.obj_value_res = objval
+    subresult.res_x .= x
+    return nothing
+end
+function load!(::LowerLevel1, subresult::SIPSubResult, feas::Bool,
+                              objval::Float64, p::Vector{Float64})
+    subresult.is_feasible_llp1 = feas
+    subresult.obj_value_llp1 = objval
+    subresult.llp1_p .= p
+    return nothing
+end
+function load!(::LowerLevel2, subresult::SIPSubResult, feas::Bool,
+                              objval::Float64, p::Vector{Float64})
+    subresult.is_feasible_llp2 = feas
+    subresult.obj_value_llp2 = objval
+    subresult.llp2_p .= p
+    return nothing
+end
+function load!(::LowerLevel3, subresult::SIPSubResult, feas::Bool,
+                              objval::Float64, p::Vector{Float64})
+    subresult.is_feasible_llp3 = feas
+    subresult.obj_value_llp3 = objval
+    subresult.llp3_p .= p
+    return nothing
+end
 
-function set_global_bound!(s::LowerProblem, r::SIPResult, b::SIPBuffer)
-    result.lower_bound = buffer.objective_value
-    return nothing
-end
-function set_global_bound!(s::UpperProblem, r::SIPResult, b::SIPBuffer)
-    result.upper_bound = buffer.objective_value
-    return nothing
-end
+get_disc_set(s::LowerProblem, prob::SIPProblem) = prob.lbd_disc
+get_disc_set(s::UpperProblem, prob::SIPProblem) = prob.ubd_disc
+get_disc_set(s::ResProblem, prob::SIPProblem) = prob.res_disc

@@ -12,7 +12,7 @@
 include("types.jl")
 include("subproblems.jl")
 
-function sip_solve!(t::AbstractSIPAlgo, init_bnd, prob, result, cb)
+function sip_solve!(t::AbstractSIPAlgo, subresult, prob, result, cb)
     error("Algorithm $t not supported by explicit_sip_solve.")
 end
 
@@ -31,11 +31,11 @@ function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
     @assert length(x_l) == length(x_u)
 
     prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, m, kwargs)
-    buffer = SIPBuffer(prob.np, prob.nx)
+    subresult = SIPSubResult(prob.np, prob.nx)
     result = SIPResult(prob.nx, prob.np)
     cb = SIPCallback(f, gSIP)
 
-    sip_solve!(t, init_bnd, prob, result, cb)
+    sip_solve!(t, subresult, prob, result, cb)
     return result
 end
 

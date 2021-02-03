@@ -32,7 +32,7 @@ function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalRes
     return is_feasible
 end
 function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
-                     buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback,
+                     sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
     # build the model
@@ -51,29 +51,27 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     JuMP.optimize!(m)
     tstatus = JuMP.termination_status(m)
     rstatus = JuMP.primal_status(m)
-    is_feasible = llp_check(prob.local_solver, tstatus, rstatus)
+    feas = llp_check(prob.local_solver, tstatus, rstatus)
 
     # fill buffer with subproblem result info
-    buffer.is_feasible = is_feasible
-    buffer.obj_value = -JuMP.objective_value(m)
-    @__dot__ buffer.p_bar = JuMP.value(p)
+    load!(s, buffer, feas, -JuMP.objective_bound(m), JuMP.value(x))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
 end
 function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
-                     buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback,
+                     sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
     sip_llp!(DefaultSubproblem(), s, result, buffer, prob, cb, i)
 end
 
 # Shared bounding problems
-function sip_bnd!(t::ExtensionType, alg::A, s::S, buffer::SIPBuffer,
+function sip_bnd!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult,
                     eps_g::Float64, result::SIPResult, prob::SIPProblem,
                     cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
     sip_bnd!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
 end
-function sip_bnd!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
+function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
                     eps_g::Float64, result::SIPResult, prob::SIPProblem,
                     cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
@@ -101,24 +99,22 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
     JuMP.optimize!(m)
     t_status = JuMP.termination_status(m)
     r_status = JuMP.primal_status(m)
-    is_feasible = bnd_check(prob.local_solver, t_status, r_status, eps_g)
+    feas = bnd_check(prob.local_solver, t_status, r_status, eps_g)
 
     # fill buffer with subproblem result info
-    buffer.is_feasible = is_feasible
-    buffer.obj_value = obj_factor*JuMP.objective_bound(m)
-    @__dot__ buffer.x_bar = JuMP.value(x)
+    load!(s, buffer, feas, obj_factor*JuMP.objective_bound(m), JuMP.value(x))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
 end
 
 # Adaptive restriction subproblem
-function sip_res!(t::ExtensionType, alg::A, s::S, buffer::SIPBuffer,
+function sip_res!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult,
                     eps_g::Float64, result::SIPResult, prob::SIPProblem,
                     cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
     sip_res!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
 end
-function sip_res!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
+function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
                   eps_g::Float64, result::SIPResult, prob::SIPProblem,
                   cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
@@ -149,12 +145,10 @@ function sip_res!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
     JuMP.optimize!(m)
     t_status = JuMP.termination_status(m)
     r_status = JuMP.primal_status(m)
-    is_feasible = bnd_check(prob.local_solver, t_status, r_status, eps_g)
+    feas = llp_check(prob.local_solver, t_status, r_status)
 
     # fill buffer with subproblem result info
-    buffer.is_feasible = is_feasible
-    buffer.obj_value = obj_factor*JuMP.objective_bound(m)
-    @__dot__ buffer.x_bar = JuMP.value(x)
+    load!(s, buffer, feas, JuMP.objective_bound(m), JuMP.value(x))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -234,8 +228,8 @@ function print_summary!(verb::Int64, val::Float64, x::Vector{Float64},
 end
 
 # Check convergence
-function check_convergence(LBD::Float64, UBD::Float64, atol::Float64, verb::Int64)
-    if abs(UBD - LBD) < atol
+function check_convergence(result::SIPResult, atol::Float64, verb::Int64)
+    if abs(result.upper_bound -  result.lower_bound) < atol
         (verb == 2 || verb == 1) && println("Algorithm Converged")
         return true
     end

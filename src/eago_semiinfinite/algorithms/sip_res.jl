@@ -23,8 +23,8 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
 
     # solve lower bounding problem and check feasibility
     sipRes_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
-    set_global_bound!(LowerProblem(), result, buffer)
-    if !is_feasible(buffer)
+    result.lower_bound = buffer.obj_value_lbd
+    if buffer.is_feasible_lbd
         result.feasibility = false
         println("Terminated: lower bounding problem infeasible.")
         @goto main_end
@@ -36,15 +36,15 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
     for i = 1:prob.nSIP
         sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
         is_llp1_nonpositive &= buffer.objective_value > 0.0
-        buffer.lower_disc[i] .= buffer.pbar
+        buffer.lbd_disc[i] .= buffer.pbar
         ((verb == 1) || (verb == 2)) && print_summary!(buffer, "Lower LLP$i")
     end
     push!(prob.lower_disc, deepcopy(buffer.lower_disc))
 
     # if the lower problem is feasible then it's solution is the optimal value
     if is_llp1_nonpositive
-        result.upper_bound = buffer.objective_value
-        result.xsol .= buffer.xbar
+        result.upper_bound = buffer.obj_value_lbd
+        result.xsol .= buffer.lbd_x
         result.feasibility = true
         @goto main_end
     end
@@ -53,7 +53,7 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
     # and potentially update upper discretization set
     sipRes_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
     print_summary!(verb, buffer, :x, "UBD")
-    if is_feasible(buffer)
+    if buffer.is_feasible_ubd
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sipRes_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
@@ -62,8 +62,8 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
             buffer.upper_disc[i] .= buffer.pbar
         end
         if is_llp2_nonpositive
-            if buffer.objective_value <= result.upper_bound
-                result.upper_bound = buffer.objective_value
+            if buffer.obj_value_ubd <= result.upper_bound
+                result.upper_bound = buffer.obj_value_ubd
                 result.xsol .= buffer.ubd_x
             end
             eps_g /= r
