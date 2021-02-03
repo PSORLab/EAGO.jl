@@ -35,7 +35,7 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
         sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
-        is_llp1_nonpositive &= buffer.objective_value + prob.constraint_tolerance > 0.0
+        is_llp1_nonpositive &= buffer.objective_value > 0.0
         buffer.lower_disc[i] .= buffer.pbar
         ((verb == 1) || (verb == 2)) && print_summary!(buffer, "Lower LLP$i")
     end
@@ -58,13 +58,13 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
         for i = 1:prob.nSIP
             sipRes_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
             print_summary!(verb, buffer, :p, "Upper LLP$i")
-            is_llp2_nonpositive &= buffer.objective_value + prob.constraint_tolerance/10.0 > 0.0
+            is_llp2_nonpositive &= buffer.objective_value > 0.0
             buffer.upper_disc[i] .= buffer.pbar
         end
         if is_llp2_nonpositive
             if buffer.objective_value <= result.upper_bound
                 result.upper_bound = buffer.objective_value
-                xstar .= result.xsol
+                result.xsol .= buffer.ubd_x
             end
             eps_g /= r
         else

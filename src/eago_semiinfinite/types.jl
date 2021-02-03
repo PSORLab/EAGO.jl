@@ -127,23 +127,49 @@ struct SIPCallback
     gSIP
 end
 
-mutable struct SIPResBuffer
-    xbar::Vector{Float64}
-    pbar::Vector{Float64}
-    obj_value_x::Float64
-    obj_value_p::Float64
-    is_feasible::Bool
-    lower_disc::Vector{Vector{Float64}}
-    upper_disc::Vector{Vector{Float64}}
+"""
+    SIPResBuffer
+
+Hold objective value, solution, discretization set, and feasibility status of
+each subproblem encountered by SIP algorithm.
+"""
+@Base.kwdef mutable struct SIPResBuffer
+    lbd_x::Vector{Float64} = Float64[]
+    ubd_x::Vector{Float64} = Float64[]
+    res_x::Vector{Float64} = Float64[]
+    llp1_p::Vector{Float64} = Float64[]
+    llp2_p::Vector{Float64} = Float64[]
+    llp3_p::Vector{Float64} = Float64[]
+    obj_value_lbd::Float64 = 0.0
+    obj_value_ubd::Float64 = 0.0
+    obj_value_res::Float64 = 0.0
+    obj_value_llp1::Float64 = 0.0
+    obj_value_llp2::Float64 = 0.0
+    obj_value_llp3::Float64 = 0.0
+    is_feasible_lbd::Bool = false
+    is_feasible_lbd::Bool = false
+    is_feasible_ubd::Bool = false
+    is_feasible_llp1::Bool = false
+    is_feasible_llp2::Bool = false
+    is_feasible_llp3::Bool = false
+    lbd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
+    ubd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
+    res_disc::Vector{Vector{Float64}} = Vector{Float64}[]
 end
 function SIPResBuffer(nx::Int, np::Int, ng::Int)
-    lower_disc = Vector{Float64}[]
-    upper_disc = Vector{Float64}[]
+    buffer = SIPBuffer()
+    append!(buffer.lbd_x, zeros(nx))
+    append!(buffer.ubd_x, zeros(nx))
+    append!(buffer.res_x, zeros(nx))
+    append!(buffer.llp1_p, zeros(np))
+    append!(buffer.llp2_p, zeros(np))
+    append!(buffer.llp3_p, zeros(np))
     for _ in 1:ng
-        push!(lower_disc, zeros(np))
-        push!(upper_disc, zeros(np))
+        push!(buffer.lbd_disc, zeros(np))
+        push!(buffer.ubd_disc, zeros(np))
+        push!(buffer.res_disc, zeros(np))
     end
-    SIPBuffer(zeros(nx), zeros(np), 0.0, true, lower_disc, upper_disc)
+    return buffer
 end
 
 get_disc_set(s::LowerProblem, prob::SIPProblem) = prob.lower_disc

@@ -31,84 +31,131 @@ function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalRes
     end
     return is_feasible
 end
-function sipRes_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
+function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
                      buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
     # build the model
-    m_llp, p = build_model(t, alg, s, prob)
+    m, p = build_model(t, alg, s, prob)
 
     # define the objective
     g(p...) = cb.gSIP[i](xbar, p)
-    register(m_llp, :g, prob.np, g, autodiff=true)
+    register(m, :g, prob.np, g, autodiff=true)
     nl_obj = isone(prob.np) ? :(-($g)(p[1])) :  :(-($g)(p...))
-    set_NL_objective(m_llp, MOI.MIN_SENSE, nl_obj)
+    set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
 
     # add uncertainty constraints
-    add_uncertainty_constraint!(m_llp, problem)
+    add_uncertainty_constraint!(m, problem)
 
     # optimize model and check status
-    JuMP.optimize!(m_llp)
-    tstatus = JuMP.termination_status(m_llp)
-    rstatus = JuMP.primal_status(m_llp)
+    JuMP.optimize!(m)
+    tstatus = JuMP.termination_status(m)
+    rstatus = JuMP.primal_status(m)
     is_feasible = llp_check(prob.local_solver, tstatus, rstatus)
 
     # fill buffer with subproblem result info
     buffer.is_feasible = is_feasible
-    buffer.obj_value = -JuMP.objective_value(m_llp)
+    buffer.obj_value = -JuMP.objective_value(m)
     @__dot__ buffer.p_bar = JuMP.value(p)
-    result.solution_time += MOI.get(m_llp, MOI.SolveTime())
+    result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
 end
-function sipRes_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
+function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
                      buffer::SIPBuffer, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sipRes_llp!(DefaultSubproblem(), s, result, buffer, prob, cb, i)
+    sip_llp!(DefaultSubproblem(), s, result, buffer, prob, cb, i)
 end
 
 # Shared bounding problems
-function sipRes_bnd!(t::ExtensionType, alg::A, s::S, buffer::SIPBuffer,
+function sip_bnd!(t::ExtensionType, alg::A, s::S, buffer::SIPBuffer,
                     eps_g::Float64, result::SIPResult, prob::SIPProblem,
                     cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sipRes_bnd!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
+    sip_bnd!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
 end
-function sipRes_bnd!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
+function sip_bnd!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
                     eps_g::Float64, result::SIPResult, prob::SIPProblem,
                     cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
     # create JuMP model
-    m_bnd, x = build_model(t, alg, s, prob)
+    m, x = build_model(t, alg, s, prob)
     disc_set = get_disc_set(s, prob)
 
     for i = 1:prob.nSIP
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[j][i])
-            register(m_bnd, gi, nx, g, autodiff=true)
-            xids = VariableRef[VariableRef(m_bnd, MOI.VI(i)) for i = 1:prob.nx]
-            JuMP.add_NL_constraint(m_bnd, :($(gi)($(tuple(xids...))) + $ep_g <= 0))
+            register(m, gi, nx, g, autodiff=true)
+            JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + $ep_g <= 0))
         end
     end
 
     # define the objective
     obj_factor = prob.sense == :min ? 1.0 : -1.0
     obj(x...) =  obj_factor*cb.f(x)
-    register(m_bnd, :obj, prob.nx, obj, autodiff=true)
+    register(m, :obj, prob.nx, obj, autodiff=true)
     nl_obj = isone(prob.nx) ? :(($obj)(x[1])) : :(($obj)(x...))
-    set_NL_objective(m_bnd, MOI.MIN_SENSE, nl_obj)
+    set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
 
     # optimize model and check status
-    JuMP.optimize!(m_bnd)
-    t_status = JuMP.termination_status(m_bnd)
-    r_status = JuMP.primal_status(m_bnd)
+    JuMP.optimize!(m)
+    t_status = JuMP.termination_status(m)
+    r_status = JuMP.primal_status(m)
     is_feasible = bnd_check(prob.local_solver, t_status, r_status, eps_g)
 
     # fill buffer with subproblem result info
     buffer.is_feasible = is_feasible
-    buffer.obj_value = obj_factor*JuMP.objective_bound(m_bnd)
+    buffer.obj_value = obj_factor*JuMP.objective_bound(m)
     @__dot__ buffer.x_bar = JuMP.value(x)
-    result.solution_time += MOI.get(m_bnd, MOI.SolveTime())
+    result.solution_time += MOI.get(m, MOI.SolveTime())
+
+    return nothing
+end
+
+# Adaptive restriction subproblem
+function sip_res!(t::ExtensionType, alg::A, s::S, buffer::SIPBuffer,
+                    eps_g::Float64, result::SIPResult, prob::SIPProblem,
+                    cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+    sip_res!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
+end
+function sip_res!(t::DefaultExt, alg::A, s::S, buffer::SIPBuffer,
+                  eps_g::Float64, result::SIPResult, prob::SIPProblem,
+                  cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+
+    # create JuMP model & variables
+    m, x = build_model(t, alg, s, prob)
+    @variable(m, η)
+
+    # add discretized semi-infinite constraint
+    disc_set = get_disc_set(s, prob)
+    for i = 1:prob.nSIP
+        for j = 1:length(disc_set)
+            gi = Symbol("g$i$j")
+            g(x...) = cb.gSIP[i](x, disc_set[j][i])
+            register(m, gi, nx, g, autodiff=true)
+            JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + η <= 0))
+        end
+    end
+
+    # add epigraph reformulated objective
+    register(m, :f, nx, cb.f, autodiff=true)
+    fRes = #TODO
+    JuMP.add_NL_constraint(m, :(f($(tuple(x...))) + $fRes <= 0))
+
+    # define the objective
+    @objective(m, Min, -η)
+
+    # optimize model and check status
+    JuMP.optimize!(m)
+    t_status = JuMP.termination_status(m)
+    r_status = JuMP.primal_status(m)
+    is_feasible = bnd_check(prob.local_solver, t_status, r_status, eps_g)
+
+    # fill buffer with subproblem result info
+    buffer.is_feasible = is_feasible
+    buffer.obj_value = obj_factor*JuMP.objective_bound(m)
+    @__dot__ buffer.x_bar = JuMP.value(x)
+    result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
 end
