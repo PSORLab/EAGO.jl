@@ -14,11 +14,9 @@ struct SIPRes <: AbstractSIPAlgo end
 function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
                     result::SIPResult, cb::SIPCallback)
 
-    # initializes solution
     verb = prob.verbosity
-    eps_g =  prob.initial_eps_g
-    r = prob.initial_r
 
+    # initializes solution
     @label main_iteration
     check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
 
@@ -52,7 +50,7 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
 
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
-    sipRes_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
+    sipRes_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
     if buffer.is_feasible_ubd
         is_llp2_nonpositive = true
@@ -67,16 +65,16 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
                 result.upper_bound = buffer.obj_value_ubd
                 result.xsol .= buffer.ubd_x
             end
-            eps_g /= r
+            buffer.eps_g ./= buffer.r_g
         else
             push!(prob.upper_disc, deepcopy(buffer.upper_disc))
         end
     else
-        eps_g /= r
+        buffer.eps_g ./= buffer.r_g
     end
 
     # print iteration information and advance
-    print_int!(verb, prob, k, result, eps_g, r)
+    print_int!(verb, prob, k, result, buffer.r_g)
     result.iteration_number += 1
     result.iteration_number < prob.iteration_limit && @goto main_iteration
 

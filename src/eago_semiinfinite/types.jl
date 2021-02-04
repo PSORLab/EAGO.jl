@@ -151,9 +151,9 @@ Base.@kwdef mutable struct SIPSubResult
     llp1::SubProblemInfo
     llp2::SubProblemInfo
     llp3::SubProblemInfo
-    r_g::Vector{Float64} = Float64[]
-    r_l::Vector{Float64} = Float64[]
-    r_u::Vector{Float64} = Float64[]
+    r_g::Float64 = 5.0
+    r_l::Float64 = 5.0
+    r_u::Float64 = 5.0
     eps_g::Vector{Float64} = Float64[]
     eps_l::Vector{Float64} = Float64[]
     eps_u::Vector{Float64} = Float64[]
@@ -167,9 +167,6 @@ function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
                           llp1 = SubProblemInfo(np, ng, tol),
                           llp2 = SubProblemInfo(np, ng, tol),
                           llp3 = SubProblemInfo(np, ng, tol))
-    append!(buffer.r_g, fill(2.0, ng))
-    append!(buffer.r_l, fill(2.0, ng))
-    append!(buffer.r_u, fill(2.0, ng))
     append!(buffer.eps_g, fill(1E-3, ng))
     append!(buffer.eps_l, fill(1E-3, ng))
     append!(buffer.eps_u, fill(1E-3, ng))

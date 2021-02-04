@@ -183,7 +183,7 @@ function print_int!(verb::Int, prob::SIPProblem, k::Int64, result::SIPResult,
 
         # prints header line every hdr_intv times
         if (mod(k, prob.hdr_intv) == 0 || k == 1)
-            println("| Iteration | Lower Bound | Upper Bound |   eps   |   r   |  Gap  |  Ratio  |")
+            println("| Iteration | Lower Bound | Upper Bound |   r   |  Gap  |  Ratio  |")
         end
 
         # prints iteration summary every prnt_intv times
@@ -205,11 +205,6 @@ function print_int!(verb::Int, prob::SIPProblem, k::Int64, result::SIPResult,
             max_len = 15
             upper_adj = ubd
             temp_str = string(round(upper_adj, digits = 6))
-            len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" | "
-
-            max_len = 15
-            temp_str = string(round(eps, digits = 6))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
@@ -239,23 +234,15 @@ function summary_inner!(verb::Int64, val::Float64, x::Vector{Float64},
     (verb == 2 || verb == 1) && println("solved $desc: ", val, " ", x, " ", feas)
     return nothing
 end
-function print_summary!(s::LowerLevel1, v::Int64, r::SIPSubResult, i::Int)
-    summary_inner!(v, r.obj_value_llp1, r.llp1_p, r.is_feasible_llp1, "Lower LLP$i")
-end
-function print_summary!(s::LowerLevel2, v::Int64, r::SIPSubResult, i::Int)
-    summary_inner!(v, r.obj_value_llp2, r.llp2_p, r.is_feasible_llp2, "Upper LLP$i")
-end
-function print_summary!(s::LowerLevel3, v::Int64, r::SIPSubResult, i::Int)
-    summary_inner!(v, r.obj_value_llp3, r.llp3_p, r.is_feasible_llp3, "Res LLP$i")
-end
-function print_summary!(s::LowerProblem, v::Int64, r::SIPSubResult)
-    summary_inner!(v, r.obj_value_lbd, r.lbd_p, r.is_feasible_lbd, "LBD")
-end
-function print_summary!(s::UpperProblem, v::Int64, r::SIPSubResult)
-    summary_inner!(v, r.obj_value_ubd, r.ubd_p, r.is_feasible_ubd, "UBD")
-end
-function print_summary!(s::ResProblem, v::Int64, r::SIPSubResult)
-    summary_inner!(v, r.obj_value_res, r.res_p, r.is_feasible_res, "RES")
+
+for (typ, fd) in SUBPROB_SYM
+    function print_summary!(s::$typ, v::Int64, r::SIPSubResult, i::Int = 0)
+        if i == 0
+            summary_inner!(v, r.$fd.obj_value, r.$fd.sol, r.$fd.feas, "$s ")
+        else
+            summary_inner!(v, r.$fd.obj_value, r.$fd.sol, r.$fd.feas, "$s($i) ")
+        end
+    end
 end
 
 # Check convergence
@@ -266,7 +253,6 @@ function check_convergence(result::SIPResult, atol::Float64, verb::Int64)
     end
     return false
 end
-
 
 get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.pL, p.pU. p.np
 get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.xL, p.xU. p.nx
