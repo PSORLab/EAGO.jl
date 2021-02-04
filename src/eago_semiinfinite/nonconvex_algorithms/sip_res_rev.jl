@@ -14,26 +14,42 @@
 
 struct SIPResRev <: AbstractSIPAlgo end
 
-for (typ, fd) in SUBPROB_SYM
-    @eval function load!(t::DefaultExt, alg::SIPResRev, s::$t, m::JuMP.Model, sr::SIPSubResult, i::Int)
-        set_tolerance_inner!(t, alg, s, m, sr.$fd.tol, i)
-        return nothing
-    end
+struct LowerLevel1 <: AbstractSubproblemType end
+struct LowerLevel2 <: AbstractSubproblemType end
+struct LowerProblem <: AbstractSubproblemType end
+struct UpperProblem <: AbstractSubproblemType end
+
+function load!(t::DefaultExt, alg::SIPResRev, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
+    set_tolerance_inner!(t, alg, s, m, sr.eps_l[i])
+end
+function load!(t::DefaultExt, alg::SIPResRev, s::LowerLevel2, m::JuMP.Model, sr::SIPSubResult, i::Int)
+    set_tolerance_inner!(t, alg, s, m, sr.eps_u[i])
+end
+function load!(t::DefaultExt, alg::SIPResRev, s::LowerProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
+    set_tolerance_inner!(t, alg, s, m, sr.lbd.tol)
+end
+function load!(t::DefaultExt, alg::SIPResRev, s::UpperProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
+    set_tolerance_inner!(t, alg, s, m, sr.ubd.tol)
+end
+
+function get_disc_set(t::ExtensionType, alg::SIPResRev, s::LowerProblem, sr::SIPSubResult, i::Int)
+    sr.disc_l[i]
+end
+function get_disc_set(t::ExtensionType, alg::SIPResRev, s::UpperProblem, sr::SIPSubResult, i::Int)
+    sr.disc_u[i]
 end
 
 function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
                     result::SIPResult, cb::SIPCallback)
 
-    # initializes solution
     verb = prob.verbosity
-    eps_g =  prob.initial_eps_g
-    r = prob.initial_r
 
+    # initializes solution
     @label main_iteration
     check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
 
     # solve lower bounding problem and check feasibility
-    sip_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
+    sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)
     result.lower_bound = buffer.obj_value_lbd
     if buffer.is_feasible_lbd
         result.feasibility = false
@@ -42,53 +58,61 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
     end
     print_summary!(LowerProblem(), verb, buffer)
 
-    # solve inner program  and update lower discretization set
+    # solve inner program and update lower discretization set
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
         sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
-        is_llp1_nonpositive &= buffer.objective_value > 0.0
-        buffer.lbd_disc[i] .= buffer.pbar
+        buffer.disc_l_buffer .= buffer.pbar
         print_summary!(LowerLevel1(), verb, buffer, i)
+        if buffer.llp1.obj_bnd <= 0.0
+            continue
+        elseif buffer.llp1.obj_val > 0.0
+            push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
+            is_llp1_nonpositive = false
+        else
+            buffer.eps_l[i] = (buffer.llp1.obj_bnd - buffer.llp1.obj_val)/buffer.r_l
+            is_llp1_nonpositive = false
+        end
     end
-    # TODO: ADD TOLERANCE UPDATE CASE
 
     # if the lower problem is feasible then it's solution is the optimal value
     if is_llp1_nonpositive
-        result.upper_bound = buffer.obj_value_lbd
-        result.xsol .= buffer.lbd_x
+        result.upper_bound = buffer.lbd.obj_val
+        result.xsol .= buffer.lbd.sol
         result.feasibility = true
         @goto main_end
     end
-    push!(prob.lower_disc, deepcopy(buffer.lower_disc))
 
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
-    sip_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
+    sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
     if buffer.is_feasible_ubd
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
+            buffer.disc_u_buffer[i] .= buffer.pbar
             print_summary!(LowerLevel2(), verb, buffer, i)
-            is_llp2_nonpositive &= buffer.objective_value > 0.0
-            buffer.upper_disc[i] .= buffer.pbar
+            if buffer.llp2.obj_bnd <= 0.0
+                buffer.eps_g[i] /= buffer.r_g
+                continue
+            else
+                push!(prob.disc_u[i], deepcopy(buffer.disc_u_buffer))
+                is_llp2_nonpositive = false
+            end
         end
         if is_llp2_nonpositive
-            if buffer.obj_value_ubd <= result.upper_bound
-                result.upper_bound = buffer.obj_value_ubd
-                result.xsol .= buffer.ubd_x
+            if buffer.ubd.obj_val <= result.upper_bound
+                result.upper_bound = buffer.ubd.obj_val
+                result.xsol .= buffer.ubd.sol
             end
-            eps_g /= r
-        else
-            push!(prob.upper_disc, deepcopy(buffer.upper_disc))
         end
-        # TODO: ADD TOLERANCE UPDATE CASE
     else
-        eps_g /= r
+        buffer.eps_g ./= buffer.r_g
     end
 
     # print iteration information and advance
-    print_int!(verb, prob, k, result, eps_g, r)
+    print_int!(verb, prob, k, result, buffer.r_g)
     result.iteration_number += 1
     result.iteration_number < prob.iteration_limit && @goto main_iteration
 
