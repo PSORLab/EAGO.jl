@@ -2,7 +2,7 @@ name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
 
 authors = ["Matthew Wilhelm <matthew.wilhelm@uconn.edu>"]
-version = "0.5.2"
+version = "0.6.0"
 
 [deps]
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
