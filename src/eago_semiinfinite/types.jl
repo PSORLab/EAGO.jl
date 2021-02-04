@@ -128,100 +128,70 @@ struct SIPCallback
     gSIP
 end
 
+mutable struct SubProblemInfo
+    sol::Vector{Float64} = Float64[]
+    obj_val::Float64 = 0.0
+    feas::Bool = false
+    tol::Vector{Float64} = Float64[]
+end
+function SubProblemInfo(nd::Int, ng::Int, tol::Float64)
+    SubProblemInfo(zeros(nd), 0.0, false, fill(tol, ng))
+end
+
 """
     SIPBuffer
 
 Hold objective value, solution, discretization set, and feasibility status of
 each subproblem encountered by SIP algorithm.
 """
-@Base.kwdef mutable struct SIPSubResult
-    lbd_x::Vector{Float64} = Float64[]
-    ubd_x::Vector{Float64} = Float64[]
-    res_x::Vector{Float64} = Float64[]
-    llp1_p::Vector{Float64} = Float64[]
-    llp2_p::Vector{Float64} = Float64[]
-    llp3_p::Vector{Float64} = Float64[]
-    obj_value_lbd::Float64 = 0.0
-    obj_value_ubd::Float64 = 0.0
-    obj_value_res::Float64 = 0.0
-    obj_value_llp1::Float64 = 0.0
-    obj_value_llp2::Float64 = 0.0
-    obj_value_llp3::Float64 = 0.0
-    is_feasible_lbd::Bool = false
-    is_feasible_ubd::Bool = false
-    is_feasible_res::Bool = false
-    is_feasible_llp1::Bool = false
-    is_feasible_llp2::Bool = false
-    is_feasible_llp3::Bool = false
-    llp1_abs_tol::Float64 = 1E-3
-    llp2_abs_tol::Float64 = 1E-3
-    llp3_abs_tol::Float64 = 1E-3
-    lbd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
-    ubd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
-    res_disc::Vector{Vector{Float64}} = Vector{Float64}[]
+Base.@kwdef mutable struct SIPSubResult
+    lbd::SubProblemInfo
+    ubd::SubProblemInfo
+    res::SubProblemInfo
+    llp1::SubProblemInfo
+    llp2::SubProblemInfo
+    llp3::SubProblemInfo
+    r_g::Vector{Float64} = Float64[]
+    r_l::Vector{Float64} = Float64[]
+    r_u::Vector{Float64} = Float64[]
+    eps_g::Vector{Float64} = Float64[]
+    eps_l::Vector{Float64} = Float64[]
+    eps_u::Vector{Float64} = Float64[]
+    disc_l::Vector{Vector{Float64}} = Vector{Float64}[]
+    disc_u::Vector{Vector{Float64}} = Vector{Float64}[]
 end
 function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
-    buffer = SIPSubResult()
-    buffer.llp1_abs_tol = tol
-    buffer.llp2_abs_tol = tol
-    buffer.llp3_abs_tol = tol
-    append!(buffer.lbd_x, zeros(nx))
-    append!(buffer.ubd_x, zeros(nx))
-    append!(buffer.res_x, zeros(nx))
-    append!(buffer.llp1_p, zeros(np))
-    append!(buffer.llp2_p, zeros(np))
-    append!(buffer.llp3_p, zeros(np))
+    buffer = SIPSubResult(lbd  = SubProblemInfo(nx, 1, tol),
+                          ubd  = SubProblemInfo(nx, 1, tol),
+                          res  = SubProblemInfo(nx, 1, tol),
+                          llp1 = SubProblemInfo(np, ng, tol),
+                          llp2 = SubProblemInfo(np, ng, tol),
+                          llp3 = SubProblemInfo(np, ng, tol))
+    append!(buffer.r_g, fill(2.0, ng))
+    append!(buffer.r_l, fill(2.0, ng))
+    append!(buffer.r_u, fill(2.0, ng))
+    append!(buffer.eps_g, fill(1E-3, ng))
+    append!(buffer.eps_l, fill(1E-3, ng))
+    append!(buffer.eps_u, fill(1E-3, ng))
     for _ in 1:ng
-        push!(buffer.lbd_disc, zeros(np))
-        push!(buffer.ubd_disc, zeros(np))
-        push!(buffer.res_disc, zeros(np))
+        push!(buffer.disc_l, zeros(np))
+        push!(buffer.disc_u, zeros(np))
     end
     return buffer
 end
 
-function load!(::LowerProblem, subresult::SIPSubResult, feas::Bool,
-                               objval::Float64, x::Vector{Float64})
-    subresult.is_feasible_lbd = feas
-    subresult.obj_value_lbd = objval
-    subresult.lbd_x .= x
-    return nothing
-end
-function load!(::UpperProblem, subresult::SIPSubResult, feas::Bool,
-                               objval::Float64, x::Vector{Float64})
-    subresult.is_feasible_ubd = feas
-    subresult.obj_value_ubd = objval
-    subresult.ubd_x .= x
-    return nothing
-end
-function load!(::ResProblem, subresult::SIPSubResult, feas::Bool,
-                             objval::Float64, x::Vector{Float64})
-    subresult.is_feasible_res = feas
-    subresult.obj_value_res = objval
-    subresult.res_x .= x
-    return nothing
-end
-function load!(::LowerLevel1, subresult::SIPSubResult, feas::Bool,
-                              objval::Float64, p::Vector{Float64})
-    subresult.is_feasible_llp1 = feas
-    subresult.obj_value_llp1 = objval
-    subresult.llp1_p .= p
-    return nothing
-end
-function load!(::LowerLevel2, subresult::SIPSubResult, feas::Bool,
-                              objval::Float64, p::Vector{Float64})
-    subresult.is_feasible_llp2 = feas
-    subresult.obj_value_llp2 = objval
-    subresult.llp2_p .= p
-    return nothing
-end
-function load!(::LowerLevel3, subresult::SIPSubResult, feas::Bool,
-                              objval::Float64, p::Vector{Float64})
-    subresult.is_feasible_llp3 = feas
-    subresult.obj_value_llp3 = objval
-    subresult.llp3_p .= p
-    return nothing
-end
+const SUBPROB_SYM = Dict{Symbol,Symbol}(:LowerProblem => :lbd,
+                                        :UpperProblem => :ubd,
+                                        :ResProblem   => :res,
+                                        :LowerLevel1  => :llp1,
+                                        :LowerLevel2  => :llp1,
+                                        :LowerLevel3  => :llp3)
 
-get_disc_set(s::LowerProblem, prob::SIPProblem) = prob.lbd_disc
-get_disc_set(s::UpperProblem, prob::SIPProblem) = prob.ubd_disc
-get_disc_set(s::ResProblem, prob::SIPProblem) = prob.res_disc
+for (typ, fd) in SUBPROB_SYM
+    @eval function load!(::$typ, sr::SIPSubResult, feas::Bool, obj::Float64, x::Vector{Float64})
+        sr.$fd.feas = feas
+        sr.$fd.obj_value = obj
+        sr.$sol .= x
+        return nothing
+    end
+end

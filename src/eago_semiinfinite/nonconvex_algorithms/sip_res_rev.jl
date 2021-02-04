@@ -75,6 +75,7 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
         buffer.lbd_disc[i] .= buffer.pbar
         print_summary!(LowerLevel1(), verb, buffer, i)
     end
+    # TODO: ADD TOLERANCE UPDATE CASE
 
     # if the lower problem is feasible then it's solution is the optimal value
     if is_llp1_nonpositive
@@ -106,6 +107,7 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
         else
             push!(prob.upper_disc, deepcopy(buffer.upper_disc))
         end
+        # TODO: ADD TOLERANCE UPDATE CASE
     else
         eps_g /= r
     end
