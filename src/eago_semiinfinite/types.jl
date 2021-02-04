@@ -195,7 +195,7 @@ for (typ, fd) in SUBPROB_SYM
     @eval function load!(::$typ, sr::SIPSubResult, feas::Bool, val::Float64,
                                  bnd::Float64, x::Vector{Float64})
         sr.$fd.feas = feas
-        sr.$fd.obj_value = obj
+        sr.$fd.obj_val = obj
         sr.$fd.obj_bnd = bnd
         sr.$sol .= x
         return nothing

@@ -43,7 +43,7 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
         sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
         buffer.disc_l_buffer .= buffer.pbar
         print_summary!(LowerLevel1(), verb, buffer, i)
-        if buffer.objective_value <= 0.0
+        if buffer.llp1.obj_val <= 0.0
             continue
         else
             push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
@@ -53,8 +53,8 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
 
     # if the lower problem is feasible then it's solution is the optimal value
     if is_llp1_nonpositive
-        result.upper_bound = buffer.obj_value_lbd
-        result.xsol .= buffer.lbd_x
+        result.upper_bound = buffer.lbd.obj_val
+        result.xsol .= buffer.lbd.sol
         result.feasibility = true
         @goto main_end
     end
@@ -69,7 +69,8 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
             sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
             buffer.disc_u_buffer[i] .= buffer.pbar
             print_summary!(LowerLevel2(), verb, buffer, i)
-            if buffer.objective_value <= 0.0
+            if buffer.llp2.obj_val <= 0.0
+                buffer.eps_g[i] /= buffer.r_g
                 continue
             else
                 push!(prob.disc_u[i], deepcopy(buffer.disc_u_buffer))
@@ -77,13 +78,10 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
             end
         end
         if is_llp2_nonpositive
-            if buffer.obj_value_ubd <= result.upper_bound
-                result.upper_bound = buffer.obj_value_ubd
-                result.xsol .= buffer.ubd_x
+            if buffer.ubd.obj_val <= result.upper_bound
+                result.upper_bound = buffer.ubd.obj_val
+                result.xsol .= buffer.ubd.sol
             end
-            buffer.eps_g ./= buffer.r_g
-        else
-            push!(prob.upper_disc, deepcopy(buffer.upper_disc))
         end
     else
         buffer.eps_g ./= buffer.r_g
