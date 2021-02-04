@@ -14,30 +14,6 @@
 
 struct SIPResRev <: AbstractSIPAlgo end
 
-function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, abs_tol::Float64)
-    optimizer_name = MOI.SolverName()
-    if optimizer_name === "EAGO: Easy Advanced Global Optimization"
-        set_optimizer_attribute(m, "absolute_value", abs_tol)
-    elseif optimizer_name === "SCIP"
-        set_optimizer_attribute(m, "limits/absgap", abs_tol)
-    elseif optimizer_name === "Alpine"
-        set_optimizer_attribute(m, "absgap", abs_tol)
-    elseif optimizer_name === "BARON"
-        set_optimizer_attribute(m, "EpsA", abs_tol)
-    elseif optimizer_name === "GAMS"
-        set_optimizer_attribute(m, "OptCA", abs_tol)
-    else
-        error("A custom set_tolerance! function for solver = $optimizer_name
-               specified for use with subproblem = $s in algorithm = $alg with
-               extension = $t has not been defined and the selected solver is
-               not support by default. Please open an issue requesting this feature
-               at the following link https://github.com/PSORLab/EAGO.jl/issues.
-               Extending the EAGO.set_tolerance! with a custom extension type
-               will resolve this issue.")
-    end
-    return nothing
-end
-
 for (typ, fd) in SUBPROB_SYM
     @eval function load!(t::DefaultExt, alg::SIPResRev, s::$t, m::JuMP.Model, sr::SIPSubResult, i::Int)
         set_tolerance_inner!(t, alg, s, m, sr.$fd.tol, i)

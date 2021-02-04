@@ -1,3 +1,14 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This code is licensed under MIT license (see LICENSE.md for full details)
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# # src/eago_semiinfinite/types.jl
+# Defines intermediate types used by SIP routines.
+#############################################################################
+
 abstract type AbstractSIPAlgo end
 
 abstract type AbstractSubproblemType end
@@ -123,11 +134,12 @@ end
 mutable struct SubProblemInfo
     sol::Vector{Float64} = Float64[]
     obj_val::Float64 = 0.0
+    obj_bnd::Float64 = 0.0
     feas::Bool = false
     tol::Vector{Float64} = Float64[]
 end
 function SubProblemInfo(nd::Int, ng::Int, tol::Float64)
-    SubProblemInfo(zeros(nd), 0.0, false, fill(tol, ng))
+    SubProblemInfo(zeros(nd), 0.0, 0.0, false, fill(tol, ng))
 end
 
 """
@@ -180,9 +192,11 @@ const SUBPROB_SYM = Dict{Symbol,Symbol}(:LowerProblem => :lbd,
                                         :LowerLevel3  => :llp3)
 
 for (typ, fd) in SUBPROB_SYM
-    @eval function load!(::$typ, sr::SIPSubResult, feas::Bool, obj::Float64, x::Vector{Float64})
+    @eval function load!(::$typ, sr::SIPSubResult, feas::Bool, val::Float64,
+                                 bnd::Float64, x::Vector{Float64})
         sr.$fd.feas = feas
         sr.$fd.obj_value = obj
+        sr.$fd.obj_bnd = bnd
         sr.$sol .= x
         return nothing
     end

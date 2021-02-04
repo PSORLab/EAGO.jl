@@ -6,7 +6,7 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_semiinfinite/semi_infinite.jl
-# Defines utilities for generic SIP routines.
+# Defines high level interface for SIP routines.
 #############################################################################
 
 include("types.jl")

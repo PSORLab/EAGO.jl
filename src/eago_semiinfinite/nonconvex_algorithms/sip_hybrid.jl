@@ -32,13 +32,16 @@ function sip_hybrid()
     # solve inner program  and update lower discretization set
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
-        sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
-        if buffer.objective_value > 0.0
+        sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
+        buffer.disc_l_buffer .= buffer.pbar
+        print_summary!(LowerLevel1(), verb, buffer, i)
+        if buffer.objective_value <= 0.0
+            continue
+        elseif eva
         else
-            buffer.lower_disc[i] .= buffer.pbar
-            prob.lower_disc
+            push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
+            is_llp1_nonpositive = false
         end
-        ((verb == 1) || (verb == 2)) && print_summary!(buffer, "Lower LLP$i")
     end
     push!(prob.lower_disc, deepcopy(buffer.lower_disc))
 

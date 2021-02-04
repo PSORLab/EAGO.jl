@@ -1,4 +1,17 @@
-# Load a model
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This code is licensed under MIT license (see LICENSE.md for full details)
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_semiinfinite/sub_problems.jl
+# Defines utilities for generic SIP subroutines.
+#############################################################################
+
+###
+### Build model
+###
 function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
     model = Model(get_sip_optimizer(t,a,s))
     for (k,v) in get_sip_kwargs(a,s,p)
@@ -12,6 +25,32 @@ function build_model(t::ExtensionType, a::A, s::S, p::SIPProblem) where {A <: Ab
     build_model(DefaultExt(), s, p)
 end
 
+###
+### General set tolerances
+###
+function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, abs_tol::Float64)
+    optimizer_name = MOI.SolverName()
+    if optimizer_name === "EAGO: Easy Advanced Global Optimization"
+        set_optimizer_attribute(m, "absolute_value", abs_tol)
+    elseif optimizer_name === "SCIP"
+        set_optimizer_attribute(m, "limits/absgap", abs_tol)
+    elseif optimizer_name === "Alpine"
+        set_optimizer_attribute(m, "absgap", abs_tol)
+    elseif optimizer_name === "BARON"
+        set_optimizer_attribute(m, "EpsA", abs_tol)
+    elseif optimizer_name === "GAMS"
+        set_optimizer_attribute(m, "OptCA", abs_tol)
+    else
+        error("A custom set_tolerance! function for solver = $optimizer_name
+               specified for use with subproblem = $s in algorithm = $alg with
+               extension = $t has not been defined and the selected solver is
+               not support by default. Please open an issue requesting this feature
+               at the following link https://github.com/PSORLab/EAGO.jl/issues.
+               Extending the EAGO.set_tolerance! with a custom extension type
+               will resolve this issue.")
+    end
+    return nothing
+end
 function set_tolerance!(t::DefaultExt, alg::AbstractSIPAlgo, s::S, m::JuMP.Model,
                         sr::SIPSubResult, i::Int) where {S <: AbstractSubproblemType}
     return nothing
@@ -22,6 +61,9 @@ function set_tolerance!(t::ExtensionType, alg::A, s::S, m::JuMP.Model,
     set_tolerance!(t, alg, s, m, sr, i)
 end
 
+###
+### General get discretation set
+###
 function get_disc_set(t::DefaultExt, alg::AbstractSIPAlgo, s::S, sr::SIPProblem, i::Int) where {S <: AbstractSubproblemType}
     return Vector{Float64}[]
 end
@@ -29,7 +71,9 @@ function get_disc_set(t::ExtensionType, alg::AbstractSIPAlgo, s::S, sr::SIPProbl
     get_disc_set(DefaultExt(), alg, s, p, i)
 end
 
-# Shared LLP subroutines
+###
+### Add constraints solely on uncertainty
+###
 function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
     #if !isnothing(model.polyhedral_uncertainty_set)
         #@constraint(model, )
@@ -39,6 +83,8 @@ function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
     #end
     return nothing
 end
+
+
 function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalResultCode)
     valid, feasible = is_globally_optimal(t, r)
     if islocal && ((t != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED))
