@@ -57,7 +57,7 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
     check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
 
     # solve lower bounding problem and check feasibility
-    sipRes_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
+    sip_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
     result.lower_bound = buffer.obj_value_lbd
     if buffer.is_feasible_lbd
         result.feasibility = false
@@ -69,7 +69,7 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
     # solve inner program  and update lower discretization set
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
-        sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
+        sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
         is_llp1_nonpositive &= buffer.objective_value > 0.0
         buffer.lbd_disc[i] .= buffer.pbar
         print_summary!(LowerLevel1(), verb, buffer, i)
@@ -87,12 +87,12 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
 
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
-    sipRes_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
+    sip_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
     if buffer.is_feasible_ubd
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
-            sipRes_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
+            sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
             print_summary!(LowerLevel2(), verb, buffer, i)
             is_llp2_nonpositive &= buffer.objective_value > 0.0
             buffer.upper_disc[i] .= buffer.pbar
