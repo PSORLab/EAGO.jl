@@ -12,13 +12,14 @@ function build_model(t::ExtensionType, a::A, s::S, p::SIPProblem) where {A <: Ab
     build_model(DefaultExt(), s, p)
 end
 
-function set_tolerance!(t::DefaultExt, alg::AbstractSIPAlgo, s::S, m::JuMP.Model, sr::SIPSubResult) where {S <: AbstractSubproblemType}
+function set_tolerance!(t::DefaultExt, alg::AbstractSIPAlgo, s::S, m::JuMP.Model,
+                        sr::SIPSubResult, i::Int) where {S <: AbstractSubproblemType}
     return nothing
 end
 function set_tolerance!(t::ExtensionType, alg::A, s::S, m::JuMP.Model,
-                        sr::SIPSubResult) where {A <: AbstractSIPAlgo,
-                                                 S <: AbstractSubproblemType}
-    set_tolerance!(t, alg, s, m, sr)
+                        sr::SIPSubResult, i::Int) where {A <: AbstractSIPAlgo,
+                                                         S <: AbstractSubproblemType}
+    set_tolerance!(t, alg, s, m, sr, i)
 end
 
 # Shared LLP subroutines
@@ -46,7 +47,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
 
     # build the model
     m, p = build_model(t, alg, s, prob)
-    set_tolerance!(t, alg, s, m, sr)
+    set_tolerance!(t, alg, s, m, sr, i)
 
     # define the objective
     g(p...) = cb.gSIP[i](xbar, p)
@@ -76,25 +77,26 @@ function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
 end
 
 # Shared bounding problems
-function sip_bnd!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult,
-                    eps_g::Float64, result::SIPResult, prob::SIPProblem,
-                    cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+function sip_bnd!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
+                  prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
+                                                            S <: AbstractSubproblemType}
     sip_bnd!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
 end
-function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
-                    eps_g::Float64, result::SIPResult, prob::SIPProblem,
-                    cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
+                  prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
+                                                            S <: AbstractSubproblemType}
 
     # create JuMP model
     m, x = build_model(t, alg, s, prob)
     disc_set = get_disc_set(s, prob)
 
     for i = 1:prob.nSIP
+        ϵ_g = get_eps(s, sr, i)
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[j][i])
             register(m, gi, nx, g, autodiff=true)
-            JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + $ep_g <= 0))
+            JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + $ϵ_g <= 0))
         end
     end
 

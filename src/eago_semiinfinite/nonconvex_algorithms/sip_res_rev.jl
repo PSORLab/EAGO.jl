@@ -14,7 +14,7 @@
 
 struct SIPResRev <: AbstractSIPAlgo end
 
-function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, s abs_tol::Float64)
+function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, abs_tol::Float64)
     optimizer_name = MOI.SolverName()
     if optimizer_name === "EAGO: Easy Advanced Global Optimization"
         set_optimizer_attribute(m, "absolute_value", abs_tol)
@@ -38,12 +38,11 @@ function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, s abs_tol::F
     return nothing
 end
 
-function set_tolerance!(t::DefaultExt, alg::SIPResRev, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult)
-     set_tolerance_inner!(t, alg, s, m, sr.llp1_abs_tol)
-end
-
-function set_tolerance!(t::DefaultExt, alg::SIPResRev, s::LowerLevel2, m::JuMP.Model, sr::SIPSubResult)
-     set_tolerance_inner!(t, alg, s, m, sr.llp_2abs_tol)
+for (typ, fd) in SUBPROB_SYM
+    @eval function load!(t::DefaultExt, alg::SIPResRev, s::$t, m::JuMP.Model, sr::SIPSubResult, i::Int)
+        set_tolerance_inner!(t, alg, s, m, sr.$fd.tol, i)
+        return nothing
+    end
 end
 
 function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
