@@ -11,6 +11,13 @@
 
 struct SIPRes <: AbstractSIPAlgo end
 
+function get_disc_set(t::ExtensionType, alg::SIPRes, s::LowerProblem, sr::SIPSubResult, i::Int)
+    sr.disc_l[i]
+end
+function get_disc_set(t::ExtensionType, alg::SIPRes, s::UpperProblem, sr::SIPSubResult, i::Int)
+    sr.disc_u[i]
+end
+
 function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
                     result::SIPResult, cb::SIPCallback)
 
@@ -21,7 +28,7 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
     check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
 
     # solve lower bounding problem and check feasibility
-    sip_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
+    sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)
     result.lower_bound = buffer.obj_value_lbd
     if buffer.is_feasible_lbd
         result.feasibility = false
@@ -30,15 +37,19 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
     end
     print_summary!(LowerProblem(), verb, buffer)
 
-    # solve inner program  and update lower discretization set
+    # solve inner program and update lower discretization set
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
         sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
-        is_llp1_nonpositive &= buffer.objective_value > 0.0
-        buffer.lbd_disc[i] .= buffer.pbar
+        buffer.disc_l_buffer .= buffer.pbar
         print_summary!(LowerLevel1(), verb, buffer, i)
+        if buffer.objective_value <= 0.0
+            continue
+        else
+            push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
+            is_llp1_nonpositive = false
+        end
     end
-    push!(prob.lower_disc, deepcopy(buffer.lower_disc))
 
     # if the lower problem is feasible then it's solution is the optimal value
     if is_llp1_nonpositive
@@ -56,9 +67,14 @@ function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
+            buffer.disc_u_buffer[i] .= buffer.pbar
             print_summary!(LowerLevel2(), verb, buffer, i)
-            is_llp2_nonpositive &= buffer.objective_value > 0.0
-            buffer.upper_disc[i] .= buffer.pbar
+            if buffer.objective_value <= 0.0
+                continue
+            else
+                push!(prob.disc_u[i], deepcopy(buffer.disc_u_buffer))
+                is_llp2_nonpositive = false
+            end
         end
         if is_llp2_nonpositive
             if buffer.obj_value_ubd <= result.upper_bound

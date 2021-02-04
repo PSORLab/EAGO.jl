@@ -19,13 +19,14 @@ function sip_hybrid()
 
     @label main_algo
     # Solve LBD to get fLBD- at xLBD- and LBD <- fLBD-
-    sipRes_bnd!(t, alg, LowerProblem(), buffer, 0.0, result, prob, cb)
-    set_global_bound!(LowerProblem(), result, buffer)
+    sipRes_bnd!(t, alg, LowerProblem(), buffer,result, prob, cb)
+    result.lower_bound = buffer.obj_value_lbd
     if !is_feasible(buffer)
         result.feasibility = false
-        println("Terminated: lower bounding problem infeasible."); @goto main_end
+        println("Terminated: lower bounding problem infeasible.")
+        @goto main_end
     end
-    print_summary!(verb, result, LowerProblem())
+    print_summary!(LowerProblem(), verb, buffer)
 
     # g+(xLBD-) and ybar <- Solve LLP with: xLBD-
     # solve inner program  and update lower discretization set
@@ -33,7 +34,10 @@ function sip_hybrid()
     for i = 1:prob.nSIP
         sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
         if buffer.objective_value > 0.0
+        else
             buffer.lower_disc[i] .= buffer.pbar
+            prob.lower_disc
+        end
         ((verb == 1) || (verb == 2)) && print_summary!(buffer, "Lower LLP$i")
     end
     push!(prob.lower_disc, deepcopy(buffer.lower_disc))

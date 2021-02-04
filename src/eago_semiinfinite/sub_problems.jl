@@ -22,6 +22,13 @@ function set_tolerance!(t::ExtensionType, alg::A, s::S, m::JuMP.Model,
     set_tolerance!(t, alg, s, m, sr, i)
 end
 
+function get_disc_set(t::DefaultExt, alg::AbstractSIPAlgo, s::S, sr::SIPProblem, i::Int) where {S <: AbstractSubproblemType}
+    return Vector{Float64}[]
+end
+function get_disc_set(t::ExtensionType, alg::AbstractSIPAlgo, s::S, sr::SIPProblem, i::Int) where {S <: AbstractSubproblemType}
+    get_disc_set(DefaultExt(), alg, s, p, i)
+end
+
 # Shared LLP subroutines
 function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
     #if !isnothing(model.polyhedral_uncertainty_set)
@@ -88,21 +95,20 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
 
     # create JuMP model
     m, x = build_model(t, alg, s, prob)
-    disc_set = get_disc_set(s, prob)
 
     for i = 1:prob.nSIP
         ϵ_g = get_eps(s, sr, i)
+        disc_set = get_disc_set(t, alg, s, sr, i)
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
-            g(x...) = cb.gSIP[i](x, disc_set[j][i])
+            g(x...) = cb.gSIP[i](x, disc_set[i][j])
             register(m, gi, nx, g, autodiff=true)
             JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + $ϵ_g <= 0))
         end
     end
 
     # define the objective
-    obj_factor = prob.sense == :min ? 1.0 : -1.0
-    obj(x...) =  obj_factor*cb.f(x)
+    obj(x...) = cb.f(x)
     register(m, :obj, prob.nx, obj, autodiff=true)
     nl_obj = isone(prob.nx) ? :(($obj)(x[1])) : :(($obj)(x...))
     set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
@@ -114,7 +120,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
     feas = bnd_check(prob.local_solver, t_status, r_status, eps_g)
 
     # fill buffer with subproblem result info
-    load!(s, buffer, feas, obj_factor*JuMP.objective_bound(m), JuMP.value(x))
+    load!(s, buffer, feas, JuMP.objective_bound(m), JuMP.value(x))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -135,11 +141,11 @@ function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
     @variable(m, η)
 
     # add discretized semi-infinite constraint
-    disc_set = get_disc_set(s, prob)
     for i = 1:prob.nSIP
+        disc_set = get_disc_set(t, alg, s, sr, i)
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
-            g(x...) = cb.gSIP[i](x, disc_set[j][i])
+            g(x...) = cb.gSIP[i](x, disc_set[i][j])
             register(m, gi, nx, g, autodiff=true)
             JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + η <= 0))
         end

@@ -40,10 +40,6 @@ mutable struct SIPProblem
     np::Int64
     nSIP::Int64
     nx::Int64
-    sense::Symbol
-
-    init_lower_disc::Vector{Vector{Vector{Float64}}}
-    init_upper_disc::Vector{Vector{Vector{Float64}}}
 
     absolute_tolerance::Float64
     constraint_tolerance::Float64
@@ -93,10 +89,6 @@ function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
     np = length(p_l)
     nx = length(x_l)
 
-    sense = haskey(kwargs, :sip_sense) ? kwargs[:sip_sense] : :min
-    init_lower_disc = haskey(kwargs, :sip_init_lower_disc) ? kwargs[:sip_init_lower_disc] : Vector{Vector{Float64}}[]
-    init_upper_disc = haskey(kwargs, :sip_init_upper_disc) ? kwargs[:sip_init_upper_disc] : Vector{Vector{Float64}}[]
-
     opt_dict = Dict{Symbol,Any}()
     for key in keys(kwargs)
         string_key = String(key)
@@ -112,8 +104,8 @@ function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
 
     nSIP = length(gSIP)
 
-    SIPProblem(x_l, x_u, p_l, p_u, np, nSIP, nx, sense, init_lower_disc,
-               init_upper_disc, absolute_tolerance, constraint_tolerance,
+    SIPProblem(x_l, x_u, p_l, p_u, np, nSIP, nx,
+               absolute_tolerance, constraint_tolerance,
                iteration_limit,
                initial_eps_g, initial_r, return_hist, header_interval,
                print_interval, verbosity, local_solver,
@@ -157,8 +149,10 @@ Base.@kwdef mutable struct SIPSubResult
     eps_g::Vector{Float64} = Float64[]
     eps_l::Vector{Float64} = Float64[]
     eps_u::Vector{Float64} = Float64[]
-    disc_l::Vector{Vector{Float64}} = Vector{Float64}[]
-    disc_u::Vector{Vector{Float64}} = Vector{Float64}[]
+    disc_l_buffer::Vector{Float64} = Float64[]
+    disc_u_buffer::Vector{Float64} = Float64[]
+    disc_l::Vector{Vector{Vector{Float64}}} = Vector{Vector{Float64}}[]
+    disc_u::Vector{Vector{Vector{Float64}}} = Vector{Vector{Float64}}[]
 end
 function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
     buffer = SIPSubResult(lbd  = SubProblemInfo(nx, 1, tol),
@@ -170,10 +164,8 @@ function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
     append!(buffer.eps_g, fill(1E-3, ng))
     append!(buffer.eps_l, fill(1E-3, ng))
     append!(buffer.eps_u, fill(1E-3, ng))
-    for _ in 1:ng
-        push!(buffer.disc_l, zeros(np))
-        push!(buffer.disc_u, zeros(np))
-    end
+    append!(buffer.disc_l_buffer, zeros(np))
+    append!(buffer.disc_u_buffer, zeros(np))
     return buffer
 end
 
