@@ -11,7 +11,8 @@
 
 struct SIPRes <: AbstractSIPAlgo end
 
-function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResult, cb::SIPCallback)
+function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
+                    result::SIPResult, cb::SIPCallback)
 
     # initializes solution
     verb = prob.verbosity
@@ -29,7 +30,7 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
         println("Terminated: lower bounding problem infeasible.")
         @goto main_end
     end
-    print_summary!(verb, result, LowerProblem())
+    print_summary!(LowerProblem(), verb, buffer)
 
     # solve inner program  and update lower discretization set
     is_llp1_nonpositive = true
@@ -37,7 +38,7 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
         sipRes_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
         is_llp1_nonpositive &= buffer.objective_value > 0.0
         buffer.lbd_disc[i] .= buffer.pbar
-        ((verb == 1) || (verb == 2)) && print_summary!(buffer, "Lower LLP$i")
+        print_summary!(LowerLevel1(), verb, buffer, i)
     end
     push!(prob.lower_disc, deepcopy(buffer.lower_disc))
 
@@ -52,12 +53,12 @@ function sip_solve!(t, alg::SIPRes, init_bnd, prob::SIPProblem, result::SIPResul
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
     sipRes_bnd!(t, alg, UpperProblem(), buffer, eps_g, result, prob, cb)
-    print_summary!(verb, buffer, :x, "UBD")
+    print_summary!(UpperProblem(), verb, buffer)
     if buffer.is_feasible_ubd
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sipRes_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
-            print_summary!(verb, buffer, :p, "Upper LLP$i")
+            print_summary!(LowerLevel2(), verb, buffer, i)
             is_llp2_nonpositive &= buffer.objective_value > 0.0
             buffer.upper_disc[i] .= buffer.pbar
         end

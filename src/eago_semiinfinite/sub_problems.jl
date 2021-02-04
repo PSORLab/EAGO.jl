@@ -163,8 +163,11 @@ function get_sip_optimizer(t::ExtensionType, alg::A, s::AbstractSubproblemType) 
 end
 
 # Printing
-function print_int!(prob::SIPProblem, k::Int64, lbd::Float64, ubd::Float64,
-                    eps::Float64, r::Float64, ismin::Bool)
+function print_int!(verb::Int, prob::SIPProblem, k::Int64, result::SIPResult,
+                    eps::Float64, r::Float64)
+
+    lbd = result.lower_bound
+    ubd = result.upper_bound
 
     if (prob.verbosity == 1 || prob.verbosity == 2)
 
@@ -184,13 +187,13 @@ function print_int!(prob::SIPProblem, k::Int64, lbd::Float64, ubd::Float64,
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 15
-            lower_adj = ismin ? lbd : ubd
+            lower_adj = lbd
             temp_str = string(round(lower_adj, digits = 6))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 15
-            upper_adj = ismin ? ubd : lbd
+            upper_adj = ubd
             temp_str = string(round(upper_adj, digits = 6))
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
@@ -221,10 +224,28 @@ function print_int!(prob::SIPProblem, k::Int64, lbd::Float64, ubd::Float64,
     return nothing
 end
 
-function print_summary!(verb::Int64, val::Float64, x::Vector{Float64},
-                          feas::Bool, desc::String)
+function summary_inner!(verb::Int64, val::Float64, x::Vector{Float64},
+                        feas::Bool, desc::String)
     (verb == 2 || verb == 1) && println("solved $desc: ", val, " ", x, " ", feas)
     return nothing
+end
+function print_summary!(s::LowerLevel1, v::Int64, r::SIPSubResult, i::Int)
+    summary_inner!(v, r.obj_value_llp1, r.llp1_p, r.is_feasible_llp1, "Lower LLP$i")
+end
+function print_summary!(s::LowerLevel2, v::Int64, r::SIPSubResult, i::Int)
+    summary_inner!(v, r.obj_value_llp2, r.llp2_p, r.is_feasible_llp2, "Upper LLP$i")
+end
+function print_summary!(s::LowerLevel3, v::Int64, r::SIPSubResult, i::Int)
+    summary_inner!(v, r.obj_value_llp3, r.llp3_p, r.is_feasible_llp3, "Res LLP$i")
+end
+function print_summary!(s::LowerProblem, v::Int64, r::SIPSubResult)
+    summary_inner!(v, r.obj_value_lbd, r.lbd_p, r.is_feasible_lbd, "LBD")
+end
+function print_summary!(s::UpperProblem, v::Int64, r::SIPSubResult)
+    summary_inner!(v, r.obj_value_ubd, r.ubd_p, r.is_feasible_ubd, "UBD")
+end
+function print_summary!(s::ResProblem, v::Int64, r::SIPSubResult)
+    summary_inner!(v, r.obj_value_res, r.res_p, r.is_feasible_res, "RES")
 end
 
 # Check convergence
