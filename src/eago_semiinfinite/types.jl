@@ -153,12 +153,18 @@ each subproblem encountered by SIP algorithm.
     is_feasible_llp1::Bool = false
     is_feasible_llp2::Bool = false
     is_feasible_llp3::Bool = false
+    llp1_abs_tol::Float64 = 1E-3
+    llp2_abs_tol::Float64 = 1E-3
+    llp3_abs_tol::Float64 = 1E-3
     lbd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
     ubd_disc::Vector{Vector{Float64}} = Vector{Float64}[]
     res_disc::Vector{Vector{Float64}} = Vector{Float64}[]
 end
-function SIPSubResult(nx::Int, np::Int, ng::Int)
+function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
     buffer = SIPSubResult()
+    buffer.llp1_abs_tol = tol
+    buffer.llp2_abs_tol = tol
+    buffer.llp3_abs_tol = tol
     append!(buffer.lbd_x, zeros(nx))
     append!(buffer.ubd_x, zeros(nx))
     append!(buffer.res_x, zeros(nx))

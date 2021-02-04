@@ -12,6 +12,15 @@ function build_model(t::ExtensionType, a::A, s::S, p::SIPProblem) where {A <: Ab
     build_model(DefaultExt(), s, p)
 end
 
+function set_tolerance!(t::DefaultExt, alg::AbstractSIPAlgo, s::S, m::JuMP.Model, sr::SIPSubResult) where {S <: AbstractSubproblemType}
+    return nothing
+end
+function set_tolerance!(t::ExtensionType, alg::A, s::S, m::JuMP.Model,
+                        sr::SIPSubResult) where {A <: AbstractSIPAlgo,
+                                                 S <: AbstractSubproblemType}
+    set_tolerance!(t, alg, s, m, sr)
+end
+
 # Shared LLP subroutines
 function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
     #if !isnothing(model.polyhedral_uncertainty_set)
@@ -32,11 +41,12 @@ function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalRes
     return is_feasible
 end
 function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
-                     sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
-                     i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+                  sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
+                  i::Int64, tol::Float64 = -Inf) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
     # build the model
     m, p = build_model(t, alg, s, prob)
+    set_tolerance!(t, alg, s, m, sr)
 
     # define the objective
     g(p...) = cb.gSIP[i](xbar, p)
