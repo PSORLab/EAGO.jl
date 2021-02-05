@@ -11,6 +11,9 @@
 
 struct SIPRes <: AbstractSIPAlgo end
 
+
+get_sip_optimizer(t::DefaultExt, alg::SIPRes, s::S) where S <: AbstractSubproblemType = EAGO.Optimizer
+
 function get_disc_set(t::ExtensionType, alg::SIPRes, s::LowerProblem, sr::SIPSubResult, i::Int)
     sr.disc_l[i]
 end

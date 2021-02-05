@@ -85,7 +85,7 @@ function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
 end
 
 
-function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.PrimalResultCode)
+function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
     valid, feasible = is_globally_optimal(t, r)
     if islocal && ((t != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
@@ -291,7 +291,7 @@ function summary_inner!(verb::Int64, val::Float64, x::Vector{Float64},
 end
 
 for (typ, fd) in SUBPROB_SYM
-    function print_summary!(s::$typ, v::Int64, r::SIPSubResult, i::Int = 0)
+    @eval function print_summary!(s::$typ, v::Int64, r::SIPSubResult, i::Int = 0)
         if i == 0
             summary_inner!(v, r.$fd.obj_value, r.$fd.sol, r.$fd.feas, "$s ")
         else
@@ -312,10 +312,8 @@ end
 get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.pL, p.pU. p.np
 get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.xL, p.xU. p.nx
 
-get_sip_optimizer(t::DefaultExt, alg::SIPRes, s::S) where S <: AbstractSubproblemType = EAGO.Optimizer
-
 function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
-                   r::MOI.PrimalResultCode, eps_g::Float64)
+                   r::MOI.ResultStatusCode, eps_g::Float64)
     valid_result, is_feasible = is_globally_optimal(t, r)
     if (!(valid_result && is_feasible) && iszero(eps_g)) && !is_local
         error("Lower problem did not solve to global optimality.

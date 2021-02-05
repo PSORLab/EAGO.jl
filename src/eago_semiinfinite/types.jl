@@ -78,7 +78,7 @@ get_sip_kwargs(s::LowerLevel1, p::SIPProblem) = p.kwargs_llp1
 get_sip_kwargs(s::LowerLevel2, p::SIPProblem) = p.kwargs_llp2
 get_sip_kwargs(s::LowerProblem, p::SIPProblem) = p.kwargs_lbd
 get_sip_kwargs(s::UpperProblem, p::SIPProblem) = p.kwargs_ubd
-get_sip_kwargs(s::AdaptiveRes, p::SIPProblem) = p.kwargs_res
+get_sip_kwargs(s::ResProblem, p::SIPProblem) = p.kwargs_res
 
 function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
                     p_l::Vector{Float64}, p_u::Vector{Float64},
@@ -135,11 +135,11 @@ struct SIPCallback
 end
 
 mutable struct SubProblemInfo
-    sol::Vector{Float64} = Float64[]
-    obj_val::Float64 = 0.0
-    obj_bnd::Float64 = 0.0
-    feas::Bool = false
-    tol::Vector{Float64} = Float64[]
+    sol::Vector{Float64}
+    obj_val::Float64
+    obj_bnd::Float64
+    feas::Bool
+    tol::Vector{Float64}
 end
 function SubProblemInfo(nd::Int, ng::Int, tol::Float64)
     SubProblemInfo(zeros(nd), 0.0, 0.0, false, fill(tol, ng))
@@ -201,7 +201,7 @@ for (typ, fd) in SUBPROB_SYM
         sr.$fd.feas = feas
         sr.$fd.obj_val = obj
         sr.$fd.obj_bnd = bnd
-        sr.$sol .= x
+        sr.$fd.sol .= x
         return nothing
     end
 end

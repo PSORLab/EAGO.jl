@@ -45,6 +45,6 @@ function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
     return sip_solve(t, x_l, x_u, p_l, p_u, f, [gSIP], kwargs...)
 end
 
-include("algorithms/sip_hybrid.jl")
-include("algorithms/sip_res_rev.jl")
-include("algorithms/sip_res.jl")
+include("nonconvex_algorithms/sip_hybrid.jl")
+include("nonconvex_algorithms/sip_res_rev.jl")
+include("nonconvex_algorithms/sip_res.jl")
