@@ -12,7 +12,7 @@
 include("types.jl")
 include("subproblems.jl")
 
-function sip_solve!(t::AbstractSIPAlgo, subresult, prob, result, cb)
+function sip_solve!(t::ExtensionType, alg::AbstractSIPAlgo, subresult, prob, result, cb)
     error("Algorithm $t not supported by explicit_sip_solve.")
 end
 
@@ -23,9 +23,9 @@ Solve an SIP with decision variable bounds `x_l` to `x_u`, uncertain variable
 bounds `p_l` to `p_u`, an objective function of `f`, and `gSIP` seminfiniite
 constraint(s).
 """
-function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
+function sip_solve(alg::T, x_l::Vector{Float64}, x_u::Vector{Float64},
                    p_l::Vector{Float64}, p_u::Vector{Float64},
-                   f::Function, gSIP; kwargs...) where T <: AbstractSIPAlgo
+                   f::Function, gSIP::Vector{Any}; d = DefaultExt(), kwargs...) where {T <: AbstractSIPAlgo}
 
     @assert length(p_l) == length(p_u)
     @assert length(x_l) == length(x_u)
@@ -35,14 +35,14 @@ function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
     result = SIPResult(prob.nx, prob.np)
     cb = SIPCallback(f, gSIP)
 
-    sip_solve!(t, subresult, prob, result, cb)
+    sip_solve!(d, alg, subresult, prob, result, cb)
     return result
 end
 
-function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
+function sip_solve(alg::T, x_l::Vector{Float64}, x_u::Vector{Float64},
                    p_l::Vector{Float64}, p_u::Vector{Float64},
-                   f::Function, gSIP::Function; kwargs...) where T <: AbstractSIPAlgo
-    return sip_solve(t, x_l, x_u, p_l, p_u, f, [gSIP], kwargs...)
+                   f::Function, gSIP::Function; d = DefaultExt(), kwargs...) where {T <: AbstractSIPAlgo}
+    return sip_solve(alg, x_l, x_u, p_l, p_u, f, [gSIP], d = d, kwargs...)
 end
 
 include("nonconvex_algorithms/sip_hybrid.jl")

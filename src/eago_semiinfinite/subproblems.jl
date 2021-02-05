@@ -14,7 +14,7 @@
 ###
 function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
     model = Model(get_sip_optimizer(t,a,s))
-    for (k,v) in get_sip_kwargs(a,s,p)
+    for (k,v) in get_sip_kwargs(s,p)
         MOI.set(model, MOI.RawParameter(String(k)), v)
     end
     vL, vU, nv = get_bnds(s,a,p)

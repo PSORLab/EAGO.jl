@@ -41,7 +41,7 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
 
     # initializes solution
     @label main_iteration
-    check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
+    check_convergence(result, prob.abs_tolerance, verb) && @goto main_end
 
     # solve lower bounding problem and check feasibility
     sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)

@@ -104,7 +104,7 @@ function sip_solve!(t, alg::SIPHybrid, buffer::SIPSubResult, prob::SIPProblem,
     else
         buffer.eps_g ./= buffer.r_g
     end
-    check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
+    check_convergence(result, prob.abs_tolerance, verb) && @goto main_end
 
     # solve restriction problem updating lower and upper bound as appropriate
     @label res_problem

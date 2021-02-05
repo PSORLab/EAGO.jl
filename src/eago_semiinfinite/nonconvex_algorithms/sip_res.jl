@@ -21,14 +21,14 @@ function get_disc_set(t::ExtensionType, alg::SIPRes, s::UpperProblem, sr::SIPSub
     sr.disc_u[i]
 end
 
-function sip_solve!(t, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
+function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::SIPProblem,
                     result::SIPResult, cb::SIPCallback)
 
     verb = prob.verbosity
 
     # initializes solution
     @label main_iteration
-    check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
+    check_convergence(result, prob.abs_tolerance, verb) && @goto main_end
 
     # solve lower bounding problem and check feasibility
     sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)
