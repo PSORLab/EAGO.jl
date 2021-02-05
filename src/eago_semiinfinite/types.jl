@@ -35,7 +35,7 @@ mutable struct SIPResult
     solution_time::Float64
 end
 SIPResult() = SIPResult(1, 1, Inf, -Inf, true, Float64[], Float64[], 0.0)
-SIPResult(nx::Int, np::Int) = SIPResult(1, Inf, -Inf, true, zeros(nx), zeros(np), 0.0)
+SIPResult(nx::Int, np::Int) = SIPResult(1, 1, Inf, -Inf, true, zeros(nx), zeros(np), 0.0)
 
 
 """
@@ -43,90 +43,86 @@ SIPResult(nx::Int, np::Int) = SIPResult(1, Inf, -Inf, true, zeros(nx), zeros(np)
 
 Structure storing problem information for the solution routine.
 """
-mutable struct SIPProblem
-    x_l::Vector{Float64}
-    x_u::Vector{Float64}
-    p_l::Vector{Float64}
-    p_u::Vector{Float64}
+Base.@kwdef mutable struct SIPProblem
+    x_l::Vector{Float64}            = Float64[]
+    x_u::Vector{Float64}            = Float64[]
+    p_l::Vector{Float64}            = Float64[]
+    p_u::Vector{Float64}            = Float64[]
+    np::Int                         = 0
+    nSIP::Int                       = 0
+    nx::Int                         = 0
 
-    np::Int
-    nSIP::Int
-    nx::Int
+    abs_tolerance::Float64     = 1E-3
+    cons_tolerance::Float64   = 1E-3
+    iteration_limit::Int            = 100
+    res_iteration_limit::Int        = 100
+    initial_eps_g::Float64          = 1.0
+    initial_r::Float64              = 2.0
+    local_solver::Bool              = false
 
-    absolute_tolerance::Float64
-    constraint_tolerance::Float64
-    iteration_limit::Int
-    res_iteration_limit::Int
-    initial_eps_g::Float64
-    initial_r::Float64
+    return_hist::Bool               = false
+    header_interval::Int            = 20
+    print_interval::Int             = 1
+    verbosity::Int                  = 1
 
-    return_hist::Bool
-    header_interval::Int
-    print_interval::Int
-    verbosity::Int
-
-    local_solver::Bool
-
-    #polyhedral_uncertainty_set
-    #ellipsodial_uncertainty_set
-
-    optimizer
-    kwargs
+    kwargs_llp1::Dict{String,Any}   = Dict{String,Any}()
+    kwargs_llp2::Dict{String,Any}   = Dict{String,Any}()
+    kwargs_llp3::Dict{String,Any}   = Dict{String,Any}()
+    kwargs_lbd::Dict{String,Any}    = Dict{String,Any}()
+    kwargs_ubd::Dict{String,Any}    = Dict{String,Any}()
+    kwargs_res::Dict{String,Any}    = Dict{String,Any}()
 end
 
 get_sip_kwargs(s::LowerLevel1, p::SIPProblem) = p.kwargs_llp1
 get_sip_kwargs(s::LowerLevel2, p::SIPProblem) = p.kwargs_llp2
+get_sip_kwargs(s::LowerLevel3, p::SIPProblem) = p.kwargs_llp3
 get_sip_kwargs(s::LowerProblem, p::SIPProblem) = p.kwargs_lbd
 get_sip_kwargs(s::UpperProblem, p::SIPProblem) = p.kwargs_ubd
 get_sip_kwargs(s::ResProblem, p::SIPProblem) = p.kwargs_res
 
 function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
                     p_l::Vector{Float64}, p_u::Vector{Float64},
-                    gSIP, optimizer, kwargs)
+                    gSIP, kwargs)
 
-    initial_eps_g = haskey(kwargs, :sip_initial_eps_g) ? kwargs[:sip_initial_eps_g] : 1.0
-    initial_r = haskey(kwargs, :sip_initial_r) ? kwargs[:sip_initial_r] : 2.0
+    prob = SIPProblem()
 
-    (initial_r <= 1.0) && error("initial_r must be greater than 1")
-    (initial_eps_g <= 0.0) && error("eps_g must be greater than 0")
-
-    absolute_tolerance = haskey(kwargs, :sip_absolute_tolerance) ? kwargs[:sip_absolute_tolerance] : 1E-3
-    constraint_tolerance = haskey(kwargs, :sip_constraint_tolerance) ? kwargs[:sip_constraint_tolerance] : 1E-3
-    iteration_limit = haskey(kwargs, :sip_iteration_limit) ? kwargs[:sip_iteration_limit] : 100
-    res_iteration_limit = haskey(kwargs, :sip_res_iteration_limit) ? kwargs[:sip_res_iteration_limit] : 100
-    return_hist = haskey(kwargs, :sip_return_hist) ? kwargs[:sip_return_hist] : false
-    header_interval = haskey(kwargs, :sip_header_interval) ? kwargs[:sip_header_interval] : 20
-    print_interval = haskey(kwargs, :sip_print_interval) ? kwargs[:sip_print_interval] : 1
-    verbosity = haskey(kwargs, :sip_verbosity) ? kwargs[:sip_verbosity] : 1
-    local_solver = haskey(kwargs, :sip_local_solver) ?  kwargs[:sip_local_solver] : false
-
-    np = length(p_l)
-    nx = length(x_l)
-
-    opt_dict = Dict{Symbol,Any}()
     for key in keys(kwargs)
         string_key = String(key)
-        if string_key[1:3] !== "sip"
-            opt_dict[key] = kwargs[key]
+        if string_key[1:3] === "llp1"
+            prob.kwargs_llp1[string_key[4:end]] = kwargs[key]
+        elseif string_key[1:3] === "llp2"
+            prob.kwargs_llp2[string_key[4:end]] = kwargs[key]
+        elseif string_key[1:3] === "llp3"
+            prob.kwargs_llp3[string_key[4:end]] = kwargs[key]
+        elseif string_key[1:3] === "lbd"
+            prob.kwargs_lbd[string_key[4:end]] = kwargs[key]
+        elseif string_key[1:3] === "ubd"
+            prob.kwargs_ubd[string_key[4:end]] = kwargs[key]
+        elseif string_key[1:3] === "res"
+            prob.kwargs_res[string_key[4:end]] = kwargs[key]
+        elseif key in fieldnames(SIPProblem)
+            setfield!(prob, key, kwargs[key])
+        else
+            error("Keyword = `$string_key` is not supported by SIPProblem. Use
+                  `llp1_$string_key` to pass this argument to the optimizer used by
+                  the first lower level problem, `lbd_$string_key` to pass the
+                  keyword to the optimizer used in the lower bounding problem
+                  and so on...")
         end
     end
 
-    # polyhedral_uncertainty_set = nothing
-    # ellipsodial_uncertainty_set = nothing
-    # conic_uncertainty_set = nothing
-    # convex_uncertainty_set = nothing
+    (prob.initial_r <= 1.0) && error("initial_r must be greater than 1")
+    (prob.initial_eps_g <= 0.0) && error("eps_g must be greater than 0")
 
-    nSIP = length(gSIP)
+    prob.np = length(p_l)
+    prob.nx = length(x_l)
+    prob.nSIP = length(gSIP)
+    append!(prob.x_l, x_l)
+    append!(prob.x_u, x_u)
+    append!(prob.p_l, p_l)
+    append!(prob.p_u, p_u)
 
-    SIPProblem(x_l, x_u, p_l, p_u, np, nSIP, nx,
-               absolute_tolerance, constraint_tolerance,
-               iteration_limit,
-               initial_eps_g, initial_r, return_hist, header_interval,
-               print_interval, verbosity, local_solver,
-               #polyhedral_uncertainty_set,
-               #ellipsodial_uncertainty_set, conic_uncertainty_set,
-               #convex_uncertainty_set,
-               optimizer, opt_dict)
+    return prob
 end
 
 struct SIPCallback

@@ -30,8 +30,8 @@ function sip_solve(t::T, x_l::Vector{Float64}, x_u::Vector{Float64},
     @assert length(p_l) == length(p_u)
     @assert length(x_l) == length(x_u)
 
-    prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, m, kwargs)
-    subresult = SIPSubResult(prob.np, prob.nx)
+    prob = SIPProblem(x_l, x_u, p_l, p_u, gSIP, kwargs)
+    subresult = SIPSubResult(prob.nx, prob.np, prob.nSIP, prob.abs_tolerance)
     result = SIPResult(prob.nx, prob.np)
     cb = SIPCallback(f, gSIP)
 
