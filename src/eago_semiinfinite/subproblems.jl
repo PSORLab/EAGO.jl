@@ -17,7 +17,7 @@ function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: Abstr
     for (k,v) in get_sip_kwargs(s,p)
         MOI.set(model, MOI.RawParameter(String(k)), v)
     end
-    vL, vU, nv = get_bnds(s,a,p)
+    vL, vU, nv = get_bnds(s,p)
     @variable(model, vL[i] <= v[i=1:nv] <= vU[i])
     return model, v
 end
@@ -309,8 +309,8 @@ function check_convergence(result::SIPResult, atol::Float64, verb::Int64)
     return false
 end
 
-get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.pL, p.pU. p.np
-get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.xL, p.xU. p.nx
+get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.p_l, p.p_u, p.np
+get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.x_l, p.x_u, p.nx
 
 function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
                    r::MOI.ResultStatusCode, eps_g::Float64)
