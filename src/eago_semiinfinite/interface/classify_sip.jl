@@ -44,6 +44,21 @@ function classify_sip(mSIP::SIPModel, expr::GenericQuadExpr{T,VariableRef}) wher
     return status
 end
 
+for typ in (:(Vector{GenericQuadExpr{T,VariableRef}}),
+            :(Vector{GenericAffExpr{T,VariableRef}}),
+            :(Vector{VariableRef}))
+    @eval function classify_sip(mSIP::SIPModel, expr::Vector{$typ{T,VariableRef}}) where T
+        status = SIPNOTSET
+        for ex in expr
+            status = update_status(status, classify_sip(mSIP, ex))
+            if status == SEMIINFINITE
+                break
+            end
+        end
+        return status
+    end
+end
+
 function classify_sip!(mSIP::SIPModel, cr::ScalarConstraint{F,S}) where {F<:JuMP.AbstractJuMPScalar, S<:JuMP.AbstractScalarSet}
     mSIP.constraint_type[cr] = classify_sip(mSIP, constraint_object(cr).func)
     nothing
