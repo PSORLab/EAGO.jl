@@ -14,16 +14,16 @@
 
 struct SIPHybrid <: AbstractSIPAlgo end
 
-function load!(t::DefaultExt, alg::SIPHybrid, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.eps_l[i])
 end
-function load!(t::DefaultExt, alg::SIPHybrid, s::LowerLevel2, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::LowerLevel2, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.eps_u[i])
 end
-function load!(t::DefaultExt, alg::SIPHybrid, s::LowerProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::LowerProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.lbd.tol)
 end
-function load!(t::DefaultExt, alg::SIPHybrid, s::UpperProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::UpperProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.ubd.tol)
 end
 
@@ -37,7 +37,7 @@ function sip_solve!(t, alg::SIPHybrid, buffer::SIPSubResult, prob::SIPProblem,
 
     verb = prob.verbosity
 
-    # initializes solution
+    # begin main solution loop
     @label main_iteration
 
     # solve lower bounding problem and check feasibility
@@ -75,10 +75,10 @@ function sip_solve!(t, alg::SIPHybrid, buffer::SIPSubResult, prob::SIPProblem,
         @goto main_end
     end
 
-    @label upper_problem
 
     # solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
+    @label upper_problem
     sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
     if buffer.is_feasible_ubd
@@ -106,6 +106,7 @@ function sip_solve!(t, alg::SIPHybrid, buffer::SIPSubResult, prob::SIPProblem,
     end
     check_convergence(result, prob.absolute_tolerance, verb) && @goto main_end
 
+    # solve restriction problem updating lower and upper bound as appropriate
     @label res_problem
     sip_bnd!(t, alg, ResProblem(), buffer, result, prob, cb)
     if buffer.res.obj_bnd < 0
@@ -114,7 +115,7 @@ function sip_solve!(t, alg::SIPHybrid, buffer::SIPSubResult, prob::SIPProblem,
         result.res_iteration_number += 1
         @goto res_problem
     elseif buffer.res.obj_val > 0
-        # TODO: REWORK SECTION TO ACCOUNT FOR MULTIPLE SIPS
+        is_llp3_nonpositive = false
         for i = 1:prob.nSIP
             sip_llp!(t, alg, LowerLevel3(), result, buffer, prob, cb, i)
             buffer.disc_l_buffer[i] .= buffer.pbar
@@ -123,16 +124,22 @@ function sip_solve!(t, alg::SIPHybrid, buffer::SIPSubResult, prob::SIPProblem,
                 if buffer.res.obj_bnd/buffer.r_g < buffer.eps_g[i]
                     buffer.eps_g[i] = buffer.res.obj_bnd/buffer.r_g
                 end
+            elseif (buffer.llp3.obj_bnd > 0.0) &&
+                   (buffer.res_iteration_number < prob.res_iteration_limit)
+                is_llp3_nonpositive = false
+                push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
+                @goto res_problem
+            else
+                buffer.res_iteration_number = 1
+                @goto main_iteration
+            end
+        end
+        if is_llp3_nonpositive
+            if buffer.ubd.obj_val <= result.upper_bound
                 result.upper_bound = buffer.res.obj_val
                 result.xsol = buffer.res.sol
-            @goto upper_problem
-        elseif (buffer.llp3.obj_bnd > 0.0) &&
-               (buffer.res_iteration_number < prob.res_iteration_limit)
-               push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
-               @goto res_problem
-        else
-            buffer.res_iteration_number = 1
-            @goto main_iteration
+                @goto upper_problem
+            end
         end
     else
         buffer.res_iteration_number = 1

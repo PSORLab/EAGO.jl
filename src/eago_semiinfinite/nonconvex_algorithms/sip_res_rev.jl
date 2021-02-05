@@ -14,16 +14,16 @@
 
 struct SIPResRev <: AbstractSIPAlgo end
 
-function load!(t::DefaultExt, alg::SIPResRev, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPResRev, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.eps_l[i])
 end
-function load!(t::DefaultExt, alg::SIPResRev, s::LowerLevel2, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPResRev, s::LowerLevel2, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.eps_u[i])
 end
-function load!(t::DefaultExt, alg::SIPResRev, s::LowerProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPResRev, s::LowerProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.lbd.tol)
 end
-function load!(t::DefaultExt, alg::SIPResRev, s::UpperProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
+function set_tolerance!(t::DefaultExt, alg::SIPResRev, s::UpperProblem, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.ubd.tol)
 end
 

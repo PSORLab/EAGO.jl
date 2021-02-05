@@ -152,6 +152,7 @@ Hold objective value, solution, discretization set, and feasibility status of
 each subproblem encountered by SIP algorithm.
 """
 Base.@kwdef mutable struct SIPSubResult
+    fRes::Float64 = Inf
     lbd::SubProblemInfo
     ubd::SubProblemInfo
     res::SubProblemInfo
