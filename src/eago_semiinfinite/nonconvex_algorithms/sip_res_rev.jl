@@ -14,11 +14,6 @@
 
 struct SIPResRev <: AbstractSIPAlgo end
 
-struct LowerLevel1 <: AbstractSubproblemType end
-struct LowerLevel2 <: AbstractSubproblemType end
-struct LowerProblem <: AbstractSubproblemType end
-struct UpperProblem <: AbstractSubproblemType end
-
 function load!(t::DefaultExt, alg::SIPResRev, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
     set_tolerance_inner!(t, alg, s, m, sr.eps_l[i])
 end

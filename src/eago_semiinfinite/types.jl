@@ -26,6 +26,7 @@ Structure storing the results of the SIPres algorithm.
 """
 mutable struct SIPResult
     iteration_number::Int64
+    res_iteration_number::Int64
     upper_bound::Float64
     lower_bound::Float64
     feasibility::Bool
@@ -33,7 +34,7 @@ mutable struct SIPResult
     psol::Vector{Float64}
     solution_time::Float64
 end
-SIPResult() = SIPResult(1, Inf, -Inf, true, Float64[], Float64[], 0.0)
+SIPResult() = SIPResult(1, 1, Inf, -Inf, true, Float64[], Float64[], 0.0)
 SIPResult(nx::Int, np::Int) = SIPResult(1, Inf, -Inf, true, zeros(nx), zeros(np), 0.0)
 
 
@@ -48,20 +49,21 @@ mutable struct SIPProblem
     p_l::Vector{Float64}
     p_u::Vector{Float64}
 
-    np::Int64
-    nSIP::Int64
-    nx::Int64
+    np::Int
+    nSIP::Int
+    nx::Int
 
     absolute_tolerance::Float64
     constraint_tolerance::Float64
-    iteration_limit::Int64
+    iteration_limit::Int
+    res_iteration_limit::Int
     initial_eps_g::Float64
     initial_r::Float64
 
     return_hist::Bool
-    header_interval::Int64
-    print_interval::Int64
-    verbosity::Int64
+    header_interval::Int
+    print_interval::Int
+    verbosity::Int
 
     local_solver::Bool
 
@@ -91,6 +93,7 @@ function SIPProblem(x_l::Vector{Float64}, x_u::Vector{Float64},
     absolute_tolerance = haskey(kwargs, :sip_absolute_tolerance) ? kwargs[:sip_absolute_tolerance] : 1E-3
     constraint_tolerance = haskey(kwargs, :sip_constraint_tolerance) ? kwargs[:sip_constraint_tolerance] : 1E-3
     iteration_limit = haskey(kwargs, :sip_iteration_limit) ? kwargs[:sip_iteration_limit] : 100
+    res_iteration_limit = haskey(kwargs, :sip_res_iteration_limit) ? kwargs[:sip_res_iteration_limit] : 100
     return_hist = haskey(kwargs, :sip_return_hist) ? kwargs[:sip_return_hist] : false
     header_interval = haskey(kwargs, :sip_header_interval) ? kwargs[:sip_header_interval] : 20
     print_interval = haskey(kwargs, :sip_print_interval) ? kwargs[:sip_print_interval] : 1

@@ -199,8 +199,9 @@ function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
 
     # add epigraph reformulated objective
     register(m, :f, nx, cb.f, autodiff=true)
-    fRes = #TODO
-    JuMP.add_NL_constraint(m, :(f($(tuple(x...))) + $fRes <= 0))
+    if isfinite(fRes)
+        JuMP.add_NL_constraint(m, :(f($(tuple(x...))) + $fRes <= 0))
+    end
 
     # define the objective
     @objective(m, Min, -η)
