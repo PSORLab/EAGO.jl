@@ -34,7 +34,7 @@ function get_disc_set(t::ExtensionType, alg::SIPResRev, s::UpperProblem, sr::SIP
     sr.disc_u[i]
 end
 
-function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
+function sip_solve!(t::ExtensionType, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
                     result::SIPResult, cb::SIPCallback)
 
     verb = prob.verbosity
@@ -45,8 +45,8 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
 
     # solve lower bounding problem and check feasibility
     sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)
-    result.lower_bound = buffer.obj_value_lbd
-    if buffer.is_feasible_lbd
+    result.lower_bound = buffer.lbd.obj_val
+    if !buffer.lbd.feas
         result.feasibility = false
         println("Terminated: lower bounding problem infeasible.")
         @goto main_end
@@ -57,12 +57,12 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
         sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
-        buffer.disc_l_buffer .= buffer.pbar
+        buffer.disc_l_buffer .= buffer.llp1.sol
         print_summary!(LowerLevel1(), verb, buffer, i)
         if buffer.llp1.obj_bnd <= 0.0
             continue
         elseif buffer.llp1.obj_val > 0.0
-            push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
+            push!(buffer.disc_l[i], deepcopy(buffer.disc_l_buffer))
             is_llp1_nonpositive = false
         else
             buffer.eps_l[i] = (buffer.llp1.obj_bnd - buffer.llp1.obj_val)/buffer.r_l
@@ -82,17 +82,17 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
     # and potentially update upper discretization set
     sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
-    if buffer.is_feasible_ubd
+    if buffer.ubd.is_feas
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
-            buffer.disc_u_buffer[i] .= buffer.pbar
+            buffer.disc_u_buffer .= buffer.llp2.sol
             print_summary!(LowerLevel2(), verb, buffer, i)
             if buffer.llp2.obj_bnd <= 0.0
                 buffer.eps_g[i] /= buffer.r_g
                 continue
             else
-                push!(prob.disc_u[i], deepcopy(buffer.disc_u_buffer))
+                push!(buffer.disc_u[i], deepcopy(buffer.disc_u_buffer))
                 is_llp2_nonpositive = false
             end
         end
@@ -107,7 +107,7 @@ function sip_solve!(t, alg::SIPResRev, buffer::SIPSubResult, prob::SIPProblem,
     end
 
     # print iteration information and advance
-    print_int!(verb, prob, k, result, buffer.r_g)
+    print_int!(verb, prob, result, buffer.r_g)
     result.iteration_number += 1
     result.iteration_number < prob.iteration_limit && @goto main_iteration
 

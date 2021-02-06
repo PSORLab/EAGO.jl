@@ -74,7 +74,7 @@ end
 ###
 ### Add constraints solely on uncertainty
 ###
-function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
+function add_uncertainty_constraint!(m::JuMP.Model, prob::SIPProblem)
     #if !isnothing(model.polyhedral_uncertainty_set)
         #@constraint(model, )
     #end
@@ -84,15 +84,20 @@ function add_uncertainty_constraint!(model::JuMP.Model, problem::SIPProblem)
     return nothing
 end
 
+for (p, s) in ((:LowerLevel1,:lbd), (:LowerLevel2, :ubd), (:LowerLevel3,:res))
+    @eval function get_xbar(t::DefaultExt, alg::A, s::$p, sr::SIPSubResult) where {A <: AbstractSIPAlgo}
+        sr.$s.sol
+    end
+end
 
 function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
     valid, feasible = is_globally_optimal(t, r)
     if islocal && ((t != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
-    elseif !valid_result
+    elseif !valid
         error("Error in lower level problem. Termination status = $t, primal status = $r.")
     end
-    return is_feasible
+    return feasible
 end
 function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
                   sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
@@ -103,10 +108,11 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     set_tolerance!(t, alg, s, m, sr, i)
 
     # define the objective
+    xbar = get_xbar(t, alg, s, sr)
     g(p...) = cb.gSIP[i](xbar, p)
     register(m, :g, prob.np, g, autodiff=true)
     if isone(prob.np)
-        nl_obj = :(-g(p[1]))
+        nl_obj = :(-g($(p[1])))
     else
         nl_obj = Expr(:call)
         push!(nl_obj.args, :g)
@@ -118,7 +124,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
 
     # add uncertainty constraints
-    add_uncertainty_constraint!(m, problem)
+    add_uncertainty_constraint!(m, prob)
 
     # optimize model and check status
     JuMP.optimize!(m)
@@ -264,21 +270,21 @@ function get_sip_optimizer(t::ExtensionType, alg::A, s::AbstractSubproblemType) 
 end
 
 # Printing
-function print_int!(verb::Int, prob::SIPProblem, k::Int64, result::SIPResult,
-                    eps::Float64, r::Float64)
+function print_int!(verb::Int, prob::SIPProblem, result::SIPResult, r::Float64)
 
+    k = result.iteration_number
     lbd = result.lower_bound
     ubd = result.upper_bound
 
     if (prob.verbosity == 1 || prob.verbosity == 2)
 
         # prints header line every hdr_intv times
-        if (mod(k, prob.hdr_intv) == 0 || k == 1)
+        if (mod(k, prob.header_interval) == 0 || k == 1)
             println("| Iteration | Lower Bound | Upper Bound |   r   |  Gap  |  Ratio  |")
         end
 
         # prints iteration summary every prnt_intv times
-        if mod(k, prob.prt_intv) == 0
+        if mod(k, prob.print_interval) == 0
 
             print_str = "| "
 
@@ -329,9 +335,9 @@ end
 for (typ, fd) in SUBPROB_SYM
     @eval function print_summary!(s::$typ, v::Int64, r::SIPSubResult, i::Int = 0)
         if i == 0
-            summary_inner!(v, r.$fd.obj_value, r.$fd.sol, r.$fd.feas, "$s ")
+            summary_inner!(v, r.$fd.obj_val, r.$fd.sol, r.$fd.feas, "$s ")
         else
-            summary_inner!(v, r.$fd.obj_value, r.$fd.sol, r.$fd.feas, "$s($i) ")
+            summary_inner!(v, r.$fd.obj_val, r.$fd.sol, r.$fd.feas, "$s($i) ")
         end
     end
 end
