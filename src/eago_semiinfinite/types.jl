@@ -178,6 +178,10 @@ function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
     append!(buffer.eps_u, fill(1E-3, ng))
     append!(buffer.disc_l_buffer, zeros(np))
     append!(buffer.disc_u_buffer, zeros(np))
+    for _ in 1:ng
+        push!(buffer.disc_l, Vector{Float64}[])
+        push!(buffer.disc_u, Vector{Float64}[])
+    end
     return buffer
 end
 
@@ -195,7 +199,7 @@ for (typ, fd) in SUBPROB_SYM
     @eval function load!(::$typ, sr::SIPSubResult, feas::Bool, val::Float64,
                                  bnd::Float64, x::Vector{Float64})
         sr.$fd.feas = feas
-        sr.$fd.obj_val = obj
+        sr.$fd.obj_val = val
         sr.$fd.obj_bnd = bnd
         sr.$fd.sol .= x
         return nothing

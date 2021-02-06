@@ -14,14 +14,6 @@ struct SIPRes <: AbstractSIPAlgo end
 
 get_sip_optimizer(t::DefaultExt, alg::SIPRes, s::S) where S <: AbstractSubproblemType = EAGO.Optimizer
 
-function disc_set_isempty(t::ExtensionType, alg::SIPRes, s::LowerProblem, sr::SIPSubResult)
-    isempty(sr.disc_l)
-end
-
-function disc_set_isempty(t::ExtensionType, alg::SIPRes, s::LowerProblem, sr::SIPSubResult)
-    isempty(sr.disc_u)
-end
-
 function get_disc_set(t::ExtensionType, alg::SIPRes, s::LowerProblem, sr::SIPSubResult, i::Int)
     sr.disc_l[i]
 end

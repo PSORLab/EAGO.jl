@@ -105,7 +105,16 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     # define the objective
     g(p...) = cb.gSIP[i](xbar, p)
     register(m, :g, prob.np, g, autodiff=true)
-    nl_obj = isone(prob.np) ? :(-($g)(p[1])) :  :(-($g)(p...))
+    if isone(prob.np)
+        nl_obj = :(-g(p[1]))
+    else
+        nl_obj = Expr(:call)
+        push!(nl_obj.args, :g)
+        for i in 1:prob.np
+            push!(nl_obj.args, p[i])
+        end
+        nl_obj = :(-$nl_obj)
+    end
     set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
 
     # add uncertainty constraints
@@ -118,7 +127,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     feas = llp_check(prob.local_solver, tstatus, rstatus)
 
     # fill buffer with subproblem result info
-    load!(s, buffer, feas, -JuMP.objective_bound(m), JuMP.value(x))
+    load!(s, sr, feas, -JuMP.objective_value(m), -JuMP.objective_bound(m), JuMP.value.(p))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -126,14 +135,14 @@ end
 function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
                      sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sip_llp!(DefaultSubproblem(), s, result, buffer, prob, cb, i)
+    sip_llp!(DefaultSubproblem(), s, result, sr, prob, cb, i)
 end
 
 # Shared bounding problems
 function sip_bnd!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
                                                             S <: AbstractSubproblemType}
-    sip_bnd!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
+    sip_bnd!(DefaultExt(), alg, s, sr, eps_g, result, prob, cb)
 end
 function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
@@ -149,24 +158,37 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[i][j])
             register(m, gi, nx, g, autodiff=true)
-            JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + $ϵ_g <= 0))
+            gic = Expr(:call)
+            push!(gic.args, :gi)
+            for i in 1:prob.nx
+                push!(gic.args, x[i])
+            end
+            JuMP.add_NL_constraint(m, :($gic + $ϵ_g <= 0))
         end
     end
 
     # define the objective
     obj(x...) = cb.f(x)
     register(m, :obj, prob.nx, obj, autodiff=true)
-    nl_obj = isone(prob.nx) ? :(($obj)(x[1])) : :(($obj)(x...))
+    if isone(prob.nx)
+        nl_obj = :(obj($(x[1])))
+    else
+        nl_obj = Expr(:call)
+        push!(nl_obj.args, :obj)
+        for i in 1:prob.nx
+            push!(nl_obj.args, x[i])
+        end
+    end
     set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
 
     # optimize model and check status
     JuMP.optimize!(m)
     t_status = JuMP.termination_status(m)
     r_status = JuMP.primal_status(m)
-    feas = bnd_check(prob.local_solver, t_status, r_status, eps_g)
+    feas = bnd_check(prob.local_solver, t_status, r_status)
 
     # fill buffer with subproblem result info
-    load!(s, buffer, feas, JuMP.objective_bound(m), JuMP.value(x))
+    load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), JuMP.value.(x))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -176,7 +198,7 @@ end
 function sip_res!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult,
                     eps_g::Float64, result::SIPResult, prob::SIPProblem,
                     cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sip_res!(DefaultExt(), alg, s, buffer, eps_g, result, prob, cb)
+    sip_res!(DefaultExt(), alg, s, sr, eps_g, result, prob, cb)
 end
 function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
                   eps_g::Float64, result::SIPResult, prob::SIPProblem,
@@ -193,14 +215,28 @@ function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[i][j])
             register(m, gi, nx, g, autodiff=true)
-            JuMP.add_NL_constraint(m, :($(gi)($(tuple(x...))) + η <= 0))
+            gic = Expr(:call)
+            push!(gic.args, :gi)
+            for i in 1:prob.nx
+                push!(gic.args, x[i])
+            end
+            JuMP.add_NL_constraint(m, :($gic + η <= 0))
         end
     end
 
     # add epigraph reformulated objective
     register(m, :f, nx, cb.f, autodiff=true)
     if isfinite(fRes)
-        JuMP.add_NL_constraint(m, :(f($(tuple(x...))) + $(sr.fRes) <= 0))
+        if isone(prob.nx)
+            nl_obj = :(f($(x[1])))
+        else
+            nl_obj = Expr(:call)
+            push!(nl_obj.args, :f)
+            for i in 1:prob.nx
+                push!(nl_obj.args, x[i])
+            end
+        end
+        JuMP.add_NL_constraint(m, :($nl_obj + $(sr.fRes) <= 0))
     end
 
     # define the objective
@@ -213,7 +249,7 @@ function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
     feas = llp_check(prob.local_solver, t_status, r_status)
 
     # fill buffer with subproblem result info
-    load!(s, buffer, feas, JuMP.objective_bound(m), JuMP.value(x))
+    load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), JuMP.value.(x))
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -313,12 +349,12 @@ get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.p_l, p.p_u, p.np
 get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.x_l, p.x_u, p.nx
 
 function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
-                   r::MOI.ResultStatusCode, eps_g::Float64)
+                   r::MOI.ResultStatusCode)
     valid_result, is_feasible = is_globally_optimal(t, r)
-    if (!(valid_result && is_feasible) && iszero(eps_g)) && !is_local
+    if !(valid_result && is_feasible) && !is_local
         error("Lower problem did not solve to global optimality.
                Termination status = $t. Primal status = $r")
-    elseif (!(valid_result && is_feasible) && iszero(eps_g)) && is_local &&
+    elseif !(valid_result && is_feasible) && is_local &&
            !((t == MOI.LOCALLY_SOLVED) || (t == MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
     end
