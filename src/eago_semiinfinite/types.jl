@@ -193,12 +193,13 @@ const SUBPROB_SYM = Dict{Symbol,Symbol}(:LowerProblem => :lbd,
                                         :UpperProblem => :ubd,
                                         :ResProblem   => :res,
                                         :LowerLevel1  => :llp1,
-                                        :LowerLevel2  => :llp1,
+                                        :LowerLevel2  => :llp2,
                                         :LowerLevel3  => :llp3)
 
 for (typ, fd) in SUBPROB_SYM
     @eval function load!(::$typ, sr::SIPSubResult, feas::Bool, val::Float64,
                                  bnd::Float64, x::Vector{Float64})
+
         sr.$fd.feas = feas
         sr.$fd.obj_val = val
         sr.$fd.obj_bnd = bnd
