@@ -621,12 +621,22 @@ end
     optimize!(m)
     @test isapprox(JuMP.objective_value(m), 1.0652212400578724, atol=1E-3)
 
-    m = Model(EAGO.Optimizer)
+    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
     xL = [-2.0 0.0]; xU = [2.0 4.0]
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])
     @NLobjective(m, Max, x[2]^2 + x[1]^2 + x[1]*x[2])
     optimize!(m)
     @test isapprox(JuMP.objective_value(m), 27.99971055498271, atol=1E-3)
+
+
+    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
+    pL = [0.5, 0.8401, 0.5]
+    pU = [1.0, 1.0, 2.0]
+    @variable(m, pL[i] <= p[i=1:3] <= pU[i])
+    @NLobjective(m, Min,(560.0 - p[3]*(1 - 0.84/p[2]))^(-p[1]*p[2]))
+    JuMP.optimize!(m)
+    obj_val = objective_value(m)
+    @test isapprox(JuMP.objective_value(m), 0.0018, atol=1E-3)
 end
 
 @testset "Empty Evaluator" begin
