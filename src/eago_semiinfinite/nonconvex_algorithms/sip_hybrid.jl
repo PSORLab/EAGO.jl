@@ -27,8 +27,8 @@ function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::UpperProblem, m::JuMP.
     set_tolerance_inner!(t, alg, s, m, sr.ubd.tol)
 end
 
-function get_disc_set(t::ExtensionType, alg::SIPHybrid, s::LowerProblem,
-                      sr::SIPSubResult, i::Int) where S <: Union{LowerProblem,UpperProblem}
+function get_disc_set(t::ExtensionType, alg::SIPHybrid, s::S, sr::SIPSubResult,
+                      i::Int) where S <: Union{LowerProblem,UpperProblem, ResProblem}
     sr.disc_l[i]
 end
 
@@ -59,7 +59,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
         if buffer.llp1.obj_bnd <= 0.0
             continue
         elseif buffer.llp1.obj_val > 0.0
-            push!(prob.disc_l[i], deepcopy(buffer.disc_l_buffer))
+            push!(buffer.disc_l[i], deepcopy(buffer.disc_l_buffer))
             is_llp1_nonpositive = false
         else
             buffer.eps_l[i] = (buffer.llp1.obj_bnd - buffer.llp1.obj_val)/buffer.r_l
@@ -81,7 +81,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
     @label upper_problem
     sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
-    if buffer.ubd.is_feas
+    if buffer.ubd.feas
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)
@@ -125,7 +125,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
                     buffer.eps_g[i] = buffer.res.obj_bnd/buffer.r_g
                 end
             elseif (buffer.llp3.obj_bnd > 0.0) &&
-                   (buffer.res_iteration_number < prob.res_iteration_limit)
+                   (result.res_iteration_number < prob.res_iteration_limit)
                 is_llp3_nonpositive = false
                 push!(buffer.disc_l[i], deepcopy(buffer.disc_l_buffer))
                 @goto res_problem

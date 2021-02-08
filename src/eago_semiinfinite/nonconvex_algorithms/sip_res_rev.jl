@@ -82,7 +82,7 @@ function sip_solve!(t::ExtensionType, alg::SIPResRev, buffer::SIPSubResult, prob
     # and potentially update upper discretization set
     sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
-    if buffer.ubd.is_feas
+    if buffer.ubd.feas
         is_llp2_nonpositive = true
         for i = 1:prob.nSIP
             sip_llp!(t, alg, LowerLevel2(), result, buffer, prob, cb, i)

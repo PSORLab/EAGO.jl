@@ -186,6 +186,7 @@ function SIPSubResult(nx::Int, np::Int, ng::Int, tol::Float64)
 end
 
 get_eps(::LowerProblem, sr::SIPSubResult, i::Int) = 0.0
+get_eps(::ResProblem, sr::SIPSubResult, i::Int) = 0.0
 get_eps(::UpperProblem, sr::SIPSubResult, i::Int) = sr.eps_g[i]
 
 const SUBPROB_SYM = Dict{Symbol,Symbol}(:LowerProblem => :lbd,

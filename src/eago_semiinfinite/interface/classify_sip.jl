@@ -15,7 +15,7 @@ function update_status(status::SIPCons, term_status::SIPCons)
     return SEMIINFINITE
 end
 
-classify_sip(mSIP::SIPModel, v::VariableRef) = v ∈ mSIP.p ? UNCERTAIN : DECISION
+classify_sip(mSIP::SIPModel, v::VariableRef) = mSIP.p[v] ? UNCERTAIN : DECISION
 function classify_sip(mSIP::SIPModel, expr::GenericAffExpr{T,VariableRef}) where T
     status = SIPNOTSET
     for term in linear_terms(expr)
@@ -64,7 +64,6 @@ function classify_sip!(mSIP::SIPModel, cr::ScalarConstraint{F,S}) where {F<:JuMP
     nothing
 end
 
-# TODO: Define for constraint type...
 function classify_sip!(mSIP::SIPModel, cr::CR{M,C,S}) where {M<:JuMP.AbstractModel, C ,S<:JuMP.AbstractShape}
     mSIP.constraint_type[cr] = classify_sip(constraint_object(cr))
     nothing
@@ -78,5 +77,6 @@ function classify_sip!(mSIP::SIPModel)
             classify_sip!(mSIP, cr)
         end
     end
+    # TODO: ADD CLASSIFICATION OF NONLINEAR EQUATIONS
     return nothing
 end

@@ -1,5 +1,10 @@
 
 #=
+=#
+
+
+
+#=
 Basic idea behind syntax
 mSIP = SIPModel()
 
@@ -18,6 +23,48 @@ optimize!()
 =#
 
 using JuMP
+
+import JuMP.object_dictionary
+
+@enum(SIPCons, DECISION, UNCERTAIN, SEMIINFINITE, SIPNOTSET)
+
+"""
+"""
+Base.@kwdef mutable struct SIPModel <: JuMP.AbstractModel
+    m::JuMP.Model                                   = JuMP.Model()
+    p::Dict{JuMP.VariableRef,Bool}                  = Dict{JuMP.VariableRef,Bool}()
+    constr_type::Dict{JuMP.ConstraintRef, SIPCons}  = Dict{JuMP.ConstraintRef, SIPCons}()
+    nl_constraint_type::Dict{Int, SIPCons}          = Dict{Int, SIPCons}()
+    nl_expression_type::Dict{Int, SIPCons}          = Dict{Int, SIPCons}()
+end
+
+#=
+One option is to fully extend JuMP... That requires alot of function definitions
+and the only new functionality we actually want to add is classifying constraints
+based on is it a decision variable or is it a
+=#
+macro decision_variable(args...)
+    esc(quote
+        mSIP = $args[1]
+        inputs_2f = $(args[2:end]...)
+        @show mSIP
+        @show inputs_2f
+        #inputs = $(esc(args))
+        #@show inputs
+        #@show typeof(inputs)
+        vi = @variable($(args...))
+        #model = $inputs[1]
+        #for vi in variable_indices
+        #    model.p[vi] = false
+        #end
+    #    return vi
+        end)
+end
+
+mSIP = SIPModel()
+@decision_variable(mSIP, x)
+
+#=
 using MathOptInterface
 
 m = Model()
@@ -37,6 +84,7 @@ A = [1 2; 3 4]
 b = [5,6]
 @constraint(m, con, A * x .== b)
 
+
 list = list_of_constraint_types(m)
 
 cons0 = all_constraints(m, VariableRef, MOI.LessThan{Float64})
@@ -53,3 +101,4 @@ out = constraint_object(cons2_1).func
 l_terms = linear_terms(out)
 q_terms = quad_terms(out)
 #all_consts = all_constraints(m, list[1][1], list[1][1])
+=#

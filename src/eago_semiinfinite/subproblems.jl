@@ -29,9 +29,10 @@ end
 ### General set tolerances
 ###
 function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, abs_tol::Float64)
-    optimizer_name = MOI.SolverName()
+    @show JuMP.solver_name(m)
+    optimizer_name = JuMP.solver_name(m)
     if optimizer_name === "EAGO: Easy Advanced Global Optimization"
-        set_optimizer_attribute(m, "absolute_value", abs_tol)
+        set_optimizer_attribute(m, "absolute_tolerance", abs_tol)
     elseif optimizer_name === "SCIP"
         set_optimizer_attribute(m, "limits/absgap", abs_tol)
     elseif optimizer_name === "Alpine"
@@ -163,9 +164,9 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[i][j])
-            register(m, gi, nx, g, autodiff=true)
+            register(m, gi, prob.nx, g, autodiff=true)
             gic = Expr(:call)
-            push!(gic.args, :gi)
+            push!(gic.args, gi)
             for i in 1:prob.nx
                 push!(gic.args, x[i])
             end
@@ -220,9 +221,9 @@ function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[i][j])
-            register(m, gi, nx, g, autodiff=true)
+            register(m, gi, prob.nx, g, autodiff=true)
             gic = Expr(:call)
-            push!(gic.args, :gi)
+            push!(gic.args, gi)
             for i in 1:prob.nx
                 push!(gic.args, x[i])
             end
@@ -351,8 +352,8 @@ function check_convergence(result::SIPResult, atol::Float64, verb::Int64)
     return false
 end
 
-get_bnds(s::Union{LowerLevel1,LowerLevel2}, p::SIPProblem) = p.p_l, p.p_u, p.np
-get_bnds(s::Union{LowerProblem,UpperProblem}, p::SIPProblem) = p.x_l, p.x_u, p.nx
+get_bnds(s::Union{LowerLevel1,LowerLevel2,LowerLevel3}, p::SIPProblem) = p.p_l, p.p_u, p.np
+get_bnds(s::Union{LowerProblem,UpperProblem, ResProblem}, p::SIPProblem) = p.x_l, p.x_u, p.nx
 
 function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
                    r::MOI.ResultStatusCode)
