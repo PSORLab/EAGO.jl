@@ -28,7 +28,7 @@ function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::UpperProblem, m::JuMP.
 end
 
 function get_disc_set(t::ExtensionType, alg::SIPHybrid, s::S, sr::SIPSubResult,
-                      i::Int) where S <: Union{LowerProblem,UpperProblem, ResProblem}
+                      i::Int) where S <: Union{LowerProblem,UpperProblem,ResProblem}
     sr.disc_l[i]
 end
 
@@ -108,7 +108,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
 
     # solve restriction problem updating lower and upper bound as appropriate
     @label res_problem
-    sip_bnd!(t, alg, ResProblem(), buffer, result, prob, cb)
+    sip_res!(t, alg, buffer, result, prob, cb)
     if buffer.res.obj_bnd < 0
         result.lower_bound = buffer.res.obj_val
         buffer.res.obj_val = 0.5*(result.upper_bound + result.lower_bound)

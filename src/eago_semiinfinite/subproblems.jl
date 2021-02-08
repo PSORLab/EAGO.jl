@@ -201,22 +201,22 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
 end
 
 # Adaptive restriction subproblem
-function sip_res!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult,
-                    eps_g::Float64, result::SIPResult, prob::SIPProblem,
-                    cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sip_res!(DefaultExt(), alg, s, sr, eps_g, result, prob, cb)
+function sip_res!(t::ExtensionType, alg::A, sr::SIPSubResult, result::SIPResult,
+                  prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo}
+    sip_res!(DefaultExt(), alg, sr, result, prob, cb)
 end
-function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
-                  eps_g::Float64, result::SIPResult, prob::SIPProblem,
-                  cb::SIPCallback) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
+function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
+                  prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo}
 
     # create JuMP model & variables
+    s = ResProblem()
     m, x = build_model(t, alg, s, prob)
     @variable(m, η)
 
     # add discretized semi-infinite constraint
     for i = 1:prob.nSIP
         disc_set = get_disc_set(t, alg, s, sr, i)
+        @show disc_set
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
             g(x...) = cb.gSIP[i](x, disc_set[i][j])
@@ -226,13 +226,18 @@ function sip_res!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult,
             for i in 1:prob.nx
                 push!(gic.args, x[i])
             end
-            JuMP.add_NL_constraint(m, :($gic + η <= 0))
+            gip = Expr(:call)
+            push!(gip.args, :+)
+            push!(gip.args, gic)
+            push!(gip.args, η)
+            JuMP.add_NL_constraint(m, :($gip <= 0))
         end
     end
 
     # add epigraph reformulated objective
-    register(m, :f, nx, cb.f, autodiff=true)
-    if isfinite(fRes)
+    obj(x...) = cb.f(x)
+    register(m, :f, prob.nx, obj, autodiff=true)
+    if isfinite(sr.fRes)
         if isone(prob.nx)
             nl_obj = :(f($(x[1])))
         else
