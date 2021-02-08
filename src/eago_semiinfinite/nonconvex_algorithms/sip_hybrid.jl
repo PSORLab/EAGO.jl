@@ -6,12 +6,14 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_semiinfinite/algorithms/sip_hybrid.jl
+# FUTURE FEATURE... NOT CURRENTLY FUNCTIONAL
 # Defines the SIP-hybrid algorithm which implements Algorithm #2 of Djelassi,
 # Hatim, and Alexander Mitsos. "A hybrid discretization algorithm with guaranteed
 # feasibility for the global solution of semi-infinite programs."
 # Journal of Global Optimization 68.2 (2017): 227-253.
 #############################################################################
 
+#=
 struct SIPHybrid <: AbstractSIPAlgo end
 
 function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
@@ -154,3 +156,4 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
     @label main_end
     return nothing
 end
+=#

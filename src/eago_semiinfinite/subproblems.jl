@@ -133,7 +133,8 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     feas = llp_check(prob.local_solver, tstatus, rstatus)
 
     # fill buffer with subproblem result info
-    load!(s, sr, feas, -JuMP.objective_value(m), -JuMP.objective_bound(m), JuMP.value.(p))
+    psol = JuMP.value.(p)
+    load!(s, sr, feas, -JuMP.objective_value(m), -JuMP.objective_bound(m), psol)
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -162,7 +163,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
         disc_set = get_disc_set(t, alg, s, sr, i)
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
-            g(x...) = cb.gSIP[i](x, disc_set[i][j])
+            g(x...) = cb.gSIP[i](x, disc_set[j])
             register(m, gi, prob.nx, g, autodiff=true)
             gic = Expr(:call)
             push!(gic.args, gi)
@@ -216,10 +217,9 @@ function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
     # add discretized semi-infinite constraint
     for i = 1:prob.nSIP
         disc_set = get_disc_set(t, alg, s, sr, i)
-        @show disc_set
         for j = 1:length(disc_set)
             gi = Symbol("g$i$j")
-            g(x...) = cb.gSIP[i](x, disc_set[i][j])
+            g(x...) = cb.gSIP[i](x, disc_set[j])
             register(m, gi, prob.nx, g, autodiff=true)
             gic = Expr(:call)
             push!(gic.args, gi)
