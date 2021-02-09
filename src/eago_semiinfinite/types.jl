@@ -19,6 +19,13 @@ struct LowerProblem <: AbstractSubproblemType end
 struct UpperProblem <: AbstractSubproblemType end
 struct ResProblem <: AbstractSubproblemType end
 
+for ptype in (LowerLevel1, LowerLevel2, LowerLevel3,
+                  LowerProblem, UpperProblem, ResProblem)
+    pstring = String(Symbol(ptype))[6:end]
+    @eval Base.show(io::IO, x::$ptype) = print(io, $pstring)
+    @eval Base.show(io::IO, m::MIME"text/plain", x::$ptype) = print(io, $pstring)
+end
+
 """
     SIPResult
 
