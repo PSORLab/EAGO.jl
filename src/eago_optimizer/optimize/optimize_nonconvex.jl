@@ -49,7 +49,7 @@ function create_initial_node!(m::Optimizer)
     branch_count = 1
 
     for i = 1:m._working_problem._variable_count
-        vi =  variable_info[i]
+        vi = variable_info[i]
         if vi.branch_on === BRANCH
             lower_bound[branch_count] = vi.lower_bound
             upper_bound[branch_count] = vi.upper_bound
@@ -464,7 +464,7 @@ function is_globally_optimal(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCo
     feasible = false
     valid_result = false
 
-    if (t === MOI.INFEASIBLE && r == MOI.INFEASIBILITY_CERTIFICATE)
+    if (t === MOI.INFEASIBLE && r === MOI.INFEASIBILITY_CERTIFICATE)
         valid_result = true
 
     elseif (t === MOI.INFEASIBLE && r === MOI.NO_SOLUTION)
@@ -529,12 +529,12 @@ function set_dual!(m::Optimizer)
     relaxed_variable_gt = m._relaxed_variable_gt
 
     for i = 1:m._working_problem._var_leq_count
-        ci_lt, i_lt =  relaxed_variable_lt[i]
-         m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
+        ci_lt, i_lt = @inbounds relaxed_variable_lt[i]
+        @inbounds m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
     end
     for i = 1:m._working_problem._var_geq_count
-        ci_gt, i_gt =  relaxed_variable_gt[i]
-         m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
+        ci_gt, i_gt = @inbounds relaxed_variable_gt[i]
+        @inbounds m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
     end
 
     return nothing
