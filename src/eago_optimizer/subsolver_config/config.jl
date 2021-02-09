@@ -5,24 +5,26 @@
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eago_optimizer/subsolver_config/default_config.jl
-# Contains subroutines used to set default configuration for select supported solvers.
+# src/eago_optimizer/subsolver_config/config.jl
+# Contains subroutines used to set default configuration for select supported
+# solvers along with routines needed to adjust tolerances to mirror tolerance
+# adjustments in the global solve.
 #############################################################################
 
 function set_default_config_udf!(ext::ExtensionType, m::MOI.AbstractOptimizer) end
 
-include("default/cbc.jl")
-include("default/clp.jl")
-include("default/cosmo.jl")
-include("default/cplex.jl")
-include("default/ecos.jl")
-include("default/glpk.jl")
-include("default/gurobi.jl")
-include("default/ipopt.jl")
-include("default/knitro.jl")
-include("default/mosek.jl")
-include("default/scs.jl")
-include("default/tulip.jl")
+include("config/cbc.jl")
+include("config/clp.jl")
+include("config/cosmo.jl")
+include("config/cplex.jl")
+include("config/ecos.jl")
+include("config/glpk.jl")
+include("config/gurobi.jl")
+include("config/ipopt.jl")
+include("config/knitro.jl")
+include("config/mosek.jl")
+include("config/scs.jl")
+include("config/tulip.jl")
 
 function set_default_config!(ext::DefaultExt, m::T) where {T <: MOI.AbstractOptimizer}
     solver_name = MOI.get(m, MOI.SolverName())
