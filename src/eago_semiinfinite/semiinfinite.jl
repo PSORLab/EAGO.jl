@@ -12,7 +12,7 @@
 include("types.jl")
 include("subproblems.jl")
 
-function sip_solve!(t::ExtensionType, alg::AbstractSIPAlgo, subresult, prob, result, cb)
+function sip_solve(t::ExtensionType, alg::AbstractSIPAlgo, subresult, prob, result, cb)
     error("Algorithm $t not supported by explicit_sip_solve.")
 end
 
