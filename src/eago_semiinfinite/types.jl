@@ -55,7 +55,7 @@ Base.@kwdef mutable struct SIPProblem
     abs_tolerance::Float64     = 1E-3
     cons_tolerance::Float64   = 1E-3
     iteration_limit::Int            = 100
-    res_iteration_limit::Int        = 100
+    res_iteration_limit::Int        = 3
     initial_eps_g::Float64          = 1.0
     initial_r::Float64              = 2.0
     local_solver::Bool              = false
