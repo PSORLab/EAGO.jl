@@ -9,8 +9,15 @@
 # Defines the SIP-res algorithm which implements Algorithm #1 of XXX.
 #############################################################################
 
-struct SIPRes <: AbstractSIPAlgo end
+"""
+    SIPRes
 
+Specifies that the SIPRes algorithm which implements Algorithm #1 of Djelassi,
+Hatim, and Alexander Mitsos. "A hybrid discretization algorithm with guaranteed
+feasibility for the global solution of semi-infinite programs." Journal of Global
+Optimization 68.2 (2017): 227-253 should be used.
+"""
+struct SIPRes <: AbstractSIPAlgo end
 
 get_sip_optimizer(t::DefaultExt, alg::SIPRes, s::S) where S <: AbstractSubproblemType = EAGO.Optimizer
 
