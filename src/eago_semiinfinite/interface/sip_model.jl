@@ -12,13 +12,59 @@ for a discussion of the roadmap here.
 =#
 
 @enum(SIPCons, DECISION, UNCERTAIN, SEMIINFINITE, SIPNOTSET)
+const MOIU_AUTO_CACHE = MOIU.CachingOptimizerMode.AUTOMATIC
 
 Base.@kwdef mutable struct SIPData
     p::Dict{JuMP.VariableRef,Bool}                  = Dict{JuMP.VariableRef,Bool}()
     constr_type::Dict{JuMP.ConstraintRef, SIPCons}  = Dict{JuMP.ConstraintRef, SIPCons}()
     nl_constraint_type::Dict{Int, SIPCons}          = Dict{Int, SIPCons}()
     nl_expression_type::Dict{Int, SIPCons}          = Dict{Int, SIPCons}()
+    model_decision::Model                           = Model(caching_mode = MOIU_AUTO_CACHE)
+    model_uncertain::Model                          = Model((aching_mode = MOIU_AUTO_CACHE)
+    model_semiinfinite::Model                       = Model(caching_mode = MOIU_AUTO_CACHE)
 end
+uncertain_variable_num(d::SIPData) = any(x -> x, d.p)
+
+function initialize_pure_models!(m::JuMP.Model)
+    if haskey(m.ext, :sip)
+
+        # extract sip data and storage models
+        sip_data = _get_sip_data(m)::SIPData
+        m_dec = sip_data.model_decision
+        m_unc = sip_data.model_uncertain
+        m_sip = sip_data.model_semiinfinite
+
+        # get index map
+        indx_map_dec = MOI.copy_to(backend(m_dec), backend(m), copy_names = true)
+        indx_map_unc = MOI.copy_to(backend(m_unc), backend(m), copy_names = true)
+        indx_map_sip = MOI.copy_to(backend(m_sip), backend(m), copy_names = true)
+
+        # copy extension data
+        for (key, data) in m.ext
+            if key != :sip
+                m_dec.ext[key] = copy_extension_data(data, m_dec, m)
+                m_unc.ext[key] = copy_extension_data(data, m_unc, m)
+                m_sip.ext[key] = copy_extension_data(data, m_sip, m)
+            end
+        end
+
+        # copy objects (TODO need to check on SIP, DEC, UNC)
+        reference_map = ReferenceMap(new_model, index_map)
+        for (name, value) in object_dictionary(model)
+            new_model[name] = getindex.(reference_map, value)
+        end
+
+        if m.nlp_data !== nothing
+            # TODO copy NLP data
+        end
+
+        for (vi, is_uncertain) in m.ext.p
+            model_semiinfinite
+            model_decision_
+    end
+    return nothing
+end
+
 
 function initialize_sip_data(m::JuMP.Model)
     m.ext[:sip] = SIPData()
@@ -29,7 +75,8 @@ function sip_optimizehook(m::JuMP.Model; kwargs...)
     if uncertain_variable_num(data) == 0.0
         ret = JuMP.optimize!(m::JuMP.Model, ignore_optimize_hook = true, kwargs...)
     else
-        # ret  = model_sip_solve(m)
+        initialize_pure_models!(m)
+        #ret  = model_sip_solve(m)
     end
     return ret
 end
