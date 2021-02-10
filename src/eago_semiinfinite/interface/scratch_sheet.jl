@@ -24,81 +24,84 @@ optimize!()
 
 using JuMP
 
-import JuMP.object_dictionary
-
 @enum(SIPCons, DECISION, UNCERTAIN, SEMIINFINITE, SIPNOTSET)
 
-"""
-"""
-Base.@kwdef mutable struct SIPModel <: JuMP.AbstractModel
-    m::JuMP.Model                                   = JuMP.Model()
+Base.@kwdef mutable struct SIPData
     p::Dict{JuMP.VariableRef,Bool}                  = Dict{JuMP.VariableRef,Bool}()
     constr_type::Dict{JuMP.ConstraintRef, SIPCons}  = Dict{JuMP.ConstraintRef, SIPCons}()
     nl_constraint_type::Dict{Int, SIPCons}          = Dict{Int, SIPCons}()
     nl_expression_type::Dict{Int, SIPCons}          = Dict{Int, SIPCons}()
 end
 
-#=
-One option is to fully extend JuMP... That requires alot of function definitions
-and the only new functionality we actually want to add is classifying constraints
-based on is it a decision variable or is it a
-=#
-macro decision_variable(args...)
+function initialize_sip_data(m::JuMP.Model)
+    m.ext[:sip] = SIPData()
+end
+
+function sip_optimizehook(m::JuMP.Model; kwargs...)
+    data = _getsipdata(m)::SIPData
+    if uncertain_variable_num(data) == 0.0
+        ret = JuMP.optimize!(m::JuMP.Model, ignore_optimize_hook = true, kwargs...)
+    else
+        # ret  = model_sip_solve(m)
+    end
+    return ret
+end
+
+function enable_semiinfinite(m::JuMP.Model)
+    haskey(m.ext, :sip) && error("Model already has semiinfinite programs enabled")
+    initialize_sip_data(m)
+    JuMP.set_optimize_hook(m, sip_optimizehook)
+    return nothing
+end
+
+function ModelWithSIP(args...; kwargs...)
+    m = JuMP.Model(args...; kwargs...)
+    enable_semiinfinite(m)
+    return m
+end
+
+"""
+    @uncertain_variable
+
+Add an *anonymous* variable to `m::SIPModel` described by the keyword
+arguments `kw_args` and returns the variable.
+
+    @uncertain_variable(m, expr, args..., kw_args...)
+
+This macro simply denotes the variable as belonging to the set of uncertain
+variables and then performs `@variable(m, expr, args..., kw_args...)` to
+add the variable to the basic JuMP model for storage. All JuMP syntax is
+supported.
+"""
+macro uncertain_variable(args...)
     esc(quote
-        mSIP = $args[1]
-        inputs_2f = $(args[2:end]...)
-        @show mSIP
-        @show inputs_2f
-        #inputs = $(esc(args))
-        #@show inputs
-        #@show typeof(inputs)
         vi = @variable($(args...))
-        #model = $inputs[1]
-        #for vi in variable_indices
-        #    model.p[vi] = false
-        #end
-    #    return vi
+        $(args[1]).ext[:sip].p[vi] = true
+        vi
         end)
 end
 
-mSIP = SIPModel()
+"""
+    @decision_variable
+
+Add an *anonymous* variable to `m::SIPModel` described by the keyword
+arguments `kw_args` and returns the variable.
+
+    @decision_variable(m, expr, args..., kw_args...)
+
+This macro simply denotes the variable as belonging to the set of decision
+variables and then performs `@variable(m, expr, args..., kw_args...)` to
+add the variable to the basic JuMP model for storage. All JuMP syntax is
+supported.
+"""
+macro decision_variable(args...)
+    esc(quote
+        vi = @variable($(args...))
+        $(args[1]).ext[:sip].p[vi] = false
+        vi
+        end)
+end
+
+mSIP = ModelWithSIP()
+@uncertain_variable(mSIP, p)
 @decision_variable(mSIP, x)
-
-#=
-using MathOptInterface
-
-m = Model()
-@variable(m, 0 <= y <= 1)
-@variable(m, x)
-@variable(m, a, Bin)
-@variable(m, q[i=1:2])
-@constraint(m, y^2 + y + x<= 0)
-@constraint(m, [x, y-1, y-2] in SecondOrderCone())
-@NLconstraint(m, sin(x) + cos(y) <= 0.0)
-@constraint(m, 2x - 1 ⟂ x)
-@constraint(m, q in SOS2([3,5]))
-@constraint(m, a => {x + y <= 1})
-@SDconstraint(m, [x 2x; 3x 4x] >= ones(2, 2))
-
-A = [1 2; 3 4]
-b = [5,6]
-@constraint(m, con, A * x .== b)
-
-
-list = list_of_constraint_types(m)
-
-cons0 = all_constraints(m, VariableRef, MOI.LessThan{Float64})
-cons1 = all_constraints(m, VariableRef, MOI.GreaterThan{Float64})
-cons2 = all_constraints(m, GenericQuadExpr{Float64,VariableRef}, MOI.LessThan{Float64})
-cons2 = all_constraints(m, GenericQuadExpr{Float64,VariableRef}, MOI.LessThan{Float64})
-
-cons0_1 = cons0[1]
-cons1_1 = cons1[1]
-cons2_1 = cons2[1]
-cons3_1 = cons2[1]
-
-out = constraint_object(cons2_1).func
-l_terms = linear_terms(out)
-q_terms = quad_terms(out)
-#all_consts = all_constraints(m, list[1][1], list[1][1])
-=#

@@ -13,9 +13,6 @@ for a discussion of the roadmap here.
 
 @enum(SIPCons, DECISION, UNCERTAIN, SEMIINFINITE, SIPNOTSET)
 
-
-"""
-"""
 Base.@kwdef mutable struct SIPData
     p::Dict{JuMP.VariableRef,Bool}                  = Dict{JuMP.VariableRef,Bool}()
     constr_type::Dict{JuMP.ConstraintRef, SIPCons}  = Dict{JuMP.ConstraintRef, SIPCons}()
@@ -58,16 +55,36 @@ arguments `kw_args` and returns the variable.
 
     @uncertain_variable(m, expr, args..., kw_args...)
 
-This macro simply denotes the variable as belonging to the set of descision
+This macro simply denotes the variable as belonging to the set of uncertain
 variables and then performs `@variable(m, expr, args..., kw_args...)` to
 add the variable to the basic JuMP model for storage. All JuMP syntax is
 supported.
 """
 macro uncertain_variable(args...)
-    vi = @variable(args...)
-    model = esc(args[1])
-    for vi in variable_indices
-        model.p[vi] = true
-    end
-    return vi
+    esc(quote
+        vi = @variable($(args...))
+        $(args[1]).ext[:sip].p[vi] = true
+        vi
+        end)
+end
+
+"""
+    @decision_variable
+
+Add an *anonymous* variable to `m::SIPModel` described by the keyword
+arguments `kw_args` and returns the variable.
+
+    @decision_variable(m, expr, args..., kw_args...)
+
+This macro simply denotes the variable as belonging to the set of decision
+variables and then performs `@variable(m, expr, args..., kw_args...)` to
+add the variable to the basic JuMP model for storage. All JuMP syntax is
+supported.
+"""
+macro decision_variable(args...)
+    esc(quote
+        vi = @variable($(args...))
+        $(args[1]).ext[:sip].p[vi] = false
+        vi
+        end)
 end
