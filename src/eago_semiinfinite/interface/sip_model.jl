@@ -25,6 +25,31 @@ Base.@kwdef mutable struct SIPData
 end
 uncertain_variable_num(d::SIPData) = any(x -> x, d.p)
 
+function _copy_nlp_objective!(out::JuMP.Model, m::JuMP.Model, nlp_data::JuMP._NLPData)
+    if nlp_data.nlobj !== nothing
+        # TODO CHECK THAT THE FORMULATION IS PEACHY
+        obj_expr = MOI.objective_expr(nlp_new.evaluator)
+        # obj_expr_jref = substitute moi variables to jump refs...
+        @NLobjective(m.ext[:sip].model_decision, Min, obj_expr_jref)
+    end
+    return nothing
+end
+
+function _copy_nlp_constraints!(m::JuMP.Model, nlp_data::JuMP._NLPData)
+    for i = 1:length(nlp_data.nlconstr)
+        con_expr = MOI.constraint_expr(nlp_data.evaluator, i)
+    end
+    return nothing
+end
+
+"""
+
+Populates variables and constraints into one of three models based on classification:
+1) store decision variables and constraints containing only decision variables in
+`m.model_decision`, 2) store uncertain variables and constraints containing only
+uncertain variables in `m.model_uncertain`, 3) store all variables and all
+constraints containing both decision variables to `m.model_semiinfinite`.
+"""
 function initialize_pure_models!(m::JuMP.Model)
     if haskey(m.ext, :sip)
 
@@ -55,7 +80,12 @@ function initialize_pure_models!(m::JuMP.Model)
         end
 
         if m.nlp_data !== nothing
-            # TODO copy NLP data
+            nlp_data = deepcopy(m.nlp_data)
+            nlp_data.evaluator = NLPEvaluator(m)
+            MOI.initialize(nlp_data.evaluator, Symbol[:ExprGraph])
+            copy_nlp_objective!(m, nlp_data)
+            copy_nlp_expressions!(m, nlp_data)
+            copy_nlp_constraints!(m, nlp_data)
         end
 
         for (vi, is_uncertain) in m.ext.p
