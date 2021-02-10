@@ -104,9 +104,12 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Fix deprecated Ipopt constructor
   - Fix discrepancy between the returned objective value and the objective evaluated at the solution.
   - Dramatically decrease allocates and first-run performance of SIP routines.
-  - Add two algorithms for the modifications variants to SIPres detailed in Djelassi, H. and Mitsos A. 2017.
+  - Add two algorithms which modify SIPres detailed in Djelassi, H. and Mitsos A. 2017.
   - Fix objective interval fallback function.
   - New SIP interface with extendable subroutines.
+  - Fix x^y relaxation bug.
+  - Add issues template.
+  - Add SIP subroutine documentation.
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 

@@ -13,7 +13,14 @@
 # Journal of Global Optimization 68.2 (2017): 227-253.
 #############################################################################
 
-#=
+"""
+    SIPHybrid
+
+Specifies that the SIPHybrid algorithm which implements Algorithm #2 of Djelassi,
+Hatim, and Alexander Mitsos. "A hybrid discretization algorithm with guaranteed
+feasibility for the global solution of semi-infinite programs." Journal of Global
+Optimization 68.2 (2017): 227-253 should be used.
+"""
 struct SIPHybrid <: AbstractSIPAlgo end
 
 function set_tolerance!(t::DefaultExt, alg::SIPHybrid, s::LowerLevel1, m::JuMP.Model, sr::SIPSubResult, i::Int)
@@ -130,21 +137,23 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
                    (result.res_iteration_number < prob.res_iteration_limit)
                 is_llp3_nonpositive = false
                 push!(buffer.disc_l[i], deepcopy(buffer.disc_l_buffer))
+                result.res_iteration_number += 1
                 @goto res_problem
             else
-                buffer.res_iteration_number = 1
+                result.res_iteration_number = 1
                 @goto main_iteration
             end
         end
         if is_llp3_nonpositive
-            if buffer.ubd.obj_val <= result.upper_bound
+            if buffer.res.obj_val <= result.upper_bound
                 result.upper_bound = buffer.res.obj_val
                 result.xsol = buffer.res.sol
+                result.res_iteration_number = 1
                 @goto upper_problem
             end
         end
     else
-        buffer.res_iteration_number = 1
+        result.res_iteration_number = 1
         @goto main_iteration
     end
 
@@ -156,4 +165,3 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
     @label main_end
     return nothing
 end
-=#

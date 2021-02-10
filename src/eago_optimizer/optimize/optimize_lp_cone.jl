@@ -61,7 +61,8 @@ function add_linear_constraints!(m::Optimizer, opt::T) where T
     for (func, set) in m._input_problem._linear_eq_constraints
         MOI.add_constraint(opt, func, set)
     end
-    nothing
+
+    return nothing
 end
 
 ### LP and MILP routines
@@ -71,7 +72,7 @@ function add_soc_constraints!(m::Optimizer, opt::T) where T
          MOI.add_constraint(opt, func, set)
     end
 
-    nothing
+    return nothing
 end
 
 function add_sv_or_aff_obj!(m::Optimizer, opt::T) where T

@@ -9,9 +9,13 @@
 # Defines utilities for generic SIP subroutines.
 #############################################################################
 
-###
-### Build model
-###
+"""
+    build_model
+
+Create the model and variables used with extension `t::EAGO.ExtensionType` in algorithm
+`a::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via the command
+`build_model(t::ExtensionType, a::AbstractSIPAlgo, s::AbstractSubproblemType, p::SIPProblem)`.
+"""
 function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
     model = Model(get_sip_optimizer(t,a,s))
     for (k,v) in get_sip_kwargs(s,p)
@@ -99,6 +103,14 @@ function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultSta
     end
     return feasible
 end
+
+"""
+    sip_llp!
+
+Solves the lower level problem for the ith-SIP used with extension `t::EAGO.ExtensionType`
+in algorithm `a::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via
+the command  `sip_llp!(t::ExtensionType, a::AbstractSIPAlgo, s::AbstractSubproblemType, ..., i, tol)`.
+"""
 function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
                   sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                   i::Int64, tol::Float64 = -Inf) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
@@ -145,7 +157,13 @@ function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
     sip_llp!(DefaultSubproblem(), s, result, sr, prob, cb, i)
 end
 
-# Shared bounding problems
+"""
+    sip_bnd!
+
+Solves the bounding problem for the ith-SIP used with extension `t::EAGO.ExtensionType`
+in algorithm `a::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via
+the command `sip_bnd!(t::ExtensionType, a::AbstractSIPAlgo, s::AbstractSubproblemType, ..., i, tol)`.
+"""
 function sip_bnd!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
                                                             S <: AbstractSubproblemType}
@@ -201,7 +219,13 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
     return nothing
 end
 
-# Adaptive restriction subproblem
+"""
+    sip_res!
+
+Solves the restriction problem for extension `t::EAGO.ExtensionType`
+in algorithm `a::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via
+the command `sip_res!(t::ExtensionType, a::AbstractSIPAlgo, ...)`.
+"""
 function sip_res!(t::ExtensionType, alg::A, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo}
     sip_res!(DefaultExt(), alg, sr, result, prob, cb)
@@ -270,6 +294,14 @@ end
 function get_sip_optimizer(t::DefaultExt, alg::A, s::S) where {A<:AbstractSIPAlgo, S<:AbstractSubproblemType}
     return EAGO.Optimizer
 end
+
+"""
+    get_sip_optimizer
+
+Specifices the optimizer to be used in extension `t::EAGO.ExtensionType` with
+algorithm `alg::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via the
+command `get_sip_optimizer(t::ExtensionType, alg::AbstractSIPAlgo, s::AbstractSubproblemType)`.
+"""
 function get_sip_optimizer(t::ExtensionType, alg::A, s::AbstractSubproblemType) where {A <: AbstractSIPAlgo}
     return get_sip_optimizer(DefaultExt(), s)
 end
