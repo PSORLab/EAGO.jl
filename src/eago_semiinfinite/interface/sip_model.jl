@@ -106,7 +106,7 @@ function sip_optimizehook(m::JuMP.Model; kwargs...)
         ret = JuMP.optimize!(m::JuMP.Model, ignore_optimize_hook = true, kwargs...)
     else
         initialize_pure_models!(m)
-        #ret  = model_sip_solve(m)
+        ret = sip_solve(data)
     end
     return ret
 end
@@ -120,6 +120,7 @@ end
 
 function ModelWithSIP(args...; kwargs...)
     m = JuMP.Model(args...; kwargs...)
+    set_optimizer(SIPOptimizer)
     enable_semiinfinite(m)
     return m
 end
