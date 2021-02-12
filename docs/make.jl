@@ -50,4 +50,4 @@ makedocs(modules = [EAGO, McCormick],
 )
 
 @info "Deploying documentation..."
-deploydocs(repo = "github.com/PSORLab/EAGO.jl.git".)
+deploydocs(repo = "github.com/PSORLab/EAGO.jl.git")
