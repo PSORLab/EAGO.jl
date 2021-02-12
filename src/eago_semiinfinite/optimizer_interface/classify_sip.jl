@@ -1,3 +1,5 @@
+
+#=
 const CR = JuMP.ConstraintRef
 
 function classify_sip!(mSIP::SIPModel, c::AbstractConstraint)
@@ -80,3 +82,4 @@ function classify_sip!(mSIP::SIPModel)
     # TODO: ADD CLASSIFICATION OF NONLINEAR EQUATIONS
     return nothing
 end
+=#
