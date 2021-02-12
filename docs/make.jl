@@ -17,7 +17,7 @@ const MOI = MathOptInterface
 
 makedocs(modules = [EAGO, McCormick],
          doctest = false,
-         format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true")),
+         format = Documenter.HTML(),
          authors = "Matthew E. Wilhelm",
          #repo = "https://github.com/PSORLab/EAGO.jl/blob/{commit}{path}#L{line}",
          sitename = "EAGO.jl: Easy Advanced Global Optimization",
@@ -44,7 +44,4 @@ makedocs(modules = [EAGO, McCormick],
                      "Citing EAGO" => "cite.md"]
 )
 
-deploydocs(repo = "github.com/PSORLab/EAGO.jl.git",
-           target = "build",
-           deps   = nothing,
-           make   = nothing)
+deploydocs(repo = "github.com/PSORLab/EAGO.jl.git")
