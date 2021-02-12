@@ -1,5 +1,6 @@
 [deps]
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
 EAGO = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
 IntervalArithmetic = "d1acc4aa-44c8-5952-acd4-ba5d80a2a253"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
@@ -8,4 +9,4 @@ McCormick = "53c679d3-6890-5091-8386-c291e8c8aaa1"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-Documenter = "0.24"
+Documenter = "^0.26"
