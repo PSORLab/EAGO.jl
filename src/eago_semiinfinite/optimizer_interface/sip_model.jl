@@ -11,6 +11,7 @@ variable we then classify constraints. See https://github.com/PSORLab/EAGO.jl/is
 for a discussion of the roadmap here.
 =#
 
+#=
 @enum(SIPCons, DECISION, UNCERTAIN, SEMIINFINITE, SIPNOTSET)
 const MOIU_AUTO_CACHE = MOIU.CachingOptimizerMode.AUTOMATIC
 
@@ -166,3 +167,4 @@ macro decision_variable(args...)
         vi
         end)
 end
+=#

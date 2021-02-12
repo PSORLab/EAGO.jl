@@ -1,3 +1,5 @@
+
+#=
 Base.@kwdef mutable struct SIPOptimizer <: MOI.AbstractOptimizer
     objective_sense::MOI.OptimizationSense = MOI.FEASIBLE_SENSE
     time_limit::Float64 = 1000.0
@@ -66,3 +68,4 @@ end
 
 function MOI.optimize!(m::SIPOptimizer)
 end
+=#
