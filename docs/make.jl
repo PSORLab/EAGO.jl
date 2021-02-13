@@ -1,6 +1,6 @@
 push!(LOAD_PATH,"../src/")
 
-using Documenter
+using Documenter, DocumenterTools
 using EAGO, IntervalArithmetic, MathOptInterface, McCormick
 
 import McCormick: final_cut, mid3v, precond_and_contract!, AbstractMCCallback, populate_affine!,
@@ -15,10 +15,15 @@ import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
 
 const MOI = MathOptInterface
 
+
+@info "Making documentation..."
 makedocs(modules = [EAGO, McCormick],
          doctest = false,
-         format = Documenter.HTML(),
-         authors = "Matthew Wilhelm",
+         format = Documenter.HTML(
+                prettyurls = get(ENV, "CI", nothing) == "true",
+                canonical = "https://PSORLab.github.io/EAGO.jl/stable/",
+         ),
+         authors = "Matthew E. Wilhelm",
          #repo = "https://github.com/PSORLab/EAGO.jl/blob/{commit}{path}#L{line}",
          sitename = "EAGO.jl: Easy Advanced Global Optimization",
          pages = Any["Introduction" => "index.md",
@@ -44,4 +49,5 @@ makedocs(modules = [EAGO, McCormick],
                      "Citing EAGO" => "cite.md"]
 )
 
-deploydocs(; repo = "github.com/PSORLab/EAGO.jl", push_preview = true)
+@info "Deploying documentation..."
+deploydocs(repo = "github.com/PSORLab/EAGO.jl.git")
