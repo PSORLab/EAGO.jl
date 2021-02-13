@@ -5,7 +5,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Documentation**                                                | **Linux/OS/Windows**                                                                     | **Persistent DOI**                                                                     |
 |:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | [![DOI](https://zenodo.org/badge/108954118.svg)](https://zenodo.org/badge/latestdoi/108954118) |
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PSORLab.github.io/EAGO.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | [![DOI](https://zenodo.org/badge/108954118.svg)](https://zenodo.org/badge/latestdoi/108954118) |
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
