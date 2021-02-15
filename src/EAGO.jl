@@ -131,10 +131,11 @@ module EAGO
     include("eago_script/script.jl")
 
     # routines for solving SIPs
-    export SIP_Result, sip_solve, SIPRes, SIPResRev, SIPHybrid
-    export build_model, set_tolerance_inner!, set_tolerance!, get_disc_set,
+    export SIPResult, SIPProblem, SIPCallback, SIPSubResult,
+           sip_solve, SIPRes, SIPResRev, SIPHybrid,
+           build_model, set_tolerance_inner!, set_tolerance!, get_disc_set,
            sip_llp!, sip_bnd!, sip_res!, get_sip_optimizer, check_convergence,
            LowerLevel1, LowerLevel2, LowerLevel3, LowerProblem, UpperProblem,
-           ResProblem
+           ResProblem, AbstractSIPAlgo, AbstractSubproblemType
     include("eago_semiinfinite/semiinfinite.jl")
 end
