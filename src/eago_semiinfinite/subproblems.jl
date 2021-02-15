@@ -167,7 +167,7 @@ the command `sip_bnd!(t::ExtensionType, a::AbstractSIPAlgo, s::AbstractSubproble
 function sip_bnd!(t::ExtensionType, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
                                                             S <: AbstractSubproblemType}
-    sip_bnd!(DefaultExt(), alg, s, sr, eps_g, result, prob, cb)
+    sip_bnd!(DefaultExt(), alg, s, sr, result, prob, cb)
 end
 function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
