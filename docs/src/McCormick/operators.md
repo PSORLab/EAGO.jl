@@ -52,6 +52,7 @@ bisigmoid
 softsign
 softplus
 maxtanh
+maxsig
 pentanh
 gelu
 elu
@@ -59,7 +60,20 @@ selu
 swish1
 ```
 
+### Common subexpressions
+The following functions can be used in place of common subexpressions encountered
+in optimization and will result in improved performance (standard McCormick composition rules are often more expansive in each case).
+```@docs
+xexpax
+arh
+xlogx
+```
+
 ### Bound Setting Functions
+The following functions are used to specify that known bounds on a subexpression
+exist and that the relaxation/interval bounds propagated should make use of this
+information. The utility functions can be helpful in avoiding domain violations that arise due to the overly expansive nature of composite relaxations. Improper use
+of these functions may lead to cases in which the resulting relaxations are empty, so the user is encouraged to use discretion.
 ```@docs
 positive
 negative
