@@ -15,13 +15,13 @@ import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
 
 const MOI = MathOptInterface
 
-
 @info "Making documentation..."
 makedocs(modules = [EAGO, McCormick],
          doctest = false,
          format = Documenter.HTML(
                 prettyurls = get(ENV, "CI", nothing) == "true",
                 canonical = "https://PSORLab.github.io/EAGO.jl/stable/",
+                collapselevel = 1,
          ),
          authors = "Matthew E. Wilhelm",
          #repo = "https://github.com/PSORLab/EAGO.jl/blob/{commit}{path}#L{line}",
@@ -50,4 +50,5 @@ makedocs(modules = [EAGO, McCormick],
 )
 
 @info "Deploying documentation..."
-deploydocs(repo = "github.com/PSORLab/EAGO.jl.git")
+deploydocs(repo = "github.com/PSORLab/EAGO.jl.git",
+           push_preview  = true)
