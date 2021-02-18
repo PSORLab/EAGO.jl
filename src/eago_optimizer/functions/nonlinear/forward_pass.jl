@@ -483,12 +483,12 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         num2 = 0.0
     end
 
-    # is output a number (by closure of the reals)?
+    # is output a number (by closure of the reals)
     output_is_number = arg1_is_number && arg2_is_number
     numvalued[k] = output_is_number
 
     # x^1 = x
-    if num2 === 1.0
+    if arg2_is_number && (num2 == 1.0)
         if arg1_is_number
              numberstorage[k] = num1
         else
@@ -497,7 +497,7 @@ function forward_power!(k::Int64, children_arr::Vector{Int64}, children_idx::Uni
         return nothing
 
     # x^0 = 1
-    elseif num2 === 0.0
+    elseif arg2_is_number && (num2 == 0.0)
         if arg1_is_number
              numberstorage[k] = 1.0
         else

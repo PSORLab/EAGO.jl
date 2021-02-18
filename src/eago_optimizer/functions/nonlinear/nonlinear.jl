@@ -319,7 +319,7 @@ end
 ### Defines evaluator storage structure
 ###
 """
-$(TYPEDEF)
+    Evaluator
 
 MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
 
