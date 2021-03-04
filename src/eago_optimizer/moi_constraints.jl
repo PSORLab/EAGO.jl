@@ -51,6 +51,7 @@ end
 @define_addconstraint_quadratic SQF ET _quadratic_eq_constraints _quadratic_eq_count
 
 ##### Supports function and add_constraint for conic functions
+#=
 const CONE_SETS = Union{SOC}
 MOI.supports_constraint(::Optimizer, ::Type{VECOFVAR}, ::Type{S}) where {S <: CONE_SETS} = true
 
@@ -67,3 +68,4 @@ function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::SOC)
 
     return CI{VECOFVAR, SOC}(m._input_problem._last_constraint_index)
 end
+=#
