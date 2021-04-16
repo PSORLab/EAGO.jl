@@ -124,7 +124,7 @@ pkg> add EAGO
 
 Currently, EAGO is tied to a 0.19+ or greater version of JuMP. This allows a replication
 of some of the internal features shared by EAGO and JuMP's AD scheme aka
-generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
+generation of Wengert Tapes pass evaluators between JuMP and EAGO etc.
 
 ```julia
 pkg> add JuMP
@@ -151,7 +151,7 @@ Please report bugs or feature requests by opening an issue using the Github [**i
 
 ## Citing EAGO
 
-Please cite the following paper when using EAGO. In plain tex form this is:
+Please cite the following paper when using EAGO. In plain text form this is:
 ```
  M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia,
  Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566
