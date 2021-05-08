@@ -1,6 +1,6 @@
 struct Relax <: AbstractCacheAttribute end
 
-Base.@kwdef mutable struct RelaxCache{V,S} <: AbstractCache
+Base.@kwdef mutable struct RelaxCache{V,S<:Real} <: AbstractCache
     v::VariableValues{S}            = VariableValues{S}()
     _set::Vector{V}                 = V[]
     _num::Vector{S}                 = S[]
@@ -16,7 +16,7 @@ Base.@kwdef mutable struct RelaxCache{V,S} <: AbstractCache
     first_eval::Bool                = false
     ctx::GuardCtx                   = GuardCtx()
 end
-function RelaxCache{V,S}(n::Int, m::Int, p::Int) where T<:Real
+function RelaxCache{V,S}(n::Int, m::Int, p::Int) where {V,S<:Real}
     RelaxCache{V,S}(_set                 = zeros(V, n),
                     _num                 = zeros(S, n),
                     _is_num              = zeros(Bool, n),

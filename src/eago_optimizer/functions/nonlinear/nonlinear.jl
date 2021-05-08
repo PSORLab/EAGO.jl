@@ -46,7 +46,7 @@ end
 function NonlinearExpression()
     g = DirectedTree{Float64}()
     c = RelaxCache{MC{1,NS},Float64}()
-    return NonlinearExpression{MC{1,NS}}(g, c)
+    return NonlinearExpression{MC{1,NS},Float64}(g, c)
 end
 
 """
@@ -114,7 +114,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     num_mv_buffer::Vector{Float64} = Float64[]
     parameter_values::Vector{Float64} = Float64[]
     node::NodeBB = NodeBB()
-    variable_values::VariableValues{Float64}
+    variable_values::VariableValues{Float64} = VariableValues{Float64}()
     subgrad_tighten::Bool = false
     reverse_subgrad_tighten::Bool = false
     ctx::GuardCtx = GuardCtx()
