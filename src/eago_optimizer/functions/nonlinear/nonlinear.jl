@@ -40,11 +40,11 @@ $(TYPEDEF)
 Stores a general quadratic function with a buffer.
 """
 mutable struct NonlinearExpression{N,T} <: AbstractEAGOConstraint
-    g::DirectedAcyclicGraph{Float64}
+    g::DirectedTree{Float64}
     relax_cache::RelaxCache{N,T}
 end
 function NonlinearExpression()
-    g = DirectedAcyclicGraph{Float64}()
+    g = DirectedTree{Float64}()
     c = RelaxCache{1,NS}()
     return NonlinearExpression{MC{1,NS}}(g, c)
 end

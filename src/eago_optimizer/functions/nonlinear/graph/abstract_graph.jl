@@ -1,5 +1,3 @@
-module Graph
-
 #=
 TODO: Each graph representation is assumed to be static... so
 =#
@@ -101,4 +99,3 @@ include(joinpath(@__DIR__, "expressions.jl"))
 include(joinpath(@__DIR__, "abstract_node.jl"))
 include(joinpath(@__DIR__, "abstract_cache.jl"))
 include(joinpath(@__DIR__, "graphs", "directed_tree.jl"))
-end
