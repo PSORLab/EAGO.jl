@@ -1,7 +1,7 @@
 module Graph
 
 #=
-TODO: Each graph representation is assymed to be static... so
+TODO: Each graph representation is assumed to be static... so
 =#
 
 
@@ -59,7 +59,7 @@ _user_multivariate_operator(g::AbstractDG, i) = error("_user_multivariate_operat
 @inline _node(g::AbstractDG, i)           = @inbounds getindex(_nodes(g), i)
 @inline _variable(g::AbstractDG, i)       = @inbounds getindex(_variables(g), i)
 @inline _variable_type(g::AbstractDG, i)  = @inbounds getindex(_variable_types(g), i)
-@inline function _constant_values(g::AbstractDG{S}, i) where S <: Real
+@inline function _constant_value(g::AbstractDG{S}, i) where S <: Real
     @inbounds getindex(_constant_values(g), i)
 end
 
@@ -92,8 +92,8 @@ Number of constants in graph g.
 """
 @inline _constant_count(g::AbstractDG) = length(_constant_count(g))
 
-include(joinpath(@__DIR__, "node.jl"))
 include(joinpath(@__DIR__, "expressions.jl"))
-include(joinpath(@__DIR__, "cache.jl"))
+include(joinpath(@__DIR__, "abstract_node.jl"))
+include(joinpath(@__DIR__, "abstract_cache.jl"))
 include(joinpath(@__DIR__, "graphs", "directed_tree.jl"))
 end

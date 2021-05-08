@@ -12,9 +12,9 @@
 # copy_subexpression_value!, eliminate_fixed_variables!
 #############################################################################
 
-include(joinpath(@__DIR__, "empty_evaluator.jl")
-include(joinpath(@__DIR__, "register_special.jl")
-include(joinpath(@__DIR__, "graph", "graph.jl"))
+include(joinpath(@__DIR__, "empty_evaluator.jl"))
+include(joinpath(@__DIR__, "register_special.jl"))
+include(joinpath(@__DIR__, "graph", "abstract_graph.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 
 function linearity(d::JuMP._Derivatives.Linearity)

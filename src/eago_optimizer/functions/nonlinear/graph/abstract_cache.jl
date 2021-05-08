@@ -93,8 +93,8 @@ function discover!(t::AbstractCacheAttribute, c::AbstractCache, i::Int)
     error("No function discovered!(t, c, i) defined for t = $t and c = $c.")
 end
 
-_discoverable(attr, g, c, c) = !_is_discovered(attr, g, c, c)
-_unlocked(attr, g, c, c) = !_is_locked(attr, g, c, c)
+_discoverable(attr, g, c, i) = !_is_discovered(attr, g, c, i)
+_unlocked(attr, g, c, i) = !_is_locked(attr, g, c, i)
 
 
 mutable struct VariableValues{T<:Real}

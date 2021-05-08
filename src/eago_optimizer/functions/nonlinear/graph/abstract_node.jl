@@ -18,24 +18,6 @@ Each node in the directed graph can be classified into the following types
           by the user.
 =#
 
-"""
-    AtomType
-"""
-@enum(AtomType, VAR_ATOM, PARAM_ATOM, CONST_ATOM, SELECT_ATOM,
-                ABS, ABS2, INV, RAD2DEG, DEG2RAD,
-                MULT, DIV, PLUS, MINUS, POW, MIN, MAX, STEP, SIGN,
-                LOG, LOG2, LOG10, LOG1P, EXP, EXP2, EXP10, EXPM1,
-                SIN, COS, TAN, CSC, SEC, COT,
-                ASIN, ACOS, ATAN, ACSC, ASEC, ACOT,
-                SINH, COSH, TANH, CSCH, SECH, COTH,
-                ASINH, ACOSH, ATANH, ACSCH, ASECH, ACOTH,
-                ERF, ERFC, ERFINV, ERFCINV, SQRT, CBRT,
-                RELU, LEAKY_RELU, MAXSIG, MAXTANH, SOFTPLUS, PENTANH,
-                BISIGMOID, SOFTSIGN, GELU, SILU,
-                XLOGX, EXPAX, EXPXY, XABSX, ARH, QUAD1, QUAD2,
-                POS, NEG, LOWER_BND, UPPER_BND, BND,
-                USER, USERN, SUBEXPR)
-
 struct Variable end
 struct Parameter end
 struct Constant end
@@ -64,13 +46,13 @@ end
 
 for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
                   (Parameter, PARAMETER, PARAM_ATOM),
-                  (Constant, CONSTANT, CONST_ATOM),
-    @eval function Node(::typeof($t), i)
+                  (Constant, CONSTANT, CONST_ATOM),)
+    @eval function Node(::$t, i)
         return Node($s, $a, i, 0, 0, Int[])
     end
 end
 
-for (k,v) in ATM_EVAL
+for (k,v) in ALL_ATOM_DICT
     @eval function Node(::typeof($v), children::Vector{Int})
         arity = length(children)
         return Node(EXPRESSION, $k, 0, arity, children)
