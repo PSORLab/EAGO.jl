@@ -25,8 +25,8 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     dependent_variable_count::Int             = 0
     dependent_subexpression_count::Int        = 0
     dependent_subexpressions::Vector{Int}     = Int[]
-    linearity::Linearity                      = CONSTANT
-    user_operators::Ref{JuMP._Derivatives.UserOperatorRegistry}
+    linearity::Linearity                      = LIN_CONSTANT
+    user_operators::JuMPOpReg                 = JuMPOpReg()
 end
 
 const DAT = DirectedTree

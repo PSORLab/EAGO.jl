@@ -22,6 +22,10 @@ module EAGO
     import JuMP._Derivatives: operators, NodeData
     using JuMP._Derivatives: univariate_operators,
                              univariate_operator_to_id
+    import JuMP: _SubexpressionStorage
+    import JuMP._Derivatives: NodeType, NodeData, UserOperatorRegistry
+    const JuMPOpReg = JuMP._Derivatives.UserOperatorRegistry
+
     using Ipopt, GLPK
 
     using DataStructures: OrderedDict, BinaryMinMaxHeap, popmin!, popmax!, top
@@ -33,6 +37,8 @@ module EAGO
     @reexport using McCormick
     @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
+    #using McCormick: erf, erfc, erfcinv, erfinv, xlogx, arh, positive
+
 
     #using IntervalContractors
     using IntervalContractors

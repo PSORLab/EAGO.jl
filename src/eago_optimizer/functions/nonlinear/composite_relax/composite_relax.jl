@@ -1,22 +1,30 @@
 struct Relax <: AbstractCacheAttribute end
 
 Base.@kwdef mutable struct RelaxCache{V,S} <: AbstractCache
-    v::VariableValues{S}
-    _set::Vector{V}
-    _num::Vector{S}
-    _is_num::Vector{Bool}
-    _subexpression_value::Vector{V}
-    post::Bool                = false
-    cut::Bool                 = false
-    cut_interval::Bool        = false
-    ϵ_sg::Bool                = false
-    first_eval::Bool          = false
-    ctx::GuardCtx
-    cv_grad_buffer::Vector{S}
-    cc_grad_buffer::Vector{S}
-    set_mv_buffer::Vector{V}
+    v::VariableValues{S}            = VariableValues{S}()
+    _set::Vector{V}                 = V[]
+    _num::Vector{S}                 = S[]
+    _is_num::Vector{Bool}           = Bool[]
+    _subexpression_value::Vector{V} = V[]
+    _cv_grad_buffer::Vector{S}       = S[]
+    _cc_grad_buffer::Vector{S}       = S[]
+    _set_mv_buffer::Vector{V}        = V[]
+    post::Bool                      = false
+    cut::Bool                       = false
+    cut_interval::Bool              = false
+    ϵ_sg::Bool                      = false
+    first_eval::Bool                = false
+    ctx::GuardCtx                   = GuardCtx()
 end
-RelaxCache(::T, n::Int) where T<:Real = ADCache{T}(fill(T, n), fill(T, n))
+function RelaxCache{V,S}(n::Int, m::Int, p::Int) where T<:Real
+    RelaxCache{V,S}(_set                 = zeros(V, n),
+                    _num                 = zeros(S, n),
+                    _is_num              = zeros(Bool, n),
+                    _subexpression_value = zeros(V, m),
+                    _cv_grad_buffer      = zeros(S, p),
+                    _cc_grad_buffer      = zeros(S, p),
+                    _set_mv_buffer       = zeros(V, p))
+end
 
 @inline _set(b::RelaxCache{V,S}, i::Int) where {V,S}      = @inbounds b._set[i]
 @inline _num(b::RelaxCache{V,S}, i::Int) where {V,S}      = @inbounds b._num[i]

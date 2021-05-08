@@ -1,34 +1,9 @@
-
-using SpecialFunctions: erf, erfc, erfcinv, erfinv
-
 # Definitions borrow from https://github.com/FluxML/NNlib.jl (names used to
-# standardize package). TODO: Decide how/if to incorporate NNlib depedency.
+# standardize package). TODO: Decide how/if to incorporate NNlib depedency into
+# McCormick.jl/EAGO.jl.
 oftf(x, y) = oftype(float(x), y)
-function gelu(x)
-    α = oftf(x, 0.044715)
-    λ = oftf(x, gelu_λ)
-    x/2 * (1 + tanh(λ * (x + α * x^3)))
-end
 leakyrelu(x, a=oftf(x, 0.01)) = max(a * x, x)
-relu(x) = max(zero(x), x)
-function sigmoid(x)
-    t = exp(-abs(x))
-    ifelse(x ≥ 0, inv(1 + t), t / (1 + t))
-end
-softplus(x) = ifelse(x > 0, x + log1p(exp(-x)), log1p(exp(x)))
-softsign(x) = x / (1 + abs(x))
 swish(x) = x * sigmoid(x)
-
-# Define additional modeling functions here
-xlogx(x) = x*log(x)
-arh(x, k) = exp(-k/x)
-
-# Define bounding functions here (should only effect set-valued functions, fallback to no-op)
-positive(x) = x
-negative(x) = x
-lower_bnd(x, l) = x
-upper_bnd(x, u) = x
-bnd(x, l, u) = x
 
 """
     AtomType

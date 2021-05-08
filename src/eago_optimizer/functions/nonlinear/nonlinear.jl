@@ -39,13 +39,13 @@ $(TYPEDEF)
 
 Stores a general quadratic function with a buffer.
 """
-mutable struct NonlinearExpression{N,T} <: AbstractEAGOConstraint
+mutable struct NonlinearExpression{V,S} <: AbstractEAGOConstraint
     g::DirectedTree{Float64}
-    relax_cache::RelaxCache{N,T}
+    relax_cache::RelaxCache{V,S}
 end
 function NonlinearExpression()
     g = DirectedTree{Float64}()
-    c = RelaxCache{1,NS}()
+    c = RelaxCache{MC{1,NS},Float64}()
     return NonlinearExpression{MC{1,NS}}(g, c)
 end
 
@@ -55,8 +55,8 @@ $(TYPEDEF)
 Stores a general nonlinear function with a buffer represented by the sum of a tape
 and a scalar affine function.
 """
-mutable struct BufferedNonlinearFunction{N,T} <: AbstractEAGOConstraint
-    expr::NonlinearExpression{N,T}
+mutable struct BufferedNonlinearFunction{V,S} <: AbstractEAGOConstraint
+    expr::NonlinearExpression{V,S}
     saf::SAF
     lower_bound::Float64
     upper_bound::Float64
@@ -64,7 +64,7 @@ end
 function BufferedNonlinearFunction()
     ex = NonlinearExpression()
     saf = SAF(SAT[], 0.0)
-    return BufferedNonlinearFunction{1,NS}(ex, saf, 0.0, 0.0)
+    return BufferedNonlinearFunction{MC{1,NS},Float64}(ex, saf, 0.0, 0.0)
 end
 
 function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
@@ -78,7 +78,7 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
         sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
     end
     c = RelaxCache{n,T}()
-    return NonlinearExpression{MC{n,T}}(g, c)
+    return NonlinearExpression{MC{n,T},Float64}(g, c)
 end
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
                                    sub_sparsity::Dict{Int,Vector{Int}},
@@ -88,7 +88,7 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
     ex = NonlinearExpression!(f, sub_sparsity, subexpr_indx, subexpr_lin, tag)
     n = length(_sparsity(ex.g))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
-    return BufferedNonlinearFunction{MC{n,T}}(ex, saf, b.lower, b.upper)
+    return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf, b.lower, b.upper)
 end
 
 function set_intersect_value!(expr::NonlinearExpression{V}, value) where V
@@ -242,7 +242,7 @@ function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
     return rprop!(Relax, d.g, d.b)
 end
 
-function reverse_pass!(evaluator::Evaluator, d::CacheedNonlinearFunction{V}) where V
+function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     d.last_past_reverse = true
     set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
     return reverse_pass!(evaluator, d.expr)
