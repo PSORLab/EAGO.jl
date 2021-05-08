@@ -4,6 +4,9 @@ module Graph
 TODO: Each graph representation is assumed to be static... so
 =#
 
+# Needed to define translation function
+using JuMP: _SubexpressionStorage
+using JuMP._Derivatives: NodeType, NodeData, UserOperatorRegistry
 
 abstract type AbstractDirectedGraph{S<:Real} end
 abstract type AbstractDirectedAcyclicGraph{S<:Real} <: AbstractDirectedGraph{S} end
@@ -12,6 +15,7 @@ const AbstractDG = AbstractDirectedGraph
 const AbstractDAG = AbstractDirectedAcyclicGraph
 
 @enum Linearity LIN_CONSTANT LIN_LINEAR LIN_PIECEWISE_LINEAR LIN_NONLINEAR
+@enum VariableType VT_BIN VT_INT VT_CONT
 
 """
     _nodes

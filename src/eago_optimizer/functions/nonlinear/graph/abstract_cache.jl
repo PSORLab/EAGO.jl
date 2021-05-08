@@ -97,7 +97,7 @@ _discoverable(attr, g, c, i) = !_is_discovered(attr, g, c, i)
 _unlocked(attr, g, c, i) = !_is_locked(attr, g, c, i)
 
 
-mutable struct VariableValues{T<:Real}
+Base.@kwdef mutable struct VariableValues{T<:Real}
     x::Vector{T}                      = T[]
     lower_variable_bounds::Vector{T}  = T[]
     upper_variable_bounds::Vector{T}  = T[]
@@ -132,10 +132,9 @@ function binary_switch(ids, exprs; is_rev = true)
     end
 end
 
-const ATM_EVAL_IDS = keys(ATM_EVAL)
-const ATM_EVAL_EXPRS = values(ATM_EVAL)
-f_switch = binary_switch(ATM_EVAL_IDS, ATM_EVAL_EXPRS, is_rev = false)
-r_switch = binary_switch(ATM_EVAL_IDS, ATM_EVAL_EXPRS, is_rev = true)
+const ALL_ATM_EVAL = [ALL_ATOM_DICT[i] for i in ALL_ATOM_TYPES]
+f_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = false)
+r_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = true)
 @eval @inline function fprop!(::Type{T}, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
     $f_switch
