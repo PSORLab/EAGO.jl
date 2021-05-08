@@ -9,7 +9,7 @@ Each node in the directed graph can be classified into the following types
 - EXPRESSION: Any other expression that isn't a subexpression
 - SUBEXPRESSION: Any expression referencing a different graph representation.
 """
-@enum(NodeType, CONSTANT, PARAMETER, VARIABLE, EXPRESSION, SUBEXPRESSION)
+@enum(NodeClass, CONSTANT, PARAMETER, VARIABLE, EXPRESSION, SUBEXPRESSION)
 #=
 - SELECT: These nodes do not store values rather they reference the output
           stored in the buffer assocatied with an EXPRESSION. These nodes
@@ -36,7 +36,7 @@ abstract type AbstractNode end
 Describes connectivity and expression represented by node.
 """
 struct Node <: AbstractNode
-    node_type::NodeType
+    node_class::NodeClass
     expr_type::AtomType
     first_index::Int
     second_index::Int
@@ -59,7 +59,7 @@ for (k,v) in ALL_ATOM_DICT
     end
 end
 
-@inline _node_type(n::Node)    = n.node_type
+@inline _node_class(n::Node)   = n.node_class
 @inline _expr_type(n::Node)    = n.node_expr_type
 @inline _first_index(n::Node)  = n.first_index
 @inline _second_index(n::Node) = n.node_second_index

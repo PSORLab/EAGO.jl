@@ -5,8 +5,9 @@ TODO: Each graph representation is assumed to be static... so
 =#
 
 # Needed to define translation function
-using JuMP: _SubexpressionStorage
-using JuMP._Derivatives: NodeType, NodeData, UserOperatorRegistry
+using JuMP
+import JuMP: _SubexpressionStorage
+import JuMP._Derivatives: NodeType, NodeData, UserOperatorRegistry
 
 abstract type AbstractDirectedGraph{S<:Real} end
 abstract type AbstractDirectedAcyclicGraph{S<:Real} <: AbstractDirectedGraph{S} end
