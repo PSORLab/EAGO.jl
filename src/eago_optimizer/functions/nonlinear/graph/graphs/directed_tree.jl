@@ -74,7 +74,7 @@ function rprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttr
     return
 end
 
-function DirectedTree{S}(sub::JuMP._SubexpressionStorage,
+function DirectedTree{S}(func,
                          sub_sparsity::Dict{Int,Vector{Int}},
                          subexpr_linearity) where S<:Real
 

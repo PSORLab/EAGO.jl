@@ -214,9 +214,14 @@ function label_branch_variables!(m::Optimizer)
     end
 
     # adds branch solution to branch map to evaluator
-    m._working_problem._relaxed_evaluator.node_to_variable_map = m._branch_to_sol_map
-    m._working_problem._relaxed_evaluator.variable_to_node_map = m._sol_to_branch_map
-    m._working_problem._relaxed_evaluator.node_count = length(m._branch_to_sol_map)
+
+    vnum = m._working_problem._variable_count
+    v = VariableValues{Float64}(x = zeros(vnum),
+                                lower_variable_bounds = zeros(vnum),
+                                upper_variable_bounds = zeros(vnum),
+                                node_to_variable_map = m._branch_to_sol_map,
+                                variable_to_node_map = m._sol_to_branch_map)
+    m._working_problem._relaxed_evaluator.variable_values = v
 
     return nothing
 end
@@ -268,7 +273,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # add nonlinear objective
     if evaluator.has_nlobj
         m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
-                                                                     dict_sparsity, evaluator.subexpression_linearity,
+                                                                     dict_sparsity, -1, evaluator.subexpression_linearity,
                                                                      m._parameters.relax_tag)
     end
 
@@ -277,7 +282,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     for i = 1:length(evaluator.constraints)
         constraint = evaluator.constraints[i]
         bnds = constraint_bounds[i]
-        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity,
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity, -1,
                                                                               evaluator.subexpression_linearity,
                                                                               m._parameters.relax_tag))
     end
@@ -296,21 +301,15 @@ end
 
 add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
 add_nonlinear_evaluator!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
-function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
+function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
 
-    relax_evaluator = m._working_problem._relaxed_evaluator
-    relax_evaluator.variable_count = length(m._working_problem._variable_info)
-    relax_evaluator.user_operators = evaluator.m.nlp_data.user_operators
-
-    relax_evaluator.lower_variable_bounds = zeros(relax_evaluator.variable_count)
-    relax_evaluator.upper_variable_bounds = zeros(relax_evaluator.variable_count)
-    relax_evaluator.x                     = zeros(relax_evaluator.variable_count)
-    relax_evaluator.num_mv_buffer         = zeros(relax_evaluator.variable_count)
-    relax_evaluator.treat_x_as_number     = fill(false, relax_evaluator.variable_count)
-    relax_evaluator.ctx                   = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
-                                                                             m._parameters.domain_violation_guard_on))
-    relax_evaluator.subgrad_tol           = m._parameters.subgrad_tol
+    variable_count = length(m._working_problem._variable_info)
+    relax_eval = m._working_problem._relaxed_evaluator
+    relax_eval.user_operators = d.m.nlp_data.user_operators
+    relax_eval.ctx                   = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
+                                                                        m._parameters.domain_violation_guard_on))
+    relax_eval.subgrad_tol           = m._parameters.subgrad_tol
 
     m._nonlinear_evaluator_created = true
 
@@ -318,9 +317,8 @@ function add_nonlinear_evaluator!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 end
 
 function add_subexpression_buffers!(m::Optimizer)
-    relax_evaluator = m._working_problem._relaxed_evaluator
-    relax_evaluator.subexpressions_eval = fill(false, length(relax_evaluator.subexpressions))
-
+    d = m._working_problem._relaxed_evaluator
+    d.subexpressions_eval = fill(false, length(d.subexpressions))
     return nothing
 end
 

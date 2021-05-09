@@ -71,7 +71,7 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
                               sub_sparsity::Dict{Int,Vector{Int}}, subexpr_indx::Int,
                               subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
                               tag::T; is_sub::Bool = false) where T
-    g = DirectedAcyclicGraph{Float64}(sub, sub_sparsity, subexpr_linearity)
+    g = DirectedTree{Float64}(sub, sub_sparsity, subexpr_linearity)
     grad_sparsity = _sparsity(g)
     n = length(grad_sparsity)
     if is_sub
@@ -81,7 +81,7 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
     return NonlinearExpression{MC{n,T},Float64}(g, c)
 end
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
-                                   sub_sparsity::Dict{Int,Vector{Int}},
+                                   sub_sparsity::Dict{Int,Vector{Int}}, subexpr_indx::Int,
                                    subexpr_lin::Vector{JuMP._Derivatives.Linearity},
                                    tag::T) where T <: RelaxTag
 
@@ -91,10 +91,10 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf, b.lower, b.upper)
 end
 
-function set_intersect_value!(expr::NonlinearExpression{V}, value) where V
-    if !expr.isnumber[1]
-        expr.value = expr.setstorage[1] ∩ value
-        expr.setstorage[1] = expr.value
+function set_intersect_value!(d::NonlinearExpression{V}, value) where V
+    if !d.isnumber[1]
+        d.value = expr.setstorage[1] ∩ value
+        d.setstorage[1] = expr.value
     end
     return
 end
