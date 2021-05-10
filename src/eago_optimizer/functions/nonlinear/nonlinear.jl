@@ -56,7 +56,7 @@ Stores a general nonlinear function with a buffer represented by the sum of a ta
 and a scalar affine function.
 """
 mutable struct BufferedNonlinearFunction{V,S} <: AbstractEAGOConstraint
-    expr::NonlinearExpression{V,S}
+    ex::NonlinearExpression{V,S}
     saf::SAF
     lower_bound::Float64
     upper_bound::Float64
@@ -80,12 +80,13 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
     c = RelaxCache{n,T}()
     return NonlinearExpression{MC{n,T},Float64}(g, c)
 end
+
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
-                                   sub_sparsity::Dict{Int,Vector{Int}}, subexpr_indx::Int,
+                                   sub_sparsity::Dict{Int,Vector{Int}},
                                    subexpr_lin::Vector{JuMP._Derivatives.Linearity},
                                    tag::T) where T <: RelaxTag
 
-    ex = NonlinearExpression!(f, sub_sparsity, subexpr_indx, subexpr_lin, tag)
+    ex = NonlinearExpression!(f, sub_sparsity, -1, subexpr_lin, tag)
     n = length(_sparsity(ex.g))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf, b.lower, b.upper)

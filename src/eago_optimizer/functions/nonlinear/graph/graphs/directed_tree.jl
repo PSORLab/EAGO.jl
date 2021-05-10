@@ -28,6 +28,7 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     linearity::Linearity                      = LIN_CONSTANT
     user_operators::JuMPOpReg                 = JuMPOpReg()
 end
+_sparsity(d::DirectedTree{S}) where S<:Real = d.sparsity
 
 const DAT = DirectedTree
 
@@ -75,41 +76,45 @@ function rprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttr
 end
 
 # TODO Fix constructor...
-function DirectedTree{S}(func,
-                         sub_sparsity::Dict{Int,Vector{Int}},
-                         subexpr_linearity) where S<:Real
+function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity) where S<:Real
 
-    nd = copy(func.nd)
-    adj = copy(func.adj)
-    const_values = copy(func.const_values)
+    nd = copy(d.nd)
+    adj = copy(d.adj)
+    const_values = copy(d.const_values)
 
-    sparsity = copy(func.sparsity)
-    for nd in func.nd
-        if nd.nodetype === JuMP._Derivatives.SUBEXPRESSION
-            append!(sparsity, sub_sparsity[nd.index])
-        end
-    end
-    unique!(sparsity)
-    sort!(sparsity)
+    sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity)
 
     rev_sparsity_len = sparsity[end]
     rev_sparsity = zeros(Int, rev_sparsity_len)
-    current_sparsity = grad_sparsity[1]
-    current_sparsity_cnt = 1
+    new_sparsity = sparsity[1]
+    new_sparsity_len = 1
     for i = 1:rev_sparsity_len
-        if i == current_sparsity
-            rev_sparsity[i] = current_sparsity_cnt
-            current_sparsity_cnt += 1
-            if current_sparsity_cnt <= length(grad_sparsity)
-                current_sparsity = grad_sparsity[current_sparsity_cnt]
+        if i == new_sparsity
+            rev_sparsity[i] = new_sparsity_len
+            new_sparsity_len += 1
+            if new_sparsity_len <= length(sparsity)
+                new_sparsity = sparsity[new_sparsity_len]
             else
                 break
             end
         end
     end
-    DirectedTree{S}(dependent_variable_count = length(grad_sparsity),
-                    dependent_subexpressions = copy(func.dependent_subexpressions),
+
+    nodes = Node.(d.nd)
+    n = length(rev_sparsity)
+    variable_types = fill(VT_CONT, n)
+    DirectedTree{S}(nodes = nodes,
+                    variables = rev_sparsity,
+                    variable_types = variable_types,
+                    constant_values = const_values,
+                    node_count = length(nodes),
+                    variable_count = n,
+                    constant_count = length(const_values),
+                    sparsity = new_sparsity,
+                    rev_sparsity = rev_sparsity,
+                    dependent_variable_count = n,
                     dependent_subexpression_count = length(dependent_subexpressions),
+                    dependent_subexpressions = copy(dependent_subexpressions),
                     linearity = linearity(nd, adj, subexpr_linearity)
                     )
 end

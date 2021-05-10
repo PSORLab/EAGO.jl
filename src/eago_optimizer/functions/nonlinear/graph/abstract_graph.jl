@@ -90,6 +90,7 @@ Number of constants in graph g.
 """
 @inline _constant_count(g::AbstractDG) = length(_constant_count(g))
 
+include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "expressions.jl"))
 include(joinpath(@__DIR__, "abstract_node.jl"))
 include(joinpath(@__DIR__, "abstract_cache.jl"))

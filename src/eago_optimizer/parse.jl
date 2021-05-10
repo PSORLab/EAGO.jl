@@ -273,7 +273,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # add nonlinear objective
     if evaluator.has_nlobj
         m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
-                                                                     dict_sparsity, -1, evaluator.subexpression_linearity,
+                                                                     dict_sparsity, evaluator.subexpression_linearity,
                                                                      m._parameters.relax_tag)
     end
 
@@ -282,7 +282,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     for i = 1:length(evaluator.constraints)
         constraint = evaluator.constraints[i]
         bnds = constraint_bounds[i]
-        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity, -1,
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
                                                                               m._parameters.relax_tag))
     end

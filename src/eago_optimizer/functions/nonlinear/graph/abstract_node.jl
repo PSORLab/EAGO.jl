@@ -66,3 +66,24 @@ end
 @inline _arity(n::Node)        = n.arity
 @inline _children(n::Node)     = n.children
 @inline _child(n::Node, i)     = @inbounds getindex(n.children, i)
+
+function Node(d::JuMP._Derivatives.NodeData)
+    if d == CALL
+        return Node(Val(CALL),)
+    elseif d == MOIVARIABLE
+        return Node(Val(MOIVARIABLE),)
+    elseif d == CALLUNIVAR
+        return Node(Val(CALLUNIVAR),)
+    elseif d == VALUE
+        return Node(Val(VALUE),)
+    elseif d == PARAMETER
+        return Node(Val(PARAMETER),)
+    elseif d == SUBEXPRESSION
+        return Node(Val(SUBEXPRESSION),)
+    elseif d == LOGIC
+        return Node(Val(SUBEXPRESSION),)
+    elseif d == COMPARISON
+        return Node(Val(SUBEXPRESSION),)
+    end
+    return Node()
+end
