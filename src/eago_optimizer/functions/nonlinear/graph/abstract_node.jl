@@ -60,6 +60,17 @@ for (i, k) in enumerate(ALL_ATOM_TYPES)
     end
 end
 
+for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
+    @eval function Node(::Val{$v}, children::UnitRange{Int})
+        arity = length(children)
+        return Node(EXPRESSION, $v, 0, arity, children)
+    end
+end
+@eval function Node(::Val{USERN}, i::Int, children::UnitRange{Int})
+    arity = length(children)
+    return Node(EXPRESSION, USERN, i, arity, children)
+end
+
 @inline _node_class(n::Node)   = n.node_class
 @inline _expr_type(n::Node)    = n.node_expr_type
 @inline _first_index(n::Node)  = n.first_index
@@ -68,33 +79,59 @@ end
 @inline _children(n::Node)     = n.children
 @inline _child(n::Node, i)     = @inbounds getindex(n.children, i)
 
-_create_call_node(nt, i, p, adj) = Node(ALL_ATOM_DICT[i], children)
-function Node(d::JuMP._Derivatives.NodeData, c::AbstractVector{Int})
+function _create_call_node(n, i, c)
+    if i == 1
+        return Node(Val(PLUS), c)
+    elseif i == 2
+        return Node(Val(MINUS), c)
+    elseif i == 3
+        return Node(Val(MULT), c)
+    elseif i == 4
+        return Node(Val(POW), c)
+    elseif i == 5
+        return Node(Val(DIV), c)
+    elseif i == 6
+        error("If-else currently unsupported...")
+    elseif i == 7
+        return Node(Val(MAX), c)
+    elseif i == 8
+        return Node(Val(MIN), c)
+    elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
+        i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
+        return Node(Val(USERN), i_mv, c)
+    end
+end
+function _create_call_node_uni(n, i, c)
+    # TODO:...
+end
+
+function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int})
     nt = d.nodetype
     i = d.index
-    p = d.parent
-    if (nt == CALL) || (nt == CALLUNIVAR)
-        return _create_call_node(nt, i, p, c)
-    elseif nt == MOIVARIABLE
+    if (nt == JuMP._Derivatives.CALL)
+        return _create_call_node(i, c)
+    elseif (nt == JuMP._Derivatives.CALLUNIVAR)
+        return _create_call_node_uni(i, c)
+    elseif nt == JuMP._Derivatives.MOIVARIABLE
         error("MOI variable not supported.") # TODO: Confirm this error doesn't hit and delete.
-    elseif nt == VALUE
+    elseif nt == JuMP._Derivatives.VALUE
         return Node(Value(), i)
-    elseif nt == PARAMETER
+    elseif nt == JuMP._Derivatives.PARAMETER
         return Node(Parameter(), i)
-    elseif nt == SUBEXPRESSION
-        returnNode(Subexpression(), i)
-    elseif nt == LOGIC
+    elseif nt == JuMP._Derivatives.SUBEXPRESSION
+        return Node(Subexpression(), i)
+    elseif nt == JuMP._Derivatives.LOGIC
         error("Unable to load JuMP expression. Logical operators not currently supported.")
-    elseif nt == COMPARISON
+    elseif nt == JuMP._Derivatives.COMPARISON
         error("Unable to load JuMP expression. Comparisons not currently supported.")
     end
     error("Node type not expected from JuMP.")
 end
 
 function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData})
-    y = Vector{Int}(undef, len)
-    adj = adjmat(x)
-    for i in eachindex(d)
+    y = Vector{Int}(undef, length(x))
+    adj = JuMP._Derivatives.adjmat(x)
+    for i in eachindex(x)
         y[i] = Node(x[i], nzrange(adj, i))
     end
     return y
