@@ -109,29 +109,6 @@ end
 @inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
 @inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
 
-# Define standard forward and reverse propagation to switch of expression definitions
-# for expressions.
-function binary_switch(ids, exprs; is_rev = true)
-    if length(exprs) <= 3
-        if is_rev
-            out = Expr(:if, Expr(:call, :(==), :id, ids[1]),
-                       :(fprop!(T, $(exprs[1]), g, b, k)))
-        else
-            out = Expr(:if, Expr(:call, :(==), :id, ids[1]),
-                       :(rprop!(T, $(exprs[1]), g, b, k)))
-        end
-        if length(exprs) > 1
-            push!(out.args, binary_switch(ids[2:end], exprs[2:end]))
-        end
-        return out
-    else
-        mid = length(exprs) >>> 1
-        return Expr(:if, Expr(:call, :(<=), :id, ids[mid]),
-                         binary_switch(ids[1:mid], exprs[1:mid]),
-                         binary_switch(ids[mid+1:end], exprs[mid+1:end]))
-    end
-end
-
 const ALL_ATM_EVAL = [ALL_ATOM_DICT[i] for i in ALL_ATOM_TYPES]
 f_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = false)
 r_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = true)

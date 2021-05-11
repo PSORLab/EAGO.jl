@@ -1,4 +1,28 @@
 
+# Define standard forward and reverse propagation to switch of expression definitions
+# for expressions.
+function binary_switch(ids, exprs; is_rev = true)
+    if length(exprs) <= 3
+        if is_rev
+            out = Expr(:if, Expr(:call, :(==), :id, ids[1]),
+                       :(fprop!(T, $(exprs[1]), g, b, k)))
+        else
+            out = Expr(:if, Expr(:call, :(==), :id, ids[1]),
+                       :(rprop!(T, $(exprs[1]), g, b, k)))
+        end
+        if length(exprs) > 1
+            push!(out.args, binary_switch(ids[2:end], exprs[2:end]))
+        end
+        return out
+    else
+        mid = length(exprs) >>> 1
+        return Expr(:if, Expr(:call, :(<=), :id, ids[mid]),
+                         binary_switch(ids[1:mid], exprs[1:mid]),
+                         binary_switch(ids[mid+1:end], exprs[mid+1:end]))
+    end
+end
+
+
 # Access gradient sparsity of JuMP storage.
 _sparsity(d::JuMP._FunctionStorage) where S<:Real = d.grad_sparsity
 _sparsity(d::JuMP._SubexpressionStorage) where S<:Real = d.sparsity

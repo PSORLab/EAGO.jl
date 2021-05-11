@@ -52,23 +52,21 @@ for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
     end
 end
 
-for (i, k) in enumerate(ALL_ATOM_TYPES)
-    v = ALL_ATOM_DICT[k]
-    @eval function Node(::typeof($v), children::Vector{Int})
-        arity = length(children)
-        return Node(EXPRESSION, $i, 0, arity, children)
-    end
-end
-
 for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
-    @eval function Node(::Val{$v}, children::UnitRange{Int})
+    @eval function Node(::Val{true}, ::Val{$v}, children::UnitRange{Int})
         arity = length(children)
         return Node(EXPRESSION, $v, 0, arity, children)
     end
 end
-@eval function Node(::Val{USERN}, i::Int, children::UnitRange{Int})
+@eval function Node(::Val{true}, ::Val{USERN}, i::Int, children::UnitRange{Int})
     arity = length(children)
     return Node(EXPRESSION, USERN, i, arity, children)
+end
+for d in ALL_ATOM_TYPES
+    @eval function Node(::Val{false}, ::Val($d), children::Vector{Int})
+        arity = length(children)
+        return Node(EXPRESSION, $d, 0, 1, children)
+    end
 end
 
 @inline _node_class(n::Node)   = n.node_class
@@ -81,28 +79,28 @@ end
 
 function _create_call_node(n, i, c)
     if i == 1
-        return Node(Val(PLUS), c)
+        return Node(Val(true), Val(PLUS), c)
     elseif i == 2
-        return Node(Val(MINUS), c)
+        return Node(Val(true), Val(MINUS), c)
     elseif i == 3
-        return Node(Val(MULT), c)
+        return Node(Val(true), Val(MULT), c)
     elseif i == 4
-        return Node(Val(POW), c)
+        return Node(Val(true), Val(POW), c)
     elseif i == 5
-        return Node(Val(DIV), c)
+        return Node(Val(true), Val(DIV), c)
     elseif i == 6
         error("If-else currently unsupported...")
     elseif i == 7
-        return Node(Val(MAX), c)
+        return Node(Val(Val(true), MAX), c)
     elseif i == 8
-        return Node(Val(MIN), c)
+        return Node(Val(Val(true), MIN), c)
     elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
         i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
-        return Node(Val(USERN), i_mv, c)
+        return Node(Val(true), Val(USERN), i_mv, c)
     end
 end
-function _create_call_node_uni(n, i, c)
-    # TODO:...
+function _create_call_node_uni(i, c)
+    # TODO: Add binary switch here... for univariates
 end
 
 function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int})
