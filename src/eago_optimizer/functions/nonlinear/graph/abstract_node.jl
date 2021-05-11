@@ -47,7 +47,7 @@ end
 for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
                   (Parameter, PARAMETER, PARAM_ATOM),
                   (Constant, CONSTANT, CONST_ATOM),)
-    @eval function Node(::$t, i)
+    @eval function Node(::$t, i::Int)
         return Node($s, $a, i, 0, 0, Int[])
     end
 end
@@ -63,7 +63,7 @@ end
     return Node(EXPRESSION, USERN, i, arity, children)
 end
 for d in ALL_ATOM_TYPES
-    @eval function Node(::Val{false}, ::Val($d), children::Vector{Int})
+    @eval function Node(::Val{false}, ::Val{$d}, children::Vector{Int})
         arity = length(children)
         return Node(EXPRESSION, $d, 0, 1, children)
     end
@@ -77,7 +77,7 @@ end
 @inline _children(n::Node)     = n.children
 @inline _child(n::Node, i)     = @inbounds getindex(n.children, i)
 
-function _create_call_node(n, i, c)
+function _create_call_node(i, c::UnitRange{Int})
     if i == 1
         return Node(Val(true), Val(PLUS), c)
     elseif i == 2
@@ -99,7 +99,7 @@ function _create_call_node(n, i, c)
         return Node(Val(true), Val(USERN), i_mv, c)
     end
 end
-function _create_call_node_uni(i, c)
+function _create_call_node_uni(i, c::UnitRange{Int})
     # TODO: Add binary switch here... for univariates
 end
 
@@ -110,6 +110,8 @@ function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int})
         return _create_call_node(i, c)
     elseif (nt == JuMP._Derivatives.CALLUNIVAR)
         return _create_call_node_uni(i, c)
+    elseif nt == JuMP._Derivatives.MOIVARIABLE
+        return Node(Variable(), i)
     elseif nt == JuMP._Derivatives.MOIVARIABLE
         error("MOI variable not supported.") # TODO: Confirm this error doesn't hit and delete.
     elseif nt == JuMP._Derivatives.VALUE

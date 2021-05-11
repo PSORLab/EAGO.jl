@@ -23,3 +23,11 @@ function Cassette.overdub(::F_RELAX_CTX{T}, ::typeof(vcat), A::AbstractArray, Bs
     vR = zeros(T, size(vA)...)
     return copyto!(vR,vA)
 end
+
+#=
+# solution object
+function Cassette.overdub(::F_RELAX_CTX{T}, ::typeof(ODEProblem), f, u0, tspan) where {T<:Number}
+end
+function Cassette.overdub(::F_RELAX_CTX{T}, ::typeof(solve), prob, alg, kwags...) where {T<:Number}
+end
+=#
