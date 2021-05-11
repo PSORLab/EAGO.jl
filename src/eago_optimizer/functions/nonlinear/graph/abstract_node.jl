@@ -52,10 +52,11 @@ for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
     end
 end
 
-for (k,v) in ALL_ATOM_DICT
+for (i, k) in enumerate(ALL_ATOM_TYPES)
+    v = ALL_ATOM_DICT[k]
     @eval function Node(::typeof($v), children::Vector{Int})
         arity = length(children)
-        return Node(EXPRESSION, $k, 0, arity, children)
+        return Node(EXPRESSION, $i, 0, arity, children)
     end
 end
 
@@ -67,23 +68,34 @@ end
 @inline _children(n::Node)     = n.children
 @inline _child(n::Node, i)     = @inbounds getindex(n.children, i)
 
-function Node(d::JuMP._Derivatives.NodeData)
-    if d == CALL
-        return Node(Val(CALL),)
-    elseif d == MOIVARIABLE
-        return Node(Val(MOIVARIABLE),)
-    elseif d == CALLUNIVAR
-        return Node(Val(CALLUNIVAR),)
-    elseif d == VALUE
-        return Node(Val(VALUE),)
-    elseif d == PARAMETER
-        return Node(Val(PARAMETER),)
-    elseif d == SUBEXPRESSION
-        return Node(Val(SUBEXPRESSION),)
-    elseif d == LOGIC
-        return Node(Val(SUBEXPRESSION),)
-    elseif d == COMPARISON
-        return Node(Val(SUBEXPRESSION),)
+_create_call_node(nt, i, p, adj) = Node(ALL_ATOM_DICT[i], children)
+function Node(d::JuMP._Derivatives.NodeData, c::AbstractVector{Int})
+    nt = d.nodetype
+    i = d.index
+    p = d.parent
+    if (nt == CALL) || (nt == CALLUNIVAR)
+        return _create_call_node(nt, i, p, c)
+    elseif nt == MOIVARIABLE
+        error("MOI variable not supported.") # TODO: Confirm this error doesn't hit and delete.
+    elseif nt == VALUE
+        return Node(Value(), i)
+    elseif nt == PARAMETER
+        return Node(Parameter(), i)
+    elseif nt == SUBEXPRESSION
+        returnNode(Subexpression(), i)
+    elseif nt == LOGIC
+        error("Unable to load JuMP expression. Logical operators not currently supported.")
+    elseif nt == COMPARISON
+        error("Unable to load JuMP expression. Comparisons not currently supported.")
     end
-    return Node()
+    error("Node type not expected from JuMP.")
+end
+
+function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData})
+    y = Vector{Int}(undef, len)
+    adj = adjmat(x)
+    for i in eachindex(d)
+        y[i] = Node(x[i], nzrange(adj, i))
+    end
+    return y
 end

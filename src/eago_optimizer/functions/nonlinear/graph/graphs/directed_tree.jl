@@ -100,7 +100,7 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
         end
     end
 
-    nodes = Node.(d.nd)
+    nodes = _convert_node_list(d.nd)
     n = length(rev_sparsity)
     variable_types = fill(VT_CONT, n)
     DirectedTree{S}(nodes = nodes,
