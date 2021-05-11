@@ -103,6 +103,7 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
     nodes = _convert_node_list(d.nd)
     n = length(rev_sparsity)
     variable_types = fill(VT_CONT, n)
+    linearity = linearity(nd, adj, subexpr_linearity)
     DirectedTree{S}(nodes = nodes,
                     variables = rev_sparsity,
                     variable_types = variable_types,
@@ -115,6 +116,6 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
                     dependent_variable_count = n,
                     dependent_subexpression_count = length(dependent_subexpressions),
                     dependent_subexpressions = copy(dependent_subexpressions),
-                    linearity = linearity(nd, adj, subexpr_linearity)
+                    linearity = linearity[1]
                     )
 end

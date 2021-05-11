@@ -28,10 +28,10 @@ function linearity(d::JuMP._Derivatives.Linearity)
     return Graph.LIN_CONSTANT      # if d == JuMP._Derivatives.CONSTANT
 end
 function linearity(nd::Vector{JuMP._Derivatives.NodeData},
-                   adj::SparseMatrixCSC{Int,Int},
+                   adj::SparseMatrixCSC{Bool,Int},
                    d::Vector{JuMP._Derivatives.Linearity})
     x = JuMP._Derivatives.classify_linearity(nd, adj, d)
-    linearity(x)
+    linearity.(x)
 end
 
 """

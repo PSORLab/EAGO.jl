@@ -55,17 +55,17 @@ end
 for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
     @eval function Node(::Val{true}, ::Val{$v}, children::UnitRange{Int})
         arity = length(children)
-        return Node(EXPRESSION, $v, 0, arity, children)
+        return Node(EXPRESSION, $v, 0, 0, arity, children)
     end
 end
 @eval function Node(::Val{true}, ::Val{USERN}, i::Int, children::UnitRange{Int})
     arity = length(children)
-    return Node(EXPRESSION, USERN, i, arity, children)
+    return Node(EXPRESSION, USERN, i, 0, arity, children)
 end
 for d in ALL_ATOM_TYPES
     @eval function Node(::Val{false}, ::Val{$d}, children::Vector{Int})
         arity = length(children)
-        return Node(EXPRESSION, $d, 0, 1, children)
+        return Node(EXPRESSION, $d, 0, 0, 1, children)
     end
 end
 
@@ -106,16 +106,16 @@ end
 function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int})
     nt = d.nodetype
     i = d.index
-    if (nt == JuMP._Derivatives.CALL)
+    if nt == JuMP._Derivatives.CALL
         return _create_call_node(i, c)
-    elseif (nt == JuMP._Derivatives.CALLUNIVAR)
+    elseif nt == JuMP._Derivatives.CALLUNIVAR
         return _create_call_node_uni(i, c)
-    elseif nt == JuMP._Derivatives.MOIVARIABLE
+    elseif nt == JuMP._Derivatives.VARIABLE
         return Node(Variable(), i)
     elseif nt == JuMP._Derivatives.MOIVARIABLE
         error("MOI variable not supported.") # TODO: Confirm this error doesn't hit and delete.
     elseif nt == JuMP._Derivatives.VALUE
-        return Node(Value(), i)
+        return Node(Constant(), i)
     elseif nt == JuMP._Derivatives.PARAMETER
         return Node(Parameter(), i)
     elseif nt == JuMP._Derivatives.SUBEXPRESSION
@@ -125,11 +125,11 @@ function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int})
     elseif nt == JuMP._Derivatives.COMPARISON
         error("Unable to load JuMP expression. Comparisons not currently supported.")
     end
-    error("Node type not expected from JuMP.")
+    error("Node type = $nt not expected from JuMP.")
 end
 
 function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData})
-    y = Vector{Int}(undef, length(x))
+    y = Vector{Node}(undef, length(x))
     adj = JuMP._Derivatives.adjmat(x)
     for i in eachindex(x)
         y[i] = Node(x[i], nzrange(adj, i))
