@@ -10,6 +10,8 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
+f_init!(::Type{Relax}, g::AbstractDG, b::RelaxCache) = nothing
+
 function _var_set(::Type{MC{N,T}}, i::Int, x_cv::S, x_cc::S, l::S, u::S) where {N,T,S}
     v = seed_gradient(i, Val(N))
     return MC{N,T}(x_cv, x_cc, Interval{S}(l, u), v, v, false)

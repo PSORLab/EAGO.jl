@@ -749,18 +749,19 @@ and optimizer on node `y`.
 function lower_problem!(t::ExtensionType, m::Optimizer)
 
     n = m._current_node
+    wp = m._working_problem
 
-    m._working_problem._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
+    wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
     if !m._obbt_performed_flag
         if m._nonlinear_evaluator_created
-            set_node!(m._working_problem._relaxed_evaluator, n)
+            set_node!(wp._relaxed_evaluator, n)
             set_reference_point!(m)
-            fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
+            fill!(wp._relaxed_evaluator.subexpressions_eval, false)
         end
         update_relaxed_problem_box!(m)
     end
-    m._working_problem._objective_nl.has_value = false
-    m._working_problem._relaxed_evaluator.interval_intersect = false
+    _set_has_value!(wp._objective_nl, false)
+    wp._relaxed_evaluator.interval_intersect = false
 
     if !m._obbt_performed_flag
         relax_constraints!(m, 1)

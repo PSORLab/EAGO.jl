@@ -23,7 +23,7 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     ""
     rev_sparsity::Vector{Int}                 = Int[]
     dependent_variable_count::Int             = 0
-    dependent_subexpression_count::Int        = 0
+    dep_subexpr_count::Int        = 0
     dependent_subexpressions::Vector{Int}     = Int[]
     linearity::Linearity                      = LIN_CONSTANT
     user_operators::JuMPOpReg                 = JuMPOpReg()
@@ -31,11 +31,13 @@ end
 const DAT = DirectedTree
 
 # graph property access functions
-@inbounds _sparsity(g::DAT)        = g.sparsity
-@inbounds _nodes(g::DAT)           = g.nodes
-@inbounds _variables(g::DAT)       = g.variables
-@inbounds _variable_types(g::DAT)  = g.variable_types
-@inbounds _constant_values(g::DAT) = g.constant_values
+@inbounds _sparsity(g::DAT)          = g.sparsity
+@inbounds _rev_sparsity(g::DAT )     = g.rev_sparsity
+@inbounds _nodes(g::DAT)             = g.nodes
+@inbounds _variables(g::DAT)         = g.variables
+@inbounds _variable_types(g::DAT)    = g.variable_types
+@inbounds _constant_values(g::DAT)   = g.constant_values
+@inbounds _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
 
 # user-define function access
 @inline function _user_univariate_operator(g::DAT, i)
@@ -47,8 +49,8 @@ end
 
 function fprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
     f_init!(T, g, b)
-    for k = length(g):-1:1
-        nt = _node_type(g, k)
+    for k = _node_count(g):-1:1
+        nt = _node_class(g, k)
         if nt == EXPRESSION
             fprop!(T, Expression, g, b, k)
         elseif nt == VARIABLE
@@ -62,8 +64,8 @@ end
 
 function rprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
     r_init!(T, g, b)
-    for k = 1:length(g)
-        nt = _node_type(g, k)
+    for k = 1:_node_count(g)
+        nt = _node_class(g, k)
         if nt == EXPRESSION
             rprop!(T, Expression, g, b, k)
         elseif nt == VARIABLE
@@ -99,7 +101,7 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
                     sparsity = sparsity,
                     rev_sparsity = rev_sparsity,
                     dependent_variable_count = n,
-                    dependent_subexpression_count = length(dependent_subexpressions),
+                    dep_subexpr_count = length(dependent_subexpressions),
                     dependent_subexpressions = copy(dependent_subexpressions),
                     linearity = lin[1]
                     )

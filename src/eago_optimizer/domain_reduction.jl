@@ -189,7 +189,8 @@ $(FUNCTIONNAME)
 """
 function set_reference_point!(m::Optimizer)
 
-    evaluator = m._working_problem._relaxed_evaluator
+    wp = m._working_problem
+    evaluator = wp._relaxed_evaluator
     evaluator_x = evaluator.variable_values.x
     current_xref = m._current_xref
 
@@ -207,13 +208,9 @@ function set_reference_point!(m::Optimizer)
     end
 
     if new_reference_point
-
-        for constr in m._working_problem._nonlinear_constr
-            constr.has_value = false
-        end
-
-        if m._working_problem._objective_type === NONLINEAR
-            m._working_problem._objective_nl.has_value = false
+        foreach(c -> _set_has_value!(c, false), wp._nonlinear_constr)
+        if wp._objective_type === NONLINEAR
+            _set_has_value!(wp._objective_nl, false)
         end
     end
     fill!(evaluator.subexpressions_eval, false)

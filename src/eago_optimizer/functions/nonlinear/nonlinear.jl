@@ -25,12 +25,17 @@ Stores a general quadratic function with a buffer.
 mutable struct NonlinearExpression{V,S} <: AbstractEAGOConstraint
     g::DirectedTree{Float64}
     relax_cache::RelaxCache{V,S}
+    has_value::Bool
 end
 function NonlinearExpression()
     g = DirectedTree{Float64}()
     c = RelaxCache{MC{1,NS},Float64}()
-    return NonlinearExpression{MC{1,NS},Float64}(g, c)
+    return NonlinearExpression{MC{1,NS},Float64}(g, c, false)
 end
+
+@inline _has_value(d::NonlinearExpression) = d.has_value
+@inline _dep_subexpr_count(d::NonlinearExpression) = _dep_subexpr_count(d.g)
+@inline _set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
 
 """
 $(TYPEDEF)
@@ -50,6 +55,11 @@ function BufferedNonlinearFunction()
     return BufferedNonlinearFunction{MC{1,NS},Float64}(ex, saf, 0.0, 0.0)
 end
 
+@inline _has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
+@inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
+
+@inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
+
 function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
                               sub_sparsity::Dict{Int,Vector{Int}}, subexpr_indx::Int,
                               subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
@@ -61,7 +71,7 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
         sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
     end
     c = RelaxCache{MC{n,T},Float64}()
-    return NonlinearExpression{MC{n,T},Float64}(g, c)
+    return NonlinearExpression{MC{n,T},Float64}(g, c, false)
 end
 
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
@@ -205,21 +215,22 @@ function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{Variabl
 end
 
 function eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T}
-    eliminate_fixed_variables!(f.expr, v)
+    eliminate_fixed_variables!(f.ex, v)
 end
 
-function forward_pass!(x::Evaluator, d::NonlinearExpression{V}) where V
-    for i = 1:d.dependent_subexpression_count
-        !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])
-    end
-    load_subexprs!(d.b, x)
-    fprop!(Relax, d.g, d.b)
+function forward_pass!(x::Evaluator, d::NonlinearExpression{V}) where V  # Hold reference to subexpressions in DAG?
+    # Fix subexpression code...
+    #for i = 1:_dep_subexpr_count(d)
+    #    !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])
+    #end
+    #_load_subexprs!(d.relax_cache, x.subexpressions)
+    fprop!(Relax, d.g, d.relax_cache)
     return
 end
 
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V}) where V
-    forward_pass!(x, d.expr)
-    d.has_value = true
+    forward_pass!(x, d.ex)
+    _set_has_value!(d, true)
     d.last_past_reverse = false
     return
 end
@@ -230,6 +241,6 @@ end
 
 function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
     d.last_past_reverse = true
-    set_intersect_value!(d.expr, Interval(d.lower_bound, d.upper_bound))
-    return reverse_pass!(evaluator, d.expr)
+    set_intersect_value!(d.ex, Interval(d.lower_bound, d.upper_bound))
+    return reverse_pass!(evaluator, d.ex)
 end
