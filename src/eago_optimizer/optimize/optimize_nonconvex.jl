@@ -754,7 +754,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     if !m._obbt_performed_flag
         if m._nonlinear_evaluator_created
             set_node!(m._working_problem._relaxed_evaluator, n)
-            set_node_flag!(m)
             set_reference_point!(m)
             fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
         end

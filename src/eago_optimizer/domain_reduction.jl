@@ -187,25 +187,10 @@ end
 """
 $(FUNCTIONNAME)
 """
-function set_node_flag!(m::Optimizer)
-    for constr in m._working_problem._nonlinear_constr
-        set_node_flag!(constr)
-    end
-
-    if m._working_problem._objective_type === NONLINEAR
-        set_node_flag!(m._working_problem._objective_nl)
-    end
-
-    return nothing
-end
-
-"""
-$(FUNCTIONNAME)
-"""
 function set_reference_point!(m::Optimizer)
 
     evaluator = m._working_problem._relaxed_evaluator
-    evaluator_x = evaluator.x
+    evaluator_x = evaluator.variable_values.x
     current_xref = m._current_xref
 
     new_reference_point = false
@@ -266,7 +251,6 @@ function obbt!(m::Optimizer)
     update_relaxed_problem_box!(m)
     if m._nonlinear_evaluator_created
         set_node!(m._working_problem._relaxed_evaluator, n)
-        set_node_flag!(m)
         set_reference_point!(m)
     end
     relax_constraints!(m, 1)
@@ -649,7 +633,6 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
     if m._nonlinear_evaluator_created
         evaluator = m._working_problem._relaxed_evaluator
         set_node!(m._working_problem._relaxed_evaluator, m._current_node)
-        set_node_flag!(m)
         set_reference_point!(m)
 
         m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
@@ -673,7 +656,6 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_objective
         if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
             obj_nonlinear = m._working_problem._objective_nl
-            set_node_flag!(obj_nonlinear)
             forward_pass!(evaluator, obj_nonlinear)
             feasible_flag &= reverse_pass!(evaluator, obj_nonlinear)
             evaluator.interval_intersect = true
@@ -681,7 +663,6 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
 
         if feasible_flag && (m._working_problem._objective_type === NONLINEAR)
             obj_nonlinear = m._working_problem._objective_nl
-            set_node_flag!(obj_nonlinear)
             forward_pass!(evaluator, obj_nonlinear)
         end
 
