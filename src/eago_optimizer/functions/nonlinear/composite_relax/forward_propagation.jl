@@ -20,7 +20,7 @@ end
 function fprop!(::Type{Relax}, ::Type{Variable}, g::AbstractDG, b::RelaxCache{V}, k::Int) where V
     i = _first_index(g, k)
     x = _val(b, i)
-    z = _var_set(V, _rev_sparsity(g, i), x, x, _lbd(b, i), _ubd(b, i))
+    z = _var_set(V, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
     if _first_eval(b)
         z = z ∩ _interval(b, k)
     end

@@ -37,8 +37,8 @@ const DAT = DirectedTree
 @inbounds _constant_values(g::DAT)   = g.constant_values
 @inbounds _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
 # Each tree has a unique sparsity for a DAT since there is a single sink
-@inbounds _sparsity(g::DAT, i)       = g.sparsity
-@inbounds _rev_sparsity(g::DAT, i)   = g.rev_sparsity
+@inbounds _sparsity(g::DAT, i)                    = g.sparsity
+@inbounds _rev_sparsity(g::DAT, i::Int, k::Int)   = g.rev_sparsity[i]
 
 # user-define function access
 @inline function _user_univariate_operator(g::DAT, i)

@@ -90,6 +90,13 @@ Number of constants in graph g.
 """
 @inline _constant_count(g::AbstractDG) = length(_constant_count(g))
 
+"""
+    _rev_sparsity
+
+Return the index of the ith variable at node k.
+"""
+@inline _rev_sparsity(g::AbstractDG, i::Int, k::Int) = error("_rev_sparsity not defined for g::$(typeof(g))")
+
 include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "expressions.jl"))
 include(joinpath(@__DIR__, "abstract_node.jl"))

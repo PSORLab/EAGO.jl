@@ -37,7 +37,7 @@ Describes connectivity and expression represented by node.
 """
 struct Node <: AbstractNode
     node_class::NodeClass
-    expr_type::AtomType
+    ex_type::AtomType
     first_index::Int
     second_index::Int
     arity::Int
@@ -70,7 +70,7 @@ for d in ALL_ATOM_TYPES
 end
 
 @inline _node_class(n::Node)   = n.node_class
-@inline _expr_type(n::Node)    = n.node_expr_type
+@inline _ex_type(n::Node)      = n.ex_type
 @inline _first_index(n::Node)  = n.first_index
 @inline _second_index(n::Node) = n.node_second_index
 @inline _arity(n::Node)        = n.arity
