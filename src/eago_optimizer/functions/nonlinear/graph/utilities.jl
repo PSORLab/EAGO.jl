@@ -57,3 +57,21 @@ function _compute_sparsity(d::JuMP._SubexpressionStorage, sparse_dist::Dict{Int,
     sort!(dep_subexpression)
     sparsity, dep_subexpression
 end
+
+function linearity(d::JuMP._Derivatives.Linearity)
+    if d == JuMP._Derivatives.LINEAR
+        return LIN_LINEAR
+    elseif d == JuMP._Derivatives.PIECEWISE_LINEAR
+        return LIN_PIECEWISE_LINEAR
+    elseif d == JuMP._Derivatives.NONLINEAR
+        return LIN_NONLINEAR
+    end
+    # assumes d is then JuMP._Derivatives.CONSTANT
+    return LIN_CONSTANT
+end
+function linearity(nd::Vector{JuMP._Derivatives.NodeData},
+                   adj::SparseMatrixCSC{Bool,Int},
+                   d::Vector{JuMP._Derivatives.Linearity})
+    x = JuMP._Derivatives.classify_linearity(nd, adj, d)
+    linearity.(x)
+end

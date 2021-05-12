@@ -181,15 +181,13 @@ function label_branch_variables!(m::Optimizer)
         nl_constr = m._working_problem._nonlinear_constr
         for i = 1:m._working_problem._nonlinear_count
             nl_constr_eq = @inbounds nl_constr[i]
-            grad_sparsity = nl_constr_eq.expr.grad_sparsity
-            for indx in grad_sparsity
+            for indx in _grad_sparsity(nl_constr_eq)
                 @inbounds m._branch_variables[indx] = true
             end
         end
 
         if obj_type === NONLINEAR
-            grad_sparsity = m._working_problem._objective_nl.expr.grad_sparsity
-            for indx in grad_sparsity
+            for indx in _grad_sparsity(m._working_problem._objective_nl)
                 @inbounds m._branch_variables[indx] = true
             end
         end

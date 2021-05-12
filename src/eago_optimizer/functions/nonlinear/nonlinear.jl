@@ -17,23 +17,6 @@ include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "abstract_graph.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 
-function linearity(d::JuMP._Derivatives.Linearity)
-    if d == JuMP._Derivatives.LINEAR
-        return Graph.LIN_LINEAR
-    elseif d == JuMP._Derivatives.PIECEWISE_LINEAR
-        return Graph.LIN_PIECEWISE_LINEAR
-    elseif d == JuMP._Derivatives.NONLINEAR
-        return Graph.LIN_NONLINEAR
-    end
-    return Graph.LIN_CONSTANT      # if d == JuMP._Derivatives.CONSTANT
-end
-function linearity(nd::Vector{JuMP._Derivatives.NodeData},
-                   adj::SparseMatrixCSC{Bool,Int},
-                   d::Vector{JuMP._Derivatives.Linearity})
-    x = JuMP._Derivatives.classify_linearity(nd, adj, d)
-    linearity.(x)
-end
-
 """
 $(TYPEDEF)
 
@@ -77,7 +60,7 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
     if is_sub
         sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
     end
-    c = RelaxCache{n,T}()
+    c = RelaxCache{MC{n,T},Float64}()
     return NonlinearExpression{MC{n,T},Float64}(g, c)
 end
 
@@ -91,6 +74,8 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf, b.lower, b.upper)
 end
+
+@inline _grad_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex.g)
 
 function set_intersect_value!(d::NonlinearExpression{V}, value) where V
     if !d.isnumber[1]
@@ -136,9 +121,9 @@ Sets the current node in the Evaluator structure.
 function set_node!(d::Evaluator, n::NodeBB)
     d.node = NodeBB(n)
     @inbounds for i = 1:length(n)
-        vi = d.node_to_variable_map[i]
-        d.lower_variable_bounds[vi] = n.lower_variable_bounds[i]
-        d.upper_variable_bounds[vi] = n.upper_variable_bounds[i]
+        vi = d.variable_values.node_to_variable_map[i]
+        d.variable_values.lower_variable_bounds[vi] = n.lower_variable_bounds[i]
+        d.variable_values.upper_variable_bounds[vi] = n.upper_variable_bounds[i]
     end
     fill!(d.subexpressions_eval, false)
     d.is_first_eval = true
@@ -147,14 +132,14 @@ end
 
 function retrieve_node(d::Evaluator)
     n = d.current_node
-    nv_map = d.node_to_variable_map
-    return NodeBB(copy(d.lower_variable_bounds[nv_map]),
-                  copy(d.upper_variable_bounds[nv_map]),
+    nv_map = d.variable_values.node_to_variable_map
+    return NodeBB(copy(d.variable_values.lower_variable_bounds[nv_map]),
+                  copy(d.variable_values.upper_variable_bounds[nv_map]),
                   n.lower_bound, n.upper_bound, n.depth, n.id)
 end
 function retrieve_x!(out::Vector{Float64}, d::Evaluator)
-    @inbounds for i = 1:length(d.node_to_variable_map)
-        out[i] = d.x[d.node_to_variable_map[i]]
+    @inbounds for i = 1:length(d.variable_values.node_to_variable_map)
+        out[i] = d.x[d.variable_values.node_to_variable_map[i]]
     end
     return nothing
 end
