@@ -65,7 +65,7 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
                               subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
                               tag::T; is_sub::Bool = false) where T
     g = DirectedTree{Float64}(sub, sub_sparsity, subexpr_linearity)
-    grad_sparsity = _sparsity(g)
+    grad_sparsity = _sparsity(g,1)
     n = length(grad_sparsity)
     if is_sub
         sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
@@ -80,12 +80,12 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
                                    tag::T) where T <: RelaxTag
 
     ex = NonlinearExpression!(f, sub_sparsity, -1, subexpr_lin, tag)
-    n = length(_sparsity(ex.g))
+    n = length(_sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf, b.lower, b.upper)
 end
 
-@inline _grad_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex.g)
+@inline _grad_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex.g, 1)
 
 function set_intersect_value!(d::NonlinearExpression{V}, value) where V
     if !d.isnumber[1]

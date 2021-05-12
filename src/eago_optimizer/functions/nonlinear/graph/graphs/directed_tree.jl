@@ -31,13 +31,14 @@ end
 const DAT = DirectedTree
 
 # graph property access functions
-@inbounds _sparsity(g::DAT)          = g.sparsity
-@inbounds _rev_sparsity(g::DAT )     = g.rev_sparsity
 @inbounds _nodes(g::DAT)             = g.nodes
 @inbounds _variables(g::DAT)         = g.variables
 @inbounds _variable_types(g::DAT)    = g.variable_types
 @inbounds _constant_values(g::DAT)   = g.constant_values
 @inbounds _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
+# Each tree has a unique sparsity for a DAT since there is a single sink
+@inbounds _sparsity(g::DAT, i)       = g.sparsity
+@inbounds _rev_sparsity(g::DAT, i)   = g.rev_sparsity
 
 # user-define function access
 @inline function _user_univariate_operator(g::DAT, i)
@@ -86,21 +87,34 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
 
     rev_sparsity_len = sparsity[end]
     rev_sparsity = zeros(Int, rev_sparsity_len)
+    len_rev_sparsity = length(rev_sparsity)
+    temp = sparsity[1]
+    temp_cnt = 1
+    for i = 1:rev_sparsity_len
+        if i == temp
+            rev_sparsity[i] = temp_cnt
+            temp_cnt += 1
+            if temp_cnt <= len_rev_sparsity
+                temp = sparsity[temp_cnt]
+            else
+                break
+            end
+        end
+    end
 
     nodes = _convert_node_list(d.nd)
-    n = length(rev_sparsity)
-    variable_types = fill(VT_CONT, n)
+    variable_types = fill(VT_CONT, len_rev_sparsity)
     lin = linearity(nd, adj, subexpr_linearity)
     DirectedTree{S}(nodes = nodes,
                     variables = rev_sparsity,
                     variable_types = variable_types,
                     constant_values = const_values,
                     node_count = length(nodes),
-                    variable_count = n,
+                    variable_count = length(sparsity),
                     constant_count = length(const_values),
                     sparsity = sparsity,
                     rev_sparsity = rev_sparsity,
-                    dependent_variable_count = n,
+                    dependent_variable_count = length(sparsity),
                     dep_subexpr_count = length(dependent_subexpressions),
                     dependent_subexpressions = copy(dependent_subexpressions),
                     linearity = lin[1]
