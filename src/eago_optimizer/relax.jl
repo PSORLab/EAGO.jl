@@ -222,24 +222,24 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     if new_pass
         forward_pass!(evaluator, f)
     end
-    x = evaluator.x
+    x = evaluator.variable_values.x
     finite_cut = true
 
-    expr = f.expr
-    grad_sparsity = expr.grad_sparsity
-    if expr.isnumber[1]
-        f.saf.constant = expr.numberstorage[1]
+    ex = f.ex
+    grad_sparsity = ex.grad_sparsity
+    if _is_num(ex,1)
+        f.saf.constant = _num(ex, 1)
         for i = 1:N
             vval = @inbounds grad_sparsity[i]
             f.saf.terms[i] = SAT(0.0, VI(vval))
         end
 
     else
-        setvalue = expr.setstorage[1]
+        setvalue = _set(ex,1)
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
 
         if finite_cut
-            value = f.expr.setstorage[1]
+            value = _set(ex,1)
             f.saf.constant = use_cvx ? value.cv : -value.cc
             for i = 1:N
                 vval = @inbounds grad_sparsity[i]

@@ -109,6 +109,13 @@ end
 @inline _val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
 @inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
 @inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
+function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where T<:Real
+    @inbounds for i = 1:length(v.node_to_variable_map)
+        out[i] = v.x[v.node_to_variable_map[i]]
+    end
+    return nothing
+end
+
 
 const ALL_ATM_EVAL = [ALL_ATOM_DICT[i] for i in ALL_ATOM_TYPES]
 f_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = false)

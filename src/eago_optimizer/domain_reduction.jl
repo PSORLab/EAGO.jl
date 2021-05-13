@@ -644,30 +644,23 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
 
         wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
         for constr in wp._nonlinear_constr
-            if feasible_flag
-                forward_pass!(evaluator, constr)
-            end
+            feasible_flag && forward_pass!(evaluator, constr)
         end
 
         evaluator.is_post = m._parameters.subgrad_tighten
-
         wp._relaxed_evaluator.is_first_eval = m._new_eval_objective
-        if feasible_flag && (wp._objective_type === NONLINEAR)
-            obj_nonlinear = wp._objective_nl
-            forward_pass!(evaluator, obj_nonlinear)
-            feasible_flag &= rprop!(Relax, evaluator, obj_nonlinear)
-            evaluator.interval_intersect = true
-        end
-
-        if feasible_flag && (wp._objective_type === NONLINEAR)
-            obj_nonlinear = wp._objective_nl
-            forward_pass!(evaluator, obj_nonlinear)
+        if wp._objective_type === NONLINEAR
+            if feasible_flag
+                forward_pass!(evaluator, wp._objective_nl)
+                feasible_flag &= rprop!(Relax, evaluator, wp._objective_nl)
+                evaluator.interval_intersect = true
+            end
+            feasible_flag && forward_pass!(evaluator, wp._objective_nl)
         end
 
         m._new_eval_constraint = false
         m._new_eval_objective = false
-
-        retrieve_x!(m._current_xref, evaluator)
+        _get_x!(BranchVar, m._current_xref, evaluator)
         m._current_node = retrieve_node(evaluator)
     end
 

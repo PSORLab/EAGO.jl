@@ -141,17 +141,14 @@ function set_node!(d::Evaluator, n::NodeBB)
 end
 
 function retrieve_node(d::Evaluator)
-    n = d.current_node
+    n = d.node
     nv_map = d.variable_values.node_to_variable_map
     return NodeBB(copy(d.variable_values.lower_variable_bounds[nv_map]),
                   copy(d.variable_values.upper_variable_bounds[nv_map]),
                   n.lower_bound, n.upper_bound, n.depth, n.id)
 end
-function retrieve_x!(out::Vector{Float64}, d::Evaluator)
-    @inbounds for i = 1:length(d.variable_values.node_to_variable_map)
-        out[i] = d.x[d.variable_values.node_to_variable_map[i]]
-    end
-    return nothing
+@inline function _get_x!(::Type{BranchVar}, out::Vector{Float64}, d::Evaluator)
+    return _get_x!(BranchVar, out, d.variable_values)
 end
 prior_eval(d::Evaluator, i::Int) = d.subexpressions_eval[i]
 
@@ -236,8 +233,7 @@ function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V}) where V
 end
 
 function rprop!(::Type{Relax}, x::Evaluator, d::NonlinearExpression{V}) where V
-    rprop!(Relax, d.g, d.relax_cache)
-    return
+    return rprop!(Relax, d.g, d.relax_cache)
 end
 function rprop!(::Type{Relax}, x::Evaluator, d::BufferedNonlinearFunction{V}) where V
     _set_last_reverse!(d, true)

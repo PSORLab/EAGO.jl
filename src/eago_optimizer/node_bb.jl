@@ -9,6 +9,10 @@
 # Defines storage for a node in the B&B tree & utilities functions
 #############################################################################
 
+# Used internally to set & get variables in full problem space or just branch variables
+struct FullVar end
+struct BranchVar end
+
 """
 $(TYPEDEF)
 
