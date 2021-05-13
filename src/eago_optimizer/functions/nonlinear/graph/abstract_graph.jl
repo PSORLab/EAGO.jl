@@ -62,7 +62,7 @@ _user_multivariate_operator(g::AbstractDG, i) = error("_user_multivariate_operat
 end
 
 @inline _node_class(g::AbstractDG, i)      = _node_class(_node(g, i))
-@inline _expr_type(g::AbstractDG, i)       = _expr_type(_node(g, i))
+@inline _ex_type(g::AbstractDG, i)         = _ex_type(_node(g, i))
 @inline _first_index(g::AbstractDG, i)     = _first_index(_node(g, i))
 @inline _secondary_index(g::AbstractDG, i) = _secondary_index(_node(g, i))
 @inline _arity(g::AbstractDG, i)           = _arity(_node(g, i))

@@ -26,16 +26,39 @@ mutable struct NonlinearExpression{V,S} <: AbstractEAGOConstraint
     g::DirectedTree{Float64}
     relax_cache::RelaxCache{V,S}
     has_value::Bool
+    last_reverse::Bool
+    lower_bound::S
+    upper_bound::S
 end
 function NonlinearExpression()
     g = DirectedTree{Float64}()
     c = RelaxCache{MC{1,NS},Float64}()
-    return NonlinearExpression{MC{1,NS},Float64}(g, c, false)
+    return NonlinearExpression{MC{1,NS},Float64}(g, c, false, false, -Inf, Inf)
+end
+
+function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
+                              b::MOI.NLPBoundsPair, sub_sparsity::Dict{Int,Vector{Int}},
+                              subexpr_indx::Int, subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                              tag::T; is_sub::Bool = false) where T
+    g = DirectedTree{Float64}(sub, sub_sparsity, subexpr_linearity)
+    grad_sparsity = _sparsity(g,1)
+    n = length(grad_sparsity)
+    if is_sub
+        sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
+    end
+    c = RelaxCache{MC{n,T},Float64}()
+    initialize!(c, g)
+    return NonlinearExpression{MC{n,T},Float64}(g, c, false, false, b.lower, b.upper)
 end
 
 @inline _has_value(d::NonlinearExpression) = d.has_value
 @inline _dep_subexpr_count(d::NonlinearExpression) = _dep_subexpr_count(d.g)
 @inline _set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
+@inline _set_last_reverse!(d::NonlinearExpression, v::Bool) = (d.last_reverse = v; return )
+@inline function _set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
+    d.relax_cache.v = v
+    return
+end
 
 """
 $(TYPEDEF)
@@ -46,32 +69,11 @@ and a scalar affine function.
 mutable struct BufferedNonlinearFunction{V,S} <: AbstractEAGOConstraint
     ex::NonlinearExpression{V,S}
     saf::SAF
-    lower_bound::Float64
-    upper_bound::Float64
 end
 function BufferedNonlinearFunction()
     ex = NonlinearExpression()
     saf = SAF(SAT[], 0.0)
-    return BufferedNonlinearFunction{MC{1,NS},Float64}(ex, saf, 0.0, 0.0)
-end
-
-@inline _has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
-@inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
-
-@inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
-
-function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
-                              sub_sparsity::Dict{Int,Vector{Int}}, subexpr_indx::Int,
-                              subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                              tag::T; is_sub::Bool = false) where T
-    g = DirectedTree{Float64}(sub, sub_sparsity, subexpr_linearity)
-    grad_sparsity = _sparsity(g,1)
-    n = length(grad_sparsity)
-    if is_sub
-        sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
-    end
-    c = RelaxCache{MC{n,T},Float64}()
-    return NonlinearExpression{MC{n,T},Float64}(g, c, false)
+    return BufferedNonlinearFunction{MC{1,NS},Float64}(ex, saf)
 end
 
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
@@ -79,22 +81,20 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
                                    subexpr_lin::Vector{JuMP._Derivatives.Linearity},
                                    tag::T) where T <: RelaxTag
 
-    ex = NonlinearExpression!(f, sub_sparsity, -1, subexpr_lin, tag)
+    ex = NonlinearExpression!(f, b, sub_sparsity, -1, subexpr_lin, tag)
     n = length(_sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
-    return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf, b.lower, b.upper)
+    return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf)
 end
 
+@inline _has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
+@inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
+@inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
 @inline _grad_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex.g, 1)
-
-function set_intersect_value!(d::NonlinearExpression{V}, value) where V
-    if !d.isnumber[1]
-        d.value = expr.setstorage[1] ∩ value
-        d.setstorage[1] = expr.value
-    end
-    return
+@inline _set_last_reverse!(d::BufferedNonlinearFunction, v::Bool) = _set_last_reverse!(d.ex, v)
+@inline function _set_variable_storage!(d::BufferedNonlinearFunction, v::VariableValues{S}) where S<:Real
+    _set_variable_storage!(d.ex, v)
 end
-
 """
     Evaluator
 
@@ -231,16 +231,15 @@ end
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V}) where V
     forward_pass!(x, d.ex)
     _set_has_value!(d, true)
-    d.last_past_reverse = false
+    _set_last_reverse!(d, false)
     return
 end
 
-function reverse_pass!(evaluator::Evaluator, d::NonlinearExpression{V}) where V
-    return rprop!(Relax, d.g, d.b)
+function rprop!(::Type{Relax}, x::Evaluator, d::NonlinearExpression{V}) where V
+    rprop!(Relax, d.g, d.relax_cache)
+    return
 end
-
-function reverse_pass!(evaluator::Evaluator, d::BufferedNonlinearFunction{V}) where V
-    d.last_past_reverse = true
-    set_intersect_value!(d.ex, Interval(d.lower_bound, d.upper_bound))
-    return reverse_pass!(evaluator, d.ex)
+function rprop!(::Type{Relax}, x::Evaluator, d::BufferedNonlinearFunction{V}) where V
+    _set_last_reverse!(d, true)
+    return rprop!(Relax, x, d.ex)
 end

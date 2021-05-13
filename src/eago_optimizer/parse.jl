@@ -137,6 +137,7 @@ Detects any variables participating in nonconvex terms and populates the
 """
 function label_branch_variables!(m::Optimizer)
 
+    wp = m._working_problem
     m._user_branch_variables = !isempty(m._parameters.branch_variable)
     if m._user_branch_variables
         append!(m._branch_variables, m._parameters.branch_variable)
@@ -145,8 +146,8 @@ function label_branch_variables!(m::Optimizer)
         append!(m._branch_variables, fill(false, m._working_problem._variable_count))
 
         # adds nonlinear terms in quadratic constraints
-        sqf_leq = m._working_problem._sqf_leq
-        for i = 1:m._working_problem._sqf_leq_count
+        sqf_leq = wp._sqf_leq
+        for i = 1:wp._sqf_leq_count
             quad_ineq = @inbounds sqf_leq[i]
             for term in quad_ineq.func.quadratic_terms
                 variable_index_1 = term.variable_index_1.value
@@ -156,8 +157,8 @@ function label_branch_variables!(m::Optimizer)
             end
         end
 
-        sqf_eq = m._working_problem._sqf_eq
-        for i = 1:m._working_problem._sqf_eq_count
+        sqf_eq = wp._sqf_eq
+        for i = 1:wp._sqf_eq_count
             quad_eq = @inbounds sqf_eq[i]
             for term in quad_eq.func.quadratic_terms
                 variable_index_1 = term.variable_index_1.value
@@ -167,9 +168,9 @@ function label_branch_variables!(m::Optimizer)
             end
         end
 
-        obj_type = m._working_problem._objective_type
+        obj_type = wp._objective_type
         if obj_type === SCALAR_QUADRATIC
-            for term in m._working_problem._objective_sqf.func.quadratic_terms
+            for term in wp._objective_sqf.func.quadratic_terms
                 variable_index_1 = term.variable_index_1.value
                 variable_index_2 = term.variable_index_2.value
                 @inbounds m._branch_variables[variable_index_1] = true
@@ -178,8 +179,8 @@ function label_branch_variables!(m::Optimizer)
         end
 
         # label nonlinear branch variables (assumes affine terms have been extracted)
-        nl_constr = m._working_problem._nonlinear_constr
-        for i = 1:m._working_problem._nonlinear_count
+        nl_constr = wp._nonlinear_constr
+        for i = 1:wp._nonlinear_count
             nl_constr_eq = @inbounds nl_constr[i]
             for indx in _grad_sparsity(nl_constr_eq)
                 @inbounds m._branch_variables[indx] = true
@@ -187,15 +188,15 @@ function label_branch_variables!(m::Optimizer)
         end
 
         if obj_type === NONLINEAR
-            for indx in _grad_sparsity(m._working_problem._objective_nl)
+            for indx in _grad_sparsity(wp._objective_nl)
                 @inbounds m._branch_variables[indx] = true
             end
         end
     end
 
     # add a map of branch/node index to variables in the continuous solution
-    for i = 1:m._working_problem._variable_count
-        if m._working_problem._variable_info[i].is_fixed
+    for i = 1:wp._variable_count
+        if wp._variable_info[i].is_fixed
             m._branch_variables[i] = false
             continue
         end
@@ -205,23 +206,26 @@ function label_branch_variables!(m::Optimizer)
     end
 
     # creates reverse map
-    m._sol_to_branch_map = zeros(m._working_problem._variable_count)
+    m._sol_to_branch_map = zeros(wp._variable_count)
     for i = 1:length(m._branch_to_sol_map)
         j = m._branch_to_sol_map[i]
         m._sol_to_branch_map[j] = i
     end
 
     # adds branch solution to branch map to evaluator
-
-    vnum = m._working_problem._variable_count
+    vnum = wp._variable_count
     v = VariableValues{Float64}(x = zeros(vnum),
                                 lower_variable_bounds = zeros(vnum),
                                 upper_variable_bounds = zeros(vnum),
                                 node_to_variable_map = m._branch_to_sol_map,
                                 variable_to_node_map = m._sol_to_branch_map)
-    m._working_problem._relaxed_evaluator.variable_values = v
-
-    return nothing
+    wp._relaxed_evaluator.variable_values = v
+    # sets variable_values in nonlinear expressions/functions to v
+    # add nonlinear objective
+    (wp._objective_type == NONLINEAR) && _set_variable_storage!(wp._objective_nl, v)
+    foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
+    foreach(i -> _set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
+    return
 end
 
 

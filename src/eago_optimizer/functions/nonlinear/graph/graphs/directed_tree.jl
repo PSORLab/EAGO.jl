@@ -6,10 +6,10 @@ A tree graph with a single sink node.
 Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph{S}
     "List of nodes"
     nodes::Vector{Node}                       = Node[]
-    "List of index of variables"
+    "List of index of variables in this tree"
     variables::Vector{Int}                    = Int[]
-    "List of variable types"
-    variable_types::Vector{VariableType}      = VariableType[]
+    "Information on all variables..."
+    v::VariableValues{S}                      = VariableValues{S}()
     "List of constant values"
     constant_values::Vector{S}                = S[]
     "Number of nodes"
@@ -18,6 +18,7 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     variable_count::Int                       = 0
     "Number of constants"
     constant_count::Int                       = 0
+    sink_bnd::Interval{S}                     = Interval{S}(-Inf,Inf)
     ""
     sparsity::Vector{Int}                     = Int[]
     ""
@@ -33,7 +34,7 @@ const DAT = DirectedTree
 # graph property access functions
 @inbounds _nodes(g::DAT)             = g.nodes
 @inbounds _variables(g::DAT)         = g.variables
-@inbounds _variable_types(g::DAT)    = g.variable_types
+@inbounds _variable_types(g::DAT)    = g.v.variable_types
 @inbounds _constant_values(g::DAT)   = g.constant_values
 @inbounds _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
 # Each tree has a unique sparsity for a DAT since there is a single sink
@@ -64,16 +65,16 @@ function fprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttr
 end
 
 function rprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
-    r_init!(T, g, b)
+    flag = r_init!(T, g, b)
     for k = 1:_node_count(g)
         nt = _node_class(g, k)
         if nt == EXPRESSION
-            rprop!(T, Expression, g, b, k)
+            flag = rprop!(T, Expression, g, b, k)
         elseif nt == VARIABLE
-            rprop!(T, Variable, g, b, k)
+            flag = rprop!(T, Variable, g, b, k)
         end
     end
-    return
+    return flag
 end
 
 # TODO Fix constructor...
@@ -103,11 +104,9 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
     end
 
     nodes = _convert_node_list(d.nd)
-    variable_types = fill(VT_CONT, len_rev_sparsity)
     lin = linearity(nd, adj, subexpr_linearity)
     DirectedTree{S}(nodes = nodes,
                     variables = rev_sparsity,
-                    variable_types = variable_types,
                     constant_values = const_values,
                     node_count = length(nodes),
                     variable_count = length(sparsity),
