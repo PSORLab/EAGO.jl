@@ -25,4 +25,5 @@ contract!
 precond_and_contract!
 final_cut
 gen_expansion_params!
+populate_affine!
 ```

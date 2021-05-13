@@ -5,7 +5,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **Documentation**                                                | **Linux/OS/Windows**                                                                     | **Persistent DOI**                                                                     |
 |:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | [![DOI](https://zenodo.org/badge/108954118.svg)](https://zenodo.org/badge/latestdoi/108954118) |
+| [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://PSORLab.github.io/EAGO.jl/stable) [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://PSORLab.github.io/EAGO.jl/dev) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) | [![DOI](https://zenodo.org/badge/108954118.svg)](https://zenodo.org/badge/latestdoi/108954118) |
 
 | **Coverage** | **Chat** |
 |:------------:|:------------:|
@@ -13,14 +13,14 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 ## EAGO's Optimizer Capabilities
 
-EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern AD packages (e.g. **+**, **sin**, **cosh**) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have aprior variable bounds defined and have differentiable constraints. That is problems should be specified in the generic form below:
+EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems, emphasizing nonlinear programs (NLPs), by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern automatic differentiation (AD) packages (e.g. **+**, **sin**, **cosh**) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have a priori variable bounds defined and have differentiable constraints. That is, problems should be specified in the generic form below:
 
 <p align="center">
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/OptForm.svg" width="30%" height="30%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/images/OptForm.svg" width="30%" height="30%">
 
 ## EAGO's Relaxations
 
-For each nonlinear term EAGO makes use of factorable representation to construct bounds and relaxations. In the case of F = y(y-5)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
+For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of F = y(y-5)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
 
 - *v*<sub>1</sub> = y
 - *v*<sub>2</sub> = *v*<sub>1</sub> - 5
@@ -36,13 +36,13 @@ Either these original relaxations, differentiable McCormick relaxations<sup>2</s
 
 ## Sample Usage
 
-EAGO makes use of the JuMP modeling language to. Consider the familiar "process" problem instance<sup>5</sup>:
+EAGO makes use of the JuMP algebraic modeling language to improve the user's experience in setting up optimization models. Consider the familiar "process" problem instance<sup>5</sup>:
 
 <p align="center">
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/readme/ProcessFormulation.svg" width="60%" height="60%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/images/ProcessFormulation.svg" width="60%" height="60%">
 
 
-This model can be formulated using JuMP code as
+This model can be formulated using JuMP code as:
 
 ```julia
 using JuMP, EAGO
@@ -92,11 +92,11 @@ Special handling has been included for linear/quadratic functions defined using 
 
 ## A Cautionary Note on Global Optimization
 
-As a global optimization platform, EAGO's solvers can be used to find solutions of general nonconvex problems with a guaranteed certificate of optimality. However, global solvers suffer from the curse of dimensionality and therefore their performance is  outstripped by convex solvers. For users interested in large-scale applications, be warned that problems generally larger than a few variables may prove challenging for certain types of global optimization problems.
+As a global optimization platform, EAGO's solvers can be used to find solutions of general nonconvex problems with a guaranteed certificate of optimality. However, global solvers suffer from the curse of dimensionality and therefore their performance is outstripped by convex/local solvers. For users interested in large-scale applications, be warned that problems generally larger than a few variables may prove challenging for certain types of global optimization problems.
 
 ## Package Capabilities
 
-The EAGO package has numerous features: a solver accessible from JuMP/MathOptInterface, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the [**documentation website**](https://psorlab.github.io/EAGO.jl/dev/). A series of example have been provided in the form of Jupyter notebooks in the separate [**EAGO-notebooks**](https://github.com/PSORLab/EAGO-notebooks) repository
+The EAGO package has numerous features: a solver accessible from JuMP/MathOptInterface, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the [**documentation website**](https://psorlab.github.io/EAGO.jl/dev/). A series of example have been provided in the form of Jupyter notebooks in the separate [**EAGO-notebooks**](https://github.com/PSORLab/EAGO-notebooks) repository.
 
 ## Recent News
 - 2/5/2021: [EAGO v0.6.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.6.0).
@@ -115,7 +115,7 @@ For a full list of EAGO release news, see click [**here**](https://github.com/PS
 
 ## Installing EAGO
 
-EAGO is registered Julia package. It can be installed using the Julia package manager.
+EAGO is a registered Julia package and it can be installed using the Julia package manager.
 From the Julia REPL, type ] to enter the Pkg REPL mode and run the following command
 
 ```julia
@@ -124,13 +124,13 @@ pkg> add EAGO
 
 Currently, EAGO is tied to a 0.19+ or greater version of JuMP. This allows a replication
 of some of the internal features shared by EAGO and JuMP's AD scheme aka
-generation of Wergert Tapes pass evaluators between JuMP and EAGO etc.
+generation of Wengert Tapes pass evaluators between JuMP and EAGO etc.
 
 ```julia
 pkg> add JuMP
 ```
 
-EAGO v0.5.1 is the current tagged version and requires Julia 1.2+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
+EAGO v0.6.0 is the current tagged version and requires Julia 1.2+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
 for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
@@ -151,7 +151,7 @@ Please report bugs or feature requests by opening an issue using the Github [**i
 
 ## Citing EAGO
 
-Please cite the following paper when using EAGO. In plain tex form this is:
+Please cite the following paper when using EAGO. In plain text form this is:
 ```
  M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia,
  Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566
@@ -163,8 +163,6 @@ A corresponding bibtex entry text is given below and a corresponding .bib file i
 author = { M. E.   Wilhelm  and  M. D.   Stuber },
 title = {EAGO.jl: easy advanced global optimization in Julia},
 journal = {Optimization Methods and Software},
-volume = {0},
-number = {0},
 pages = {1-26},
 year  = {2020},
 publisher = {Taylor & Francis},
@@ -176,7 +174,8 @@ eprint = {https://doi.org/10.1080/10556788.2020.1786566}
 
 ## Related Packages
 
-- [**ValidatedNumerics.jl**](https://github.com/JuliaIntervals/ValidatedNumerics.jl), a Julia library for validated interval calculations, including basic interval extensions, constraint programming, and interval contactors   
+- [**ValidatedNumerics.jl**](https://github.com/JuliaIntervals/ValidatedNumerics.jl):A Julia library for validated interval calculations, including basic interval extensions, constraint programming, and interval contactors   
+- [**MAiNGO**](http://swmath.org/software/27878): An open-source mixed-integer nonlinear programming package in C++ that utilizes MC++ for relaxations.
 - [**MC++**](https://omega-icl.github.io/mcpp/): A mature McCormick relaxation package in C++ that also includes McCormick-Taylor, Chebyshev
 Polyhedral and Ellipsoidal arithmetics.
 

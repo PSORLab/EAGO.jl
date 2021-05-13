@@ -491,7 +491,7 @@ end
     @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
 end
 
-@testset "NLP Problems" begin
+@testset "NLP Problem #1" begin
     m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
 
     @variable(m, -200 <= x <= -100)
@@ -505,7 +505,9 @@ end
     @test isapprox(JuMP.value(x), -200.0, atol=1E-5)
     @test isapprox(JuMP.value(y), 300.0, atol=1E-5)
     @test isapprox(JuMP.objective_value(m), -59999.4011899692, atol=2.0)
+end
 
+@testset "NLP Problem #2" begin
     m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
     x_Idx = Any[1, 2, 3]
     @variable(m, x[x_Idx])
@@ -526,7 +528,7 @@ end
     @test isapprox(JuMP.objective_value(m), 0.000, atol=1E-3)
     @test JuMP.termination_status(m) == MOI.OPTIMAL
     @test JuMP.primal_status(m) == MOI.FEASIBLE_POINT
-
+end
 
     #=
     m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
@@ -550,7 +552,12 @@ end
     @test isapprox(JuMP.objective_value(m), 0.000, atol=1E-3)
     =#
 
-    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0, "absolute_tolerance" => 1.0E-2))
+@testset "NLP Problem #3" begin
+    m = Model(EAGO.Optimizer)
+    set_optimizer_attributes(m, "verbosity" => 0,
+                             "output_iterations" => 0,
+                             "absolute_tolerance" => 1.0E-2)
+
     # ----- Variables ----- #
     x_Idx = Any[2, 3, 4]
     @variable(m, x[x_Idx])
@@ -569,8 +576,15 @@ end
 
     JuMP.optimize!(m)
     @test isapprox(objective_value(m), 54.0, atol=1E-0)
+end
 
-    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0, "output_iterations" => 0, "absolute_tolerance" => 1.0E-2))
+@testset "NLP Problem #4" begin
+
+    m = Model(EAGO.Optimizer)
+    set_optimizer_attributes(m, "verbosity" => 0,
+                             "output_iterations" => 0,
+                             "absolute_tolerance" => 1.0E-2)
+
     # ----- Variables ----- #
     x_Idx = Any[2, 3, 4]
     @variable(m, x[x_Idx])
@@ -589,8 +603,13 @@ end
     @test isapprox(JuMP.objective_value(m), 0.5403032960741783, atol=1E-3)
     @test JuMP.termination_status(m) === MOI.OPTIMAL
     @test JuMP.primal_status(m) === MOI.FEASIBLE_POINT
+end
 
-    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0, "output_iterations" => 0, "absolute_tolerance" => 1.0E-2))
+@testset "NLP Problem #5" begin
+    m = Model(EAGO.Optimizer)
+    set_optimizer_attributes(m, "verbosity" => 0,
+                                "output_iterations" => 0,
+                                "absolute_tolerance" => 1.0E-2)
 
     # ----- Variables ----- #
     xL = [500.0 1300.0 5000.0 100.0 200.0 200.0 200.0 300.0 6900.0]
@@ -610,9 +629,13 @@ end
     @objective(m, Min, x[9])
     optimize!(m)
     @test isapprox(objective_value(m), 7049.247765631681, atol=1E0)
+end
 
-    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0, "output_iterations" => 0, "absolute_tolerance" => 1.0E-2))
-
+@testset "NLP Problem #6" begin
+    m = Model(EAGO.Optimizer)
+    set_optimizer_attributes(m, "verbosity" => 0,
+                                "output_iterations" => 0,
+                                "absolute_tolerance" => 1.0E-2)
     xL = [-2.0 0.0]; xU = [2.0 4.0]
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])
     @constraint(m, -x[1]^2 + x[2]^2 - 1.0 == 0.0)
@@ -620,16 +643,21 @@ end
     @objective(m, Min, x[2])
     optimize!(m)
     @test isapprox(JuMP.objective_value(m), 1.0652212400578724, atol=1E-3)
+end
 
-    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
+@testset "NLP Problem #7" begin
+    m = Model(EAGO.Optimizer)
+    set_optimizer_attributes(m, "verbosity" => 0)
     xL = [-2.0 0.0]; xU = [2.0 4.0]
     @variable(m, xL[i] <= x[i=1:2] <= xU[i])
     @NLobjective(m, Max, x[2]^2 + x[1]^2 + x[1]*x[2])
     optimize!(m)
     @test isapprox(JuMP.objective_value(m), 27.99971055498271, atol=1E-3)
+end
 
-
-    m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0))
+@testset "NLP Problem #8" begin
+    m = Model(EAGO.Optimizer)
+    set_optimizer_attributes(m, "verbosity" => 0)
     pL = [0.5, 0.8401, 0.5]
     pU = [1.0, 1.0, 2.0]
     @variable(m, pL[i] <= p[i=1:3] <= pU[i])
