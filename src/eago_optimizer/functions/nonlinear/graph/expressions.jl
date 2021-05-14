@@ -130,3 +130,6 @@ const UNIVARIATE_ATOM_TYPES = AtomType[k for k in keys(UNIVARIATE_ATOM_DICT)]
 const BIVARIATE_ATOM_TYPES = AtomType[k for k in keys(BIVARIATE_ATOM_DICT)]
 const NARITY_ATOM_TYPES = AtomType[k for k in keys(NARITY_ATOM_DICT)]
 const ALL_ATOM_TYPES = AtomType[k for k in keys(ALL_ATOM_DICT)]
+
+# Reverse lookup dicts
+const REV_UNIVARIATE_ATOM_DICT = Dict(UNIVARIATE_ATOM_DICT[k] => k for k in keys(UNIVARIATE_ATOM_DICT))

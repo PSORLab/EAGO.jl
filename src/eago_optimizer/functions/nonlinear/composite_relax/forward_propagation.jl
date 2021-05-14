@@ -17,7 +17,7 @@ function _var_set(::Type{MC{N,T}}, i::Int, x_cv::S, x_cc::S, l::S, u::S) where {
     return MC{N,T}(x_cv, x_cc, Interval{S}(l, u), v, v, false)
 end
 
-function fprop!(::Type{Relax}, ::Type{Variable}, g::AbstractDG, b::RelaxCache{V}, k::Int) where V
+function fprop!(::Type{Relax}, ::Type{Variable}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V, S<:Real}
     i = _first_index(g, k)
     x = _val(b, i)
     z = _var_set(V, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
@@ -55,14 +55,14 @@ function expand_set(::Type{MC{N2,T}}, x::MC{N1,T}, fsparse::Vector{Int},
     return MC{N2,T}(x.cv, x.cc, x.Intv, cv_grad, cc_grad, x.cnst)
 end
 
-function fprop!(::Type{Relax}, ::Type{Subexpression}, g::AbstractDG, c::RelaxCache{V}, k::Int) where V
+function fprop!(::Type{Relax}, ::Type{Subexpression}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V, S<:Real}
     d = _subexpression_value(c, _first_index(g, k))
     z = expand_set(V, d.set[1], _sparsity(g, k), _sparsity(sub), c.cv_buffer, c.cc_buffer)
     _store_set!(c, z, k)
     return
 end
 
-function set_value_post(z::MC{N,T}, v::VariableValues{S}, s::Vector{Int}, ϵ::Float64) where {N,T<:RelaxTag,S}
+function set_value_post(z::MC{N,T}, v::VariableValues{S}, s::Vector{Int}, ϵ::Float64) where {N,T<:RelaxTag,S<:Real}
     lower = z.cv
     upper = z.cc
     lower_refinement = true
@@ -167,7 +167,7 @@ end
 
 for (f, F) in ((:fprop_2!, +), (:fprop_2!, *), (:fprop_2!, min), (:fprop_2!, max),
                (:fprop!, -), (:fprop!, /))
-    @eval function ($f)(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+    @eval function ($f)(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         x = _child(g, 1, k)
         y = _child(g, 2, k)
         x_is_num = _is_num(b, x)
@@ -188,7 +188,7 @@ for (F, SV, NV) in ((+, :(zero(V)), :(zero(S))),
                     (*, :(one(V)), :(one(S))),
                     (min, :(inf(V)), :(typemax(S))),
                     (max, :(-inf(V)), :(typemin(S))))
-    @eval function fprop_n!(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+    @eval function fprop_n!(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         z = $SV
         znum = $NV
         for i in _children(g, k)
@@ -205,7 +205,7 @@ for (F, SV, NV) in ((+, :(zero(V)), :(zero(S))),
     end
 end
 for F in (+, *, min, max)
-    @eval function fprop!(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+    @eval function fprop!(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         n = _arity(g, k)
         if n == 2
             return fprop_2!(Relax, $F, g, b, k)
@@ -213,7 +213,7 @@ for F in (+, *, min, max)
         fprop_n!(Relax, $F, g, b, k)
     end
 end
-function fprop!(::Type{Relax}, ::typeof(^), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+function fprop!(::Type{Relax}, ::typeof(^), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = is_num(b, x)
@@ -230,19 +230,19 @@ function fprop!(::Type{Relax}, ::typeof(^), g::AbstractDG, b::RelaxCache{V,S}, k
         elseif !x_is_num && !y_is_num
             z = _set(b, x)^_set(b, x)
         end
-        z = _cut(z, _set(b, k), b.v, 0.0, _sparsity(g,k), b.is_post, b.cut, b.cut_interval)
+        z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.is_post, b.cut, b.cut_interval)
         _store_set!(b, z, k)
     end
     return
 end
-function fprop!(::Type{Relax}, ::typeof(user), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+function fprop!(::Type{Relax}, ::typeof(user), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     f = _user_univariate_operator(g, _index(g, k))
     x = _set(b, _child(g, 1, k))
     z = _cut(f(x), _set(b, k), b.v, zero(S), _sparsity(g, k), b.is_post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
     return
 end
-function fprop!(::Type{Relax}, ::typeof(usern), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+function fprop!(::Type{Relax}, ::typeof(usern), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     mv = _user_multivariate_operator(g, _index(g, k))
     n = _arity(g, k)
     set_input = _set_input(b, n)
@@ -259,19 +259,22 @@ function fprop!(::Type{Relax}, ::typeof(usern), g::AbstractDG, b::RelaxCache{V,S
         i += 1
     end
     z = MOI.eval_objective(mv, set_input)
-    z = _cut(z, _set(b, k), b.v, zero(V), _sparsity(g,k), b.post, b.cut, b.cut_interval)
+    z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
     return
 end
 
-#=
-TODO: Univariates
-for F in univariate()
-    @eval function fprop!(::Type{Relax}, ::typeof($F), g::DAG, b::RelaxCache{V}, k::Int) where V
-
-        z = eval_univariate_set(op, b.set[i])
-        b.set[k] = _cut(z, b.set[k], b.v, 0.0, g.sparsity[k], b.is_post, b.cut, b.cut_interval)
+#TODO: Univariates
+for k in UNIVARIATE_ATOM_TYPES
+    f = UNIVARIATE_ATOM_DICT[k]
+    if f == :user
+        continue
+    end
+    @eval function fprop!(::Type{Relax}, ::typeof($f), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+        x = _set(b, _child(g, 1, k))
+        z = f(x)
+        z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.is_post, b.cut, b.cut_interval)
+        _store_set!(b, z, k)
         return
     end
 end
-=#

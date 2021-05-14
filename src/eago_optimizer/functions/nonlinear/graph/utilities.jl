@@ -22,7 +22,6 @@ function binary_switch(ids, exprs; is_rev = true)
     end
 end
 
-
 # Access gradient sparsity of JuMP storage.
 _sparsity(d::JuMP._FunctionStorage) where S<:Real = d.grad_sparsity
 _sparsity(d::JuMP._SubexpressionStorage) where S<:Real = d.sparsity

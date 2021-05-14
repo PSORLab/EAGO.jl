@@ -64,8 +64,10 @@ end
 end
 for d in ALL_ATOM_TYPES
     @eval function Node(::Val{false}, ::Val{$d}, children::Vector{Int})
-        arity = length(children)
         return Node(EXPRESSION, $d, 0, 0, 1, children)
+    end
+    @eval function Node(::Val{false}, ::Val{$d}, child::UnitRange{Int})
+        return Node(EXPRESSION, $d, 0, 0, 1, Int[first(child)])
     end
 end
 
@@ -91,16 +93,43 @@ function _create_call_node(i, c::UnitRange{Int})
     elseif i == 6
         error("If-else currently unsupported...")
     elseif i == 7
-        return Node(Val(Val(true), MAX), c)
+        return Node(Val(true), Val(MAX), c)
     elseif i == 8
-        return Node(Val(Val(true), MIN), c)
+        return Node(Val(true), Val(MIN), c)
     elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
         i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
         return Node(Val(true), Val(USERN), i_mv, c)
     end
 end
-function _create_call_node_uni(i, c::UnitRange{Int})
-    # TODO: Add binary switch here... for univariates
+
+function binary_switch_typ(ids, exprs)
+    if length(exprs) <= 3
+        out = Expr(:if, Expr(:call, :(==), :i, ids[1]),
+                   :(Node(Val(false), Val($(exprs[1])), c)))
+        if length(exprs) > 1
+            push!(out.args, binary_switch_typ(ids[2:end], exprs[2:end]))
+        end
+        return out
+    else
+        mid = length(exprs) >>> 1
+        return Expr(:if, Expr(:call, :(<=), :i, ids[mid]),
+                         binary_switch_typ(ids[1:mid], exprs[1:mid]),
+                         binary_switch_typ(ids[mid+1:end], exprs[mid+1:end]))
+    end
+end
+
+indx_JuMP = Int[]
+indx_EAGO = AtomType[]
+for k in univariate_operators
+    if haskey(REV_UNIVARIATE_ATOM_DICT, k)
+        k_EAGO = REV_UNIVARIATE_ATOM_DICT[k]
+        push!(indx_JuMP, univariate_operator_to_id[k])
+        push!(indx_EAGO, k_EAGO)
+    end
+end
+atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
+@eval function _create_call_node_uni(i::Int, c::UnitRange{Int})
+    $atom_switch
 end
 
 function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int})
