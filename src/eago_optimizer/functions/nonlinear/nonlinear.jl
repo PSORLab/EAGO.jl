@@ -38,9 +38,11 @@ end
 
 function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
                               b::MOI.NLPBoundsPair, sub_sparsity::Dict{Int,Vector{Int}},
-                              subexpr_indx::Int, subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                              subexpr_indx::Int,
+                              subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                              op::OperatorRegistry,
                               tag::T; is_sub::Bool = false) where T
-    g = DirectedTree{Float64}(sub, sub_sparsity, subexpr_linearity)
+    g = DirectedTree{Float64}(sub, op, sub_sparsity, subexpr_linearity)
     grad_sparsity = _sparsity(g,1)
     n = length(grad_sparsity)
     if is_sub
@@ -83,9 +85,10 @@ end
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
                                    sub_sparsity::Dict{Int,Vector{Int}},
                                    subexpr_lin::Vector{JuMP._Derivatives.Linearity},
+                                   op::OperatorRegistry,
                                    tag::T) where T <: RelaxTag
 
-    ex = NonlinearExpression!(f, b, sub_sparsity, -1, subexpr_lin, tag)
+    ex = NonlinearExpression!(f, b, sub_sparsity, -1, subexpr_lin, op, tag)
     n = length(_sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf)
@@ -116,7 +119,7 @@ Checks that the resulting value should be a number...
 $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
-    user_operators::JuMP._Derivatives.UserOperatorRegistry = JuMP._Derivatives.UserOperatorRegistry()
+    user_operators::OperatorRegistry = OperatorRegistry()
     has_user_mv_operator::Bool = false
     num_mv_buffer::Vector{Float64} = Float64[]
     parameter_values::Vector{Float64} = Float64[]

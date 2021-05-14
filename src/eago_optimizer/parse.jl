@@ -237,6 +237,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     nlp_data = m._input_problem._nlp_data
     MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
+    user_operator_registry = OperatorRegistry(evaluator.m.nlp_data.user_operators)
 
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
@@ -252,13 +253,13 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # it is necessary to define this as such to enable reverse
     # McCormick constraint propagation
     relax_evaluator = m._working_problem._relaxed_evaluator
-    has_subexpressions = length(evaluator.m.nlp_data.nlexpr) > 0
-    dict_sparsity = Dict{Int64,Vector{Int64}}()
-    if has_subexpressions
+    dict_sparsity = Dict{Int,Vector{Int}}()
+    if length(evaluator.m.nlp_data.nlexpr) > 0
         for i = 1:length(evaluator.subexpressions)
             subexpr = evaluator.subexpressions[i]
             push!(relax_evaluator.subexpressions, NonlinearExpression!(subexpr, dict_sparsity, i,
                                                                       evaluator.subexpression_linearity,
+                                                                      user_operator_registry,
                                                                       m._parameters.relax_tag))
         end
     end
@@ -276,6 +277,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     if evaluator.has_nlobj
         m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                      dict_sparsity, evaluator.subexpression_linearity,
+                                                                     user_operator_registry,
                                                                      m._parameters.relax_tag)
     end
 
@@ -286,6 +288,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         bnds = constraint_bounds[i]
         push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
+                                                                              user_operator_registry,
                                                                               m._parameters.relax_tag))
     end
 
@@ -296,8 +299,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 end
 
 function add_nonlinear_evaluator!(m::Optimizer)
-    evaluator = m._input_problem._nlp_data.evaluator
-    add_nonlinear_evaluator!(m, evaluator)
+    add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
     return nothing
 end
 
@@ -308,7 +310,7 @@ function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
 
     variable_count = length(m._working_problem._variable_info)
     relax_eval = m._working_problem._relaxed_evaluator
-    relax_eval.user_operators = d.m.nlp_data.user_operators
+    relax_eval.user_operators = OperatorRegistry(d.m.nlp_data.user_operators)
     relax_eval.ctx                   = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
                                                                         m._parameters.domain_violation_guard_on))
     relax_eval.subgrad_tol           = m._parameters.subgrad_tol

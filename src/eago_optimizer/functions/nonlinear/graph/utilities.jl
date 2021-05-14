@@ -74,3 +74,14 @@ function linearity(nd::Vector{JuMP._Derivatives.NodeData},
     x = JuMP._Derivatives.classify_linearity(nd, adj, d)
     linearity.(x)
 end
+
+function OperatorRegistry(d::JuMP._Derivatives.UserOperatorRegistry)
+    OperatorRegistry(Symbol[k for k in keys(d.multivariate_operator_to_id)],
+                     d.multivariate_operator_to_id,
+                     d.multivariate_operator_evaluator,
+                     Symbol[k for k in keys(d.univariate_operator_to_id)],
+                     d.univariate_operator_to_id,
+                     d.univariate_operator_f,
+                     d.univariate_operator_fprime,
+                     d.univariate_operator_fprimeprime)
+end

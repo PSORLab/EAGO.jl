@@ -24,10 +24,10 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     ""
     rev_sparsity::Vector{Int}                 = Int[]
     dependent_variable_count::Int             = 0
-    dep_subexpr_count::Int        = 0
+    dep_subexpr_count::Int                    = 0
     dependent_subexpressions::Vector{Int}     = Int[]
     linearity::Linearity                      = LIN_CONSTANT
-    user_operators::JuMPOpReg                 = JuMPOpReg()
+    user_operators::OperatorRegistry          = OperatorRegistry()
 end
 const DAT = DirectedTree
 
@@ -78,7 +78,7 @@ function rprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttr
 end
 
 # TODO Fix constructor...
-function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity) where S<:Real
+function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity) where S<:Real
 
     nd = copy(d.nd)
     adj = copy(d.adj)
@@ -103,7 +103,7 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
         end
     end
 
-    nodes = _convert_node_list(d.nd)
+    nodes = _convert_node_list(d.nd, op)
     lin = linearity(nd, adj, subexpr_linearity)
     DirectedTree{S}(nodes = nodes,
                     variables = rev_sparsity,
@@ -116,6 +116,7 @@ function DirectedTree{S}(d, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_lineari
                     dependent_variable_count = length(sparsity),
                     dep_subexpr_count = length(dependent_subexpressions),
                     dependent_subexpressions = copy(dependent_subexpressions),
-                    linearity = lin[1]
+                    linearity = lin[1],
+                    user_operators = op
                     )
 end

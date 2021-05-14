@@ -97,6 +97,30 @@ Return the index of the ith variable at node k.
 """
 @inline _rev_sparsity(g::AbstractDG, i::Int, k::Int) = error("_rev_sparsity not defined for g::$(typeof(g))")
 
+# added id field from JuMP UserOperatorRegistry, expect more extensive changes in future.
+struct OperatorRegistry
+    multivariate_id::Vector{Symbol}
+    multivariate_operator_to_id::Dict{Symbol,Int}
+    multivariate_operator_evaluator::Vector{MOI.AbstractNLPEvaluator}
+    univariate_operator_id::Vector{Symbol}
+    univariate_operator_to_id::Dict{Symbol,Int}
+    univariate_operator_f::Vector{Any}
+    univariate_operator_fprime::Vector{Any}
+    univariate_operator_fprimeprime::Vector{Any}
+end
+function OperatorRegistry()
+    return OperatorRegistry(
+        Symbol[],
+        Dict{Symbol,Int}(),
+        MOI.AbstractNLPEvaluator[],
+        Symbol[],
+        Dict{Symbol,Int}(),
+        [],
+        [],
+        [],
+    )
+end
+
 include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "expressions.jl"))
 include(joinpath(@__DIR__, "abstract_node.jl"))
