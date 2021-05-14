@@ -32,14 +32,14 @@ end
 const DAT = DirectedTree
 
 # graph property access functions
-@inbounds _nodes(g::DAT)             = g.nodes
-@inbounds _variables(g::DAT)         = g.variables
-@inbounds _variable_types(g::DAT)    = g.v.variable_types
-@inbounds _constant_values(g::DAT)   = g.constant_values
-@inbounds _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
+@inline _nodes(g::DAT)             = g.nodes
+@inline _variables(g::DAT)         = g.variables
+@inline _variable_types(g::DAT)    = g.v.variable_types
+@inline _constant_values(g::DAT)   = g.constant_values
+@inline _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
 # Each tree has a unique sparsity for a DAT since there is a single sink
-@inbounds _sparsity(g::DAT, i)                    = g.sparsity
-@inbounds _rev_sparsity(g::DAT, i::Int, k::Int)   = g.rev_sparsity[i]
+@inline _sparsity(g::DAT, i)                  = g.sparsity
+@inline _rev_sparsity(g::DAT, i::Int, k::Int) =  g.rev_sparsity[i]
 
 # user-define function access
 @inline function _user_univariate_operator(g::DAT, i)
@@ -87,7 +87,7 @@ function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{
     sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity)
     rev_sparsity = Dict{Int,Int}()
     for (i,s) in enumerate(sparsity)
-        rev_sparsity[i] = s
+        rev_sparsity[s] = i
     end
 
     nodes = _convert_node_list(d.nd, op)
