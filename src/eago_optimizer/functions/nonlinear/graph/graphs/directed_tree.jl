@@ -7,7 +7,7 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     "List of nodes"
     nodes::Vector{Node}                       = Node[]
     "List of index of variables in this tree"
-    variables::Vector{Int}                    = Int[]
+    variables::Dict{Int,Int}                = Dict{Int,Int}()
     "Information on all variables..."
     v::VariableValues{S}                      = VariableValues{S}()
     "List of constant values"
@@ -22,7 +22,7 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     ""
     sparsity::Vector{Int}                     = Int[]
     ""
-    rev_sparsity::Vector{Int}                 = Int[]
+    rev_sparsity::Dict{Int,Int}               = Dict{Int,Int}()
     dependent_variable_count::Int             = 0
     dep_subexpr_count::Int                    = 0
     dependent_subexpressions::Vector{Int}     = Int[]
@@ -85,22 +85,9 @@ function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{
     const_values = copy(d.const_values)
 
     sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity)
-
-    rev_sparsity_len = sparsity[end]
-    rev_sparsity = zeros(Int, rev_sparsity_len)
-    len_rev_sparsity = length(rev_sparsity)
-    temp = sparsity[1]
-    temp_cnt = 1
-    for i = 1:rev_sparsity_len
-        if i == temp
-            rev_sparsity[i] = temp_cnt
-            temp_cnt += 1
-            if temp_cnt <= len_rev_sparsity
-                temp = sparsity[temp_cnt]
-            else
-                break
-            end
-        end
+    rev_sparsity = Dict{Int,Int}()
+    for (i,s) in enumerate(sparsity)
+        rev_sparsity[i] = s
     end
 
     nodes = _convert_node_list(d.nd, op)
