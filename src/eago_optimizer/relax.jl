@@ -219,27 +219,24 @@ $(FUNCTIONNAME)
 function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator,
                                  use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {N,T<:RelaxTag}
 
-    if new_pass
-        forward_pass!(evaluator, f)
-    end
+    new_pass && forward_pass!(evaluator, f)
     x = evaluator.variable_values.x
     finite_cut = true
 
-    ex = f.ex
-    grad_sparsity = ex.grad_sparsity
-    if _is_num(ex,1)
-        f.saf.constant = _num(ex, 1)
+    grad_sparsity = _sparsity(f)
+    if _is_num(f)
+        f.saf.constant = _num(f)
         for i = 1:N
             vval = @inbounds grad_sparsity[i]
             f.saf.terms[i] = SAT(0.0, VI(vval))
         end
 
     else
-        setvalue = _set(ex,1)
+        setvalue = _set(f)
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
 
         if finite_cut
-            value = _set(ex,1)
+            value = _set(f)
             f.saf.constant = use_cvx ? value.cv : -value.cc
             for i = 1:N
                 vval = @inbounds grad_sparsity[i]

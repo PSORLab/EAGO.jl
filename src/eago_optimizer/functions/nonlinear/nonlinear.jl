@@ -59,6 +59,10 @@ end
     d.relax_cache.v = v
     return
 end
+@inbounds _sparsity(d::NonlinearExpression) = _sparsity(d.g, 1)
+@inbounds _set(d::NonlinearExpression{V,S}) where {V,S<:Real} = _set(d.relax_cache, 1)
+@inbounds _num(d::NonlinearExpression{V,S}) where {V,S<:Real} = _num(d.relax_cache, 1)
+@inbounds _is_num(d::NonlinearExpression) = _is_num(d.relax_cache, 1)
 
 """
 $(TYPEDEF)
@@ -87,14 +91,21 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf)
 end
 
-@inline _has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
-@inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
-@inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
-@inline _grad_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex.g, 1)
 @inline _set_last_reverse!(d::BufferedNonlinearFunction, v::Bool) = _set_last_reverse!(d.ex, v)
 @inline function _set_variable_storage!(d::BufferedNonlinearFunction, v::VariableValues{S}) where S<:Real
     _set_variable_storage!(d.ex, v)
 end
+
+@inline _has_value(d::BufferedNonlinearFunction) where {V,S<:Real} = _has_value(d.ex)
+@inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
+@inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
+@inbounds _sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex)
+@inbounds _set(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _set(d.ex)
+@inbounds _num(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _num(d.ex)
+# returns the interval bounds associated with the set
+@inbounds _interval(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = Interval{S}(_set(d))
+@inbounds _is_num(d::BufferedNonlinearFunction) = _is_num(d.ex)
+
 """
     Evaluator
 

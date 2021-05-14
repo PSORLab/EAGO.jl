@@ -121,16 +121,10 @@ const ALL_ATM_EVAL = [ALL_ATOM_DICT[i] for i in ALL_ATOM_TYPES]
 f_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = false)
 r_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = true)
 @eval @inline function fprop!(::Type{T}, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
-    @show k
     id = _ex_type(g, k)
-    @show id
-    return
-    #$f_switch
+    $f_switch
 end
 @eval @inline function rprop!(::Type{T}, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
-    @show k
     id = _ex_type(g, k)
-    @show id
-    return true
-    #$r_switch
+    $r_switch
 end

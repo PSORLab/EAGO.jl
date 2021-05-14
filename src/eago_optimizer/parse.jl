@@ -182,13 +182,13 @@ function label_branch_variables!(m::Optimizer)
         nl_constr = wp._nonlinear_constr
         for i = 1:wp._nonlinear_count
             nl_constr_eq = @inbounds nl_constr[i]
-            for indx in _grad_sparsity(nl_constr_eq)
+            for indx in _sparsity(nl_constr_eq)
                 @inbounds m._branch_variables[indx] = true
             end
         end
 
         if obj_type === NONLINEAR
-            for indx in _grad_sparsity(wp._objective_nl)
+            for indx in _sparsity(wp._objective_nl)
                 @inbounds m._branch_variables[indx] = true
             end
         end
