@@ -721,8 +721,8 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
             for i = 1:m._working_problem._nonlinear_count
                 nl_constr =  m._working_problem._nonlinear_constr[i]
                 lower_value, upper_value = interval_bound(m, nl_constr, n)
-                feasible_flag &= upper_value < nl_constr.lower_bound
-                feasible_flag &= lower_value > nl_constr.upper_bound
+                feasible_flag &= upper_value < _lower_bound(nl_constr)
+                feasible_flag &= lower_value > _upper_bound(nl_constr)
                 !feasible_flag && break
             end
         end

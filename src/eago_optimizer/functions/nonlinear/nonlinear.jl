@@ -102,12 +102,15 @@ end
 @inline _has_value(d::BufferedNonlinearFunction) where {V,S<:Real} = _has_value(d.ex)
 @inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
 @inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
-@inbounds _sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex)
-@inbounds _set(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _set(d.ex)
-@inbounds _num(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _num(d.ex)
+@inline _sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex)
+@inline _set(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _set(d.ex)
+@inline _num(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _num(d.ex)
+@inline _lower_bound(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = d.ex.lower_bound
+@inline _upper_bound(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = d.ex.upper_bound
 # returns the interval bounds associated with the set
-@inbounds _interval(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = Interval{S}(_set(d))
-@inbounds _is_num(d::BufferedNonlinearFunction) = _is_num(d.ex)
+@inline _interval(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = Interval{S}(_set(d))
+@inline _is_num(d::BufferedNonlinearFunction) = _is_num(d.ex)
+
 
 """
     Evaluator

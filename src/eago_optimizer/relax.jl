@@ -250,7 +250,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
                 f.saf.constant = sub_round(f.saf.constant , mul_round(coef, xv, RoundUp), RoundDown)
             end
             if is_constraint
-                bnd_used =  use_cvx ? -f.upper_bound : f.lower_bound
+                bnd_used =  use_cvx ? -_upper_bound(f) : _lower_bound(f)
                 f.saf.constant = add_round(f.saf.constant, bnd_used, RoundDown)
             end
         end
