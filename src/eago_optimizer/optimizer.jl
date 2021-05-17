@@ -189,7 +189,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
-    upper_bounding_depth::Int64 = 6
+    upper_bounding_depth::Int64 = 8
 
     # handling for domain violations
     "Amount about a domain violation to ignore when propagating bounds."
@@ -402,9 +402,9 @@ function default_nlp_solver()
 
     upper_optimizer = Ipopt.Optimizer()
 
-    MOI.set(upper_optimizer, MOI.RawParameter("max_iter"),3000)
+    MOI.set(upper_optimizer, MOI.RawParameter("max_iter"),5000)
     MOI.set(upper_optimizer, MOI.RawParameter("acceptable_tol"), 1E30)
-    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_iter"), 300)
+    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_iter"), 500)
     MOI.set(upper_optimizer, MOI.RawParameter("constr_viol_tol"), 0.000001)
     MOI.set(upper_optimizer, MOI.RawParameter("acceptable_compl_inf_tol"), 0.000001)
     MOI.set(upper_optimizer, MOI.RawParameter("acceptable_dual_inf_tol"), 1.0)

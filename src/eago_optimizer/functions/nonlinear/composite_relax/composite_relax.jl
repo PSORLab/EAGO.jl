@@ -39,6 +39,9 @@ function initialize!(c::RelaxCache{V,S}, g::DirectedTree{S}) where {V,S<:Real}
     return
 end
 
+@inline _set(b::RelaxCache{V,S}) where {V,S}      = b._set #@inbounds b._set[i]
+@inline _num(b::RelaxCache{V,S}) where {V,S}      = b._num #@inbounds b._num[i]
+@inline _is_num(b::RelaxCache{V,S}) where {V,S}   = b._is_num #@inbounds b._is_num[i]
 @inline _set(b::RelaxCache{V,S}, i::Int) where {V,S}      = b._set[i] #@inbounds b._set[i]
 @inline _num(b::RelaxCache{V,S}, i::Int) where {V,S}      = b._num[i] #@inbounds b._num[i]
 @inline _is_num(b::RelaxCache{V,S}, i::Int) where {V,S}   = b._is_num[i] #@inbounds b._is_num[i]

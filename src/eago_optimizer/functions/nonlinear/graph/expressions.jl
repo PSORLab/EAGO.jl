@@ -30,6 +30,8 @@ swish(x) = x * sigmoid(x)
 # Define univariate functions that correspond to the AtomType
 const UNIVARIATE_ATOM_DICT = Dict{AtomType, Symbol}()
 
+UNIVARIATE_ATOM_DICT[PLUS]      = :+
+UNIVARIATE_ATOM_DICT[MINUS]     = :-
 UNIVARIATE_ATOM_DICT[INV]       = :inv
 UNIVARIATE_ATOM_DICT[ONE]       = :one
 UNIVARIATE_ATOM_DICT[ZERO]      = :zero
@@ -103,6 +105,11 @@ BIVARIATE_ATOM_DICT[POW]       = :^
 BIVARIATE_ATOM_DICT[LOWER_BND] = :lower_bnd
 BIVARIATE_ATOM_DICT[UPPER_BND] = :upper_bnd
 BIVARIATE_ATOM_DICT[ARH]       = :arh
+BIVARIATE_ATOM_DICT[MINUS]     = :-
+BIVARIATE_ATOM_DICT[MIN]       = :min
+BIVARIATE_ATOM_DICT[MAX]       = :max
+BIVARIATE_ATOM_DICT[PLUS]      = :+
+BIVARIATE_ATOM_DICT[MULT]      = :*
 #BIVARIATE_ATOM_DICT[EXPAX]     = :lower_bnd
 #BIVARIATE_ATOM_DICT[EXPXY]     = :lower_bnd
 
@@ -120,7 +127,6 @@ foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), BIVARIATE_ATOM_DICT)
 foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), NARITY_ATOM_DICT)
 
 # A functions that may be 1 to n-arity functions that correspond to the AtomType
-ALL_ATOM_DICT[MINUS]     = :-
 ALL_ATOM_DICT[BND]       = :bnd
 #ATM_EVAL[QUAD1]     = :quad1
 #ATM_EVAL[QUAD2]     = :quad2

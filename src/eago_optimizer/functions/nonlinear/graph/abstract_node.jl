@@ -141,6 +141,7 @@ for k in univariate_operators
 end
 
 uni_eago_not_jump = setdiff(univariate_operators, Symbol[k for k in keys(REV_UNIVARIATE_ATOM_DICT)])
+uni_eago_not_jump = push!(uni_eago_not_jump, :-)
 eago_uni_switch = quote end
 for s in uni_eago_not_jump
     global eago_uni_switch = quote

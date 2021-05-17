@@ -107,3 +107,26 @@ function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{
                     user_operators = op
                     )
 end
+
+#=
+nd = wp._objective_nl.ex.nd
+pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
+nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+for i = 3:length(nd)
+    @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+end
+I, J, V = findnz(wp._objective_nl.ex.adj)
+I .+= 1
+J .+= 1
+pushfirst!(I, 2)
+pushfirst!(J, 1)
+pushfirst!(V, true)
+m._working_problem._objective_nl.ex.adj = sparse(I, J, V)
+=#
+
+function _negate!(d::DirectedTree{S}) where S<:Real
+    push!(d.nodes, Node(Val(false), Val(MINUS), Int[_node_count(d)]))
+    d.node_count += 1
+    d.sink_bnd = -d.sink_bnd
+    return nothing
+end

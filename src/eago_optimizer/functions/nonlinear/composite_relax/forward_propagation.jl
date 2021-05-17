@@ -264,10 +264,9 @@ function fprop!(::Type{Relax}, ::typeof(usern), g::AbstractDG, b::RelaxCache{V,S
     return
 end
 
-#TODO: Univariates
 for k in UNIVARIATE_ATOM_TYPES
     f = UNIVARIATE_ATOM_DICT[k]
-    if f == :user
+    if f == :user || f == :+ || f == :-
         continue
     end
     @eval function fprop!(::Type{Relax}, ::typeof($f), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
