@@ -15,6 +15,7 @@
 include(joinpath(@__DIR__, "empty_evaluator.jl"))
 include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "abstract_graph.jl"))
+include(joinpath(@__DIR__, "constant", "constant.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 
 @enum(RelaxType, STD_RELAX, MC_AFF_RELAX, MC_ENUM_RELAX)
