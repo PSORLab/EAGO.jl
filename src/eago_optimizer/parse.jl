@@ -240,7 +240,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     # McCormick constraint propagation
     relax_evaluator = m._working_problem._relaxed_evaluator
     dict_sparsity = Dict{Int,Vector{Int}}()
-    if length(evaluator.m.nlp_data.nlexpr) > 0
+    if length(evaluator.m.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
         for i = 1:length(evaluator.subexpressions)
             subexpr = evaluator.subexpressions[i]
             push!(relax_evaluator.subexpressions, NonlinearExpression!(subexpr, dict_sparsity, i,

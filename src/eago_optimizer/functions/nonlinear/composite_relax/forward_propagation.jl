@@ -10,21 +10,26 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
-f_init!(::Type{Relax}, g::AbstractDG, b::RelaxCache) = nothing
+function affine_expand(x, x0, fx0, ∇fx0)
+    fx0 + dot(∇fx0, x - x0)
+end
+
+f_init!(::Relax, g::AbstractDG, b::RelaxCache) = nothing
 
 function _var_set(::Type{MC{N,T}}, i::Int, x_cv::S, x_cc::S, l::S, u::S) where {N,T,S}
     v = seed_gradient(i, Val(N))
     return MC{N,T}(x_cv, x_cc, Interval{S}(l, u), v, v, false)
 end
 
-function fprop!(::Type{Relax}, ::Type{Variable}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V, S<:Real}
+function fprop!(t::Relax, ::Type{Variable}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V, S<:Real}
     i = _first_index(g, k)
     x = _val(b, i)
     z = _var_set(V, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
-    if _first_eval(b)
+    if !_first_eval(b)
         z = z ∩ _interval(b, k)
     end
     _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
 
@@ -55,10 +60,11 @@ function expand_set(::Type{MC{N2,T}}, x::MC{N1,T}, fsparse::Vector{Int},
     return MC{N2,T}(x.cv, x.cc, x.Intv, cv_grad, cc_grad, x.cnst)
 end
 
-function fprop!(::Type{Relax}, ::Type{Subexpression}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V, S<:Real}
+function fprop!(t::Relax, ::Type{Subexpression}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V, S<:Real}
     d = _subexpression_value(c, _first_index(g, k))
     z = expand_set(V, d.set[1], _sparsity(g, k), _sparsity(sub), c.cv_buffer, c.cc_buffer)
     _store_set!(c, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
 
@@ -165,9 +171,9 @@ function _cut(x::V, lastx::V, v::VariableValues, ϵ::S, s::Vector{Int},
     return x
 end
 
-for (f, F) in ((:fprop_2!, +), (:fprop_2!, *), (:fprop_2!, min), (:fprop_2!, max),
+for (f, F) in ((:fprop_2!, +), (:fprop_2!, min), (:fprop_2!, max),
                (:fprop!, -), (:fprop!, /))
-    @eval function ($f)(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    @eval function ($f)(t::Relax, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         x = _child(g, 1, k)
         y = _child(g, 2, k)
         x_is_num = _is_num(b, x)
@@ -181,14 +187,50 @@ for (f, F) in ((:fprop_2!, +), (:fprop_2!, *), (:fprop_2!, min), (:fprop_2!, max
         end
         z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
         _store_set!(b, z, k)
+        (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
         return
     end
 end
-for (F, SV, NV) in ((+, :(zero(V)), :(zero(S))),
-                    (*, :(one(V)), :(one(S))),
-                    (min, :(inf(V)), :(typemax(S))),
-                    (max, :(-inf(V)), :(typemin(S))))
-    @eval function fprop_n!(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+function fprop_2!(t::Relax, ::typeof(*), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    x = _child(g, 1, k)
+    y = _child(g, 2, k)
+    x_is_num = _is_num(b, x)
+    y_is_num = _is_num(b, y)
+    if !x_is_num && y_is_num
+        z = *(_set(b, x), _num(b, y))
+    elseif x_is_num && !y_is_num
+        z = *(_num(b, x), _set(b, y))
+    else
+        xv = _set(b, x)
+        yv = _set(b, y)
+        if b.use_apriori_mul
+            xr = _info(b, x)
+            yr = _info(b, y)
+            z = mult_apriori_kernel(xv, yv, xv.Intv*yv.Intv,
+                                    affine_expand(p, p0, xr.cv, xr.cv_grad),
+                                    affine_expand(p, p0, yr.cv, yr.cv_grad),
+                                    hi(affine_expand(P, p0, xr.cv, xr.cv_grad)),
+                                    hi(affine_expand(P, p0, yr.cv, yr.cv_grad)),
+                                    affine_expand(p, p0, xr.cc, xr.cc_grad),
+                                    affine_expand(p, p0, yr.cc, yr.cc_grad),
+                                    lo(affine_expand(P, p0, xr.cc, xr.cc_grad)),
+                                    lo(affine_expand(P, p0, yr.cc, yr.cc_grad)),
+                                    xr.cv_grad, yr.cv_grad, xr.cc_grad, yr.cc_grad)
+        else
+            z = xv*yv
+        end
+    end
+    z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+    _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+    return
+end
+
+for (FT, SV, NV) in ((PLUS, :(zero(V)), :(zero(S))),
+                    (MIN, :(inf(V)), :(typemax(S))),
+                    (MAX, :(-inf(V)), :(typemin(S))))
+    F = FT # TODO
+    @eval function fprop_n!(t::Relax, ::Val{$FT}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         z = $SV
         znum = $NV
         for i in _children(g, k)
@@ -201,25 +243,69 @@ for (F, SV, NV) in ((+, :(zero(V)), :(zero(S))),
         z = ($F)(z, znum)
         z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
         _store_set!(b, z, k)
+        (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
         return
     end
 end
-for F in (+, *, min, max)
-    @eval function fprop!(::Type{Relax}, ::typeof($F), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+function fprop_n!(t::Relax, ::Val{MULT}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    z = one(V)
+    zaff = one(V)
+    znum = one(S)
+    count = 0
+    for i in _children(g, k)
+        if _is_num(b, i)
+            znum = znum*_num(b, i)
+            continue
+        end
+        if b.use_apriori_mul
+            if count == 0
+                zaff = zaff*_info(b,i)
+                z = z*_set(b, i)
+            else
+                xi = _set(b, i)
+                xref = _info(b,i)
+                z = mult_apriori_kernel(z, xi, z.Intv*xi.Intv,
+                                        affine_expand(p, p0, zaff.cv, zaff.cv_grad),
+                                        affine_expand(p, p0, xref.cv, xref.cv_grad),
+                                        hi(affine_expand(P, p0, zaff.cv, zaff.cv_grad)),
+                                        hi(affine_expand(P, p0, xref.cv, xref.cv_grad)),
+                                        affine_expand(p, p0, zaff.cc, zaff.cc_grad),
+                                        affine_expand(p, p0, xref.cc, xref.cc_grad),
+                                        lo(affine_expand(P, p0, zaff.cc, zaff.cc_grad)),
+                                        lo(affine_expand(P, p0, xref.cc, xref.cc_grad)),
+                                        zaff.cv_grad, xref.cv_grad, zaff.cc_grad, xref.cc_grad)
+                zaff = zaff*xref
+            end
+        else
+            z = z*_set(b, i)
+        end
+        count += 1
+    end
+    z = z*znum
+    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+    _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+    return
+end
+
+for F in (PLUS, MULT, MIN, MAX)
+    @eval function fprop!(t::Relax, ::Val{$F}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         n = _arity(g, k)
         if n == 2
-            return fprop_2!(Relax, $F, g, b, k)
+            return fprop_2!(Relax(), Val($F), g, b, k)
         end
-        fprop_n!(Relax, $F, g, b, k)
+        fprop_n!(Relax(), Val($F), g, b, k)
     end
 end
-function fprop!(::Type{Relax}, ::typeof(^), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+function fprop!(t::Relax, ::Val{POW}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    @show "ran power "
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = is_num(b, x)
     y_is_num = is_num(b, y)
     if y_is_num && isone(_num(b, y))
-        _store_set!(b, _set(b, x), k)
+        z = _set(b, x)
+        _store_set!(b, z, k)
     elseif y_is_num && iszero(_num(b, y))
         _store_set!(b, zero(V), k)
     else
@@ -233,16 +319,18 @@ function fprop!(::Type{Relax}, ::typeof(^), g::AbstractDG, b::RelaxCache{V,S}, k
         z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.is_post, b.cut, b.cut_interval)
         _store_set!(b, z, k)
     end
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
-function fprop!(::Type{Relax}, ::typeof(user), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+function fprop!(t::Relax, ::Val{USER}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     f = _user_univariate_operator(g, _index(g, k))
     x = _set(b, _child(g, 1, k))
     z = _cut(f(x), _set(b, k), b.v, zero(S), _sparsity(g, k), b.is_post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
-function fprop!(::Type{Relax}, ::typeof(usern), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+function fprop!(t::Relax, ::Val{USERN}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     mv = _user_multivariate_operator(g, _index(g, k))
     n = _arity(g, k)
     set_input = _set_input(b, n)
@@ -261,19 +349,33 @@ function fprop!(::Type{Relax}, ::typeof(usern), g::AbstractDG, b::RelaxCache{V,S
     z = MOI.eval_objective(mv, set_input)
     z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
 
-for k in UNIVARIATE_ATOM_TYPES
-    f = UNIVARIATE_ATOM_DICT[k]
+#=
+for ft in UNIVARIATE_ATOM_TYPES
+    f = UNIVARIATE_ATOM_DICT[ft]
     if f == :user || f == :+ || f == :-
         continue
     end
-    @eval function fprop!(::Type{Relax}, ::typeof($f), g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    @show ft
+    @eval function fprop!(t::Relax, v::Val{$ft}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         x = _set(b, _child(g, 1, k))
-        z = f(x)
+        z = ($f)(x)
         z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.is_post, b.cut, b.cut_interval)
         _store_set!(b, z, k)
+        (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
         return
     end
+end
+=#
+
+function fprop!(t::Relax, v::Val{SIN}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    x = _set(b, _child(g, 1, k))
+    z = sin(x)
+    z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.is_post, b.cut, b.cut_interval)
+    _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+    return
 end

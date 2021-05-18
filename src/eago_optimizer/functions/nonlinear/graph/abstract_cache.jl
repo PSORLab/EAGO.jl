@@ -41,10 +41,10 @@ attribute `t::AbstractCacheAttribute` stored in `c::AbstractCache`. An
 optional fourth parameter `i::Int` indicates the node in the graph to evaluate
 (evaluating all dependent nodes as necessary).
 """
-function fprop!(::AbstractCacheAttribute, g::AbstractDG, c::AbstractCache)
+function fprop!(t::AbstractCacheAttribute, g::AbstractDG, c::AbstractCache)
     error("No function fprop!(t, g, c) defined for t = $(typeof(t)), g = $(typeof(g)) and c = $(typeof(c)).")
 end
-function fprop!(::AbstractCacheAttribute, g::AbstractDG, c::AbstractCache, i::Int)
+function fprop!(t::AbstractCacheAttribute, g::AbstractDG, c::AbstractCache, i::Int)
     error("No function fprop!(t, g, c, i) defined for t = $(typeof(t)), g = $(typeof(g)) and c = $(typeof(c)).")
 end
 
@@ -116,15 +116,19 @@ function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where 
     return nothing
 end
 
-
-const ALL_ATM_EVAL = [ALL_ATOM_DICT[i] for i in ALL_ATOM_TYPES]
-f_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = false)
-r_switch = binary_switch(ALL_ATOM_TYPES, ALL_ATM_EVAL, is_rev = true)
-@eval @inline function fprop!(::Type{T}, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
+f_switch = binary_switch(ALL_ATOM_TYPES, is_rev = false)
+r_switch = binary_switch(ALL_ATOM_TYPES, is_rev = true)
+@show f_switch
+@eval @inline function fprop!(t::T, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
+    fprop!(t, Val(SIN), g, c, k)
+    println("ran little fprop!")
     $f_switch
+    error("fprop! for ex_type = $id not defined.")
 end
-@eval @inline function rprop!(::Type{T}, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
+
+@eval @inline function rprop!(t::T, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
     $r_switch
+    error("rprop! for ex_type = $id not defined.")
 end

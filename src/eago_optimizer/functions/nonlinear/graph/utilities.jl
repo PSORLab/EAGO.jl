@@ -1,24 +1,24 @@
 
 # Define standard forward and reverse propagation to switch of expression definitions
 # for expressions.
-function binary_switch(ids, exprs; is_rev = true)
-    if length(exprs) <= 3
+function binary_switch(ids; is_rev = true)
+    if length(ids) <= 3
         if is_rev
             out = Expr(:if, Expr(:call, :(==), :id, ids[1]),
-                       :(fprop!(T, $(exprs[1]), g, c, k)))
+                       :(return rprop!(t, $(Val(ids[1])), g, c, k)))
         else
             out = Expr(:if, Expr(:call, :(==), :id, ids[1]),
-                       :(rprop!(T, $(exprs[1]), g, c, k)))
+                       :(return fprop!(t, $(Val(ids[1])), g, c, k)))
         end
-        if length(exprs) > 1
-            push!(out.args, binary_switch(ids[2:end], exprs[2:end]))
+        if length(ids) > 1
+            push!(out.args, binary_switch(ids[2:end]))
         end
         return out
     else
-        mid = length(exprs) >>> 1
+        mid = length(ids) >>> 1
         return Expr(:if, Expr(:call, :(<=), :id, ids[mid]),
-                         binary_switch(ids[1:mid], exprs[1:mid]),
-                         binary_switch(ids[mid+1:end], exprs[mid+1:end]))
+                         binary_switch(ids[1:mid]),
+                         binary_switch(ids[mid+1:end]))
     end
 end
 

@@ -49,16 +49,16 @@ end
     @inbounds g.user_operators.multivariate_operator_evaluator[i]
 end
 
-function fprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
-    f_init!(T, g, b)
+function fprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
+    f_init!(t, g, b)
     for k = _node_count(g):-1:1
         nt = _node_class(g, k)
         if nt == EXPRESSION
-            fprop!(T, Expression, g, b, k)
+            fprop!(t, Expression, g, b, k)
         elseif nt == VARIABLE
-            fprop!(T, Variable, g, b, k)
+            fprop!(t, Variable, g, b, k)
         elseif nt == SUBEXPRESSION
-            fprop!(T, Subexpression, g, b, k)
+            fprop!(t, Subexpression, g, b, k)
         end
     end
     return
@@ -68,6 +68,8 @@ function rprop!(::Type{T}, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttr
     flag = r_init!(T, g, b)
     for k = 1:_node_count(g)
         nt = _node_class(g, k)
+        @show nt
+        @show _node(g, k)
         if nt == EXPRESSION
             flag = rprop!(T, Expression, g, b, k)
         elseif nt == VARIABLE

@@ -17,6 +17,8 @@ include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "abstract_graph.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 
+@enum(RelaxType, STD_RELAX, MC_AFF_RELAX, MC_ENUM_RELAX)
+
 """
 $(TYPEDEF)
 
@@ -138,6 +140,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     is_first_eval::Bool = false
     interval_intersect::Bool = false
     subgrad_tol::Float64 = 1E-10
+    relax_type::RelaxType                       = STD_RELAX
 end
 
 """
@@ -238,7 +241,13 @@ function forward_pass!(x::Evaluator, d::NonlinearExpression{V}) where V  # Hold 
     #    !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])
     #end
     #_load_subexprs!(d.relax_cache, x.subexpressions)
-    fprop!(Relax, d.g, d.relax_cache)
+    if x.relax_type == STD_RELAX
+        fprop!(Relax(), d.g, d.relax_cache)
+    elseif x.relax_type == MC_AFF_RELAX
+        fprop!(RelaxAA(), d.g, d.relax_cache)
+    elseif x.relax_type == MC_ENUM_RELAX
+        fprop!(RelaxMulEnum(), d.g, d.relax_cache)
+    end
     return
 end
 
@@ -249,10 +258,10 @@ function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V}) where V
     return
 end
 
-function rprop!(::Type{Relax}, x::Evaluator, d::NonlinearExpression{V}) where V
-    return rprop!(Relax, d.g, d.relax_cache)
+function rprop!(::Relax, x::Evaluator, d::NonlinearExpression{V}) where V
+    return rprop!(Relax(), d.g, d.relax_cache)
 end
-function rprop!(::Type{Relax}, x::Evaluator, d::BufferedNonlinearFunction{V}) where V
+function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{V}) where V
     _set_last_reverse!(d, true)
-    return rprop!(Relax, x, d.ex)
+    return rprop!(Relax(), x, d.ex)
 end
