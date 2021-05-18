@@ -231,7 +231,7 @@ function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{Variabl
     return nothing
 end
 
-function eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T}
+function eliminate_fixed_variables!(f::BufferedNonlinearFunction{V,S}, v::Vector{VariableInfo}) where {V,S}
     eliminate_fixed_variables!(f.ex, v)
 end
 
@@ -251,7 +251,7 @@ function forward_pass!(x::Evaluator, d::NonlinearExpression{V}) where V  # Hold 
     return
 end
 
-function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V}) where V
+function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,S}) where {V,S}
     forward_pass!(x, d.ex)
     _set_has_value!(d, true)
     _set_last_reverse!(d, false)
@@ -261,7 +261,7 @@ end
 function rprop!(::Relax, x::Evaluator, d::NonlinearExpression{V}) where V
     return rprop!(Relax(), d.g, d.relax_cache)
 end
-function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{V}) where V
+function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{V,S}) where {V,S}
     _set_last_reverse!(d, true)
     return rprop!(Relax(), x, d.ex)
 end

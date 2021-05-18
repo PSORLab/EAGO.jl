@@ -30,13 +30,18 @@ function RelaxCache{V,S}(n::Int, m::Int, p::Int) where {V,S<:Real}
                     _set_mv_buffer       = zeros(V, p))
 end
 function initialize!(c::RelaxCache{V,S}, g::DirectedTree{S}) where {V,S<:Real}
+
     n = _node_count(g)
     m = _dep_subexpr_count(g)
     p = length(_sparsity(g, 1))
+
+    cnst = ConstantCache{S}(n)
+    initialize!(cnst, g)
+    copyto!(c._num,    _num(cnst))
+    copyto!(c._is_num, _is_num(cnst))
+
     c._set                 = zeros(V, n)
-    c._set                 = zeros(V, n)
-    c._info                = zeros(S, n)
-    c._is_num              = zeros(Bool, n)
+    c._info                = zeros(V, n)
     c._subexpression_value = zeros(V, m)
     c._cv_grad_buffer      = zeros(S, p)
     c._cc_grad_buffer      = zeros(S, p)

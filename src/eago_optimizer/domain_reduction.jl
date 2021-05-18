@@ -637,7 +637,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         for constr in wp._nonlinear_constr
             if feasible_flag
                 forward_pass!(evaluator, constr)
-                feasible_flag &= rprop!(Relax, evaluator, constr)
+                feasible_flag &= rprop!(Relax(), evaluator, constr)
                 evaluator.interval_intersect = true
             end
         end
@@ -652,7 +652,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
         if wp._objective_type === NONLINEAR
             if feasible_flag
                 forward_pass!(evaluator, wp._objective_nl)
-                feasible_flag &= rprop!(Relax, evaluator, wp._objective_nl)
+                feasible_flag &= rprop!(Relax(), evaluator, wp._objective_nl)
                 evaluator.interval_intersect = true
             end
             feasible_flag && forward_pass!(evaluator, wp._objective_nl)

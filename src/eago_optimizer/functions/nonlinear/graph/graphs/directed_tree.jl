@@ -65,13 +65,13 @@ function fprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute
 end
 
 function rprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
-    flag = r_init!(T, g, b)
+    flag = r_init!(t, g, b)
     for k = 1:_node_count(g)
         nt = _node_class(g, k)
         if nt == EXPRESSION
-            flag = rprop!(T, Expression(), g, b, k)
+            flag = rprop!(t, Expression(), g, b, k)
         elseif nt == VARIABLE
-            flag = rprop!(T, Variable(), g, b, k)
+            flag = rprop!(t, Variable(), g, b, k)
         end
     end
     return flag
