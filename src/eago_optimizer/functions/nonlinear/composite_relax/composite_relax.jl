@@ -37,9 +37,8 @@ function initialize!(c::RelaxCache{V,S}, g::DirectedTree{S}) where {V,S<:Real}
 
     cnst = ConstantCache{S}(n)
     initialize!(cnst, g)
-    copyto!(c._num,    _num(cnst))
-    copyto!(c._is_num, _is_num(cnst))
-
+    c._num                 = copy(_num(cnst))
+    c._is_num              = copy(_is_num(cnst))
     c._set                 = zeros(V, n)
     c._info                = zeros(V, n)
     c._subexpression_value = zeros(V, m)

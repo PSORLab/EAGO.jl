@@ -171,8 +171,7 @@ function _cut(x::V, lastx::V, v::VariableValues, ϵ::S, s::Vector{Int},
     return x
 end
 
-for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MAX, :max),
-               (:fprop!, MINUS, :-), (:fprop!, DIV, :/))
+for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MAX, :max), (:fprop!, DIV, :/))
     @eval function ($f)(t::Relax, v::Val{$F}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
         x = _child(g, 1, k)
         y = _child(g, 2, k)
@@ -191,6 +190,30 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
         return
     end
 end
+@eval function fprop!(t::Relax, v::Val{MINUS}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    n = _arity(g, k)
+    x = _child(g, 1, k)
+    x_is_num = _is_num(b, x)
+    if n == 2
+        y = _child(g, 2, k)
+        y_is_num = _is_num(b, y)
+        if !x_is_num && y_is_num
+            z = _set(b, x) - _num(b, y)
+        elseif x_is_num && !y_is_num
+            z = _num(b, x) - _set(b, y)
+        else
+            z = _set(b, x) - _set(b, y)
+        end
+    else
+        z = -x
+    end
+    z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+    _store_set!(b, z, k)
+    (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+    return
+end
+
+
 function fprop_2!(t::Relax, v::Val{MULT}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     x = _child(g, 1, k)
     y = _child(g, 2, k)
