@@ -116,18 +116,16 @@ function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where 
     return nothing
 end
 
-f_switch = binary_switch(ALL_ATOM_TYPES, is_rev = false)
-r_switch = binary_switch(ALL_ATOM_TYPES, is_rev = true)
-@show f_switch
-@eval @inline function fprop!(t::T, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
+f_switch = binary_switch(instances(AtomType), is_forward = true)
+
+@eval function fprop!(t::T, ex::Expression, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
-    fprop!(t, Val(SIN), g, c, k)
-    println("ran little fprop!")
     $f_switch
     error("fprop! for ex_type = $id not defined.")
 end
 
-@eval @inline function rprop!(t::T, ::Type{Expression}, g::AbstractDG, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
+r_switch = binary_switch(instances(AtomType), is_forward = false)
+@eval function rprop!(t::T, ex::Expression, g::AbstractDG, c::AbstractCache, k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
     $r_switch
     error("rprop! for ex_type = $id not defined.")
