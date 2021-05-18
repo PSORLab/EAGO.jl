@@ -70,7 +70,7 @@ end
 
 Check if a node was discovered by search.
 """
-function _is_discovered(t::AbstractCacheAttribute, c::AbstractCache, i::Int)
+function _is_undiscovered(t::AbstractCacheAttribute, c::AbstractCache, i::Int)
     error("No function _is_discovered(t, c, i) defined for t::AbstractCacheAttribute = $t and c::AbstractCache = $c.")
 end
 
@@ -80,7 +80,7 @@ end
 Defines whether the attribute associated with each node is locked.
 A lock node has been discovered.  A discovered not has not necessarily been locked.
 """
-function _is_locked(t::AbstractCacheAttribute, c::AbstractCache, i::Int)
+function _is_unlocked(t::AbstractCacheAttribute, c::AbstractCache, i::Int)
     error("No function _is_locked(t, c, i) defined for t = $t and c = $c.")
 end
 
@@ -92,10 +92,6 @@ Specifies that a node has been discovered by a search.
 function discover!(t::AbstractCacheAttribute, c::AbstractCache, i::Int)
     error("No function discovered!(t, c, i) defined for t = $t and c = $c.")
 end
-
-_discoverable(attr, g, c, i) = !_is_discovered(attr, g, c, i)
-_unlocked(attr, g, c, i) = !_is_locked(attr, g, c, i)
-
 
 Base.@kwdef mutable struct VariableValues{T<:Real}
     x::Vector{T}                           = T[]
