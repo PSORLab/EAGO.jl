@@ -779,7 +779,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._lower_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
+    @show MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     if valid_flag && feasible_flag
+        @show "path 1"
         set_dual!(m)
         m._cut_add_flag = true
         m._lower_feasibility = true
@@ -787,13 +789,13 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         for i = 1:m._working_problem._variable_count
              m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
-
     elseif valid_flag
+        @show "path 2"
         m._cut_add_flag = false
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
-
     else
+        @show "path 3"
         fallback_interval_lower_bound!(m, n)
     end
 

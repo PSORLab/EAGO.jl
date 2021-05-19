@@ -61,7 +61,7 @@ end
 @inline _interval(b::RelaxCache{V,S}, i::Int) where {V,S} = Interval{S}(_set(b, i))
 @inline _subexpression_value(b::RelaxCache{V,S}, i::Int) where {V,S} = b._subexpression_value[i] # @inbounds b._subexpression_value[i]
 
-@inline _is_unlocked(b::RelaxCache, i::Int) = _is_num(b,i)
+@inline _is_unlocked(b::RelaxCache, i::Int) = !_is_num(b,i)
 
 @inline function _store_set!(b::RelaxCache{V,S}, v::V, i::Int) where {V,S}
     #@inbounds b._set[i] = v

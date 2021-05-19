@@ -56,10 +56,13 @@ function fprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute
             nt = _node_class(g, k)
             if nt == EXPRESSION
                 fprop!(t, Expression(), g, b, k)
+                @show k, Expression(), b._set[k]
             elseif nt == VARIABLE
                 fprop!(t, Variable(), g, b, k)
+                @show k, Variable(), b._set[k]
             elseif nt == SUBEXPRESSION
                 fprop!(t, Subexpression(), g, b, k)
+                @show k, Subexpression(), b._set[k]
             end
         end
     end

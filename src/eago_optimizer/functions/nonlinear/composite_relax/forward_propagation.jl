@@ -190,11 +190,11 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
         return
     end
 end
-@eval function fprop!(t::Relax, v::Val{MINUS}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
-    n = _arity(g, k)
+function fprop!(t::Relax, v::Val{MINUS}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
+    @show MINUS
     x = _child(g, 1, k)
     x_is_num = _is_num(b, x)
-    if n == 2
+    if _arity(g, k) == 2
         y = _child(g, 2, k)
         y_is_num = _is_num(b, y)
         if !x_is_num && y_is_num
@@ -202,12 +202,14 @@ end
         elseif x_is_num && !y_is_num
             z = _num(b, x) - _set(b, y)
         else
+            @show _set(b, x)
+            @show _set(b, y)
             z = _set(b, x) - _set(b, y)
         end
     else
-        z = -x
+        z = -_set(b, x)
     end
-    z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
     _store_set!(b, z, k)
     (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
@@ -322,8 +324,8 @@ end
 function fprop!(t::Relax, v::Val{POW}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
     x = _child(g, 1, k)
     y = _child(g, 2, k)
-    x_is_num = is_num(b, x)
-    y_is_num = is_num(b, y)
+    x_is_num = _is_num(b, x)
+    y_is_num = _is_num(b, y)
     if y_is_num && isone(_num(b, y))
         z = _set(b, x)
         _store_set!(b, z, k)

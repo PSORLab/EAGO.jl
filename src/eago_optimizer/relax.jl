@@ -222,6 +222,8 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     new_pass && forward_pass!(evaluator, f)
     x = evaluator.variable_values.x
     finite_cut = true
+    @show _is_num(f)
+    @show _set(f)
 
     grad_sparsity = _sparsity(f)
     if _is_num(f)
@@ -337,6 +339,7 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
     finite_cut_generated = affine_relax_nonlinear!(buffered_nl, relaxed_evaluator, true, new_flag, false)
     relaxed_evaluator.is_first_eval = false
 
+    @show finite_cut_generated
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, buffered_nl.saf)
             copyto!(wp._objective_saf.terms, buffered_nl.saf.terms)
@@ -344,6 +347,7 @@ function relax_objective_nonlinear!(m::Optimizer, wp::ParsedProblem, check_safe:
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
         end
     end
+    @show wp._objective_saf
 
     return nothing
 end
@@ -383,6 +387,7 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
         end
 
     elseif obj_type === NONLINEAR
+        @show "ran nonlinear"
         relax_objective_nonlinear!(m, wp, check_safe)
     end
 
