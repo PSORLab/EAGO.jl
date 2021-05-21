@@ -191,7 +191,6 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
     end
 end
 function fprop!(t::Relax, v::Val{MINUS}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S<:Real}
-    @show MINUS
     x = _child(g, 1, k)
     x_is_num = _is_num(b, x)
     if _arity(g, k) == 2
@@ -202,8 +201,6 @@ function fprop!(t::Relax, v::Val{MINUS}, g::AbstractDG, b::RelaxCache{V,S}, k::I
         elseif x_is_num && !y_is_num
             z = _num(b, x) - _set(b, y)
         else
-            @show _set(b, x)
-            @show _set(b, y)
             z = _set(b, x) - _set(b, y)
         end
     else
@@ -335,9 +332,9 @@ function fprop!(t::Relax, v::Val{POW}, g::AbstractDG, b::RelaxCache{V,S}, k::Int
         if !x_is_num && y_is_num
             z = _set(b, x)^_num(b, y)
         elseif x_is_num && !y_is_num
-            z = _num(b, x)^_set(b, x)
+            z = _num(b, x)^_set(b, y)
         elseif !x_is_num && !y_is_num
-            z = _set(b, x)^_set(b, x)
+            z = _set(b, x)^_set(b, y)
         end
         z = _cut(z, _set(b, k), b.v, zero(S), _sparsity(g,k), b.post, b.cut, b.cut_interval)
         _store_set!(b, z, k)

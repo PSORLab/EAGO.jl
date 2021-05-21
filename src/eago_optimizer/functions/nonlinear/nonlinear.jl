@@ -43,9 +43,9 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
                               b::MOI.NLPBoundsPair, sub_sparsity::Dict{Int,Vector{Int}},
                               subexpr_indx::Int,
                               subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                              op::OperatorRegistry,
+                              op::OperatorRegistry, parameter_values,
                               tag::T; is_sub::Bool = false) where T
-    g = DirectedTree{Float64}(sub, op, sub_sparsity, subexpr_linearity)
+    g = DirectedTree{Float64}(sub, op, sub_sparsity, subexpr_linearity, parameter_values)
     grad_sparsity = _sparsity(g,1)
     n = length(grad_sparsity)
     if is_sub
@@ -88,10 +88,10 @@ end
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
                                    sub_sparsity::Dict{Int,Vector{Int}},
                                    subexpr_lin::Vector{JuMP._Derivatives.Linearity},
-                                   op::OperatorRegistry,
+                                   op::OperatorRegistry, parameter_values,
                                    tag::T) where T <: RelaxTag
 
-    ex = NonlinearExpression!(f, b, sub_sparsity, -1, subexpr_lin, op, tag)
+    ex = NonlinearExpression!(f, b, sub_sparsity, -1, subexpr_lin, op, parameter_values, tag)
     n = length(_sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf)

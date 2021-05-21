@@ -246,7 +246,8 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
             push!(relax_evaluator.subexpressions, NonlinearExpression!(subexpr, dict_sparsity, i,
                                                                       evaluator.subexpression_linearity,
                                                                       user_operator_registry,
-                                                                      m._parameters.relax_tag))
+                                                                      m._parameters.relax_tag,
+                                                                      evaluator.m.nlp_data.nlparamvalues))
         end
     end
 
@@ -264,6 +265,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                      dict_sparsity, evaluator.subexpression_linearity,
                                                                      user_operator_registry,
+                                                                     evaluator.m.nlp_data.nlparamvalues,
                                                                      m._parameters.relax_tag)
     end
 
@@ -275,6 +277,7 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
                                                                               user_operator_registry,
+                                                                              evaluator.m.nlp_data.nlparamvalues,
                                                                               m._parameters.relax_tag))
     end
 

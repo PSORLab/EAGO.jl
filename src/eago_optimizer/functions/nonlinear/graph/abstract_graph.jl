@@ -60,6 +60,9 @@ _user_multivariate_operator(g::AbstractDG, i) = error("_user_multivariate_operat
 @inline function _constant_value(g::AbstractDG{S}, i) where S <: Real
     @inbounds getindex(_constant_values(g), i)
 end
+@inline function _parameter_value(g::AbstractDG{S}, i) where S <: Real
+    @inbounds getindex(_parameter_values(g), i)
+end
 
 @inline _node_class(g::AbstractDG, i)      = _node_class(_node(g, i))
 @inline _ex_type(g::AbstractDG, i)         = _ex_type(_node(g, i))

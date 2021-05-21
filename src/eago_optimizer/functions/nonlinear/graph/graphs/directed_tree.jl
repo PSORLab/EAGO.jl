@@ -7,11 +7,13 @@ Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph
     "List of nodes"
     nodes::Vector{Node}                       = Node[]
     "List of index of variables in this tree"
-    variables::Dict{Int,Int}                = Dict{Int,Int}()
+    variables::Dict{Int,Int}                  = Dict{Int,Int}()
     "Information on all variables..."
     v::VariableValues{S}                      = VariableValues{S}()
     "List of constant values"
     constant_values::Vector{S}                = S[]
+    "List of constant values"
+    parameter_values::Vector{S}               = S[]
     "Number of nodes"
     node_count::Int                           = 0
     "Number of variables"
@@ -36,6 +38,7 @@ const DAT = DirectedTree
 @inline _variables(g::DAT)         = g.variables
 @inline _variable_types(g::DAT)    = g.v.variable_types
 @inline _constant_values(g::DAT)   = g.constant_values
+@inline _parameter_values(g::DAT)  = g.parameter_values
 @inline _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
 # Each tree has a unique sparsity for a DAT since there is a single sink
 @inline _sparsity(g::DAT, i)                  = g.sparsity
@@ -56,13 +59,10 @@ function fprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute
             nt = _node_class(g, k)
             if nt == EXPRESSION
                 fprop!(t, Expression(), g, b, k)
-                @show k, Expression(), b._set[k]
             elseif nt == VARIABLE
                 fprop!(t, Variable(), g, b, k)
-                @show k, Variable(), b._set[k]
             elseif nt == SUBEXPRESSION
                 fprop!(t, Subexpression(), g, b, k)
-                @show k, Subexpression(), b._set[k]
             end
         end
     end
@@ -85,7 +85,7 @@ function rprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute
 end
 
 # TODO Fix constructor...
-function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity) where S<:Real
+function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values) where S<:Real
 
     nd = copy(d.nd)
     adj = copy(d.adj)
@@ -102,6 +102,7 @@ function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{
     DirectedTree{S}(nodes = nodes,
                     variables = rev_sparsity,
                     constant_values = const_values,
+                    parameter_values = parameter_values,
                     node_count = length(nodes),
                     variable_count = length(sparsity),
                     constant_count = length(const_values),

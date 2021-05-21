@@ -53,21 +53,18 @@ for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
 end
 
 for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
-    @eval function Node(::Val{true}, ::Val{$v}, children::UnitRange{Int})
+    @eval function Node(::Val{true}, ::Val{$v}, children::Vector{Int})
         arity = length(children)
         return Node(EXPRESSION, $v, 0, 0, arity, children)
     end
 end
-@eval function Node(::Val{true}, ::Val{USERN}, i::Int, children::UnitRange{Int})
+@eval function Node(::Val{true}, ::Val{USERN}, i::Int, children::Vector{Int})
     arity = length(children)
     return Node(EXPRESSION, USERN, i, 0, arity, children)
 end
 for d in ALL_ATOM_TYPES
     @eval function Node(::Val{false}, ::Val{$d}, children::Vector{Int})
         return Node(EXPRESSION, $d, 0, 0, 1, children)
-    end
-    @eval function Node(::Val{false}, ::Val{$d}, child::UnitRange{Int})
-        return Node(EXPRESSION, $d, 0, 0, 1, Int[first(child)])
     end
 end
 
@@ -86,38 +83,38 @@ eago_mv_switch = quote end
 for s in mv_eago_not_jump
     global eago_mv_switch = quote
         $eago_mv_switch
-        (d == $s) && (return Node(Val(true), Val($s), c))
+        (d == $s) && (return Node(Val(true), Val($s), v[c]))
     end
 end
-@eval function _create_call_node(i, c::UnitRange{Int}, op::OperatorRegistry)
+@eval function _create_call_node(i, v, c::UnitRange{Int}, op::OperatorRegistry)
     if i == 1
-        return Node(Val(true), Val(PLUS), c)
+        return Node(Val(true), Val(PLUS), v[c])
     elseif i == 2
-        return Node(Val(true), Val(MINUS), c)
+        return Node(Val(true), Val(MINUS), v[c])
     elseif i == 3
-        return Node(Val(true), Val(MULT), c)
+        return Node(Val(true), Val(MULT), v[c])
     elseif i == 4
-        return Node(Val(true), Val(POW), c)
+        return Node(Val(true), Val(POW), v[c])
     elseif i == 5
-        return Node(Val(true), Val(DIV), c)
+        return Node(Val(true), Val(DIV), v[c])
     elseif i == 6
         error("If-else currently unsupported...")
     elseif i == 7
-        return Node(Val(true), Val(MAX), c)
+        return Node(Val(true), Val(MAX), v[c])
     elseif i == 8
-        return Node(Val(true), Val(MIN), c)
+        return Node(Val(true), Val(MIN), v[c])
     elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
         i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
         d = op.multivariate_id[i_mv]
         $eago_mv_switch
-        return Node(Val(true), Val(USERN), i_mv, c)
+        return Node(Val(true), Val(USERN), i_mv, v[c])
     end
 end
 
 function binary_switch_typ(ids, exprs)
     if length(exprs) <= 3
         out = Expr(:if, Expr(:call, :(==), :i, ids[1]),
-                   :(Node(Val(false), Val($(exprs[1])), c)))
+                   :(Node(Val(false), Val($(exprs[1])), v[c])))
         if length(exprs) > 1
             push!(out.args, binary_switch_typ(ids[2:end], exprs[2:end]))
         end
@@ -146,27 +143,27 @@ eago_uni_switch = quote end
 for s in uni_eago_not_jump
     global eago_uni_switch = quote
         $eago_uni_switch
-        (d == $s) && (return Node(Val(false), Val($s), c))
+        (d == $s) && (return Node(Val(false), Val($s), v[c]))
     end
 end
 atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
-@eval function _create_call_node_uni(i::Int, c::UnitRange{Int}, op::OperatorRegistry)
+@eval function _create_call_node_uni(i::Int, v, c::UnitRange{Int}, op::OperatorRegistry)
 
     if i >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
         d = op.d.univariate_operator_to_id[i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1]
         $eago_uni_switch
-        return Node(Val(true), Val(USER), i, c)
+        return Node(Val(true), Val(USER), i, v[c])
     end
     $atom_switch
 end
 
-function Node(d::JuMP._Derivatives.NodeData, c::UnitRange{Int}, op::OperatorRegistry)
+function Node(d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::OperatorRegistry)
     nt = d.nodetype
     i = d.index
     if nt == JuMP._Derivatives.CALL
-        return _create_call_node(i, c, op)
+        return _create_call_node(i, child_vec, c, op)
     elseif nt == JuMP._Derivatives.CALLUNIVAR
-        return _create_call_node_uni(i, c, op)
+        return _create_call_node_uni(i, child_vec, c, op)
     elseif nt == JuMP._Derivatives.VARIABLE
         return Node(Variable(), i)
     elseif nt == JuMP._Derivatives.MOIVARIABLE
@@ -188,8 +185,9 @@ end
 function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData}, op::OperatorRegistry)
     y = Vector{Node}(undef, length(x))
     adj = JuMP._Derivatives.adjmat(x)
+    child_vec = rowvals(adj)
     for i in eachindex(x)
-        y[i] = Node(x[i], nzrange(adj, i), op)
+        y[i] = Node(x[i], child_vec, nzrange(adj, i), op)
     end
     return y
 end

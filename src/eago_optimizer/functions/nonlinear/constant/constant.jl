@@ -30,16 +30,20 @@ ConstantCache{T}(n::Int) where T<:Real = ConstantCache(zero(T), n)
     return
 end
 
-function initialize!(c::ConstantCache{S}, g::DirectedTree{S}) where S<:Real
+function initialize!(c::ConstantCache{S}, g::AbstractDG) where S<:Real
     n = _node_count(g)
-    c._num                   = zeros(S, n)
-    c._is_num                = zeros(Bool, n)
-
-    #m = _dep_subexpr_count(g)
-    #c._subexpression_num    = zeros(S, m)
-    #c._subexpression_is_num = zeros(S, m)
-    #c._variable_num         = zeros(S, m)
-    #c._variable_is_num      = zeros(S, m)
+    c._num     = zeros(S, n)
+    c._is_num  = zeros(Bool, n)
+    for i = 1:n
+        nd = _node(g, i)
+        if _ex_type(nd) == CONST_ATOM
+            c._is_num[i] = true
+            c._num[i] = _constant_value(g, _first_index(nd))
+        elseif _ex_type(nd) == PARAM_ATOM
+            c._is_num[i] = true
+            c._num[i] = _parameter_value(g, _first_index(nd))
+        end
+    end
     return
 end
 
