@@ -1,15 +1,7 @@
-abstract type AbstractBranchCost end
-struct BranchCostInfeasible <: AbstractBranchCost end
-struct BranchCostInterval <: AbstractBranchCost end
-struct BranchCostIntervalRev <: AbstractBranchCost end
-struct BranchCostIntervalLP <: AbstractBranchCost end
-struct BranchCostIntervalLPRev <: AbstractBranchCost end
-
-abstract type AbstractBranchAlgorithm end
-struct PseudoCostBraching <: AbstractBranchAlgorithm end
+@enum(BranchCost, BC_INFEASIBLE, BC_INTERVAL, BC_INTERVAL_REV, BC_INTERVAL_LP, BC_INTERVAL_LP_REV)
 
 Base.@kwdef mutable struct BranchOracle{T<:Real}
-    strategy::BRANCH_WEIGHT_STRATEGY = BW_INTERVAL_LP
+    strategy::BranchCost = BW_INTERVAL_LP
     𝛹n::Vector{T}            = T[]
     𝛹p::Vector{T}            = T[]
     δn::Vector{T}            = T[]
@@ -22,18 +14,15 @@ Base.@kwdef mutable struct BranchOracle{T<:Real}
     β::T                     = 0.05
     μ_score::T               = 0.15
 end
-function BranchOracle(T::Type{<:AbstractFloat}, n)
-    BranchOracle{T}(𝛹n = ones(T,n),
-                    𝛹p = ones(T,n),
-                    δn = zeros(T,n),
-                    δp = zeros(T,n),
-                    ηn = zeros(T,n),
-                    ηp = zeros(T,n)
-                    )
+function BranchOracle{T}(n::Int) where T <:AbstractFloat
+    BranchOracle{T}(𝛹n = ones(T,n),  𝛹p = ones(T,n),
+                    δn = zeros(T,n),  δp = zeros(T,n),
+                    ηn = zeros(T,n),  ηp = zeros(T,n))
 end
 
-function _variable_infeasibility(m::Optimizer, d::BranchOracle{T}, i) where T<:Real
+function _variable_infeasibility(m::Optimizer, i) where T<:Real
     tsum = zero(T); tmin = typemax(T); tmax = typemin(T)
+    d = m._branch_oracle
     for j in _sparsity(m, i)
         v = m._constraint_infeasiblity[j]
         tsum += v
@@ -43,63 +32,51 @@ function _variable_infeasibility(m::Optimizer, d::BranchOracle{T}, i) where T<:R
     return d.μ1*tsum + d.μ2*tmin + d.μ3*tmax
 end
 
-function _set_δ!(::Val{BW_INFEASIBLE}, m::Optimizer, d::BranchOracle, i) where T<:Real
-    v = _variable_infeasibility(m, d, i)
-    m._variable_infeasibility[i] = v
-    d.δn[i] = v
-    d.δp[i] = v
-    return
-end
-
-function _set_δ!(::Val{BW_INTERVAL_BRANCH}, m::GlobalOptimizer, d::BranchOracle, i) where {T<:Real}
-    l = _lower_bound(BranchVar, m, i)
-    u = _upper_bound(BranchVar, m, i)
-    d.δn[i] = isfinite(l) ? (xb - l) : _variable_infeasibility(m, d, i)
-    d.δp[i] = isfinite(u) ? (u - xb) : _variable_infeasibility(m, d, i)
-    return
-end
-
-function _set_δ!(::Val{BW_INTERVAL_BRANCH_REV}, m::GlobalOptimizer, d::BranchOracle, i) where {T<:Real}
-    l = _lower_bound(BranchVar, m, i)
-    u = _upper_bound(BranchVar, m, i)
-    d.δn[i] = isfinite(l) ? (u - xb) : _variable_infeasibility(m, d, i)
-    d.δp[i] = isfinite(u) ? (xb - l) : _variable_infeasibility(m, d, i)
-    return
-end
-
-function _set_δ!(::Val{BW_INTERVAL_LP}, m::GlobalOptimizer, d::BranchOracle, i) where {T<:Real}
-    l = _lower_bound(BranchVar, m, i)
-    u = _upper_bound(BranchVar, m, i)
-    ρ = d.β*(u - l)
-    xlp_adj = max(min(xlp, u - ρ), l + ρ)
-    d.δn[i] = isfinite(l) ? (xlp_adj - l) : _variable_infeasibility(m, d, i)
-    d.δp[i] = isfinite(u) ? (u - xlp_adj) : _variable_infeasibility(m, d, i)
-    return
-end
-
-function _set_δ!(::Val{BW_INTERVAL_LP_REV}, m::GlobalOptimizer, d::BranchOracle, i) where {T<:Real}
-    l = _lower_bound(BranchVar, m, i)
-    u = _upper_bound(BranchVar, m, i)
-    ρ = d.β*(u - l)
-    xlp_adj = max(min(xlp, u - ρ), l + ρ)
-    d.δn[i] = isfinite(l) ? (u - xlp_adj) : _variable_infeasibility(m, d, i)
-    d.δp[i] = isfinite(u) ? (xlp_adj - l) : _variable_infeasibility(m, d, i)
-    return
-end
-
-function _store_pseudocosts!(m::Optimizer, b::BranchOracle{T}, n::NodeBB)
+function _store_pseudocosts!(m::Optimizer, n::NodeBB)
     k = n.last_branch
-    Δunit = (m._lower_objective_value - n.lower_bound)/n.branch_extent
+    d = m._branch_oracle
+    Δunit = (n.lower_bound - m._lower_objective_value)
     if n.branch_direction == BD_POS
         d.ηp[k] += 1
-        d.δp[k] = Δunit
-        d.𝛹p[k] = d.δp[k]/d.ηp[k]
+        d.𝛹p[k] = Δunit
+        d.δp[k] = n.branch_extent
     elseif n.branch_direction == BD_NEG
         d.ηn[k] += 1
-        d.δn[k] = Δunit
-        d.𝛹n[k] =  d.δn[k]/d.ηn[k]
+        d.𝛹n[k] = Δunit
+        d.δn[k] = n.branch_extent
     end
     return
+end
+
+function _lo_extent(m, xb, k)
+    !isfinite(l) && return _variable_infeasibility(m, i)
+
+    c _branch_cost(m)
+    (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, i)
+    l = _lower_bound(BranchVar, m, k)
+    u = _upper_bound(BranchVar, m, k)
+    (c == BC_INTERVAL)     && return xb - l
+    (c == BC_INTERVAL_REV) && return u - xb
+
+    xlp = _lower_solution(BranchVar, m, k)
+    ρ = _cost_offset_β(m)*(u - l)
+    y = max(min(xlp, u - ρ), l + ρ)
+    return (c == BC_INTERVAL_LP) ? (y - l) : (u - y)
+end
+function _hi_extent(m, xb, k)
+    !isfinite(u) && return _variable_infeasibility(m, i)
+
+    c _branch_cost(m)
+    (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, i)
+    l = _lower_bound(BranchVar, m, k)
+    u = _upper_bound(BranchVar, m, k)
+    (c == BC_INTERVAL)     && return u - xb
+    (c == BC_INTERVAL_REV) && return xb - l
+
+    xlp = _lower_solution(BranchVar, m, k)
+    ρ = _cost_offset_β(m)*(u - l)
+    y = max(min(xlp, u - ρ), l + ρ)
+    return (c == BC_INTERVAL_LP) ? (u - y) : (y - l)
 end
 
 @inline _score(x::T, y::T, μ::T) where T<:Real = (one(T) - μ)*min(x, y) + max(x, y)
@@ -121,7 +98,6 @@ end
 function _select_branch_variable!(t::ExtensionType, m::Optimizer) where T<:Real
     _select_branch_variable!(m, m.branch_oracle)
 end
-
 
 function _select_branch_point(m::Optimizer, i)
     l = _lower_bound(BranchVar, m, i)
@@ -158,8 +134,6 @@ function branch_node!(t::ExtensionType, m::Optimizer)
 
     l = NodeBB(n);  l.id += 1;  l.branch_direction = BD_NEG
     u = NodeBB(n);  u.id += 2;  u.branch_direction = BD_POS
-    l.branch_extent = x - _lower_bound(BranchVar, m, k)
-    u.branch_extent = _upper_bound(BranchVar, m, k) - x
 
     is_integer_flag = _is_integer(BranchVar, m, k)
     if is_integer_flag
@@ -168,8 +142,12 @@ function branch_node!(t::ExtensionType, m::Optimizer)
         u.is_integer[k] = ceil(x) != u.upper_variable_bound[k]
         u.continuous = !any(u.is_integer)
     end
-    u.lower_variable_bound[k] = is_integer_flag ? ceil(x)  : x
-    l.upper_variable_bound[k] = is_integer_flag ? floor(x) : x
+    lx = is_integer_flag ? floor(x) : x
+    ux = is_integer_flag ? ceil(x)  : x
+    l.upper_variable_bound[k] = lx
+    u.lower_variable_bound[k] = ux
+    l.branch_extent = _lo_extent(m, lx, k)
+    u.branch_extent = _hi_extent(m, ux, k)
 
     push!(m._stack, l, u)
     m._node_repetitions = 1
