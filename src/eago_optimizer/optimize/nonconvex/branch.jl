@@ -49,10 +49,11 @@ function _store_pseudocosts!(m::Optimizer, n::NodeBB)
 end
 
 function _lo_extent(m, xb, k)
-    !isfinite(l) && return _variable_infeasibility(m, i)
+    !isfinite(l) && return _variable_infeasibility(m, k)
 
     c _branch_cost(m)
-    (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, i)
+    (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
+
     l = _lower_bound(BranchVar, m, k)
     u = _upper_bound(BranchVar, m, k)
     (c == BC_INTERVAL)     && return xb - l
@@ -64,10 +65,11 @@ function _lo_extent(m, xb, k)
     return (c == BC_INTERVAL_LP) ? (y - l) : (u - y)
 end
 function _hi_extent(m, xb, k)
-    !isfinite(u) && return _variable_infeasibility(m, i)
+    !isfinite(u) && return _variable_infeasibility(m, k)
 
     c _branch_cost(m)
-    (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, i)
+    (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
+
     l = _lower_bound(BranchVar, m, k)
     u = _upper_bound(BranchVar, m, k)
     (c == BC_INTERVAL)     && return u - xb
@@ -80,10 +82,10 @@ function _hi_extent(m, xb, k)
 end
 
 @inline _score(x::T, y::T, μ::T) where T<:Real = (one(T) - μ)*min(x, y) + max(x, y)
-@inline _score(d::BranchOracle{T}, i) where T<:Real
+@inline _score(d::BranchOracle{T}, i::Int) where T<:Real
     _score(d.𝛹n[i]*d.δn[i], d.𝛹p[i]*d.δp[i], d.μ_score)
 end
-function _select_branch_variable!(m, b::BranchOracle{T}) where T <: Real
+function _select_branch_variable!(t::ExtensionType, m::Optimizer) where T <: Real
     j = 1
     s = typemin(T)
     for i = 1: _branch_variable_num(m)
