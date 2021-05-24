@@ -9,6 +9,8 @@
 # Defines storage for a node in the B&B tree & utilities functions
 #############################################################################
 
+@enum(BranchDirection, BD_NONE, BD_NEG, BD_POS)
+
 # Used internally to set & get variables in full problem space or just branch variables
 struct FullVar end
 struct BranchVar end
@@ -25,25 +27,39 @@ struct NodeBB
     lower_variable_bounds::Vector{Float64}
     "Upper bounds of variable box."
     upper_variable_bounds::Vector{Float64}
+    "Is dimension integer valued"
+    integer::Vector{Bool}
+    "Are all dimensions continuous or fixed"
+    continuous::Bool
     "Lower bound of problem solution on nodeBB"
     lower_bound::Float64
     "Upper bound of problem solution on nodeBB"
     upper_bound::Float64
     "Depth of node in B&B tree."
-    depth::Int64
+    depth::Int
     "Unique id for each node."
-    id::Int64
+    id::Int
+    "Whether last branch was negative or positive in direction"
+    branch_direction::BranchDirection
+    "Dimension of last branch"
+    last_branch::Int
+    "Extent of last branch (using for psuedocost calculation)"
+    branch_extent::Float64
 end
 
 # Constructors
-NodeBB() = NodeBB(Float64[], Float64[], -Inf, Inf, 0, 1)
-NodeBB(x::NodeBB) = NodeBB(x.lower_variable_bounds, x.upper_variable_bounds,
-                           x.lower_bound, x.upper_bound, x.depth, x.id)
+NodeBB() = NodeBB(Float64[], Float64[], Bool[], false, -Inf, Inf, 0, 1, BD_NONE, -1, 0.0)
+NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
+                           copy(x.integer), x.continuous,
+                           x.lower_bound, x.upper_bound, x.depth, x.id,
+                           x.branch_direction, x.last_branch, x.branch_extent)
 
 # Copy utilities
 Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
                               copy(x.upper_variable_bounds),
-                              x.lower_bound, x.upper_bound, x.depth, x.id)
+                              copy(x.integer), x.continuous,
+                              x.lower_bound, x.upper_bound, x.depth, x.id,
+                              x.branch_direction, x.last_branch, x.branch_extent)
 
 # using alternative name as to not interfere with ordering...
 function uninitialized(x::NodeBB)
@@ -57,13 +73,15 @@ function uninitialized(x::NodeBB)
 end
 
 # Access functions for broadcasting data easily
-lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
-upper_variable_bounds(x::NodeBB) = x.upper_variable_bounds
-lower_variable_bounds(x::NodeBB, id::Int64, nid::Int64) = x.lower_variable_bounds[id:nid]
-upper_variable_bounds(x::NodeBB, id::Int64, nid::Int64) = x.upper_variable_bounds[id:nid]
-lower_bound(x::NodeBB) = x.lower_bound
-upper_bound(x::NodeBB) = x.upper_bound
-depth(x::NodeBB) = x.depth
+@inline lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
+@inline upper_variable_bounds(x::NodeBB) = x.upper_variable_bounds
+@inline lower_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.lower_variable_bounds[id:nid]
+@inline upper_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.upper_variable_bounds[id:nid]
+@inline integer(x::NodeBB) = x.integer
+@inline integer(x::NodeBB, id::Int) = x.integer[id]
+@inline lower_bound(x::NodeBB) = x.lower_bound
+@inline upper_bound(x::NodeBB) = x.upper_bound
+@inline depth(x::NodeBB) = x.depth
 
 # Iterations Functions
 Base.isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound

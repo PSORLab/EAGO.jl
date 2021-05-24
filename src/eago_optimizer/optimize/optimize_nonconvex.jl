@@ -10,6 +10,8 @@
 # bound routine called by EAGO.
 #############################################################################
 
+include(joinpath(@__DIR__,"nonconvex","branch.jl"))
+
 function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
 
     d.is_post = is_post
@@ -213,88 +215,6 @@ function node_selection!(t::ExtensionType, m::Optimizer)
 
     return nothing
 
-end
-
-"""
-$(SIGNATURES)
-
-Creates two nodes from `current_node` using information available the `x`
-and stores them to the stack. By default, relative width bisection is perfomed
-at a point `branch_pnt` which is a convex combination
-(parameter: `branch_cvx_factor`) of the solution to the relaxation and
-the midpoint of the node. If this solution lies within `branch_offset/width` of
-a bound then the branch point is moved to a distance of `branch_offset/width`
-from the bound.
-"""
-function branch_node!(t::ExtensionType, m::Optimizer)
-
-    n = m._current_node
-
-    lvbs = n.lower_variable_bounds
-    uvbs = n.upper_variable_bounds
-
-    max_pos = 0
-    max_val = -Inf
-    temp_max = 0.0
-
-    flag = true
-    for i = 1:m._branch_variable_count
-        si = m._branch_to_sol_map[i]
-        vi = m._working_problem._variable_info[si]
-        if vi.branch_on === BRANCH
-            temp_max =  uvbs[i] - lvbs[i]
-            temp_max /= vi.upper_bound - vi.lower_bound
-            if temp_max > max_val
-                max_pos = i
-                max_val = temp_max
-            end
-        end
-    end
-
-    lvb  = lvbs[max_pos]
-    uvb  = uvbs[max_pos]
-    si   = m._branch_to_sol_map[max_pos]
-    lsol = m._lower_solution[si]
-
-    cvx_f = m._parameters.branch_cvx_factor
-    cvx_g = m._parameters.branch_offset
-
-    branch_pnt = cvx_f*lsol + (1.0 - cvx_f)*(lvb + uvb)/2.0
-    if branch_pnt < lvb*(1.0 - cvx_g) + cvx_g*uvb
-        branch_pnt = (1.0 - cvx_g)*lvb + cvx_g*uvb
-    elseif branch_pnt > cvx_g*lvb + (1.0 - cvx_g)*uvb
-        branch_pnt = cvx_g*lvb + (1.0 - cvx_g)*uvb
-    end
-
-    # rounds into branch points, which in turn prevents the
-    # solution at the branch point from being discarded
-    N1::Interval{Float64} = Interval{Float64}(lvb, branch_pnt)
-    N2::Interval{Float64} = Interval{Float64}(branch_pnt, uvb)
-    lvb_1 = copy(lvbs)
-    uvb_1 = copy(uvbs)
-    lvb_2 = copy(lvbs)
-    uvb_2 = copy(uvbs)
-    lvb_1[max_pos] = N1.lo
-    uvb_1[max_pos] = N1.hi
-    lvb_2[max_pos] = N2.lo
-    uvb_2[max_pos] = N2.hi
-
-    lower_bound = max(n.lower_bound, m._lower_objective_value)
-    upper_bound = min(n.upper_bound, m._upper_objective_value)
-    new_depth = n.depth + 1
-
-    m._maximum_node_id += 1
-    X1 = NodeBB(lvb_1, uvb_1, lower_bound, upper_bound, new_depth, m._maximum_node_id)
-    m._maximum_node_id += 1
-    X2 = NodeBB(lvb_2, uvb_2, lower_bound, upper_bound, new_depth, m._maximum_node_id)
-
-    push!(m._stack, X1)
-    push!(m._stack, X2)
-
-    m._node_repetitions = 1
-    m._node_count += 2
-
-    return nothing
 end
 
 """
@@ -781,7 +701,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     @show MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     if valid_flag && feasible_flag
-        @show "path 1"
         set_dual!(m)
         m._cut_add_flag = true
         m._lower_feasibility = true
@@ -790,12 +709,10 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
              m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
     elseif valid_flag
-        @show "path 2"
         m._cut_add_flag = false
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
     else
-        @show "path 3"
         fallback_interval_lower_bound!(m, n)
     end
 
