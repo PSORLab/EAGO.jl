@@ -10,17 +10,27 @@
 # EAGOParameters, InputProblem, ParsedProblem, and Optimizer.
 #############################################################################
 
-"""
-$(TYPEDEF)
+@enum(BranchCost, BC_INFEASIBLE, BC_INTERVAL, BC_INTERVAL_REV, BC_INTERVAL_LP, BC_INTERVAL_LP_REV)
 
-An abstract type the subtypes of which are associated with functions method
-overloaded for for new extensions. An instance of the `DefaultExt <:ExtensionType`
-structure to the `Optimizer` in the `ext_type` field.
-"""
-abstract type ExtensionType end
-struct DefaultExt <: ExtensionType end
-MOIU.map_indices(::Function, x::ExtensionType) = x
-MOIU.map_indices(::Function, x::DefaultExt) = x
+Base.@kwdef mutable struct BranchCostStorage{T<:Real}
+    cost::BranchCost         = BC_INTERVAL
+    𝛹n::Vector{T}           = T[]
+    𝛹p::Vector{T}           = T[]
+    δn::Vector{T}            = T[]
+    δp::Vector{T}            = T[]
+    ηn::Vector{T}            = T[]
+    ηp::Vector{T}            = T[]
+    μ1::T                    = 0.1
+    μ2::T                    = 1.3
+    μ3::T                    = 0.8
+    β::T                     = 0.05
+    μ_score::T               = 0.15
+end
+function BranchCostStorage{T}(n::Int) where T <:AbstractFloat
+    BranchCostStorage{T}(𝛹n = ones(T,n),  𝛹p = ones(T,n),
+                         δn = zeros(T,n),  δp = zeros(T,n),
+                         ηn = zeros(T,n),  ηp = zeros(T,n))
+end
 
 @enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
 @enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
@@ -57,18 +67,18 @@ Base.@kwdef mutable struct EAGOParameters
     "Turns on logging of times and feasibility of subproblems (default = false)"
     log_subproblem_info::Bool = false
     "Log data every `log_interval` iterations (default = 1)."
-    log_interval::Int64 = 1
+    log_interval::Int = 1
 
     # Optimizer display options
     "The amount of information that should be printed to console while solving
     values range from 0 - 4: 0 is silent, 1 shows iteration summary statistics
     only, 2-4 show varying degrees of details about calculations within each
     iteration (default = 1)."
-    verbosity::Int64 = 1
+    verbosity::Int = 1
     "Display summary of iteration to console every `output_iterations` (default = 10)"
-    output_iterations::Int64 = 1000
+    output_iterations::Int = 1000
     "Display header for summary to console every `output_iterations` (default = 100)"
-    header_iterations::Int64 = 10000
+    header_iterations::Int = 10000
 
     # Node branching options
     "Convex coefficient used to select branch point. Branch point is given by
@@ -77,22 +87,24 @@ Base.@kwdef mutable struct EAGOParameters
     "Minimum distance from bound to have branch point normalized by width of
     dimension to branch on (default = 0.15)"
     branch_offset::Float64 = 0.15
+    "Indicates that pseudocost branching should be used"
+    branch_pseudocost_on::Bool = false
     "Variables to branch on (default is all nonlinear)."
     branch_variable::Vector{Bool} = Bool[]
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of times repeat node
     processing priorto branching (default = 4)."
-    branch_max_repetitions::Int64 = 4
+    branch_max_repetitions::Int = 4
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Volume ratio tolerance required
     to repeat processing the current node (default = 0.9)"
     branch_repetition_tol::Float64 = 0.9
 
     # Termination limits
     "Maximum number of nodes (default = 1E-7)"
-    node_limit::Int64 = 1*10^7
+    node_limit::Int = 1*10^7
     "Maximum CPU time in seconds (default = 1000)"
     time_limit::Float64 = 1000.0
     "Maximum number of iterations (default 3E6)"
-    iteration_limit::Int64 = 3*10^6
+    iteration_limit::Int = 3*10^6
     "Absolute tolerance for termination (default = 1E-3)"
     absolute_tolerance::Float64 = 1E-3
     "Relative tolerance for termination (default = 1E-3)"
@@ -106,9 +118,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
-    cp_depth::Int64 = 20
+    cp_depth::Int = 20
     "Number of times to repeat forward-reverse pass routine (default = 3)"
-    cp_repetitions::Int64 = 3
+    cp_repetitions::Int = 3
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
     this number (default = 0.99)"
     cp_tolerance::Float64 = 0.99
@@ -117,38 +129,38 @@ Base.@kwdef mutable struct EAGOParameters
 
     # obbt options
     "Depth in B&B tree above which OBBT should be disabled (default = 6)"
-    obbt_depth::Int64 = 4
+    obbt_depth::Int = 4
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
-    obbt_repetitions::Int64 = 20
+    obbt_repetitions::Int = 20
     "Turn aggresive OBBT on (default = false)"
     obbt_aggressive_on::Bool = true
     "Maximum iteration to perform aggresive OBBT (default = 2)"
-    obbt_aggressive_max_iteration::Int64 = 2
+    obbt_aggressive_max_iteration::Int = 2
     "Minimum dimension to perform aggresive OBBT (default = 2)"
-    obbt_aggressive_min_dimension::Int64 = 2
+    obbt_aggressive_min_dimension::Int = 2
     "Tolerance to consider bounds equal (default = 1E-9)"
     obbt_tolerance::Float64 = 1E-9
 
     # Options for linear bound tightening
     "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
-    fbbt_lp_depth::Int64  = 1000
+    fbbt_lp_depth::Int  = 1000
     "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
-    fbbt_lp_repetitions::Int64  = 3
+    fbbt_lp_repetitions::Int  = 3
 
     # Options for quadratic bound tightening
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
-    quad_uni_depth::Int64 = -1
+    quad_uni_depth::Int = -1
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
-    quad_uni_repetitions::Int64 = 2
+    quad_uni_repetitions::Int = 2
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which bivariate
     quadratic FBBT should be disabled (default = -1)"
-    quad_bi_depth::Int64 = -1
+    quad_bi_depth::Int = -1
     "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
-    quad_bi_repetitions::Int64 = 2
+    quad_bi_repetitions::Int = 2
 
     # Duality-based bound tightening (DBBT) options
     "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
-    dbbt_depth::Int64 = 10^10
+    dbbt_depth::Int = 10^10
     "New bound is considered equal to the prior bound if within dbbt_tolerance (default = 1E-9)."
     dbbt_tolerance::Float64 = 1E-8
 
@@ -166,9 +178,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Tolerance to add cuts and max number of cuts
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
-    cut_min_iterations::Int64 = 1
+    cut_min_iterations::Int = 1
     "Maximum number of cuts at each node to attempt"
-    cut_max_iterations::Int64 = 3
+    cut_max_iterations::Int = 3
     "Convex coefficient used to select point for new added cuts. Branch point is
     given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
     cut_cvx::Float64 = 0.9
@@ -189,7 +201,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
-    upper_bounding_depth::Int64 = 8
+    upper_bounding_depth::Int = 8
 
     # handling for domain violations
     "Amount about a domain violation to ignore when propagating bounds."
@@ -207,8 +219,8 @@ The constraints generally aren't used for relaxations.
 Base.@kwdef mutable struct InputProblem
 
     # variables (set by MOI.add_variable in variables.jl)
-    _variable_info::Vector{VariableInfo} = VariableInfo[]
-    _variable_count::Int64 = 0
+    _variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
+    _variable_count::Int = 0
 
     # last constraint index added
     _last_constraint_index::Int = 0
@@ -341,7 +353,7 @@ Base.@kwdef mutable struct ParsedProblem
     _relaxed_evaluator = Evaluator()
 
     # variables (set in initial_parse)
-    _variable_info::Vector{VariableInfo} = VariableInfo[]
+    _variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
     _variable_count::Int = 0
 
     # count of single variable constraint types (set in load_relaxed_problem!)
@@ -536,14 +548,14 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _min_converged_value::Float64 = Inf
     _global_lower_bound::Float64 = -Inf
     _global_upper_bound::Float64 = Inf
-    _maximum_node_id::Int64 = 0
-    _iteration_count::Int64 = 0
-    _node_count::Int64 = 0
+    _maximum_node_id::Int = 0
+    _iteration_count::Int = 0
+    _node_count::Int = 0
 
     # Storage for output, reset in initial_parse! in parse.jl
     _solution_value::Float64 = 0.0
     _feasible_solution_found::Bool = false
-    _first_solution_node::Int64 = -1
+    _first_solution_node::Int = -1
     _objective_value::Float64 = -Inf
     _best_upper_value::Float64 = Inf
 
@@ -570,12 +582,12 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _cp_improvement::Float64 = 0.0
     _cp_evaluation_reverse::Bool = false
 
-    _cut_iterations::Int64 = 0
+    _cut_iterations::Int = 0
     _cut_add_flag::Bool = false
 
     # Options for Repetition (If DBBT Performed Well)
     # set in within preprocess in optimize_nonconvex.jl
-    _node_repetitions::Int64 = 0
+    _node_repetitions::Int = 0
     _initial_volume::Float64 = 0.0
     _final_volume::Float64 = 0.0
 
@@ -617,6 +629,10 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     #"Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
     _nonlinear_evaluator_created::Bool = false
 
+    _branch_cost::BranchCostStorage{Float64} = BranchCostStorage{Float64}()
+    _branch_variable_sparsity::SparseMatrixCSC{Bool,Int} = spzeros(Bool,1,1)
+    _constraint_infeasiblity::Vector{Float64} = Float64[]
+
     #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
@@ -629,7 +645,7 @@ end
 
 const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
                                          :enable_optimize_hook, :ext, :ext_type, :_parameters]
-const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem]
+const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem, :_branch_cost]
 const EAGO_MODEL_NOT_STRUCT_ATTRIBUTES = setdiff(fieldnames(Optimizer), union(EAGO_OPTIMIZER_ATTRIBUTES,
                                                                               EAGO_MODEL_STRUCT_ATTRIBUTES))
 
@@ -855,3 +871,21 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSens
     m._input_problem._optimization_sense = sense
     return nothing
 end
+
+@inline _branch_variable_num(m::Optimizer) = m_branch_variable_count
+@inline _branch_cost(m::Optimizer) = m._branch_cost.cost
+@inline _cost_offset_β(m::Optimizer) = m._branch_cost.β
+@inline _branch_cvx_α(m::Optimizer) =  m._parameters.branch_cvx_factor
+@inline _branch_offset_β(m::Optimizer) = m._parameters.branch_offset
+@inline _branch_pseudocost_on(m::Optimizer) = m._parameters.branch_pseudocost_on
+
+@inline _bv(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
+
+@inline _is_integer(::BranchVar, m::Optimizer, i::Int) = is_integer(m.current_node, i)
+@inline _lower_bound(::BranchVar, m::Optimizer, i::Int) = lower_variable_bounds(m.current_node, i)
+@inline _upper_bound(::BranchVar, m::Optimizer, i::Int) = upper_variable_bounds(m.current_node, i)
+@inline _mid(::BranchVar, m::Optimizer, i::Int) = mid(m.current_node, i)
+@inline _diam(::BranchVar, m::Optimizer, i::Int) = diam(m.current_node, i)
+
+@inline _lower_solution(::BranchVar, m::Optimizer, i::Int) = m.lower_solution[_bv(m, i)]
+@inline _sparsity(::BranchVar, m::Optimizer, i::Int) = view(m._branch_variable_sparsity,1,:)

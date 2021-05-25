@@ -27,3 +27,7 @@ function unsafe_check_fill!(f, y::Vector{T}, x::T, n::Int) where T
     end
     nothing
 end
+
+_rf_findmax((fm, m), (fx, x)) = isless(fm, fx) ? (fx, x) : (fm, m)
+map_findmax(f, itr) = mapfoldl(((k, v),) -> (f(v), k), _rf_findmax, pairs(itr))
+map_argmax(f, itr) = map_findmax(f, itr)[2]

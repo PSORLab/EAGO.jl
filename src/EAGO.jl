@@ -89,13 +89,14 @@ module EAGO
     export register_eago_operators!
 
     # map/reduce nonallocating no bounds checking map-reduce like utilities
-    include("eago_optimizer/unsafe_utilities.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "utilities.jl"))
 
     # creates a context that removes domain violations when constructing bounds
     include("eago_optimizer/guarded_context.jl")
 
-    # defines structure used to store node in stack
-    include("eago_optimizer/node_bb.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "types", "variable_info.jl"))
+    include(joinpath(@__DIR__, "eago_optimizer", "types", "node_bb.jl"))
+    include(joinpath(@__DIR__, "eago_optimizer", "types", "extension.jl"))
 
     # load internal storage functions
     include("eago_optimizer/functions/functions.jl")
@@ -108,11 +109,8 @@ module EAGO
     # defines the optimizer structures
     include("eago_optimizer/optimizer.jl")
 
-    # defines routines to add variables and single variable constraints
-    include("eago_optimizer/variables.jl")
-
-    # defines routines to add saf, sqf, and nlp block constraints
-    include("eago_optimizer/moi_constraints.jl")
+    # defines routines to add variable, saf, sqf, and nlp block constraints
+    include(joinpath(@__DIR__, "eago_optimizer", "moi_constraints.jl"))
 
     # functions which print information to console
     include("eago_optimizer/display.jl")

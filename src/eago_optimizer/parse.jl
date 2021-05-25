@@ -454,7 +454,7 @@ Classifies the problem type
 function parse_classify_problem!(m::Optimizer)
 
     ip = m._input_problem
-    integer_variable_number = count(is_integer.(ip._variable_info))
+    integer_variable_number = count(_is_integer.(ip._variable_info))
 
     nl_expr_number = ip._objective_type === NONLINEAR ? 1 : 0
     nl_expr_number += ip._nonlinear_count

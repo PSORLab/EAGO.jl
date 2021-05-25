@@ -1,29 +1,7 @@
-@enum(BranchCost, BC_INFEASIBLE, BC_INTERVAL, BC_INTERVAL_REV, BC_INTERVAL_LP, BC_INTERVAL_LP_REV)
-
-Base.@kwdef mutable struct BranchOracle{T<:Real}
-    strategy::BranchCost = BW_INTERVAL_LP
-    𝛹n::Vector{T}            = T[]
-    𝛹p::Vector{T}            = T[]
-    δn::Vector{T}            = T[]
-    δp::Vector{T}            = T[]
-    ηn::Vector{T}            = T[]
-    ηp::Vector{T}            = T[]
-    μ1::T                    = 0.1
-    μ2::T                    = 1.3
-    μ3::T                    = 0.8
-    β::T                     = 0.05
-    μ_score::T               = 0.15
-end
-function BranchOracle{T}(n::Int) where T <:AbstractFloat
-    BranchOracle{T}(𝛹n = ones(T,n),  𝛹p = ones(T,n),
-                    δn = zeros(T,n),  δp = zeros(T,n),
-                    ηn = zeros(T,n),  ηp = zeros(T,n))
-end
-
-function _variable_infeasibility(m::Optimizer, i) where T<:Real
-    tsum = zero(T); tmin = typemax(T); tmax = typemin(T)
-    d = m._branch_oracle
-    for j in _sparsity(m, i)
+function _variable_infeasibility(m::Optimizer, i::Int)
+    tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)
+    d = m._branch_cost
+    for j in _sparsity(BranchVar(), m, i)
         v = m._constraint_infeasiblity[j]
         tsum += v
         (v > tmax) && (tmax = v)
@@ -34,7 +12,7 @@ end
 
 function _store_pseudocosts!(m::Optimizer, n::NodeBB)
     k = n.last_branch
-    d = m._branch_oracle
+    d = m._branch_cost
     Δunit = (n.lower_bound - m._lower_objective_value)
     if n.branch_direction == BD_POS
         d.ηp[k] += 1
@@ -48,30 +26,31 @@ function _store_pseudocosts!(m::Optimizer, n::NodeBB)
     return
 end
 
-function _lo_extent(m, xb, k)
+function _lo_extent(m::Optimizer, xb::Float64, k::Int)
     !isfinite(l) && return _variable_infeasibility(m, k)
 
-    c _branch_cost(m)
+    c = _branch_cost(m)
     (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
 
-    l = _lower_bound(BranchVar, m, k)
-    u = _upper_bound(BranchVar, m, k)
+    l = _lower_bound(BranchVar(), m, k)
+    u = _upper_bound(BranchVar(), m, k)
     (c == BC_INTERVAL)     && return xb - l
     (c == BC_INTERVAL_REV) && return u - xb
 
-    xlp = _lower_solution(BranchVar, m, k)
+    xlp = _lower_solution(BranchVar(), m, k)
     ρ = _cost_offset_β(m)*(u - l)
     y = max(min(xlp, u - ρ), l + ρ)
     return (c == BC_INTERVAL_LP) ? (y - l) : (u - y)
 end
-function _hi_extent(m, xb, k)
+
+function _hi_extent(m::Optimizer, xb::Float64, k::Int)
     !isfinite(u) && return _variable_infeasibility(m, k)
 
-    c _branch_cost(m)
+    c = _branch_cost(m)
     (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
 
-    l = _lower_bound(BranchVar, m, k)
-    u = _upper_bound(BranchVar, m, k)
+    l = _lower_bound(BranchVar(), m, k)
+    u = _upper_bound(BranchVar(), m, k)
     (c == BC_INTERVAL)     && return u - xb
     (c == BC_INTERVAL_REV) && return xb - l
 
@@ -82,49 +61,60 @@ function _hi_extent(m, xb, k)
 end
 
 @inline _score(x::T, y::T, μ::T) where T<:Real = (one(T) - μ)*min(x, y) + max(x, y)
-@inline _score(d::BranchOracle{T}, i::Int) where T<:Real
+@inline function _score(d::BranchCostStorage{T}, i::Int) where T<:Real
     _score(d.𝛹n[i]*d.δn[i], d.𝛹p[i]*d.δp[i], d.μ_score)
 end
-function _select_branch_variable!(t::ExtensionType, m::Optimizer) where T <: Real
-    j = 1
-    s = typemin(T)
-    for i = 1: _branch_variable_num(m)
-        v = _score(m._branch_oracle, i)
-        if v > s
-            v = s
-            j = i
-        end
-    end
-    return j
-end
-function _select_branch_variable!(t::ExtensionType, m::Optimizer) where T<:Real
-    _select_branch_variable!(m, m.branch_oracle)
+
+function _select_branch_variable_cost(m::Optimizer)
+    return map_argmax(i -> score(m.branch_cost, i), 1:_branch_variable_num(m))
 end
 
-function _select_branch_point(m::Optimizer, i)
-    l = _lower_bound(BranchVar, m, i)
-    u = _upper_bound(BranchVar, m, i)
-    s = _lower_solution(BranchVar, m, i)
-    α = _branch_cvx_α(m)
-    b = _branch_offset_β(m)*(u - l)
-    return max(l + b, min(u - b, α*s + (one(T) - α)*_mid(BranchVar, m, i)))
+function _select_branch_variable_width(m::Optimizer)
+    function branch_goal(x)
+        v = m._working_problem._variable_info[_bv(m,x)]
+        return (v.branch_on === BRANCH) ? _diam(BranchVar(),m,x)/diam(v) : -Inf
+    end
+    return map_argmax(branch_goal, 1:_branch_variable_num(m))
 end
 
 """
 $(SIGNATURES)
 
-Creates two nodes from `current_node` using information available the `x`
-and stores them to the stack. By default, relative width bisection is perfomed
-at a point `branch_pnt` which is a convex combination
-(parameter: `branch_cvx_factor`) of the solution to the relaxation and
-the midpoint of the node. If this solution lies within `branch_offset/width` of
-a bound then the branch point is moved to a distance of `branch_offset/width`
-from the bound.
+Selects the variable to branch on psuedocost branching is used if
+(parameter: `branch_pseudocost_on` = true).
+"""
+function select_branch_variable(t::ExtensionType, m::Optimizer)
+    _branch_pseudocost_on(m) && return _select_branch_variable_cost(m)
+    return _select_branch_variable_width(m)
+end
+
+"""
+$(SIGNATURES)
+
+Selects a point `xb` which is a convex combination (parameter:
+`branch_cvx_factor`) of the solution to the relaxation and the midpoint of the
+node. If this solution lies within (parameter: `branch_offset`) of a bound then
+the branch point is moved to a distance of `branch_offset` from the bound.
+"""
+function select_branch_point(t::ExtensionType, m::Optimizer, i)
+    l = _lower_bound(BranchVar(), m, i)
+    u = _upper_bound(BranchVar(), m, i)
+    s = _lower_solution(BranchVar(), m, i)
+    α = _branch_cvx_α(m)
+    b = _branch_offset_β(m)*(u - l)
+    return max(l + b, min(u - b, α*s + (one(T) - α)*_mid(BranchVar(), m, i)))
+end
+
+"""
+$(SIGNATURES)
+
+Creates two nodes from `current_node` and stores them to the stack. Calls
+`select_branch_variable(t, m)` and `select_branch_point(t, m, k)`.
 """
 function branch_node!(t::ExtensionType, m::Optimizer)
 
-    k = _select_branch_variable(t, m)
-    x = _select_branch_point!(t, m, k)
+    k = select_branch_variable(t, m)
+    x = select_branch_point(t, m, k)
     n = _current_node(m)
 
     isfinite(n.last_branch) && _store_pseudocosts!(m, n)

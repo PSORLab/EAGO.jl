@@ -28,7 +28,7 @@ struct NodeBB
     "Upper bounds of variable box."
     upper_variable_bounds::Vector{Float64}
     "Is dimension integer valued"
-    integer::Vector{Bool}
+    is_integer::Vector{Bool}
     "Are all dimensions continuous or fixed"
     continuous::Bool
     "Lower bound of problem solution on nodeBB"
@@ -75,10 +75,12 @@ end
 # Access functions for broadcasting data easily
 @inline lower_variable_bounds(x::NodeBB) = x.lower_variable_bounds
 @inline upper_variable_bounds(x::NodeBB) = x.upper_variable_bounds
+@inline lower_variable_bounds(x::NodeBB, i::Int) = x.lower_variable_bounds[i]
+@inline upper_variable_bounds(x::NodeBB, i::Int) = x.upper_variable_bounds[i]
 @inline lower_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.lower_variable_bounds[id:nid]
 @inline upper_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.upper_variable_bounds[id:nid]
-@inline integer(x::NodeBB) = x.integer
-@inline integer(x::NodeBB, id::Int) = x.integer[id]
+@inline is_integer(x::NodeBB) = x.integer
+@inline is_integer(x::NodeBB, id::Int) = x.integer[id]
 @inline lower_bound(x::NodeBB) = x.lower_bound
 @inline upper_bound(x::NodeBB) = x.upper_bound
 @inline depth(x::NodeBB) = x.depth
@@ -111,5 +113,6 @@ function same_box(x::NodeBB, y::NodeBB, r::Float64)
 end
 
 # Compute middle & diameter
-diam(x::NodeBB) = x.upper_variable_bounds - x.lower_variable_bounds
-mid(x::NodeBB) = 0.5*(x.upper_variable_bounds + x.lower_variable_bounds)
+@inline diam(x::NodeBB) = x.upper_variable_bounds - x.lower_variable_bounds
+@inline mid(x::NodeBB) = 0.5*(upper_variable_bounds(x) + lower_variable_bounds(x))
+@inline mid(x::NodeBB, i::Int) = 0.5*(upper_variable_bounds(x,i) + lower_variable_bounds(x,i))

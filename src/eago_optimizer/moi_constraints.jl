@@ -9,6 +9,31 @@
 # Defines constraints supported Optimizer and how to store them.
 #############################################################################
 
+##### Access variable information from MOI variable index
+has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_upper_bound
+has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_lower_bound
+is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].is_fixed
+is_integer(m::Optimizer, i::Int64) = is_integer(m._input_problem._variable_info[i])
+
+##### Add unconstrained variables
+function MOI.add_variable(m::Optimizer)
+    m._input_problem._variable_count += 1
+    push!(m._input_problem._variable_info, VariableInfo())
+    return VI(m._input_problem._variable_count)
+end
+MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
+
+##### Supports function and add_constraint for single variable functions
+const INEQ_SETS = Union{LT, GT, ET}
+MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: INEQ_SETS} = true
+
+function MOI.add_constraint(m::Optimizer, v::SV, s::T) where T <: INEQ_SETS
+    v = v.variable
+    check_inbounds!(m, v)
+    vi = m._input_problem._variable_info[v.value]
+    m._input_problem._variable_info[v.value] = VariableInfo(vi, s)
+    return CI{SV, T}(v.value)
+end
 
 ##### Supports function and add_constraint for scalar affine functions
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{S}) where {S <: INEQ_SETS} = true
