@@ -685,46 +685,6 @@ end
 
 #####
 #####
-##### Utilities for checking that JuMP model contains variables used in expression
-#####
-#####
-
-function check_inbounds!(m::Optimizer, vi::VI)
-    if !(1 <= vi.value <= m._input_problem._variable_count)
-        error("Invalid variable index $vi. ($(m._input_problem._variable_count) variables in the model.)")
-    end
-    return nothing
-end
-
-check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
-
-function check_inbounds!(m::Optimizer, aff::SAF)
-    for term in aff.terms
-        check_inbounds!(m, term.variable_index)
-    end
-    return nothing
-end
-
-function check_inbounds!(m::Optimizer, quad::SQF)
-    for term in quad.affine_terms
-        check_inbounds!(m, term.variable_index)
-    end
-    for term in quad.quadratic_terms
-        check_inbounds!(m, term.variable_index_1)
-        check_inbounds!(m, term.variable_index_2)
-    end
-    return nothing
-end
-
-function check_inbounds!(m::Optimizer, vov::VECOFVAR)
-    for vi in vov.variables
-        check_inbounds!(m, vi)
-    end
-    return
-end
-
-#####
-#####
 ##### Set & get attributes of model
 #####
 #####
@@ -872,20 +832,30 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSens
     return nothing
 end
 
-@inline _branch_variable_num(m::Optimizer) = m_branch_variable_count
 @inline _branch_cost(m::Optimizer) = m._branch_cost.cost
 @inline _cost_offset_β(m::Optimizer) = m._branch_cost.β
 @inline _branch_cvx_α(m::Optimizer) =  m._parameters.branch_cvx_factor
 @inline _branch_offset_β(m::Optimizer) = m._parameters.branch_offset
 @inline _branch_pseudocost_on(m::Optimizer) = m._parameters.branch_pseudocost_on
 
-@inline _bv(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
+@inline _bvi(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
+@inline _variable_info(m::Optimizer, i::Int) = m._input_problem._variable_info[i]
+@inline _working_variable_info(m::Optimizer, i::Int) = m._working_problem._variable_info[i]
 
+@inline _variable_num(::BranchVar, m::Optimizer) = m._branch_variable_count
 @inline _is_integer(::BranchVar, m::Optimizer, i::Int) = is_integer(m.current_node, i)
 @inline _lower_bound(::BranchVar, m::Optimizer, i::Int) = lower_variable_bounds(m.current_node, i)
 @inline _upper_bound(::BranchVar, m::Optimizer, i::Int) = upper_variable_bounds(m.current_node, i)
 @inline _mid(::BranchVar, m::Optimizer, i::Int) = mid(m.current_node, i)
 @inline _diam(::BranchVar, m::Optimizer, i::Int) = diam(m.current_node, i)
 
-@inline _lower_solution(::BranchVar, m::Optimizer, i::Int) = m.lower_solution[_bv(m, i)]
+@inline _lower_solution(::BranchVar, m::Optimizer, i::Int) = m.lower_solution[_bvi(m, i)]
 @inline _sparsity(::BranchVar, m::Optimizer, i::Int) = view(m._branch_variable_sparsity,1,:)
+
+@inline _variable_num(::FullVar, m::Optimizer) = m._input_problem._variable_count
+@inline _is_integer(::FullVar, m::Optimizer, i::Int)  = is_integer(_variable_info(m,i))
+@inline _lower_bound(::FullVar, m::Optimizer, i::Int) = lower_bound(_variable_info(m,i))
+@inline _upper_bound(::FullVar, m::Optimizer, i::Int) = upper_bound(_variable_info(m,i))
+@inline _mid(::FullVar, m::Optimizer, i::Int)  = mid(_variable_info(m,i))
+@inline _diam(::FullVar, m::Optimizer, i::Int) = diam(_variable_info(m,i))
+@inline _lower_solution(::FullVar, m::Optimizer, i::Int) = m.lower_solution[i]

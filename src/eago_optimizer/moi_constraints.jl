@@ -6,8 +6,43 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/constraints.jl
-# Defines constraints supported Optimizer and how to store them.
+# Defines constraints supported by optimizer and how to store them.
 #############################################################################
+
+##### Utilities for checking that JuMP model contains variables used in expression
+function check_inbounds!(m::Optimizer, vi::VI)
+    if !(1 <= vi.value <= m._input_problem._variable_count)
+        error("Invalid variable index $vi. ($(m._input_problem._variable_count) variables in the model.)")
+    end
+    return
+end
+
+check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
+
+function check_inbounds!(m::Optimizer, aff::SAF)
+    for term in aff.terms
+        check_inbounds!(m, term.variable_index)
+    end
+    return
+end
+
+function check_inbounds!(m::Optimizer, quad::SQF)
+    for term in quad.affine_terms
+        check_inbounds!(m, term.variable_index)
+    end
+    for term in quad.quadratic_terms
+        check_inbounds!(m, term.variable_index_1)
+        check_inbounds!(m, term.variable_index_2)
+    end
+    return
+end
+
+function check_inbounds!(m::Optimizer, vov::VECOFVAR)
+    for vi in vov.variables
+        check_inbounds!(m, vi)
+    end
+    return
+end
 
 ##### Access variable information from MOI variable index
 has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_upper_bound
@@ -18,7 +53,7 @@ is_integer(m::Optimizer, i::Int64) = is_integer(m._input_problem._variable_info[
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
     m._input_problem._variable_count += 1
-    push!(m._input_problem._variable_info, VariableInfo())
+    push!(m._input_problem._variable_info, VariableInfo{Float64}())
     return VI(m._input_problem._variable_count)
 end
 MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
