@@ -83,8 +83,8 @@ end
 @inline upper_variable_bounds(x::NodeBB, i::Int) = x.upper_variable_bounds[i]
 @inline lower_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.lower_variable_bounds[id:nid]
 @inline upper_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.upper_variable_bounds[id:nid]
-@inline is_integer(x::NodeBB) = x.integer
-@inline is_integer(x::NodeBB, id::Int) = x.integer[id]
+@inline is_integer(x::NodeBB) = x.is_integer
+@inline is_integer(x::NodeBB, id::Int) = x.is_integer[id]
 @inline lower_bound(x::NodeBB) = x.lower_bound
 @inline upper_bound(x::NodeBB) = x.upper_bound
 @inline depth(x::NodeBB) = x.depth
@@ -117,6 +117,8 @@ function same_box(x::NodeBB, y::NodeBB, r::Float64)
 end
 
 # Compute middle & diameter
-@inline diam(x::NodeBB) = x.upper_variable_bounds - x.lower_variable_bounds
+@inline diam(x::NodeBB) = upper_variable_bounds(x) - lower_variable_bounds(x)
+@inline diam(x::NodeBB, i::Int) = upper_variable_bounds(x,i) - lower_variable_bounds(x,i)
+
 @inline mid(x::NodeBB) = 0.5*(upper_variable_bounds(x) + lower_variable_bounds(x))
 @inline mid(x::NodeBB, i::Int) = 0.5*(upper_variable_bounds(x,i) + lower_variable_bounds(x,i))

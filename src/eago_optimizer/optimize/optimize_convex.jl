@@ -88,7 +88,7 @@ function solve_local_nlp!(m::Optimizer)
             is_fixed(vinfo)        && MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
             is_less_than(vinfo)    && MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
             is_greater_than(vinfo) && MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-            if is_real_interval(vinfo.is_fixed)
+            if is_real_interval(vinfo)
                 MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
                 MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
             end

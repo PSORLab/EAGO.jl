@@ -24,22 +24,19 @@ end
 function _store_pseudocosts!(m::Optimizer, n::NodeBB)
     k = n.last_branch
     d = m._branch_cost
-    Δunit = (n.lower_bound - m._lower_objective_value)
     if n.branch_direction == BD_POS
         d.ηp[k] += 1
-        d.𝛹p[k] = Δunit
+        d.𝛹p[k] = n.lower_bound - m._lower_objective_value
         d.δp[k] = n.branch_extent
     elseif n.branch_direction == BD_NEG
         d.ηn[k] += 1
-        d.𝛹n[k] = Δunit
+        d.𝛹n[k] = n.lower_bound - m._lower_objective_value
         d.δn[k] = n.branch_extent
     end
     return
 end
 
 function _lo_extent(m::Optimizer, xb::Float64, k::Int)
-    !isfinite(l) && return _variable_infeasibility(m, k)
-
     c = _branch_cost(m)
     (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
 
@@ -55,8 +52,6 @@ function _lo_extent(m::Optimizer, xb::Float64, k::Int)
 end
 
 function _hi_extent(m::Optimizer, xb::Float64, k::Int)
-    !isfinite(u) && return _variable_infeasibility(m, k)
-
     c = _branch_cost(m)
     (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
 
@@ -65,7 +60,7 @@ function _hi_extent(m::Optimizer, xb::Float64, k::Int)
     (c == BC_INTERVAL)     && return u - xb
     (c == BC_INTERVAL_REV) && return xb - l
 
-    xlp = _lower_solution(BranchVar, m, k)
+    xlp = _lower_solution(BranchVar(), m, k)
     ρ = _cost_offset_β(m)*(u - l)
     y = max(min(xlp, u - ρ), l + ρ)
     return (c == BC_INTERVAL_LP) ? (u - y) : (y - l)
@@ -77,15 +72,12 @@ end
 end
 
 function _select_branch_variable_cost(m::Optimizer)
-    return map_argmax(i -> score(m.branch_cost, i), 1:_branch_variable_num(m))
+    return map_argmax(i -> score(m.branch_cost, i), 1:_variable_num(BranchVar(),m))
 end
 
+rel_diam(m::Optimizer, i::Int) = _diam(BranchVar(),m,i)/_diam(FullVar(),m,_bvi(m, i))
 function _select_branch_variable_width(m::Optimizer)
-    function branch_goal(x)
-        v = m._working_problem._variable_info[_bv(m,x)]
-        return (v.branch_on === BRANCH) ? _diam(BranchVar(),m,x)/diam(v) : -Inf
-    end
-    return map_argmax(branch_goal, 1:_branch_variable_num(m))
+    map_argmax(i -> rel_diam(m,i), 1:_variable_num(BranchVar(), m))
 end
 
 """
@@ -113,7 +105,7 @@ function select_branch_point(t::ExtensionType, m::Optimizer, i)
     s = _lower_solution(BranchVar(), m, i)
     α = _branch_cvx_α(m)
     b = _branch_offset_β(m)*(u - l)
-    return max(l + b, min(u - b, α*s + (one(T) - α)*_mid(BranchVar(), m, i)))
+    return max(l + b, min(u - b, α*s + (one(Float64) - α)*_mid(BranchVar(), m, i)))
 end
 
 """
@@ -126,33 +118,36 @@ function branch_node!(t::ExtensionType, m::Optimizer)
 
     k = select_branch_variable(t, m)
     x = select_branch_point(t, m, k)
-    n = _current_node(m)
+    n = m._current_node
 
     isfinite(n.last_branch) && _store_pseudocosts!(m, n)
 
-    n.lower_bound = max(n.lower_bound, m._lower_objective_value)
-    n.upper_bound = min(n.upper_bound, m._upper_objective_value)
-    n.last_branch = k
-    n.depth += 1
+    l_bound = max(n.lower_bound, m._lower_objective_value)
+    u_bound = min(n.upper_bound, m._upper_objective_value)
 
-    l = NodeBB(n);  l.id += 1;  l.branch_direction = BD_NEG
-    u = NodeBB(n);  u.id += 2;  u.branch_direction = BD_POS
+    l_lbd = copy(n.lower_variable_bounds);  u_lbd = copy(n.lower_variable_bounds)
+    l_ubd = copy(n.upper_variable_bounds);  u_ubd = copy(n.upper_variable_bounds)
+    l_int = copy(n.is_integer);             u_int = copy(n.is_integer)
 
-    is_integer_flag = _is_integer(BranchVar, m, k)
-    if is_integer_flag
-        l.is_integer[k] = floor(x) != l.lower_variable_bound[k]
-        l.continuous = !any(l.is_integer)
-        u.is_integer[k] = ceil(x) != u.upper_variable_bound[k]
-        u.continuous = !any(u.is_integer)
+    flag = _is_integer(BranchVar(), m, k)
+    if flag
+        l_int[k] = floor(x) != n.lower_variable_bound[k]
+        u_int[k] = ceil(x)  != n.upper_variable_bound[k]
     end
-    lx = is_integer_flag ? floor(x) : x
-    ux = is_integer_flag ? ceil(x)  : x
-    l.upper_variable_bound[k] = lx
-    u.lower_variable_bound[k] = ux
-    l.branch_extent = _lo_extent(m, lx, k)
-    u.branch_extent = _hi_extent(m, ux, k)
+    l_cont = flag ? !any(l_int) : true
+    u_cont = flag ? !any(u_int) : true
+    lx = flag ? floor(x) : x
+    ux = flag ? ceil(x)  : x
+    l_ubd[k] = lx
+    u_lbd[k] = ux
 
-    push!(m._stack, l, u)
+    psuedo_cost_flag = _branch_pseudocost_on(m)
+    l_ext = psuedo_cost_flag ? _lo_extent(m, lx, k) : zero(Float64)
+    u_ext = psuedo_cost_flag ? _hi_extent(m, ux, k) : zero(Float64)
+    push!(m._stack, NodeBB(l_lbd, l_ubd, l_int, l_cont, l_bound, u_bound,
+                           n.depth + 1, n.id + 1, BD_NEG, k, l_ext))
+    push!(m._stack, NodeBB(u_lbd, u_ubd, u_int, u_cont, l_bound, u_bound,
+                           n.depth + 1, n.id + 2, BD_POS, k, u_ext))
     m._node_repetitions = 1
     m._maximum_node_id += 2
     m._node_count += 2
@@ -188,7 +183,6 @@ function node_selection!(t::ExtensionType, m::Optimizer)
     return
 end
 node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
-
 
 """
 $(TYPEDSIGNATURES)
