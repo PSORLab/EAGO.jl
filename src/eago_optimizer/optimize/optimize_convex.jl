@@ -78,72 +78,22 @@ function solve_local_nlp!(m::Optimizer)
         @inbounds upper_variables[i] = MOI.add_variable(upper_optimizer)
     end
 
-    n = m._current_node
-    sol_to_branch_map = m._sol_to_branch_map
-    lower_variable_bounds = n.lower_variable_bounds
-    upper_variable_bounds = n.upper_variable_bounds
-    variable_info = m._input_problem._variable_info
-
-    lvb = 0.0
-    uvb = 0.0
-    x0 = 0.0
-
-    for i = 1:m._input_problem._variable_count
-        vinfo = @inbounds variable_info[i]
-        single_variable = MOI.SingleVariable(@inbounds upper_variables[i])
-
-        if vinfo.branch_on === BRANCH
-            if vinfo.is_integer
-            else
-                indx = @inbounds sol_to_branch_map[i]
-                lvb  = @inbounds lower_variable_bounds[indx]
-                uvb  = @inbounds upper_variable_bounds[indx]
-                if vinfo.is_fixed
-                    MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
-
-                elseif vinfo.has_lower_bound
-                    if vinfo.has_upper_bound
-                        MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    else
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    end
-                elseif vinfo.has_upper_bound
-                    MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-
-                end
+    for i = 1:_variable_num(FullVar(), m)
+        upper_variable_index = @inbounds upper_variables[i]
+        single_variable = MOI.SingleVariable(upper_variable_index)
+        if !_is_integer(FullVar(), m, i)
+            vinfo = _variable_info(m,i)
+            lvb  = _lower_bound(FullVar(), m, i)
+            uvb  = _upper_bound(FullVar(), m, i)
+            is_fixed(vinfo)        && MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
+            is_less_than(vinfo)    && MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+            is_greater_than(vinfo) && MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
+            if is_real_interval(vinfo.is_fixed)
+                MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
+                MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
             end
             x0 = 0.5*(lvb + uvb)
-            upper_variable_index = @inbounds upper_variables[i]
             MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
-
-        else
-            # not branch variable
-            if vinfo.is_integer
-            else
-                lvb  = vinfo.lower_bound
-                uvb  = vinfo.upper_bound
-                if vinfo.is_fixed
-                    MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
-
-                elseif vinfo.has_lower_bound
-                    if vinfo.has_upper_bound
-                        MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    else
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    end
-                elseif vinfo.has_upper_bound
-                    MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                end
-                x0 = 0.5*(lvb + uvb)
-                upper_variable_index = @inbounds upper_variables[i]
-                MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
-            end
         end
     end
 
@@ -189,14 +139,12 @@ function solve_local_nlp!(m::Optimizer)
         stored_adjusted_upper_bound!(m, value)
         m._best_upper_value = min(value, m._best_upper_value)
         m._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_variables)
-
     else
         m._upper_feasibility = false
         m._upper_objective_value = Inf
-
     end
 
-    return nothing
+    return
 end
 
 function optimize!(::Val{DIFF_CVX}, m::Optimizer)

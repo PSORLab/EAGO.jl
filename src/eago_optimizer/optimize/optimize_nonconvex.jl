@@ -10,7 +10,7 @@
 # bound routine called by EAGO.
 #############################################################################
 
-include(joinpath(@__DIR__,"nonconvex","branch.jl"))
+include(joinpath(@__DIR__,"nonconvex","stack_management.jl"))
 
 function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
 
@@ -39,37 +39,6 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Creates an initial node with initial box constraints and adds it to the stack.
-"""
-function create_initial_node!(m::Optimizer)
-
-    branch_variable_count = m._branch_variable_count
-
-    variable_info = m._working_problem._variable_info
-    lower_bound = zeros(Float64, branch_variable_count)
-    upper_bound = zeros(Float64, branch_variable_count)
-    branch_count = 1
-
-    for i = 1:m._working_problem._variable_count
-        vi = variable_info[i]
-        if vi.branch_on === BRANCH
-            lower_bound[branch_count] = vi.lower_bound
-            upper_bound[branch_count] = vi.upper_bound
-            branch_count += 1
-        end
-    end
-
-    n = NodeBB(lower_bound, upper_bound, -Inf, Inf, 1, 1)
-    push!(m._stack, n)
-    m._node_count = 1
-    m._maximum_node_id += 1
-
-    return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-
 Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
 """
@@ -91,7 +60,6 @@ function load_relaxed_problem!(m::Optimizer)
         vinfo =  wp._variable_info[i]
 
         is_branch_variable =  m._branch_variables[i]
-        vinfo.branch_on = is_branch_variable ? BRANCH : NO_BRANCH
         is_branch_variable && (branch_variable_count += 1)
 
         if vinfo.is_integer
@@ -149,7 +117,7 @@ end
 function presolve_global!(t::ExtensionType, m::Optimizer)
 
     load_relaxed_problem!(m)
-    create_initial_node!(m)
+    initialize_stack!(m)
 
     branch_variable_count = m._branch_variable_count
 
@@ -199,37 +167,6 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     wp._relaxed_evaluator.reverse_subgrad_tighten =  m._parameters.reverse_subgrad_tighten
 
     m._presolve_time = time() - m._parse_time
-
-    return nothing
-end
-
-"""
-$(SIGNATURES)
-
-Selects node with the lowest lower bound in stack.
-"""
-function node_selection!(t::ExtensionType, m::Optimizer)
-
-    m._node_count -= 1
-    m._current_node = popmin!(m._stack)
-
-    return nothing
-
-end
-
-"""
-$(SIGNATURES)
-
-Stores the current node to the stack after updating lower/upper bounds.
-"""
-function single_storage!(t::ExtensionType, m::Optimizer)
-    y = m._current_node
-    m._node_repetitions += 1
-    m._node_count += 1
-    lower_bound = max(y.lower_bound, m._lower_objective_value)
-    upper_bound = min(y.upper_bound, m._upper_objective_value)
-    push!(m._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
-                           lower_bound, upper_bound, y.depth, y.id))
 
     return nothing
 end
@@ -965,14 +902,11 @@ termination_check(m::Optimizer) = termination_check(m.ext_type, m)
 cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
 convergence_check(m::Optimizer) = convergence_check(m.ext_type, m)
 repeat_check(m::Optimizer) = repeat_check(m.ext_type, m)
-node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
 preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
 lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
 add_cut!(m::Optimizer) = add_cut!(m.ext_type, m)
 upper_problem!(m::Optimizer) = upper_problem!(m.ext_type, m)
 postprocess!(m::Optimizer) = postprocess!(m.ext_type, m)
-single_storage!(m::Optimizer) = single_storage!(m.ext_type, m)
-branch_node!(m::Optimizer) = branch_node!(m.ext_type, m)
 fathom!(m::Optimizer) = fathom!(m.ext_type, m)
 revert_adjusted_upper_bound!(m::Optimizer) = revert_adjusted_upper_bound!(m.ext_type, m)
 
