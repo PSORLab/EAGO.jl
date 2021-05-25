@@ -1,3 +1,14 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This code is licensed under MIT license (see LICENSE.md for full details)
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimize/nonconvex_branch/stack_management.jl
+# Contains the subroutines node_selection!, single_storage!, and branch_node!.
+#############################################################################
+
 function _variable_infeasibility(m::Optimizer, i::Int)
     tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)
     d = m._branch_cost
@@ -145,5 +156,49 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     m._node_repetitions = 1
     m._maximum_node_id += 2
     m._node_count += 2
+    return
+end
+branch_node!(m::Optimizer) = branch_node!(m.ext_type, m)
+
+"""
+$(SIGNATURES)
+
+Stores the current node to the stack after updating lower/upper bounds.
+"""
+function single_storage!(t::ExtensionType, m::Optimizer)
+    y = m._current_node
+    m._node_repetitions += 1
+    m._node_count += 1
+    lower_bound = max(y.lower_bound, m._lower_objective_value)
+    upper_bound = min(y.upper_bound, m._upper_objective_value)
+    push!(m._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
+                           lower_bound, upper_bound, y.depth, y.id))
+    return
+end
+single_storage!(m::Optimizer) = single_storage!(m.ext_type, m)
+
+"""
+$(SIGNATURES)
+
+Selects node with the lowest lower bound in stack.
+"""
+function node_selection!(t::ExtensionType, m::Optimizer)
+    m._node_count -= 1
+    m._current_node = popmin!(m._stack)
+    return
+end
+node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Creates an initial node with initial box constraints and adds it to the stack.
+"""
+function initialize_stack!(m::Optimizer)
+    d = _working_variable_info.(m, m._branch_to_sol_map)
+    push!(m._stack, NodeBB(lower_bound.(d), upper_bound.(d), is_integer.(d)))
+    m._node_count = 1
+    m._maximum_node_id += 1
     return
 end
