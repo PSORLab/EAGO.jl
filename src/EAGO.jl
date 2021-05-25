@@ -142,4 +142,9 @@ module EAGO
            LowerLevel1, LowerLevel2, LowerLevel3, LowerProblem, UpperProblem,
            ResProblem, AbstractSIPAlgo, AbstractSubproblemType
     include("eago_semiinfinite/semiinfinite.jl")
+
+    if Base.VERSION >= v"1.6.0"
+        include("precompile.jl")
+        _precompile_()
+    end
 end
