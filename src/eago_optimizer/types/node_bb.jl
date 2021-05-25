@@ -28,7 +28,7 @@ struct NodeBB
     "Upper bounds of variable box."
     upper_variable_bounds::Vector{Float64}
     "Is dimension integer valued"
-    is_integer::Vector{Bool}
+    is_integer::BitVector
     "Are all dimensions continuous or fixed"
     continuous::Bool
     "Lower bound of problem solution on nodeBB"
@@ -48,16 +48,19 @@ struct NodeBB
 end
 
 # Constructors
-NodeBB() = NodeBB(Float64[], Float64[], Bool[], false, -Inf, Inf, 0, 1, BD_NONE, -1, 0.0)
+function NodeBB(l::Vector{Float64}, u::Vector{Float64}, d::BitVector)
+    NodeBB(l, u, d, any(d), -Inf, Inf, 1, 1, BD_NONE, -1, 0.0)
+end
+NodeBB() = NodeBB(Float64[], Float64[], BitVector(), false, -Inf, Inf, 0, 1, BD_NONE, -1, 0.0)
 NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
-                           copy(x.integer), x.continuous,
+                           copy(x.is_integer), x.continuous,
                            x.lower_bound, x.upper_bound, x.depth, x.id,
                            x.branch_direction, x.last_branch, x.branch_extent)
 
 # Copy utilities
 Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
                               copy(x.upper_variable_bounds),
-                              copy(x.integer), x.continuous,
+                              copy(x.is_integer), x.continuous,
                               x.lower_bound, x.upper_bound, x.depth, x.id,
                               x.branch_direction, x.last_branch, x.branch_extent)
 
@@ -65,6 +68,7 @@ Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
 function uninitialized(x::NodeBB)
     flag = isempty(x.lower_variable_bounds)
     flag &= isempty(x.upper_variable_bounds)
+    flag &= isempty(x.is_integer)
     flag &= x.lower_bound === -Inf
     flag &= x.upper_bound === Inf
     flag &= x.depth === 0
