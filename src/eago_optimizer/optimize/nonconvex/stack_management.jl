@@ -6,7 +6,8 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/optimize/nonconvex_branch/stack_management.jl
-# Contains the subroutines node_selection!, single_storage!, and branch_node!.
+# Contains the subroutines used for stack management. Namely, node_selection!,
+# single_storage!, branch_node!, and fathom!.
 #############################################################################
 
 function _variable_infeasibility(m::Optimizer, i::Int)
@@ -183,6 +184,42 @@ function node_selection!(t::ExtensionType, m::Optimizer)
     return
 end
 node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
+
+"""
+$(SIGNATURES)
+
+Selects and deletes nodes from stack with lower bounds greater than global
+upper bound.
+"""
+function fathom!(t::ExtensionType, m::Optimizer)
+
+    upper = m._global_upper_bound
+    continue_flag = !isempty(m._stack)
+
+    while continue_flag
+        max_node = maximum(m._stack)
+        max_check = (max_node.lower_bound > upper)
+
+        if max_check
+            popmax!(m._stack)
+            m._node_count -= 1
+            if isempty(m._stack)
+                continue_flag = false
+            end
+
+        else
+            if !max_check
+                continue_flag = false
+            elseif isempty(m._stack)
+                continue_flag = false
+            end
+
+        end
+    end
+
+    return nothing
+end
+fathom!(m::Optimizer) = fathom!(m.ext_type, m)
 
 """
 $(TYPEDSIGNATURES)

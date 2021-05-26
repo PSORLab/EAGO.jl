@@ -11,6 +11,7 @@
 #############################################################################
 
 include(joinpath(@__DIR__,"nonconvex","stack_management.jl"))
+include(joinpath(@__DIR__,"nonconvex","upper_problem.jl"))
 
 function set_evaluator_flags!(d, is_post, is_intersect, is_first_eval, interval_intersect)
 
@@ -174,41 +175,6 @@ end
 """
 $(SIGNATURES)
 
-Selects and deletes nodes from stack with lower bounds greater than global
-upper bound.
-"""
-function fathom!(t::ExtensionType, m::Optimizer)
-
-    upper = m._global_upper_bound
-    continue_flag = !isempty(m._stack)
-
-    while continue_flag
-        max_node = maximum(m._stack)
-        max_check = (max_node.lower_bound > upper)
-
-        if max_check
-            popmax!(m._stack)
-            m._node_count -= 1
-            if isempty(m._stack)
-                continue_flag = false
-            end
-
-        else
-            if !max_check
-                continue_flag = false
-            elseif isempty(m._stack)
-                continue_flag = false
-            end
-
-        end
-    end
-
-    return nothing
-end
-
-"""
-$(SIGNATURES)
-
 Checks to see if current node should be reprocessed.
 """
 function repeat_check(t::ExtensionType, m::Optimizer)
@@ -341,35 +307,6 @@ function is_globally_optimal(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCo
     end
 
     return valid_result, feasible
-end
-
-"""
-$(SIGNATURES)
-
-Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `true`
-if this corresponds to a solution that is proven to be feasible.
-Returns `false` otherwise.
-"""
-function is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
-
-    termination_flag = false
-    result_flag = false
-
-    (t === MOI.OPTIMAL) && (termination_flag = true)
-    (t === MOI.LOCALLY_SOLVED) && (termination_flag = true)
-
-    # This is default solver specific... the acceptable constraint tolerances
-    # are set to the same values as the basic tolerance. As a result, an
-    # acceptably solved solution is feasible but non necessarily optimal
-    # so it should be treated as a feasible point
-    if (t === MOI.ALMOST_LOCALLY_SOLVED) && (r === MOI.NEARLY_FEASIBLE_POINT)
-        termination_flag = true
-        result_flag = true
-    end
-
-    (r === MOI.FEASIBLE_POINT) && (result_flag = true)
-
-    return (termination_flag && result_flag)
 end
 
 """
@@ -807,44 +744,6 @@ end
 """
 $(SIGNATURES)
 
-Default check to see if the upper bounding problem should be run. By default,
-The upper bounding problem is run on every node up to depth `upper_bounding_depth`
-and is triggered with a probability of `0.5^(depth - upper_bounding_depth)`
-afterwards.
-"""
-function default_nlp_heurestic(m::Optimizer)
-    bool = false
-    ubd_limit = m._parameters.upper_bounding_depth
-    depth = m._current_node.depth
-    bool |= (depth <= ubd_limit)
-    bool |= (rand() < 0.5^(depth - m._parameters.upper_bounding_depth))
-    return bool
-end
-
-"""
-$(SIGNATURES)
-
-Default upper bounding problem which simply calls `solve_local_nlp!` to solve
-the nlp locally.
-"""
-function upper_problem!(t::ExtensionType, m::Optimizer)
-
-    if !default_nlp_heurestic(m)
-        m._upper_feasibility = false
-        m._upper_objective_value = Inf
-
-    else
-        solve_local_nlp!(m)
-
-    end
-
-    return nothing
-end
-
-
-"""
-$(SIGNATURES)
-
 Default postprocess perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, m::Optimizer)
@@ -905,9 +804,7 @@ repeat_check(m::Optimizer) = repeat_check(m.ext_type, m)
 preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
 lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
 add_cut!(m::Optimizer) = add_cut!(m.ext_type, m)
-upper_problem!(m::Optimizer) = upper_problem!(m.ext_type, m)
 postprocess!(m::Optimizer) = postprocess!(m.ext_type, m)
-fathom!(m::Optimizer) = fathom!(m.ext_type, m)
 revert_adjusted_upper_bound!(m::Optimizer) = revert_adjusted_upper_bound!(m.ext_type, m)
 
 """

@@ -30,7 +30,6 @@ function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
     return nothing
 end
 
-
 revert_adjusted_upper_bound!(t::ExtensionType, d::Optimizer) = nothing
 
 function revert_adjusted_upper_bound!(t::DefaultExt, d::Optimizer)
@@ -63,6 +62,84 @@ function add_soc_constraints_as_quad!(m::Optimizer, opt::T) where T
     return nothing
 end
 
+function _update_branch_variables!(d, m::Optimizer)
+    for i = 1:_variable_num(FullVar(), m)
+        upper_variable_index = m._upper_variables[i]
+        single_variable = MOI.SingleVariable(upper_variable_index)
+        if !_is_integer(FullVar(), m, i)
+            vinfo = _variable_info(m,i)
+            lvb  = _lower_bound(FullVar(), m, i)
+            uvb  = _upper_bound(FullVar(), m, i)
+            is_fixed(vinfo)        && MOI.add_constraint(d, single_variable, ET(lvb))
+            is_less_than(vinfo)    && MOI.add_constraint(d, single_variable, LT(uvb))
+            is_greater_than(vinfo) && MOI.add_constraint(d, single_variable, GT(lvb))
+            if is_real_interval(vinfo)
+                MOI.add_constraint(d, single_variable, LT(uvb))
+                MOI.add_constraint(d, single_variable, GT(lvb))
+            end
+        end
+    end
+    return
+end
+
+function _finite_mid(l::T, u::T) where T
+    (isfinite(l) && isfinite(u)) && return 0.5*(l + u)
+    isfinite(l) ? l : (isfinite(u) ? u : zero(T))
+end
+function _set_starting_point!(d, m::Optimizer)
+    for i = 1:_variable_num(FullVar(), m)
+        l  = _lower_bound(FullVar(), m, i)
+        u  = _upper_bound(FullVar(), m, i)
+        v = m._upper_variables[i]
+        MOI.set(d, MOI.VariablePrimalStart(), v, _finite_mid(l, u))
+    end
+    return
+end
+
+"""
+$(SIGNATURES)
+
+Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `true`
+if this corresponds to a solution that is proven to be feasible.
+Returns `false` otherwise.
+"""
+function is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
+
+    termination_flag = false
+    result_flag = false
+
+    (t == MOI.OPTIMAL) && (termination_flag = true)
+    (t == MOI.LOCALLY_SOLVED) && (termination_flag = true)
+
+    # This is default solver specific... the acceptable constraint tolerances
+    # are set to the same values as the basic tolerance. As a result, an
+    # acceptably solved solution is feasible but non necessarily optimal
+    # so it should be treated as a feasible point
+    if (t == MOI.ALMOST_LOCALLY_SOLVED) && (r == MOI.NEARLY_FEASIBLE_POINT)
+        termination_flag = true
+        result_flag = true
+    end
+    (r == MOI.FEASIBLE_POINT) && (result_flag = true)
+
+    return (termination_flag && result_flag)
+end
+
+function _unpack_local_nlp_solve!(m::Optimizer, opt::T) where T
+    m._upper_termination_status = MOI.get(opt, MOI.TerminationStatus())
+    m._upper_result_status = MOI.get(opt, MOI.PrimalStatus())
+    if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
+        m._upper_feasibility = true
+        obj_val = MOI.get(opt, MOI.ObjectiveValue())
+        stored_adjusted_upper_bound!(m, obj_val)
+        m._best_upper_value = min(obj_val, m._best_upper_value)
+        m._upper_solution .= MOI.get(opt, MOI.VariablePrimal(), m._upper_variables)
+    else
+        m._upper_feasibility = false
+        m._upper_objective_value = Inf
+    end
+    return
+end
+
 """
 
 Constructs and solves the problem locally on on node `y` updated the upper
@@ -73,29 +150,11 @@ function solve_local_nlp!(m::Optimizer)
     upper_optimizer = m.upper_optimizer
     MOI.empty!(upper_optimizer)
 
-    upper_variables = m._upper_variables
     for i = 1:m._working_problem._variable_count
-        @inbounds upper_variables[i] = MOI.add_variable(upper_optimizer)
+        m._upper_variables[i] = MOI.add_variable(upper_optimizer)
     end
-
-    for i = 1:_variable_num(FullVar(), m)
-        upper_variable_index = @inbounds upper_variables[i]
-        single_variable = MOI.SingleVariable(upper_variable_index)
-        if !_is_integer(FullVar(), m, i)
-            vinfo = _variable_info(m,i)
-            lvb  = _lower_bound(FullVar(), m, i)
-            uvb  = _upper_bound(FullVar(), m, i)
-            is_fixed(vinfo)        && MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
-            is_less_than(vinfo)    && MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-            is_greater_than(vinfo) && MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-            if is_real_interval(vinfo)
-                MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-            end
-            x0 = 0.5*(lvb + uvb)
-            MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
-        end
-    end
+    _update_branch_variables!(upper_optimizer, m)
+    _set_starting_point!(upper_optimizer, m)
 
     # Add linear and quadratic constraints to model
     add_linear_constraints!(m, upper_optimizer)
@@ -128,28 +187,7 @@ function solve_local_nlp!(m::Optimizer)
 
     # Optimizes the object
     MOI.optimize!(upper_optimizer)
-
-    # Process output info and save to CurrentUpperInfo object
-    m._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
-    m._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
-
-    if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
-        m._upper_feasibility = true
-        value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-        stored_adjusted_upper_bound!(m, value)
-        m._best_upper_value = min(value, m._best_upper_value)
-        m._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_variables)
-    else
-        m._upper_feasibility = false
-        m._upper_objective_value = Inf
-    end
-
-    return
+    _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 
-function optimize!(::Val{DIFF_CVX}, m::Optimizer)
-
-    solve_local_nlp!(m)
-
-    return nothing
-end
+optimize!(::Val{DIFF_CVX}, m::Optimizer) = solve_local_nlp!(m)
