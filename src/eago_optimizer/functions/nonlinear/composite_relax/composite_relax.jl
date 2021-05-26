@@ -16,7 +16,7 @@ Base.@kwdef mutable struct RelaxCache{V,S<:Real} <: AbstractCache
     cut::Bool                        = false
     cut_interval::Bool               = false
     ϵ_sg::Bool                       = false
-    first_eval::Bool                 = false
+    first_eval::Bool                 = true
     use_apriori_mul::Bool            = false
 end
 function RelaxCache{V,S}(n::Int, m::Int, p::Int) where {V,S<:Real}

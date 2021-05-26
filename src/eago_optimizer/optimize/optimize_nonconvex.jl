@@ -355,7 +355,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     # compute initial volume
     m._initial_volume = prod(upper_variable_bounds(m._current_node) -
                              lower_variable_bounds(m._current_node))
-
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
         for i = 1:m._parameters.fbbt_lp_repetitions
@@ -377,7 +376,6 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         end
         unpack_fbbt_buffer!(m)
     end
-
     # done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
 
@@ -573,7 +571,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._lower_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
     valid_flag, feasible_flag = is_globally_optimal(m._lower_termination_status, m._lower_result_status)
 
-    @show MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
     if valid_flag && feasible_flag
         set_dual!(m)
         m._cut_add_flag = true
