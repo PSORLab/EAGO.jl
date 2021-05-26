@@ -26,10 +26,11 @@ Base.@kwdef mutable struct BranchCostStorage{T<:Real}
     β::T                     = 0.05
     μ_score::T               = 0.15
 end
-function BranchCostStorage{T}(n::Int) where T <:AbstractFloat
-    BranchCostStorage{T}(𝛹n = ones(T,n),  𝛹p = ones(T,n),
-                         δn = zeros(T,n),  δp = zeros(T,n),
-                         ηn = zeros(T,n),  ηp = zeros(T,n))
+function initialize!(d::BranchCostStorage{T}, n::Int) where T <:AbstractFloat
+    append!(d.𝛹n, ones(T,n));  append!(d.𝛹p, ones(T,n))
+    append!(d.δn, zeros(T,n));  append!(d.δp, zeros(T,n))
+    append!(d.ηn, zeros(T,n));  append!(d.ηp, zeros(T,n))
+    return
 end
 
 @enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
@@ -497,10 +498,12 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # all subproblem immutable subproblem status are set in global_solve in corresponding routines
     # in optimize_nonconvex.jl
     _preprocess_feasibility::Bool = true
-    _preprocess_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _preprocess_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _preprocess_dual_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _preprocess_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
 
-    _lower_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _lower_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _lower_dual_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _lower_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _lower_feasibility::Bool = true
     _lower_objective_value::Float64 = -Inf
@@ -510,7 +513,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _lower_lvd::Vector{Float64} = Float64[]
     _lower_uvd::Vector{Float64} = Float64[]
 
-    _cut_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _cut_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _cut_dual_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _cut_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _cut_objective_value::Float64 = -Inf
     _cut_feasibility::Bool = true

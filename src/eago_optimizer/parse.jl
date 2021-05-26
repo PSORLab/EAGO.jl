@@ -200,6 +200,7 @@ function label_branch_variables!(m::Optimizer)
 
     # adds branch solution to branch map to evaluator
     vnum = wp._variable_count
+    initialize!(m._branch_cost, length(m._branch_to_sol_map))
     v = VariableValues{Float64}(x = zeros(vnum),
                                 lower_variable_bounds = zeros(vnum),
                                 upper_variable_bounds = zeros(vnum),

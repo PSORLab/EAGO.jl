@@ -53,11 +53,13 @@ function trivial_filtering!(m::Optimizer, n::NodeBB)
 
     obbt_tolerance = m._parameters.obbt_tolerance
     m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-    m._preprocess_result_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-    valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
-                                                    m._preprocess_result_status)
+    m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+    m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+    status = relaxed_problem_status(m._preprocess_termination_status,
+                                    m._preprocess_primal_status,
+                                    m._preprocess_dual_status)
 
-    if valid_flag && feasible_flag
+    if status == RRS_OPTIMAL
         for j = 1:length(m._obbt_working_lower_index)
             if @inbounds m._obbt_working_lower_index[j]
                 vi = @inbounds m._relaxed_variable_index[j]
@@ -158,11 +160,13 @@ function aggressive_filtering!(m::Optimizer, n::NodeBB)
         MOI.optimize!(m.relaxed_optimizer)
 
         m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-        m._preprocess_result_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-        valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
-                                                        m._preprocess_result_status)
+        m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+        m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+        status = relaxed_problem_status(m._preprocess_termination_status,
+                                        m._preprocess_primal_status,
+                                        m._preprocess_dual_status)
 
-        if valid_flag && feasible_flag
+        if status == RRS_OPTIMAL
             variable_primal = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
             copyto!(m._new_low_index, m._old_low_index)
             copyto!(m._new_upp_index, m._old_upp_index)
@@ -271,12 +275,14 @@ function obbt!(m::Optimizer)
     end
 
     # extracts info from relaxed problem (redundant if aggressive obbt is called)
-    m._preprocess_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
-    m._preprocess_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
-    valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
-                                                    m._preprocess_result_status)
+    m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+    m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+    m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+    status = relaxed_problem_status(m._preprocess_termination_status,
+                                    m._preprocess_primal_status,
+                                    m._preprocess_dual_status)
 
-    if valid_flag && feasible_flag
+    if status == RRS_OPTIMAL
         xLP = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
     else
         return false
@@ -329,12 +335,14 @@ function obbt!(m::Optimizer)
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
 
             MOI.optimize!(m.relaxed_optimizer)
-            m._preprocess_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
-            m._preprocess_result_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
-            valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
-                                                            m._preprocess_result_status)
+            m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+            m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+            m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+            status = relaxed_problem_status(m._preprocess_termination_status,
+                                            m._preprocess_primal_status,
+                                            m._preprocess_dual_status)
 
-            if valid_flag && feasible_flag
+            if status == RRS_OPTIMAL
                 xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
 
                 node_index = branch_to_sol_map[lower_indx]
@@ -358,7 +366,7 @@ function obbt!(m::Optimizer)
                     break
                 end
 
-            elseif valid_flag && !feasible_flag
+            elseif status == RRS_INFEASIBLE
                 feasibility = false
                 break
 
@@ -374,11 +382,13 @@ function obbt!(m::Optimizer)
             MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
             MOI.optimize!(relaxed_optimizer)
             m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-            m._preprocess_result_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-            valid_flag, feasible_flag = is_globally_optimal(m._preprocess_termination_status,
-                                                            m._preprocess_result_status)
+            m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+            m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+            status = relaxed_problem_status(m._preprocess_termination_status,
+                                            m._preprocess_primal_status,
+                                            m._preprocess_dual_status)
 
-            if valid_flag && feasible_flag
+            if status == RRS_OPTIMAL
                 xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
                 node_index = branch_to_sol_map[upper_indx]
                 updated_value = xLP[node_index]
@@ -400,7 +410,7 @@ function obbt!(m::Optimizer)
                     break
                 end
 
-            elseif valid_flag && !feasible_flag
+            elseif status == RRS_INFEASIBLE
                 feasibility = false
                 break
 
