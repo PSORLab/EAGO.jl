@@ -855,8 +855,8 @@ end
 @inline _is_integer(::BranchVar, m::Optimizer, i::Int) = is_integer(_current_node(m), i)
 @inline function _is_integer(::FullVar, m::Optimizer, i::Int)
      if _is_branch_var(m,i)
-         return is_integer(_current_node(m), _svi(m, i))
-    end
+        return is_integer(_current_node(m), _svi(m, i))
+     end
     is_integer(_variable_info(m,i))
 end
 
@@ -864,14 +864,14 @@ end
 @inline function _lower_bound(::FullVar, m::Optimizer, i::Int)
      if _is_branch_var(m,i)
          return lower_variable_bounds(_current_node(m), _svi(m, i))
-    end
+     end
     lower_bound(_variable_info(m,i))
 end
 
 @inline _upper_bound(::BranchVar, m::Optimizer, i::Int) = upper_variable_bounds(_current_node(m), i)
 @inline function _upper_bound(::FullVar, m::Optimizer, i::Int)
-     if _is_branch_var(m,i)
-         return upper_variable_bounds(_current_node(m), _svi(m, i))
+    if _is_branch_var(m,i)
+        return upper_variable_bounds(_current_node(m), _svi(m, i))
     end
     upper_bound(_variable_info(m,i))
 end
@@ -880,19 +880,17 @@ end
 @inline function _mid(::FullVar, m::Optimizer, i::Int)
     if _is_branch_var(m,i)
         return mid(_current_node(m), _svi(m, i))
-   end
-   mid(_variable_info(m,i))
+    end
+    mid(_variable_info(m,i))
 end
 
 @inline _diam(::BranchVar, m::Optimizer, i::Int) = diam(_current_node(m), i)
 @inline function _diam(::FullVar, m::Optimizer, i::Int)
     if _is_branch_var(m,i)
         return diam(_current_node(m), _svi(m, i))
-   end
-   diam(_variable_info(m,i))
+    end
+    diam(_variable_info(m,i))
 end
 
 @inline _lower_solution(::BranchVar, m::Optimizer, i::Int) = m._lower_solution[_bvi(m, i)]
-@inline function _lower_solution(::FullVar, m::Optimizer, i::Int)
-    m._lower_solution[i]
-end
+@inline _lower_solution(::FullVar, m::Optimizer, i::Int) = m._lower_solution[i]

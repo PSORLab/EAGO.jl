@@ -14,6 +14,8 @@
 # Used internally to set & get variables in full problem space or just branch variables
 struct FullVar end
 struct BranchVar end
+Base.Broadcast.broadcastable(d::FullVar) = Ref(d)
+Base.Broadcast.broadcastable(d::BranchVar) = Ref(d)
 
 """
 $(TYPEDEF)
