@@ -31,3 +31,25 @@ end
 _rf_findmax((fm, m), (fx, x)) = isless(fm, fx) ? (fx, x) : (fm, m)
 map_findmax(f, itr) = mapfoldl(((k, v),) -> (f(v), k), _rf_findmax, pairs(itr))
 map_argmax(f, itr) = map_findmax(f, itr)[2]
+
+"""
+    gershgorin_λmin
+
+Computes a lower bound on the smallest eigenvalue of `x` by means of Gershgorin's
+Circle Theorem. See the link provided for information
+https://mathworld.wolfram.com/GershgorinCircleTheorem.html.
+"""
+function gershgorin_λmin(x::AbstractMatrix{T}) where T
+    xsum = -sum(i -> abs(@inbounds x[i]), diagind(x))
+    xmin = typemax(T)
+    @inbounds for k in diagind(x)
+        xk = x[k]
+        xadd = abs(xk) + xk
+        xsum += xadd
+        if xsum < xmin
+            xmin = xsum
+        end
+        xsum -= xadd
+    end
+    return xmin
+end
