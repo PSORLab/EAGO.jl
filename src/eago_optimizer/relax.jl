@@ -187,8 +187,9 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
             value = _set(f)
             f.saf.constant = use_cvx ? value.cv : -value.cc
              @inbounds for i = 1:N
+                vval = grad_sparsity[i]
                 c = use_cvx ? value.cv_grad[i] : -value.cc_grad[i]
-                f.saf.terms[i] = SAT(c, VI(grad_sparsity[i]))
+                f.saf.terms[i] = SAT(c, VI(vval))
                 f.saf.constant = sub_round(f.saf.constant , mul_round(c, x[vval], RoundUp), RoundDown)
             end
             if is_constraint

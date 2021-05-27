@@ -371,7 +371,7 @@ function global_solve!(m::Optimizer)
     revert_adjusted_upper_bound!(m)
     m._objective_value = m._global_upper_bound
     set_termination_status!(m)
-    set_primal_status!(m)
+    set_result_status!(m)
 
     print_solution!(m)
 end

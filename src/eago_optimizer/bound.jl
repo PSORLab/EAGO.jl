@@ -82,7 +82,7 @@ function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
         xU = _upper_bound(FullVar(), m, j)
         fval += coeff*Interval(xL, xU)
     end
-    for f.func.quadratic_terms
+    for t in f.func.quadratic_terms
         c = t.coefficient
         i = t.variable_index_1.value
         j = t.variable_index_2.value

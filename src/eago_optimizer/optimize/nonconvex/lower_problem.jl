@@ -105,9 +105,8 @@ $(FUNCTIONNAME)
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
 function objective_cut!(m::Optimizer, check_safe::Bool)
-    ϵ = m._parameters.absolute_constraint_feas_tolerance
-    if m._parameters.objective_cut_on && m._global_upper_bound < Inf
-        objective_cut!(m, m._working_problem._objective, check_safe, ϵ)
+    if  m._global_upper_bound < Inf
+        objective_cut!(m, m._working_problem._objective, check_safe, _constraint_tol(m))
         m._new_eval_objective = false
     end
     return
@@ -200,16 +199,21 @@ function reset_relaxation!(m::Optimizer)
     return
 end
 
+val_or_zero(x) = isnan(x) ? 0.0 : x
 """
 $(FUNCTIONNAME)
 
 """
 function set_first_relax_point!(m::Optimizer)
-    m._working_problem._relaxed_evaluator.is_first_eval = true
-    m._new_eval_constraint = true
-    m._new_eval_objective = true
-    m._current_xref .= mid(m._current_node)
-    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+    if m._cut_iterations == 1
+        m._working_problem._relaxed_evaluator.is_first_eval = true
+        m._new_eval_constraint = true
+        m._new_eval_objective = true
+        for i = 1:_variable_num(BranchVar(), m)
+            x = _mid(BranchVar(), m, i)
+            _set_lower_solution!(BranchVar(), m, val_or_zero(x), i)
+        end
+    end
     return
 end
 
@@ -227,21 +231,22 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, k::Int)
     check_safe = (k == 1) ? false : m._parameters.cut_safe_on
     wp = m._working_problem
     wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    foreach((i,f) -> relax!(m, f, i, check_safe), enumerate(wp._sqf_leq))
-    foreach((i,f) -> relax!(m, f, i, check_safe), enumerate(wp._sqf_eq))
-    foreach((i,f) -> relax!(m, f, i, check_safe), enumerate(wp._nonlinear_constr))
+    foreach(x -> relax!(m, x[2], x[1], check_safe), enumerate(wp._sqf_leq))
+    foreach(x -> relax!(m, x[2], x[1], check_safe), enumerate(wp._sqf_eq))
+    foreach(x -> relax!(m, x[2], x[1], check_safe), enumerate(wp._nonlinear_constr))
     m._new_eval_constraint = false
     objective_cut!(m, check_safe)
     return
 end
-relax_constraints!(t::ExtensionType, m::Optimizer, q::Int) = relax_all_constraints!(t, m, q)
-relax_constraints!(m::Optimizer, k::Int) = relax_constraints!(m.ext_type, m, q)
+relax_constraints!(t::ExtensionType, m::Optimizer, k::Int) = relax_all_constraints!(t, m, k)
+relax_constraints!(m::Optimizer, k::Int) = relax_constraints!(m.ext_type, m, k)
 
 function relax_problem!(m::Optimizer)
+    wp = m._working_problem
     if m._cut_iterations == 1
         reset_relaxation!(m)
         if m._nonlinear_evaluator_created
-            set_node!(wp._relaxed_evaluator, n)
+            set_node!(wp._relaxed_evaluator, m._current_node)
             set_reference_point!(m)
             fill!(wp._relaxed_evaluator.subexpressions_eval, false)
         end
@@ -251,8 +256,8 @@ function relax_problem!(m::Optimizer)
         update_relaxed_problem_box!(m)
         set_first_relax_point!(m)
     end
-    relax_constraints!(m, k)
-    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    relax_constraints!(m, m._cut_iterations)
+    MOI.set(m.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     return
 end
 
@@ -282,7 +287,7 @@ function set_dual!(m::Optimizer)
     return nothing
 end
 
-function interval_objective_bound(m::Optimizer)
+function interval_objective_bound!(m::Optimizer)
     fL = bound_objective(m)
     if fL > m._lower_objective_value
         m._lower_objective_value = fL
@@ -408,13 +413,12 @@ deleted from the relaxed optimizer and the solution is compared with the
 interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
-    f_old = m._last_cut_objective
-    f_new = m._lower_objective_value
-    ϵ_abs = _cut_ϵ_abs(m)
-    ϵ_rel = _cut_ϵ_rel(m)
-    add_cut_flag = (m._cut_iterations < m._parameters.cut_max_iterations)
-    add_cut_flag &= f_new - f_old <= min(ϵ_rel*abs(f_new), ϵ_abs)
-    return
+    obj_old = m._last_cut_objective
+    obj_new = m._lower_objective_value
+    flag = m._cut_iterations < _cut_max_iterations(m)
+    flag &= obj_new - obj_old > _cut_ϵ_abs(m)
+    flag &= obj_new - obj_old > _cut_ϵ_rel(m)*abs(obj_new)
+    return flag
 end
 cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
 
@@ -432,7 +436,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._lower_objective_value = typemin(Float64)
     set_first_relax_point!(m)
     while true
-        relax_problem!(m, k, true)
+        relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
         MOI.optimize!(d)
         t_status = MOI.get(d, MOI.TerminationStatus())

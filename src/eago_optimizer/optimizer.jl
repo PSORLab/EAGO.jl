@@ -756,6 +756,7 @@ end
 @inline _branch_pseudocost_on(m::Optimizer) = m._parameters.branch_pseudocost_on
 @inline _cut_ϵ_abs(m::Optimizer) = m._parameters.cut_tolerance_abs
 @inline _cut_ϵ_rel(m::Optimizer) = m._parameters.cut_tolerance_rel
+@inline _cut_max_iterations(m::Optimizer) = m._parameters.cut_max_iterations
 @inline _constraint_tol(m::Optimizer) = m._parameters.absolute_constraint_feas_tolerance
 
 @inline _bvi(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
@@ -814,3 +815,8 @@ end
 
 @inline _lower_solution(::BranchVar, m::Optimizer, i::Int) = m._lower_solution[_bvi(m, i)]
 @inline _lower_solution(::FullVar, m::Optimizer, i::Int) = m._lower_solution[i]
+
+@inline function _set_lower_solution!(::BranchVar, m::Optimizer, v::Float64, i::Int)
+    m._lower_solution[_bvi(m, i)] = v
+    return
+end
