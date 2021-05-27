@@ -273,69 +273,18 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
             push!(m._buffered_nonlinear_ci, ci)
         end
     end
-
-    return nothing
-end
-
-"""
-$(TYPEDSIGNATURES)
-"""
-function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, check_safe::Bool) where {N,T<:RelaxTag}
-    evaluator = m._working_problem._relaxed_evaluator
-
-    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, true, true, true)
-    check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
-
-    finite_cut_generated = affine_relax_nonlinear!(f, evaluator, false, false, true)
-    check_set_affine_nl!(m, f, finite_cut_generated, check_safe)
-
-    return nothing
-end
-
-function relax_objective!(m, f::T, check_safe) where T<:Union{SV,SAF}
-    MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{T}(), f)
-    return
-end
-function relax_objective!(m, f::BufferedQuadraticIneq, check_safe)
-    wp = m._working_problem
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf,
-                                                   m._current_node, m._sol_to_branch_map,
-                                                   m._current_xref)
-    if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = f.saf.constant
-        MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
-    end
-    return
-end
-function relax_objective!(m, f::BufferedNonlinearFunction, check_safe)
-    wp = m._working_problem
-    new_flag = m._new_eval_objective
-    wp._relaxed_evaluator.is_first_eval = new_flag
-    finite_cut_generated = affine_relax_nonlinear!(f, wp._relaxed_evaluator, true, new_flag, false)
-    wp._relaxed_evaluator.is_first_eval = false
-
-    if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = f.saf.constant
-        MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
-    end
     return
 end
 
 """
 $(TYPEDSIGNATURES)
-
-Triggers an evaluation of the objective function and then updates
-the affine relaxation of the objective function.
 """
-function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
-    check_safe = (q === 1) ? false : m._parameters.cut_safe_on
-    relax_objective!(m, m._working_problem._objective, check_safe)
-    m._new_eval_objective = false
+function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, k::Int, check_safe::Bool) where {N,T<:RelaxTag}
+    d = m._working_problem._relaxed_evaluator
+    check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
+    check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
     return
 end
-relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
 
 """
 $(TYPEDSIGNATURES)
@@ -403,20 +352,5 @@ Deletes all scalar-affine objective cuts added to the relaxed optimizer.
 function delete_objective_cuts!(m::Optimizer)
     foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._objective_cut_ci_saf)
     empty!(m._objective_cut_ci_saf)
-    return
-end
-
-"""
-$(FUNCTIONNAME)
-
-"""
-function set_first_relax_point!(m::Optimizer)
-    m._working_problem._relaxed_evaluator.is_first_eval = true
-    m._new_eval_constraint = true
-    m._new_eval_objective = true
-    n = m._current_node
-
-    m._current_xref .= mid(n)
-    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
     return
 end
