@@ -10,6 +10,38 @@
 # LP, SOCP, MILP, MISOCP, and convex problem types.
 #############################################################################
 
+function convert_to_min!(m::ParsedProblem, f::SV)
+    m._working_problem._objective = AffineFunctionIneq(f, is_max = true)
+    return
+end
+function convert_to_min!(m::ParsedProblem, f::AffineFunctionIneq)
+    wp = m._working_problem
+    wp._objective_saf = MOIU.operate(-, Float64, m._working_problem._objective_saf)
+    wp._objective = AffineFunctionIneq(f, GT_ZERO)
+    return
+end
+function convert_to_min!(m::ParsedProblem, f::BufferedQuadraticIneq)
+    m._working_problem._objective.sqf = MOIU.operate(-, Float64, f.sqf)
+    return
+end
+function convert_to_min!(m::ParsedProblem, f::BufferedNonlinearFunction)
+    # updates tape for nlp_data block (used by local optimizer)
+    wp = m._working_problem
+    nd = wp._nlp_data.evaluator.m.nlp_data.nlobj.nd
+    pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
+    nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+    for i = 3:length(nd)
+        @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+    end
+
+    # updates tape used by evaluator for the nonlinear objective (used by the relaxed optimizer)
+    _negate!(wp._objective_nl.ex.g)
+    pushfirst!(_set(wp._objective_nl.ex.relax_cache), _set(wp._objective_nl))
+    pushfirst!(_num(wp._objective_nl.ex.relax_cache), 0.0)
+    pushfirst!(_is_num(wp._objective_nl.ex.relax_cache), false)
+    return
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -17,43 +49,11 @@ Converts `MOI.MAX_SENSE` objective to equivalent `MOI.MIN_SENSE` objective
 `max(f) = -min(-f)`.
 """
 function convert_to_min!(m::Optimizer)
-
     wp = m._working_problem
-    wp._optimization_sense = MOI.MIN_SENSE
-    if m._input_problem._optimization_sense === MOI.MAX_SENSE
-
-        obj_type = m._input_problem._objective_type
-        if obj_type === SINGLE_VARIABLE
-            wp._objective_type = SCALAR_AFFINE
-            wp._objective_saf = MOIU.operate(-, Float64, wp._objective_sv)
-            wp._objective_saf_parsed = AffineFunctionIneq(wp._objective_saf, LT_ZERO)
-
-        elseif obj_type === SCALAR_AFFINE
-            wp._objective_saf = MOIU.operate(-, Float64, wp._objective_saf)
-            wp._objective_saf_parsed = AffineFunctionIneq(wp._objective_saf, LT_ZERO)
-
-        elseif obj_type === SCALAR_QUADRATIC
-            wp._objective_sqf.sqf = MOIU.operate(-, Float64, wp._objective_sqf.sqf)
-
-        elseif obj_type === NONLINEAR
-
-            # updates tape for nlp_data block (used by local optimizer)
-            nd = wp._nlp_data.evaluator.m.nlp_data.nlobj.nd
-            pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-            nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-            for i = 3:length(nd)
-                @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
-            end
-
-            # updates tape used by evaluator for the nonlinear objective (used by the relaxed optimizer)
-            _negate!(wp._objective_nl.ex.g)
-            pushfirst!(_set(wp._objective_nl.ex.relax_cache), _set(wp._objective_nl))
-            pushfirst!(_num(wp._objective_nl.ex.relax_cache), 0.0)
-            pushfirst!(_is_num(wp._objective_nl.ex.relax_cache), false)
-        end
+    if m._input_problem._optimization_sense == MOI.MAX_SENSE
+        convert_to_min!(wp, wp._objective)
     end
-
-    return nothing
+    return
 end
 
 """
@@ -154,9 +154,8 @@ function label_branch_variables!(m::Optimizer)
             end
         end
 
-        obj_type = wp._objective_type
-        if obj_type === SCALAR_QUADRATIC
-            for term in wp._objective_sqf.func.quadratic_terms
+        if wp._objective isa BufferedQuadraticIneq
+            for term in wp._objective.func.quadratic_terms
                 variable_index_1 = term.variable_index_1.value
                 variable_index_2 = term.variable_index_2.value
                 @inbounds m._branch_variables[variable_index_1] = true
@@ -173,8 +172,8 @@ function label_branch_variables!(m::Optimizer)
             end
         end
 
-        if obj_type === NONLINEAR
-            for indx in _sparsity(wp._objective_nl)
+        if wp._objective isa BufferedQuadraticIneq
+            for indx in _sparsity(wp._objective)
                 @inbounds m._branch_variables[indx] = true
             end
         end
@@ -209,7 +208,7 @@ function label_branch_variables!(m::Optimizer)
     wp._relaxed_evaluator.variable_values = v
     # sets variable_values in nonlinear expressions/functions to v
     # add nonlinear objective
-    (wp._objective_type == NONLINEAR) && _set_variable_storage!(wp._objective_nl, v)
+    (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
     foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
     foreach(i -> _set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
     return
@@ -263,11 +262,11 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        m._working_problem._objective_nl = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
-                                                                     dict_sparsity, evaluator.subexpression_linearity,
-                                                                     user_operator_registry,
-                                                                     evaluator.m.nlp_data.nlparamvalues,
-                                                                     m._parameters.relax_tag)
+        m._working_problem._objective = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
+                                                                 dict_sparsity, evaluator.subexpression_linearity,
+                                                                 user_operator_registry,
+                                                                 evaluator.m.nlp_data.nlparamvalues,
+                                                                 m._parameters.relax_tag)
     end
 
     # add nonlinear constraints
@@ -284,13 +283,11 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     m._input_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
     m._working_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
-
-    return nothing
+    return
 end
 
 function add_nonlinear_evaluator!(m::Optimizer)
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
-    return nothing
 end
 
 add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
@@ -314,6 +311,16 @@ function add_subexpression_buffers!(m::Optimizer)
     d = m._working_problem._relaxed_evaluator
     d.subexpressions_eval = fill(false, length(d.subexpressions))
     return nothing
+end
+
+add_objective!(m::ParsedProblem, f) = nothing
+add_objective!(m::ParsedProblem, f::SV) = (m._objective = f; return )
+function add_objective!(m::ParsedProblem, f::SAF)
+    m._objective = AffineFunctionIneq(f, LT_ZERO)
+    return
+end
+function add_objective!(m::ParsedProblem, f::SQF)
+    m._objective = BufferedQuadraticIneq(f, LT_ZERO)
 end
 
 """
@@ -385,11 +392,7 @@ function initial_parse!(m::Optimizer)
     end
 
     # set objective function
-    m._working_problem._objective_type = ip._objective_type
-    m._working_problem._objective_sv = ip._objective_sv
-    m._working_problem._objective_saf = ip._objective_saf
-    m._working_problem._objective_saf_parsed = AffineFunctionIneq(ip._objective_saf, LT_ZERO)
-    m._working_problem._objective_sqf = BufferedQuadraticIneq(ip._objective_sqf, LT_ZERO)
+    add_objective!(m._working_problem, ip._objective)
 
     # add nonlinear constraints
     # the nonlinear evaluator loads with populated subexpressions which are then used
@@ -457,12 +460,12 @@ function parse_classify_problem!(m::Optimizer)
     ip = m._input_problem
     integer_variable_number = count(is_integer.(ip._variable_info))
 
-    nl_expr_number = ip._objective_type === NONLINEAR ? 1 : 0
+    nl_expr_number = ip._objective == nothing ? 1 : 0
     nl_expr_number += ip._nonlinear_count
     cone_constraint_number = ip._conic_second_order_count
     quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
 
-    linear_or_sv_objective = (ip._objective_type === SINGLE_VARIABLE || ip._objective_type === SCALAR_AFFINE)
+    linear_or_sv_objective = (ip._objective isa SV || ip._objective isa SAF)
     relaxed_supports_soc = false
     #TODO: relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
 

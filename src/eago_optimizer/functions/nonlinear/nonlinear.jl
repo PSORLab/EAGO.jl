@@ -20,6 +20,8 @@ include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 
 @enum(RelaxType, STD_RELAX, MC_AFF_RELAX, MC_ENUM_RELAX)
 
+_set_has_value!(d, v) = nothing
+
 """
 $(TYPEDEF)
 

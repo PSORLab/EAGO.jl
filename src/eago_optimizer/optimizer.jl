@@ -33,7 +33,7 @@ function initialize!(d::BranchCostStorage{T}, n::Int) where T <:AbstractFloat
     return
 end
 
-@enum(ObjectiveType, UNSET, SINGLE_VARIABLE, SCALAR_AFFINE, SCALAR_QUADRATIC, NONLINEAR)
+@enum(ObjectiveType, UNSET, NONLINEAR, OTHER)
 @enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
 
 export EAGOParameters
@@ -251,12 +251,7 @@ Base.@kwdef mutable struct InputProblem
 
     # nonlinear constraint storage
     _nonlinear_count::Int = 0
-
-    # objective information (set by MOI.set(m, ::ObjectiveFunction...) in optimizer.jl)
-    _objective_sv::SV = SV(VI(-1))
-    _objective_saf::SAF = SAF(SAT[], 0.0)
-    _objective_sqf::SQF = SQF(SAT[], SQT[], 0.0)
-    _objective_type::ObjectiveType = UNSET
+    _objective::Union{SV,SAF,SQF,Nothing} = nothing
 
     # nlp constraints (set by MOI.set(m, ::NLPBlockData...) in optimizer.jl)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
@@ -271,34 +266,24 @@ function Base.isempty(x::InputProblem)
     new_input_problem = InputProblem()
 
     for field in fieldnames(InputProblem)
-
         field_value = getfield(x, field)
-
         if field_value isa Array
             if !isempty(field_value)
                 is_empty_flag = false
                 break
             end
-
         elseif field_value isa Number
             if getfield(new_input_problem, field) !== field_value
                 is_empty_flag = false
                 break
             end
-
         end
     end
 
     is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
     is_empty_flag &= !x._nlp_data.has_objective
     is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
-
-    is_empty_flag &= isempty(x._objective_saf.terms)
-    is_empty_flag &= x._objective_saf.constant === 0.0
-
-    is_empty_flag &= isempty(x._objective_sqf.quadratic_terms)
-    is_empty_flag &= isempty(x._objective_sqf.affine_terms)
-    is_empty_flag &= x._objective_sqf.constant === 0.0
+    is_empty_flag &= x._objective == nothing
 
     return is_empty_flag
 end
@@ -314,15 +299,10 @@ Base.@kwdef mutable struct ParsedProblem
     # Problem classification (set in parse_classify_problem!)
     _problem_type::ProblemType = UNCLASSIFIED
 
-    # objectives (set in initial_parse)
-    _objective_sv::SV = SV(VI(-1))
     "_objective_saf stores the objective and is used for constructing linear affine cuts
      of any ObjectiveType"
     _objective_saf::SAF = SAF(SAT[], 0.0)
-    _objective_saf_parsed::AffineFunctionIneq = AffineFunctionIneq()
-    _objective_sqf::BufferedQuadraticIneq = BufferedQuadraticIneq()
-    _objective_nl::BufferedNonlinearFunction = BufferedNonlinearFunction()
-    _objective_type::ObjectiveType = UNSET
+    _objective::Union{SV,AffineFunctionIneq,BufferedQuadraticIneq,BufferedNonlinearFunction,Nothing} = nothing
 
     # objective sense information (set by convert_to_min in parse.jl)
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
@@ -391,21 +371,7 @@ function Base.isempty(x::ParsedProblem)
 
     is_empty_flag &= isempty(x._objective_saf.terms)
     is_empty_flag &= x._objective_saf.constant === 0.0
-
-    is_empty_flag &= isempty(x._objective_saf.terms)
-    is_empty_flag &= x._objective_saf.constant === 0.0
-    is_empty_flag &= isempty(x._objective_saf_parsed.terms)
-    is_empty_flag &= x._objective_saf_parsed.constant === 0.0
-    is_empty_flag &= x._objective_saf_parsed.len === 0
-
-    is_empty_flag &= isempty(x._objective_sqf.func.quadratic_terms)
-    is_empty_flag &= isempty(x._objective_sqf.func.affine_terms)
-    is_empty_flag &= x._objective_sqf.func.constant === 0.0
-
-    is_empty_flag &= isempty(x._objective_sqf.buffer)
-    is_empty_flag &= isempty(x._objective_sqf.saf.terms)
-    is_empty_flag &= x._objective_sqf.saf.constant === 0.0
-    is_empty_flag &= x._objective_sqf.len === 0
+    is_empty_flag &= x._objective === nothing
 
     return is_empty_flag
 end
@@ -701,33 +667,14 @@ function MOI.set(m::Optimizer, ::MOI.Silent, value)
 
 end
 
-function MOI.set(m::Optimizer, p::MOI.RawParameter, value)
-
-    if p.name isa String
-        psym = Symbol(p.name)
-    elseif p.name isa Symbol
-        psym = p.name
-    else
-        error("EAGO only supports raw parameters with Symbol or String names.")
-    end
-
-    if psym in fieldnames(EAGOParameters)
-        setfield!(m._parameters, psym, value)
-    else
-        setfield!(m, psym, value)
-    end
-
-    return nothing
-end
-
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
     m._parameters.time_limit = Inf
-    return nothing
+    return
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
     m._parameters.time_limit = value
-    return nothing
+    return
 end
 
 function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
@@ -777,20 +724,20 @@ function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     return model._continuous_solution[vi.value]
 end
 
-function MOI.get(m::Optimizer, p::MOI.RawParameter)
-    if p.name isa String
-        psym = Symbol(p.name)
-    elseif p.name isa Symbol
-        psym = p.name
-    else
-        error("EAGO only supports raw parameters with Symbol or String names.")
-    end
+const EAGO_PARAMETERS = fieldnames(EAGOParameters)
 
-    if psym in fieldnames(EAGOParameters)
-        return getfield(m._parameters, psym)
-    else
-        return getfield(m, psym)
-    end
+_to_sym(d) = error("EAGO only supports raw parameters with Symbol or String names.")
+_to_sym(d::String) = Symbol(d)
+_to_sym(d::Symbol) = d
+
+function MOI.get(m::Optimizer, p::MOI.RawParameter)
+    s = _to_sym(p.name)
+    s in EAGO_PARAMETERS ? getfield(m._parameters, s) : getfield(m, s)
+end
+function MOI.set(m::Optimizer, p::MOI.RawParameter, x)
+    s = _to_sym(p.name)
+    s in EAGO_PARAMETERS ? setfield!(m._parameters, s, x) : setfield!(m, s, x)
+    return
 end
 
 #####
@@ -804,36 +751,21 @@ MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF,
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     if nlp_data.has_objective
-        m._input_problem._objective_type = NONLINEAR
+        m._input_problem._objective = nothing
     end
     m._input_problem._nlp_data = nlp_data
-    return nothing
+    return
 end
 
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SV}, func::SV)
-    check_inbounds!(m, func)
-    m._input_problem._objective_sv = func
-    m._input_problem._objective_type = SINGLE_VARIABLE
-    return nothing
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Union{SV,SAF,SQF}
+    check_inbounds!(m, f)
+    m._input_problem._objective = f
+    return
 end
 
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SAF}, func::SAF)
-    check_inbounds!(m, func)
-    m._input_problem._objective_saf = func
-    m._input_problem._objective_type = SCALAR_AFFINE
-    return nothing
-end
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{SQF}, func::SQF)
-    check_inbounds!(m, func)
-    m._input_problem._objective_sqf = func
-    m._input_problem._objective_type = SCALAR_QUADRATIC
-    return nothing
-end
-
-function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, sense::MOI.OptimizationSense)
-    m._input_problem._optimization_sense = sense
-    return nothing
+function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, s::MOI.OptimizationSense)
+    m._input_problem._optimization_sense = s
+    return
 end
 
 @inline _branch_cost(m::Optimizer) = m._branch_cost.cost

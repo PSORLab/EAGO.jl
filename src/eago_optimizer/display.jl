@@ -156,7 +156,7 @@ function print_results!(m::Optimizer, flag::Bool)
             end
             print(" Solution: $(m._lower_solution), Feasibility: $(m._lower_feasibility)\n")
             println("Termination Status Code: $(m._lower_termination_status)")
-            println("Result Code: $(m._lower_result_status)")
+            println("Result Code: $(m._lower_primal_status)")
         else
             obj_val = m._upper_objective_value
             if m._input_problem._optimization_sense === MOI.MIN_SENSE

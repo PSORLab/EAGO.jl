@@ -75,15 +75,10 @@ function add_soc_constraints!(m::Optimizer, opt::T) where T
     return nothing
 end
 
-function add_sv_or_aff_obj!(m::Optimizer, opt::T) where T
-
-    if m._input_problem._objective_type === SINGLE_VARIABLE
-        MOI.set(opt, MOI.ObjectiveFunction{SV}(), m._input_problem._objective_sv)
-    elseif m._input_problem._objective_type === SCALAR_AFFINE
-        MOI.set(opt, MOI.ObjectiveFunction{SAF}(), m._input_problem._objective_saf)
-    end
-
-    return nothing
+add_sv_or_aff_obj!(m::Optimizer, d::T, f::Nothing) where T = nothing
+function add_sv_or_aff_obj!(m::Optimizer, d::T, f::F) where {T,F<:Union{SV,SAF}}
+    MOI.set(d, MOI.ObjectiveFunction{F}(), f)
+    return
 end
 
 function unpack_local_solve!(m::Optimizer, opt::T) where T
@@ -127,7 +122,7 @@ function optimize!(::Val{LP}, m::Optimizer)
 
     m._relaxed_variable_index = add_variables(m, relaxed_optimizer, m._input_problem._variable_count)
     add_linear_constraints!(m, relaxed_optimizer)
-    add_sv_or_aff_obj!(m, relaxed_optimizer)
+    add_sv_or_aff_obj!(m, relaxed_optimizer,  m._input_problem._objective)
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
 
     if m._parameters.verbosity < 5
@@ -152,7 +147,7 @@ function optimize!(::Val{SOCP}, m::Optimizer)
     m._relaxed_variable_index = add_variables(m, relaxed_optimizer, m._input_problem._variable_count)
     add_linear_constraints!(m, relaxed_optimizer)
     add_soc_constraints!(m, relaxed_optimizer)
-    add_sv_or_aff_obj!(m, relaxed_optimizer)
+    add_sv_or_aff_obj!(m, relaxed_optimizer,  m._input_problem._objective)
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
 
     if m._parameters.verbosity < 5

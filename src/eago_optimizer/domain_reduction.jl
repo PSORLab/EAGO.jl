@@ -213,9 +213,7 @@ function set_reference_point!(m::Optimizer)
 
     if new_reference_point
         foreach(c -> _set_has_value!(c, false), wp._nonlinear_constr)
-        if wp._objective_type === NONLINEAR
-            _set_has_value!(wp._objective_nl, false)
-        end
+        _set_has_value!(wp._objective, false)
     end
     fill!(evaluator.subexpressions_eval, false)
 
@@ -630,6 +628,13 @@ end
 
 cp_condition(m::Optimizer) = false
 
+_propagate_constraint!(d, f) = true
+function _propagate_constraint!(d, f::BufferedNonlinearFunction)
+    forward_pass!(d, f)
+    is_feasible = rprop!(Relax(), d, f)
+    d.interval_intersect = true
+    is_feasible && forward_pass!(d, f)
+end
 """
 Performs bound tightening based on forward/reverse interval and/or McCormick passes. This routine
 resets the current node with new interval bounds.
@@ -659,14 +664,7 @@ function set_constraint_propagation_fbbt!(m::Optimizer)
 
         evaluator.is_post = m._parameters.subgrad_tighten
         wp._relaxed_evaluator.is_first_eval = m._new_eval_objective
-        if wp._objective_type === NONLINEAR
-            if feasible_flag
-                forward_pass!(evaluator, wp._objective_nl)
-                feasible_flag &= rprop!(Relax(), evaluator, wp._objective_nl)
-                evaluator.interval_intersect = true
-            end
-            feasible_flag && forward_pass!(evaluator, wp._objective_nl)
-        end
+        feasible_flag && _propagate_constraint!(evaluator, wp._objective)
 
         m._new_eval_constraint = false
         m._new_eval_objective = false

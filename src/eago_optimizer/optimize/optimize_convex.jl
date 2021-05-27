@@ -64,18 +64,20 @@ end
 
 function _update_branch_variables!(d, m::Optimizer)
     for i = 1:_variable_num(FullVar(), m)
-        upper_variable_index = m._upper_variables[i]
-        single_variable = MOI.SingleVariable(upper_variable_index)
+        v = MOI.SingleVariable(m._upper_variables[i])
         if !_is_integer(FullVar(), m, i)
-            vinfo = _variable_info(m,i)
-            lvb  = _lower_bound(FullVar(), m, i)
-            uvb  = _upper_bound(FullVar(), m, i)
-            is_fixed(vinfo)        && MOI.add_constraint(d, single_variable, ET(lvb))
-            is_less_than(vinfo)    && MOI.add_constraint(d, single_variable, LT(uvb))
-            is_greater_than(vinfo) && MOI.add_constraint(d, single_variable, GT(lvb))
-            if is_real_interval(vinfo)
-                MOI.add_constraint(d, single_variable, LT(uvb))
-                MOI.add_constraint(d, single_variable, GT(lvb))
+            vi = _variable_info(m,i)
+            l  = _lower_bound(FullVar(), m, i)
+            u  = _upper_bound(FullVar(), m, i)
+            if is_fixed(vi)
+                MOI.add_constraint(d, v, ET(l))
+            elseif is_less_than(vi)
+                MOI.add_constraint(d, v, LT(u))
+            elseif is_greater_than(vi)
+                MOI.add_constraint(d, v, GT(l))
+            elseif is_real_interval(vi)
+                MOI.add_constraint(d, v, LT(u))
+                MOI.add_constraint(d, v, GT(l))
             end
         end
     end
@@ -97,37 +99,43 @@ function _set_starting_point!(d, m::Optimizer)
 end
 
 """
+    LocalResultStatus
+
+Status code used internally to determine how to interpret the results from the
+solution of a local problem solve.
+"""
+@enum(LocalResultStatus, LRS_FEASIBLE, LRS_OTHER)
+
+"""
 $(SIGNATURES)
 
 Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `true`
 if this corresponds to a solution that is proven to be feasible.
 Returns `false` otherwise.
 """
-function is_feasible_solution(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
+function local_problem_status(t::MOI.TerminationStatusCode,
+                              r::MOI.ResultStatusCode)
 
-    termination_flag = false
-    result_flag = false
-
-    (t == MOI.OPTIMAL) && (termination_flag = true)
-    (t == MOI.LOCALLY_SOLVED) && (termination_flag = true)
-
+    if (t == MOI.OPTIMAL) && (r == MOI.FEASIBLE_POINT)
+        return LRS_FEASIBLE
+    elseif (t == MOI.LOCALLY_SOLVED) && (r == MOI.FEASIBLE_POINT)
+        return LRS_FEASIBLE
     # This is default solver specific... the acceptable constraint tolerances
     # are set to the same values as the basic tolerance. As a result, an
     # acceptably solved solution is feasible but non necessarily optimal
     # so it should be treated as a feasible point
-    if (t == MOI.ALMOST_LOCALLY_SOLVED) && (r == MOI.NEARLY_FEASIBLE_POINT)
-        termination_flag = true
-        result_flag = true
+    elseif (t == MOI.ALMOST_LOCALLY_SOLVED) && (r == MOI.NEARLY_FEASIBLE_POINT)
+        return LRS_FEASIBLE
     end
-    (r == MOI.FEASIBLE_POINT) && (result_flag = true)
-
-    return (termination_flag && result_flag)
+    return LRS_OTHER
 end
 
 function _unpack_local_nlp_solve!(m::Optimizer, opt::T) where T
-    m._upper_termination_status = MOI.get(opt, MOI.TerminationStatus())
-    m._upper_result_status = MOI.get(opt, MOI.PrimalStatus())
-    if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
+    tstatus = MOI.get(opt, MOI.TerminationStatus())
+    pstatus = MOI.get(opt, MOI.PrimalStatus())
+    m._upper_termination_status = tstatus
+    m._upper_result_status = pstatus
+    if local_problem_status(tstatus, pstatus) == LRS_FEASIBLE
         m._upper_feasibility = true
         obj_val = MOI.get(opt, MOI.ObjectiveValue())
         stored_adjusted_upper_bound!(m, obj_val)
@@ -180,10 +188,7 @@ function solve_local_nlp!(m::Optimizer)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     # set objective as NECESSARY
-    add_sv_or_aff_obj!(m, upper_optimizer)
-    if m._input_problem._objective_type === SCALAR_QUADRATIC
-        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), m._input_problem._objective_sqf)
-    end
+    add_sv_or_aff_obj!(m, upper_optimizer,  m._input_problem._objective)
 
     # Optimizes the object
     MOI.optimize!(upper_optimizer)

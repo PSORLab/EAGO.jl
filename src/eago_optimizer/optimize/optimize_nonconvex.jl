@@ -155,12 +155,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
 
     # add storage for objective cut if quadratic or nonlinear
     wp = m._working_problem
-    obj_type = wp._objective_type
-    if obj_type === SCALAR_QUADRATIC
-        wp._objective_saf.terms = copy(wp._objective_sqf.saf.terms)
-    elseif obj_type === NONLINEAR
-        wp._objective_saf.terms = copy(wp._objective_nl.saf.terms)
-    end
+    wp._objective_saf.terms = copy(wp._objective.saf.terms)
 
     # set subgradient refinement flag
     wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
@@ -168,8 +163,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     wp._relaxed_evaluator.reverse_subgrad_tighten =  m._parameters.reverse_subgrad_tighten
 
     m._presolve_time = time() - m._parse_time
-
-    return nothing
+    return
 end
 
 """
@@ -273,6 +267,12 @@ function convergence_check(t::ExtensionType, m::Optimizer)
   return t
 end
 
+"""
+    RelaxResultStatus
+
+Status code used internally to determine how to interpret theresults from the
+solution of a relaxed problem.
+"""
 @enum(RelaxResultStatus, RRS_OPTIMAL, RRS_DUAL_FEASIBLE, RRS_INFEASIBLE, RRS_INVALID)
 
 """
@@ -515,14 +515,14 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
 
     if feasible_flag
         interval_objective_used = interval_objective_bound(m, n)
-        @__dot__ m._current_xref = 0.5*(n.upper_variable_bounds + n.lower_variable_bounds)
+        m._current_xref .= mid(n)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
     else
         m._lower_objective_value = -Inf
     end
     m._lower_feasibility = feasible_flag
 
-    return nothing
+    return
 end
 
 include(joinpath(@__DIR__,"nonconvex","lower_problem.jl"))
@@ -533,14 +533,12 @@ $(SIGNATURES)
 Default postprocess perfoms duality-based bound tightening on the `y`.
 """
 function postprocess!(t::ExtensionType, m::Optimizer)
-
     if m._parameters.dbbt_depth > m._iteration_count
         variable_dbbt!(m._current_node, m._lower_lvd, m._lower_uvd,
                        m._lower_objective_value, m._global_upper_bound,
                        m._branch_variable_count)
     end
-
-    return nothing
+    return
 end
 
 """

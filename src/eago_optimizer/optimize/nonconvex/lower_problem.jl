@@ -18,7 +18,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         end
         update_relaxed_problem_box!(m)
     end
-    _set_has_value!(wp._objective_nl, false)
+    _set_has_value!(wp._objective, false)
     wp._relaxed_evaluator.interval_intersect = false
 
     if !m._obbt_performed_flag
@@ -135,29 +135,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     # value with the interval value if so. Any available dual values are then
     # set to zero since the interval bounds are by definition constant
     if m._lower_feasibility && !continue_cut_flag
-        objective_lo = -Inf
-        obj_type = m._working_problem._objective_type
-        if obj_type === SINGLE_VARIABLE
-            var_index = m._working_problem._objective_sv.variable.value
-            if m._branch_variables[var_index]
-                obj_indx = m._sol_to_branch_map[var_index]
-                lower_variable_bnd = n.lower_variable_bounds[obj_indx]
-                if !isinf(lower_variable_bnd)
-                    objective_lo = lower_variable_bnd
-                end
-            end
-
-        elseif obj_type === SCALAR_AFFINE
-            objective_lo = lower_interval_bound(m, m._working_problem._objective_saf_parsed, n)
-
-        elseif obj_type === SCALAR_QUADRATIC
-            objective_lo = lower_interval_bound(m, m._working_problem._objective_sqf, n)
-
-        elseif obj_type === NONLINEAR
-            objective_lo = lower_interval_bound(m, m._working_problem._objective_nl, n)
-
-        end
-
+        objective_lo = lower_interval_bound(m, m._working_problem._objective, n)
         if objective_lo > m._lower_objective_value
             m._lower_objective_value = objective_lo
             fill!(m._lower_lvd, 0.0)
