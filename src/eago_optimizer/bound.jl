@@ -12,63 +12,30 @@
 ###
 ### AFFINE FUNCTIONS
 ###
-
-function lower_interval_bound(m::Optimizer, f::AffineFunctionIneq, y::NodeBB)
-
-    terms = f.terms
-    lo_bnds = y.lower_variable_bounds
-    up_bnds = y.upper_variable_bounds
-
-    sol_branch_map = m._sol_to_branch_map
-    lower_interval_bound = f.constant
-    for i = 1:f.len
-        coeff, indx = @inbounds terms[i]
-
-        if m._branch_variables[indx]
-            mapped_vi = @inbounds sol_branch_map[indx]
-            xL = @inbounds lo_bnds[mapped_vi]
-            xU = @inbounds up_bnds[mapped_vi]
-        else
-            xL = @inbounds m._working_problem._variable_info[indx].lower_bound
-            xU = @inbounds m._working_problem._variable_info[indx].upper_bound
-        end
-
-        lower_interval_bound += (coeff > 0.0) ? coeff*xL : coeff*xU
+function lower_interval_bound(m::Optimizer, f::AffineFunctionIneq)
+    fL = f.constant
+    for (c, j) in f.terms
+        xL = _lower_bound(FullVar(), m, j)
+        xU = _upper_bound(FullVar(), m, j)
+        fL += (c > 0.0) ? c*xL : c*xU
     end
-
-    return lower_interval_bound
+    return fL
 end
 
 function interval_bound(m::Optimizer, f::AffineFunctionEq, y::NodeBB)
-    terms = f.terms
-    lo_bnds = y.lower_variable_bounds
-    up_bnds = y.upper_variable_bounds
-
-    sol_branch_map = m._sol_to_branch_map
-    lower_interval_bound = f.constant
-    upper_interval_bound = f.constant
-    for i = 1:f.len
-        coeff, indx = @inbounds terms[i]
-
-        if m._branch_variables[indx]
-            mapped_vi = @inbounds sol_branch_map[indx]
-            xL = @inbounds lo_bnds[mapped_vi]
-            xU = @inbounds up_bnds[mapped_vi]
+    fL = fU = f.constant
+    for (c, j) in f.terms
+        xL = _lower_bound(FullVar(), m, j)
+        xU = _upper_bound(FullVar(), m, j)
+        if c > 0.0
+            fL += c*xL
+            fU += c*xU
         else
-            xL = @inbounds m._working_problem._variable_info[indx].lower_bound
-            xU = @inbounds m._working_problem._variable_info[indx].upper_bound
-        end
-
-        if coeff > 0.0
-            lower_interval_bound += coeff*xL
-            upper_interval_bound += coeff*xU
-        else
-            lower_interval_bound += coeff*xU
-            upper_interval_bound += coeff*xL
+            fL += c*xU
+            fU += c*xL
         end
     end
-
-    return lower_interval_bound, upper_interval_bound
+    return fL, fU
 end
 
 ###
@@ -234,3 +201,12 @@ function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V,S}, y::NodeBB)
     feasible_flag = (upper_value < _lower_bound(f))
     feasible_flag && (lower_value > _upper_bound(f))
 end
+
+bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = lower_interval_bound(m, f, n)
+bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = lower_interval_bound(m, f, n)
+bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = lower_interval_bound(m, f, n)
+bound_objective(m::Optimizer, f::SV, n::NodeBB) = _lower_bound(FullVar(), m, f.variable.value)
+function bound_objective(t::ExtensionType, m::Optimizer)
+    bound_objective(m, m._working_problem._objective, m._current_node)
+end
+bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
