@@ -1,8 +1,6 @@
 
-function relax_objective!(m, f::T, check_safe) where T<:Union{SV,SAF}
-    MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{T}(), f)
-    return
-end
+relax_objective!(m, f::Union{SV,SAF}, check_safe) = nothing
+
 function relax_objective!(m, f::BufferedQuadraticIneq, check_safe)
     wp = m._working_problem
     finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf,
@@ -11,7 +9,7 @@ function relax_objective!(m, f::BufferedQuadraticIneq, check_safe)
     if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
         copyto!(wp._objective_saf.terms, f.saf.terms)
         wp._objective_saf.constant = f.saf.constant
-        MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+        MOI.add(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
     end
     return
 end
@@ -184,11 +182,12 @@ function update_relaxed_problem_box!(m::Optimizer)
         MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT( lower_bound[node_indx]))
     end
 
-    return nothing
+    return
 end
 
 function reset_relaxation!(m::Optimizer)
 
+    m._cut_iterations = 1
     m._working_problem._relaxed_evaluator.is_first_eval = true
     fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
 
@@ -198,8 +197,65 @@ function reset_relaxation!(m::Optimizer)
     delete_nl_constraints!(m)
     delete_objective_cuts!(m)
 
-    return nothing
+    return
 end
+
+"""
+$(FUNCTIONNAME)
+
+"""
+function set_first_relax_point!(m::Optimizer)
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    m._new_eval_constraint = true
+    m._new_eval_objective = true
+    m._current_xref .= mid(m._current_node)
+    unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+    return
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+A routine that adds relaxations for all nonlinear constraints and quadratic constraints
+corresponding to the current node to the relaxed problem. This adds an objective cut
+(if specified by `objective_cut_on`) and then sets the `_new_eval_constraint` flag
+to false indicating that an initial evaluation of the constraints has occurred. If
+the `objective_cut_on` flag is `true` then the `_new_eval_objective` flag is also
+set to `false` indicating that the objective expression was evaluated.
+"""
+function relax_all_constraints!(t::ExtensionType, m::Optimizer, k::Int)
+    check_safe = (k == 1) ? false : m._parameters.cut_safe_on
+    wp = m._working_problem
+    wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
+    foreach((i,f) -> relax!(m, f, i, check_safe), enumerate(wp._sqf_leq))
+    foreach((i,f) -> relax!(m, f, i, check_safe), enumerate(wp._sqf_eq))
+    foreach((i,f) -> relax!(m, f, i, check_safe), enumerate(wp._nonlinear_constr))
+    m._new_eval_constraint = false
+    objective_cut!(m, check_safe)
+    return
+end
+relax_constraints!(t::ExtensionType, m::Optimizer, q::Int) = relax_all_constraints!(t, m, q)
+relax_constraints!(m::Optimizer, k::Int) = relax_constraints!(m.ext_type, m, q)
+
+function relax_problem!(m::Optimizer)
+    if m._cut_iterations == 1
+        reset_relaxation!(m)
+        if m._nonlinear_evaluator_created
+            set_node!(wp._relaxed_evaluator, n)
+            set_reference_point!(m)
+            fill!(wp._relaxed_evaluator.subexpressions_eval, false)
+        end
+        wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
+        _set_has_value!(wp._objective, false)
+        wp._relaxed_evaluator.interval_intersect = false
+        update_relaxed_problem_box!(m)
+        set_first_relax_point!(m)
+    end
+    relax_constraints!(m, k)
+    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    return
+end
+
 
 """
 $(SIGNATURES)
@@ -226,19 +282,15 @@ function set_dual!(m::Optimizer)
     return nothing
 end
 
-function interval_objective_bound(m::Optimizer, n::NodeBB)
-
-    interval_objective_bound = bound_objective(m)
-
-    if interval_objective_bound > m._lower_objective_value
-        m._lower_objective_value = interval_objective_bound
+function interval_objective_bound(m::Optimizer)
+    fL = bound_objective(m)
+    if fL > m._lower_objective_value
+        m._lower_objective_value = fL
         fill!(m._lower_lvd, 0.0)
         fill!(m._lower_uvd, 0.0)
         m._cut_add_flag = false
-        return true
     end
-
-    return false
+    return fL > m._lower_objective_value
 end
 
 """
@@ -250,10 +302,8 @@ does not return a termination and primal status code indicating that it
 successfully solved the relaxation to a globally optimal point.
 """
 function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
-
-    feasible_flag = true
+    feas = true
     wp = m._working_problem
-
     if !cp_condition(m)
         feas = feas && all(f -> is_feasible(m, f, n), wp._saf_leq)
         feas = feas && all(f -> is_feasible(m, f, n), wp._saf_eq)
@@ -261,15 +311,14 @@ function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
         feas = feas && all(f -> is_feasible(m, f, n), wp._sqf_eq)
         feas = feas && all(f -> is_feasible(m, f, n), wp._nonlinear_constr)
     end
-
-    if feasible_flag
-        interval_objective_used = interval_objective_bound(m, n)
+    if feas
+        interval_objective_bound!(m)
         m._current_xref .= mid(n)
         unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
     else
-        m._lower_objective_value = -Inf
+        m._lower_objective_value = typemin(Float64)
     end
-    m._lower_feasibility = feasible_flag
+    m._lower_feasibility = feas
     return
 end
 
@@ -281,7 +330,6 @@ constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
 """
 function preprocess!(t::ExtensionType, m::Optimizer)
-
     reset_relaxation!(m)
 
     wp = m._working_problem
@@ -358,94 +406,61 @@ Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, m::Optimizer)
-
-    n = m._current_node
-    wp = m._working_problem
-
-    wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
-    if !m._obbt_performed_flag
-        if m._nonlinear_evaluator_created
-            set_node!(wp._relaxed_evaluator, n)
-            set_reference_point!(m)
-            fill!(wp._relaxed_evaluator.subexpressions_eval, false)
-        end
-        update_relaxed_problem_box!(m)
-    end
-    _set_has_value!(wp._objective, false)
-    wp._relaxed_evaluator.interval_intersect = false
-
-    if !m._obbt_performed_flag
-        relax_constraints!(m, 1)
-    end
-    relax_objective!(m, 1)
-
-    # Optimizes the object
     d = m.relaxed_optimizer
-    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.optimize!(d)
 
-    m._lower_termination_status = MOI.get(d, MOI.TerminationStatus())
-    m._lower_primal_status = MOI.get(d, MOI.PrimalStatus())
-    m._lower_dual_status = MOI.get(d, MOI.DualStatus())
-    status = relaxed_problem_status(m._lower_termination_status,
-                                    m._lower_primal_status,
-                                    m._lower_dual_status)
-
-    if status == RRS_OPTIMAL
-        set_dual!(m)
-        m._cut_add_flag = true
-        m._lower_feasibility = true
-        m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
-        for i = 1:m._working_problem._variable_count
-             m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+    # start Kelley cutting plane like algorithm
+    m._last_cut_objective = typemin(Float64)
+    m._lower_objective_value = typemin(Float64)
+    set_first_relax_point!(m)
+    while true
+        relax_problem!(m, k, true)
+        m._last_cut_objective = m._lower_objective_value
+        MOI.optimize!(d)
+        t_status = MOI.get(d, MOI.TerminationStatus())
+        p_status = MOI.get(d, MOI.PrimalStatus())
+        d_status = MOI.get(d, MOI.DualStatus())
+        status = relaxed_problem_status(t_status, p_status, d_status)
+        if status != RRS_OPTIMAL
+            break
         end
-    elseif status == RRS_INFEASIBLE
-        m._cut_add_flag = false
+        m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
+        if cut_condition(m)
+            m._cut_iterations += 1
+        else
+            break
+        end
+    end
+
+    # activate integrality conditions for MIP & solve MIP subproblem
+
+    t_status = MOI.get(d, MOI.TerminationStatus())
+    p_status = MOI.get(d, MOI.PrimalStatus())
+    d_status = MOI.get(d, MOI.DualStatus())
+    m._lower_termination_status = t_status
+    m._lower_primal_status = p_status
+    m._lower_dual_status = d_status
+    status = relaxed_problem_status(t_status, p_status, d_status)
+
+    if status == RRS_INFEASIBLE
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
-    #elseif status == RRS_DUAL_FEASIBLE
-    else
-        fallback_interval_lower_bound!(m, n)
+        return
+    elseif status == RRS_INVALID
+        return fallback_interval_lower_bound!(m, n)
     end
 
-    return nothing
+    set_dual!(m)
+    m._lower_feasibility = true
+    for i = 1:m._working_problem._variable_count
+         m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+    end
+    if status == RRS_DUAL_FEASIBLE
+        m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
+    end
+    interval_objective_bound!(m)
+    return
 end
 lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
-
-#=
-"""
-$(SIGNATURES)
-
-Updates the internal storage in the optimizer after a valid feasible cut is added.
-"""
-function cut_update!(m::Optimizer)
-
-    m._cut_feasibility = true
-
-    relaxed_optimizer = m.relaxed_optimizer
-    obj_val = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
-    prior_obj_val = (m._cut_iterations == 2) ? m._lower_objective_value : m._cut_objective_value
-
-    m._cut_add_flag = true
-    m._lower_termination_status = m._cut_termination_status
-    m._lower_primal_status = m._cut_primal_status
-    m._lower_dual_status = m._cut_dual_status
-    m._cut_solution[:] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
-
-    if prior_obj_val < obj_val
-        m._cut_objective_value = obj_val
-        m._lower_objective_value = obj_val
-        set_dual!(m)
-        copyto!(m._lower_solution, m._cut_solution)
-
-    else
-        m._cut_objective_value = prior_obj_val
-        m._lower_objective_value = prior_obj_val
-        m._cut_add_flag = false
-    end
-
-    return nothing
-end
 
 """
 $(SIGNATURES)
@@ -456,91 +471,12 @@ deleted from the relaxed optimizer and the solution is compared with the
 interval lower bound. The best lower bound is then used.
 """
 function cut_condition(t::ExtensionType, m::Optimizer)
-
-    # always add cut if below the minimum iteration limit, otherwise add cut
-    # the number of cuts is less than the maximum and the distance between
-    # prior solutions exceeded a tolerance.
-    continue_cut_flag = m._cut_add_flag
-    continue_cut_flag &= (m._cut_iterations < m._parameters.cut_max_iterations)
-
-    # compute distance between prior solutions and compare to tolerances
-    n = m._current_node
-    ns_indx = m._branch_to_sol_map
-
-    cvx_factor =  m._parameters.cut_cvx
-    xsol = (m._cut_iterations > 1) ? m._cut_solution[ns_indx] : m._lower_solution[ns_indx]
-    xnew = (1.0 - cvx_factor)*mid(n) + cvx_factor*xsol
-
-    continue_cut_flag &= (norm((xsol - xnew)/diam(n), 1) > m._parameters.cut_tolerance)
-    continue_cut_flag |= (m._cut_iterations < m._parameters.cut_min_iterations)
-
-    # update reference point for new cut
-    if continue_cut_flag
-        copyto!(m._current_xref, xnew)
-        if m._nonlinear_evaluator_created
-            set_reference_point!(m)
-            fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
-        end
-    end
-
-    # check to see if interval bound is preferable and replaces the objective
-    # value with the interval value if so. Any available dual values are then
-    # set to zero since the interval bounds are by definition constant
-    if m._lower_feasibility && !continue_cut_flag
-        objective_lo = lower_interval_bound(m, m._working_problem._objective, n)
-        if objective_lo > m._lower_objective_value
-            m._lower_objective_value = objective_lo
-            fill!(m._lower_lvd, 0.0)
-            fill!(m._lower_uvd, 0.0)
-        end
-    end
-
-    m._cut_iterations += 1
-
-    return continue_cut_flag
+    f_old = m._last_cut_objective
+    f_new = m._lower_objective_value
+    ϵ_abs = _cut_ϵ_abs(m)
+    ϵ_rel = _cut_ϵ_rel(m)
+    add_cut_flag = (m._cut_iterations < m._parameters.cut_max_iterations)
+    add_cut_flag &= f_new - f_old <= min(ϵ_rel*abs(f_new), ϵ_abs)
+    return
 end
 cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
-
-"""
-$(SIGNATURES)
-
-Adds a cut for each constraint and the objective function to the subproblem.
-"""
-function add_cut!(t::ExtensionType, m::Optimizer)
-
-    fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
-    m._working_problem._relaxed_evaluator.is_first_eval = true
-    m._working_problem._relaxed_evaluator.is_intersect = false
-    m._new_eval_objective = true
-    m._new_eval_constraint = true
-
-    relax_constraints!(m, m._cut_iterations)
-    relax_objective!(m, m._cut_iterations)
-
-    # Optimizes the object
-    relaxed_optimizer = m.relaxed_optimizer
-    MOI.optimize!(relaxed_optimizer)
-
-    m._cut_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
-    m._cut_primal_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
-    m._cut_dual_status = MOI.get(relaxed_optimizer, MOI.DualStatus())
-    status = relaxed_problem_status(m._cut_termination_status,
-                                    m._cut_primal_status,
-                                    m._cut_dual_status)
-
-    if status == RRS_OPTIMAL
-        cut_update!(m)
-
-    elseif valid_flag
-        m._cut_add_flag = false
-        m._lower_feasibility  = false
-        m._lower_objective_value = -Inf
-
-    else
-        m._cut_add_flag = false
-    end
-
-    return nothing
-end
-add_cut!(m::Optimizer) = add_cut!(m.ext_type, m)
-=#

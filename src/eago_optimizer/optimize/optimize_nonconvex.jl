@@ -89,7 +89,7 @@ function load_relaxed_problem!(m::Optimizer)
     # sets relaxed problem objective sense to Min as all problems
     # are internally converted in Min problems in EAGO
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    return nothing
+    return
 end
 
 function presolve_global!(t::ExtensionType, m::Optimizer)
@@ -369,11 +369,7 @@ function global_solve!(m::Optimizer)
 
                     # Checks to see if the node
                     if m._postprocess_feasibility
-                        if repeat_check(m)
-                            single_storage!(m)
-                        else
-                            branch_node!(m)
-                        end
+                        repeat_check(m) ? single_storage!(m) : branch_node!(m)
                     end
                 end
             end
