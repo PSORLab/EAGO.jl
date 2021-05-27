@@ -53,9 +53,6 @@ Base.@kwdef mutable struct EAGOParameters
     presolve_scrubber_flag::Bool = false
     "Create and use DAG representations of user-defined function (default = false)."
     presolve_to_JuMP_flag::Bool = false
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Apply the epigraph reformulation
-    to the problem (default = false)."
-    presolve_epigraph_flag::Bool = false
     "Rerranges the DAG using registered transformations (default = false)"
     presolve_flatten_flag::Bool = false
 
@@ -556,8 +553,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _log::Log = Log()
 
     _affine_relax_ci = CI{SAF,LT}[]
-    _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1)
-    _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
+    _affine_objective_cut_ci::Union{CI{SV,LT},CI{SAF,LT},Nothing} = nothing
 
     # need to retreive primal _relaxed_variable_index
     # set in TODO

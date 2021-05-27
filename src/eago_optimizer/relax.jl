@@ -226,26 +226,3 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, k::Int, che
     check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
     return
 end
-
-"""
-$(FUNCTIONNAME)
-
-Deletes all constraints corresponding to relaxations of nonlinear terms
-added to the relaxed optimizer and clear buffers of constraint indicies.
-"""
-function delete_nl_constraints!(m::Optimizer)
-    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._affine_relax_ci)
-    empty!(m._affine_relax_ci)
-    return
-end
-
-"""
-$(FUNCTIONNAME)
-
-Deletes all scalar-affine objective cuts added to the relaxed optimizer.
-"""
-function delete_objective_cuts!(m::Optimizer)
-    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._objective_cut_ci_saf)
-    empty!(m._objective_cut_ci_saf)
-    return
-end

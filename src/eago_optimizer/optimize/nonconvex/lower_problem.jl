@@ -1,112 +1,21 @@
-
-relax_objective!(m, f::Union{SV,SAF}, check_safe) = nothing
-
-function relax_objective!(m, f::BufferedQuadraticIneq, check_safe)
-    wp = m._working_problem
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf,
-                                                   m._current_node, m._sol_to_branch_map,
-                                                   m._current_xref)
-    if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = f.saf.constant
-        MOI.add(m.relaxed_optimizer, wp._objective_saf, LT_ZERO)
-    end
-    return
-end
-function relax_objective!(m, f::BufferedNonlinearFunction, check_safe)
-    wp = m._working_problem
-    new_flag = m._new_eval_objective
-    wp._relaxed_evaluator.is_first_eval = new_flag
-    finite_cut_generated = affine_relax_nonlinear!(f, wp._relaxed_evaluator, true, new_flag, false)
-    wp._relaxed_evaluator.is_first_eval = false
-
-    if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = f.saf.constant
-        MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
-    end
-    return
-end
-
-"""
-$(TYPEDSIGNATURES)
-
-Triggers an evaluation of the objective function and then updates
-the affine relaxation of the objective function.
-"""
-function relax_objective!(t::ExtensionType, m::Optimizer, q::Int)
-    check_safe = (q === 1) ? false : m._parameters.cut_safe_on
-    relax_objective!(m, m._working_problem._objective, check_safe)
-    m._new_eval_objective = false
-    return
-end
-relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
-
-function objective_cut!(m::Optimizer, f::SV, check_safe::Bool, ϵ)
-    if !isinf(m._global_upper_bound) && (m._objective_cut_ci_sv.value === -1)
-        m._objective_cut_ci_sv = CI{SV,LT}(f.variable.value)
-    end
-    MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
-    return
-end
-function objective_cut!(m::Optimizer, f::AffineFunctionIneq, check_safe::Bool, ϵ)
-    formulated_constant = wp._objective_saf.constant
-    wp._objective_saf.constant = 0.0
-    if check_safe && is_safe_cut!(m, wp._objective_saf)
-        ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - wp._objective_saf.constant + ϵ))
-        push!(m._objective_cut_ci_saf, ci_saf)
-    end
-    wp._objective_saf.constant = formulated_constant
-    return
-end
-function objective_cut!(m::Optimizer, f::BufferedQuadraticIneq, check_safe::Bool)
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer,
-                                                   f.saf, m._current_node, m._sol_to_branch_map,
-                                                   m._current_xref)
-    if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = 0.0
-        ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant + ϵ))
-        push!(m._objective_cut_ci_saf, ci_saf)
-    end
-    return
-end
-function objective_cut!(m::Optimizer, f::BufferedNonlinearFunction, check_safe::Bool, ϵ)
-
-    UBD = m._global_upper_bound
-    relaxed_optimizer = m.relaxed_optimizer
-    wp = m._working_problem
-    relaxed_evaluator = wp._relaxed_evaluator
-
-    # if the objective cut is the first evaluation of the objective expression
-    # then perform a a forward pass
-    new_flag = m._new_eval_objective
-    relaxed_evaluator.is_first_eval = new_flag
-    finite_cut_generated = affine_relax_nonlinear!(f, relaxed_evaluator, true, new_flag, false)
-
-    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
-    if finite_cut_generated
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = 0.0
-        if !check_safe || is_safe_cut!(m,  f.saf)
-            # TODO: When we introduce numerically safe McCormick operators we'll need to replace
-            # the UBD - buffered_nl.saf.constant with a correctly rounded version. For now,
-            # a small factor is added to the UBD calculation initially which should be sufficient.
-            ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - f.saf.constant + ϵ))
-            push!(m._objective_cut_ci_saf, ci_saf)
-        end
-    end
-    return
-end
-
 """
 $(FUNCTIONNAME)
 
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
 function objective_cut!(m::Optimizer, check_safe::Bool)
-    if  m._global_upper_bound < Inf
-        objective_cut!(m, m._working_problem._objective, check_safe, _constraint_tol(m))
+    wp = m._working_problem
+    f = wp._objective_saf
+    u = m._global_upper_bound
+    if  u < Inf
+        b = f.constant
+        f.constant = 0.0
+        if check_safe && is_safe_cut!(m, f)
+            s = LT(u - b + _constraint_tol(m))
+            c = MOI.add_constraint(m.relaxed_optimizer, f, s)::CI{SAF,LT}
+            push!(m._affine_objective_cut_ci, c)
+        end
+        f.constant = b
         m._new_eval_objective = false
     end
     return
@@ -193,8 +102,14 @@ function reset_relaxation!(m::Optimizer)
     m._new_eval_objective = true
     m._new_eval_constraint = true
 
-    delete_nl_constraints!(m)
-    delete_objective_cuts!(m)
+    # delete added affine constraints
+    foreach(c -> MOI.delete(m.relaxed_optimizer, c)::Nothing, m._affine_relax_ci)
+    empty!(m._affine_relax_ci)
+
+    # delete objective cut
+    if m._affine_objective_cut_ci !== nothing
+        MOI.delete(m.relaxed_optimizer, m._affine_objective_cut_ci)::Nothing
+    end
 
     return
 end
@@ -429,24 +344,23 @@ Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, m::Optimizer)
-    d = m.relaxed_optimizer
-
-    # start Kelley cutting plane like algorithm
     m._last_cut_objective = typemin(Float64)
     m._lower_objective_value = typemin(Float64)
     set_first_relax_point!(m)
     while true
         relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
-        MOI.optimize!(d)
-        t_status = MOI.get(d, MOI.TerminationStatus())
-        p_status = MOI.get(d, MOI.PrimalStatus())
-        d_status = MOI.get(d, MOI.DualStatus())
+        MOI.optimize!(m.relaxed_optimizer)::Nothing
+        t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
+        p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
+        d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())::MOI.ResultStatusCode
         status = relaxed_problem_status(t_status, p_status, d_status)
         if status != RRS_OPTIMAL
             break
         end
-        m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
+        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())::Float64
+        @show m._cut_iterations
+        @show m._lower_objective_value
         if cut_condition(m)
             m._cut_iterations += 1
         else
@@ -456,29 +370,33 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     # activate integrality conditions for MIP & solve MIP subproblem
 
-    t_status = MOI.get(d, MOI.TerminationStatus())
-    p_status = MOI.get(d, MOI.PrimalStatus())
-    d_status = MOI.get(d, MOI.DualStatus())
+    t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
+    p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
+    d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())::MOI.ResultStatusCode
     m._lower_termination_status = t_status
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
     status = relaxed_problem_status(t_status, p_status, d_status)
+    @show MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())
+    @show t_status
+    @show p_status
+    @show d_status
 
     if status == RRS_INFEASIBLE
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
         return
     elseif status == RRS_INVALID
-        return fallback_interval_lower_bound!(m, n)
+        return fallback_interval_lower_bound!(m, n)::Nothing
     end
 
     set_dual!(m)
     m._lower_feasibility = true
     for i = 1:m._working_problem._variable_count
-         m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+         m._lower_solution[i] = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])::Float64
     end
     if status == RRS_DUAL_FEASIBLE
-        m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
+        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.DualObjectiveValue())::Float64
     end
     interval_objective_bound!(m)
     return
