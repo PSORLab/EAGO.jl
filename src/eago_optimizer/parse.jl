@@ -522,3 +522,4 @@ end
 Basic parsing for global solutions (no extensive manipulation)
 """
 parse_global!(t::ExtensionType, m::Optimizer) = nothing
+parse_global!(m::Optimizer) = parse_global!(m.ext_type, m)

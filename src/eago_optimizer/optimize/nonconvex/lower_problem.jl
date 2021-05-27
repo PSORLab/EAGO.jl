@@ -1,4 +1,240 @@
 """
+    RelaxResultStatus
+
+Status code used internally to determine how to interpret theresults from the
+solution of a relaxed problem.
+"""
+@enum(RelaxResultStatus, RRS_OPTIMAL, RRS_DUAL_FEASIBLE, RRS_INFEASIBLE, RRS_INVALID)
+
+"""
+$(SIGNATURES)
+
+Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns
+the tuple `(valid_result::Bool, feasible::Bool)`. The value `valid_result` is
+`true` if the pair of codes prove that either the subproblem solution was solved
+to global optimality or the subproblem solution is infeasible. The value of
+`feasible` is true if the problem is feasible and false if the problem is infeasible.
+"""
+function relaxed_problem_status(t::MOI.TerminationStatusCode,
+                                p::MOI.ResultStatusCode,
+                                d::MOI.ResultStatusCode)
+
+    if (t == MOI.OPTIMAL) && (p == MOI.FEASIBLE_POINT)
+        return RRS_OPTIMAL
+    elseif t == MOI.INFEASIBLE
+        if (p == MOI.INFEASIBILITY_CERTIFICATE) ||
+           (p == MOI.NO_SOLUTION) || (p == MOI.UNKNOWN_RESULT_STATUS)
+            return RRS_INFEASIBLE
+        end
+    elseif (t == MOI.INFEASIBLE_OR_UNBOUNDED && p == MOI.NO_SOLUTION)
+        return RRS_INFEASIBLE
+    end
+    (d == MOI.FEASIBLE_POINT) && return RRS_DUAL_FEASIBLE
+    return RRS_INVALID
+end
+
+"""
+$(SIGNATURES)
+
+Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
+`xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
+optimizer.
+"""
+function update_relaxed_problem_box!(m::Optimizer)
+
+    opt = m.relaxed_optimizer
+    wp = m._working_problem
+
+    n = m._current_node
+    lower_bound = n.lower_variable_bounds
+    upper_bound = n.upper_variable_bounds
+
+    relaxed_variable_eq = m._relaxed_variable_eq
+    for i = 1:wp._var_eq_count
+        constr_indx, node_indx =  relaxed_variable_eq[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, ET( lower_bound[node_indx]))
+    end
+
+    relaxed_variable_lt = m._relaxed_variable_lt
+    for i = 1:wp._var_leq_count
+        constr_indx, node_indx =  relaxed_variable_lt[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, LT( upper_bound[node_indx]))
+    end
+
+    relaxed_variable_gt = m._relaxed_variable_gt
+    for i = 1:wp._var_geq_count
+        constr_indx, node_indx =  relaxed_variable_gt[i]
+        MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT( lower_bound[node_indx]))
+    end
+
+    return nothing
+end
+
+function reset_relaxation!(m::Optimizer)
+
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
+
+    m._new_eval_objective = true
+    m._new_eval_constraint = true
+
+    delete_nl_constraints!(m)
+    delete_objective_cuts!(m)
+
+    return nothing
+end
+
+"""
+$(SIGNATURES)
+
+Retrieves the lower and upper duals for variable bounds from the
+`relaxed_optimizer` and sets the appropriate values in the
+`_lower_lvd` and `_lower_uvd` storage fields.
+"""
+function set_dual!(m::Optimizer)
+
+    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_variable_lt = m._relaxed_variable_lt
+    relaxed_variable_gt = m._relaxed_variable_gt
+
+    for i = 1:m._working_problem._var_leq_count
+        ci_lt, i_lt = @inbounds relaxed_variable_lt[i]
+        @inbounds m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
+    end
+    for i = 1:m._working_problem._var_geq_count
+        ci_gt, i_gt = @inbounds relaxed_variable_gt[i]
+        @inbounds m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
+    end
+
+    return nothing
+end
+
+function interval_objective_bound(m::Optimizer, n::NodeBB)
+
+    interval_objective_bound = bound_objective(m)
+
+    if interval_objective_bound > m._lower_objective_value
+        m._lower_objective_value = interval_objective_bound
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
+        m._cut_add_flag = false
+        return true
+    end
+
+    return false
+end
+
+"""
+$(SIGNATURES)
+
+A fallback lower bounding problem that consists of an natural interval extension
+calculation. This is called when the optimizer used to compute the lower bound
+does not return a termination and primal status code indicating that it
+successfully solved the relaxation to a globally optimal point.
+"""
+function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
+
+    feasible_flag = true
+    wp = m._working_problem
+
+    if !cp_condition(m)
+        feas = feas && all(f -> is_feasible(m, f, n), wp._saf_leq)
+        feas = feas && all(f -> is_feasible(m, f, n), wp._saf_eq)
+        feas = feas && all(f -> is_feasible(m, f, n), wp._sqf_leq)
+        feas = feas && all(f -> is_feasible(m, f, n), wp._sqf_eq)
+        feas = feas && all(f -> is_feasible(m, f, n), wp._nonlinear_constr)
+    end
+
+    if feasible_flag
+        interval_objective_used = interval_objective_bound(m, n)
+        m._current_xref .= mid(n)
+        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
+    else
+        m._lower_objective_value = -Inf
+    end
+    m._lower_feasibility = feasible_flag
+    return
+end
+
+"""
+$(SIGNATURES)
+
+Runs interval, linear, quadratic contractor methods followed by obbt and a
+constraint programming walk up to tolerances specified in
+`EAGO.Optimizer` object.
+"""
+function preprocess!(t::ExtensionType, m::Optimizer)
+
+    reset_relaxation!(m)
+
+    wp = m._working_problem
+    params = m._parameters
+
+    # Sets initial feasibility
+    feasible_flag = true
+    m._obbt_performed_flag = false
+
+    # compute initial volume
+    m._initial_volume = prod(upper_variable_bounds(m._current_node) -
+                             lower_variable_bounds(m._current_node))
+    if params.fbbt_lp_depth >= m._iteration_count
+        load_fbbt_buffer!(m)
+        for i = 1:m._parameters.fbbt_lp_repetitions
+            if feasible_flag
+                for j = 1:wp._saf_leq_count
+                    !feasible_flag && break
+                    saf_leq =  wp._saf_leq[j]
+                    feasible_flag &= fbbt!(m, saf_leq)
+                end
+                !feasible_flag && break
+
+                for j = 1:wp._saf_eq_count
+                    !feasible_flag && break
+                    saf_eq = wp._saf_eq[j]
+                    feasible_flag &= fbbt!(m, saf_eq)
+                end
+                !feasible_flag && break
+            end
+        end
+        unpack_fbbt_buffer!(m)
+    end
+    # done after cp to prevent using cp specific flags in cut generation
+    set_first_relax_point!(m)
+
+    cp_walk_count = 0
+    perform_cp_walk_flag = feasible_flag
+    perform_cp_walk_flag &= (params.cp_depth >= m._iteration_count)
+    perform_cp_walk_flag &= (cp_walk_count < m._parameters.cp_repetitions)
+    while perform_cp_walk_flag
+        feasible_flag &= set_constraint_propagation_fbbt!(m)
+        !feasible_flag && break
+        cp_walk_count += 1
+        perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
+    end
+
+    obbt_count = 0
+    perform_obbt_flag = feasible_flag
+    perform_obbt_flag &= (params.obbt_depth >= m._iteration_count)
+    perform_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
+
+    while perform_obbt_flag
+        feasible_flag &= obbt!(m)
+        m._obbt_performed_flag = true
+        !feasible_flag && break
+        obbt_count += 1
+        perform_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
+    end
+
+    m._final_volume = prod(upper_variable_bounds(m._current_node) -
+                           lower_variable_bounds(m._current_node))
+
+    m._preprocess_feasibility = feasible_flag
+
+    return
+end
+preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
+
+"""
 $(SIGNATURES)
 
 Constructs and solves the relaxation using the default EAGO relaxation scheme
@@ -27,15 +263,13 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     relax_objective!(m, 1)
 
     # Optimizes the object
-    relaxed_optimizer = m.relaxed_optimizer
+    d = m.relaxed_optimizer
+    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.optimize!(d)
 
-    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-    MOI.optimize!(relaxed_optimizer)
-
-    m._lower_termination_status = MOI.get(relaxed_optimizer, MOI.TerminationStatus())
-    m._lower_primal_status = MOI.get(relaxed_optimizer, MOI.PrimalStatus())
-    m._lower_dual_status = MOI.get(relaxed_optimizer, MOI.DualStatus())
+    m._lower_termination_status = MOI.get(d, MOI.TerminationStatus())
+    m._lower_primal_status = MOI.get(d, MOI.PrimalStatus())
+    m._lower_dual_status = MOI.get(d, MOI.DualStatus())
     status = relaxed_problem_status(m._lower_termination_status,
                                     m._lower_primal_status,
                                     m._lower_dual_status)
@@ -44,9 +278,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         set_dual!(m)
         m._cut_add_flag = true
         m._lower_feasibility = true
-        m._lower_objective_value = MOI.get(relaxed_optimizer, MOI.ObjectiveValue())
+        m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
         for i = 1:m._working_problem._variable_count
-             m._lower_solution[i] = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+             m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         end
     elseif status == RRS_INFEASIBLE
         m._cut_add_flag = false
@@ -61,6 +295,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 end
 lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
 
+#=
 """
 $(SIGNATURES)
 
@@ -191,3 +426,4 @@ function add_cut!(t::ExtensionType, m::Optimizer)
     return nothing
 end
 add_cut!(m::Optimizer) = add_cut!(m.ext_type, m)
+=#

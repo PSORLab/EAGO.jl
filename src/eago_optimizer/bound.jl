@@ -221,3 +221,16 @@ function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V,S}, n::Node
     v = _is_num(d) ? Interval{S}(_num(d)) : _interval(d)
     return v.lo, v.hi
 end
+
+function is_feasible(m::Optimizer, f::Union{AffineFunctionIneq,BufferedQuadraticIneq}, y::NodeBB)
+    lower_interval_bound(m, f, y) <= 0.0
+end
+function is_feasible(m::Optimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq}, y::NodeBB)
+    l, u = lower_interval_bound(m, f, y)
+    l <= 0.0 <= u
+end
+function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V,S}, y::NodeBB) where {V,S<:Real}
+    l, u = lower_interval_bound(m, f, y)
+    feasible_flag = (upper_value < _lower_bound(f))
+    feasible_flag && (lower_value > _upper_bound(f))
+end

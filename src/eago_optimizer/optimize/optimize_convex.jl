@@ -31,7 +31,6 @@ function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
 end
 
 revert_adjusted_upper_bound!(t::ExtensionType, d::Optimizer) = nothing
-
 function revert_adjusted_upper_bound!(t::DefaultExt, d::Optimizer)
 
     adj_atol = d._parameters.absolute_tolerance/100.0
@@ -48,6 +47,7 @@ function revert_adjusted_upper_bound!(t::DefaultExt, d::Optimizer)
 
     return nothing
 end
+revert_adjusted_upper_bound!(m::Optimizer) = revert_adjusted_upper_bound!(m.ext_type, m)
 
 # translates quadratic cone
 function add_soc_constraints_as_quad!(m::Optimizer, opt::T) where T
