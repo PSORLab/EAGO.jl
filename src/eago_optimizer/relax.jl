@@ -292,15 +292,6 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, indx::Int, 
     return nothing
 end
 
-bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = lower_interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = lower_interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = lower_interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::SV, n::NodeBB) = _lower_bound(FullVar(), m, f.variable.value)
-function bound_objective(t::ExtensionType, m::Optimizer)
-    bound_objective(m, m._working_problem._objective, m._current_node)
-end
-bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
-
 function relax_objective!(m, f::T, check_safe) where T<:Union{SV,SAF}
     MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{T}(), f)
     return
@@ -345,77 +336,6 @@ function relax_objective!(t::ExtensionType, m::Optimizer, q::Int64)
     return
 end
 relax_objective!(m::Optimizer, q::Int64) = relax_objective!(m.ext_type, m, q)
-
-function objective_cut!(m::Optimizer, f::SV, check_safe::Bool, ϵ)
-    if !isinf(m._global_upper_bound) && (m._objective_cut_ci_sv.value === -1)
-        m._objective_cut_ci_sv = CI{SV,LT}(f.variable.value)
-    end
-    MOI.set(m.relaxed_optimizer, MOI.ConstraintSet(), m._objective_cut_ci_sv, LT(UBD))
-    return
-end
-function objective_cut!(m::Optimizer, f::AffineFunctionIneq, check_safe::Bool, ϵ)
-    formulated_constant = wp._objective_saf.constant
-    wp._objective_saf.constant = 0.0
-    if check_safe && is_safe_cut!(m, wp._objective_saf)
-        ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - wp._objective_saf.constant + ϵ))
-        push!(m._objective_cut_ci_saf, ci_saf)
-    end
-    wp._objective_saf.constant = formulated_constant
-    return
-end
-function objective_cut!(m::Optimizer, f::BufferedQuadraticIneq, check_safe::Bool)
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer,
-                                                   f.saf, m._current_node, m._sol_to_branch_map,
-                                                   m._current_xref)
-    if finite_cut_generated && (!check_safe || is_safe_cut!(m, f.saf))
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = 0.0
-        ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - buffered_sqf.saf.constant + ϵ))
-        push!(m._objective_cut_ci_saf, ci_saf)
-    end
-    return
-end
-function objective_cut!(m::Optimizer, f::BufferedNonlinearFunction, check_safe::Bool, ϵ)
-
-    UBD = m._global_upper_bound
-    relaxed_optimizer = m.relaxed_optimizer
-    wp = m._working_problem
-    relaxed_evaluator = wp._relaxed_evaluator
-
-    # if the objective cut is the first evaluation of the objective expression
-    # then perform a a forward pass
-    new_flag = m._new_eval_objective
-    relaxed_evaluator.is_first_eval = new_flag
-    finite_cut_generated = affine_relax_nonlinear!(f, relaxed_evaluator, true, new_flag, false)
-
-    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
-    if finite_cut_generated
-        copyto!(wp._objective_saf.terms, f.saf.terms)
-        wp._objective_saf.constant = 0.0
-        if !check_safe || is_safe_cut!(m,  f.saf)
-            # TODO: When we introduce numerically safe McCormick operators we'll need to replace
-            # the UBD - buffered_nl.saf.constant with a correctly rounded version. For now,
-            # a small factor is added to the UBD calculation initially which should be sufficient.
-            ci_saf = MOI.add_constraint(m.relaxed_optimizer, wp._objective_saf, LT(UBD - f.saf.constant + ϵ))
-            push!(m._objective_cut_ci_saf, ci_saf)
-        end
-    end
-    return
-end
-
-"""
-$(FUNCTIONNAME)
-
-Adds linear objective cut constraint to the `x.relaxed_optimizer`.
-"""
-function objective_cut!(m::Optimizer, check_safe::Bool)
-    ϵ = m._parameters.absolute_constraint_feas_tolerance
-    if m._parameters.objective_cut_on && m._global_upper_bound < Inf
-        objective_cut!(m, m._working_problem._objective, check_safe, ϵ)
-        m._new_eval_objective = false
-    end
-    return
-end
 
 """
 $(TYPEDSIGNATURES)
@@ -462,28 +382,16 @@ relax_constraints!(m::Optimizer, q::Int64) = relax_constraints!(m.ext_type, m, q
 """
 $(FUNCTIONNAME)
 
-Deletes all nonlinear constraints added to the relaxed optimizer.
+Deletes all constraints corresponding to relaxations of nonlinear terms
+added to the relaxed optimizer and clear buffers of constraint indicies.
 """
 function delete_nl_constraints!(m::Optimizer)
-
-    # delete affine relaxations added from quadratic inequality
-    for ci in m._buffered_quadratic_ineq_ci
-        MOI.delete(m.relaxed_optimizer, ci)
-    end
+    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._buffered_quadratic_ineq_ci)
+    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._buffered_quadratic_eq_ci)
+    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._buffered_nonlinear_ci)
     empty!(m._buffered_quadratic_ineq_ci)
-
-    # delete affine relaxations added from quadratic equality
-    for ci in m._buffered_quadratic_eq_ci
-        MOI.delete(m.relaxed_optimizer, ci)
-    end
     empty!(m._buffered_quadratic_eq_ci)
-
-    # delete affine relaxations added from nonlinear inequality
-    for ci in m._buffered_nonlinear_ci
-        MOI.delete(m.relaxed_optimizer, ci)
-    end
     empty!(m._buffered_nonlinear_ci)
-
     return
 end
 
@@ -493,9 +401,7 @@ $(FUNCTIONNAME)
 Deletes all scalar-affine objective cuts added to the relaxed optimizer.
 """
 function delete_objective_cuts!(m::Optimizer)
-    for ci in m._objective_cut_ci_saf
-        MOI.delete(m.relaxed_optimizer, ci)
-    end
+    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._objective_cut_ci_saf)
     empty!(m._objective_cut_ci_saf)
     return
 end

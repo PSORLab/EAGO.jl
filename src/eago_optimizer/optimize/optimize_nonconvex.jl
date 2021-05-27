@@ -11,6 +11,7 @@
 #############################################################################
 
 include(joinpath(@__DIR__,"nonconvex","stack_management.jl"))
+include(joinpath(@__DIR__,"nonconvex","lower_problem.jl"))
 include(joinpath(@__DIR__,"nonconvex","upper_problem.jl"))
 
 """
@@ -244,8 +245,6 @@ function convergence_check(t::ExtensionType, m::Optimizer)
   return t
 end
 convergence_check(m::Optimizer) = convergence_check(m.ext_type, m)
-
-include(joinpath(@__DIR__,"nonconvex","lower_problem.jl"))
 
 """
 $(SIGNATURES)
