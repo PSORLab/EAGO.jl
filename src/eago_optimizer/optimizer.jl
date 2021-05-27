@@ -181,15 +181,11 @@ Base.@kwdef mutable struct EAGOParameters
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
     cut_min_iterations::Int = 1
     "Maximum number of cuts at each node to attempt"
-    cut_max_iterations::Int = 3
-    "Convex coefficient used to select point for new added cuts. Branch point is
-    given by `(1-cut_cvx)*xmid + cut_cvx*xsol` (default = 0.9)."
-    cut_cvx::Float64 = 0.9
-    "Add cut if the L1 distance from the prior cutting point to the new cutting
-    point normalized by the box volume is greater than the tolerance (default = 0.05)."
-    cut_tolerance::Float64 = 0.05
-    "Adds an objective cut to the relaxed problem (default = true)."
-    objective_cut_on::Bool = true
+    cut_max_iterations::Int = 5
+    "Absolute tolerance checked for continuing cut"
+    cut_tolerance_abs::Float64 = 1E-3
+    "Relative tolerance checked for continuing cut"
+    cut_tolerance_rel::Float64 = 1E-3
 
     "Use tolerances to determine safe cuts in a Khajavirad 2018 manner"
     cut_safe_on::Bool = true
@@ -479,14 +475,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _lower_lvd::Vector{Float64} = Float64[]
     _lower_uvd::Vector{Float64} = Float64[]
 
-    _cut_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
-    _cut_dual_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
-    _cut_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
-    _cut_objective_value::Float64 = -Inf
-    _cut_feasibility::Bool = true
-
-    # set in TODO
-    _cut_solution::Vector{Float64} = Float64[]
+    _last_cut_objective::Float64 = -Inf
 
     _upper_result_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _upper_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
@@ -773,6 +762,8 @@ end
 @inline _branch_cvx_α(m::Optimizer) =  m._parameters.branch_cvx_factor
 @inline _branch_offset_β(m::Optimizer) = m._parameters.branch_offset
 @inline _branch_pseudocost_on(m::Optimizer) = m._parameters.branch_pseudocost_on
+@inline _cut_ϵ_abs(m::Optimizer) = m._parameters.cut_tolerance_abs
+@inline _cut_ϵ_rel(m::Optimizer) = m._parameters.cut_tolerance_rel
 
 @inline _bvi(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
 @inline _svi(m::Optimizer, i::Int) = m._sol_to_branch_map[i]

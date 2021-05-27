@@ -110,7 +110,6 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     # uses input model for local nlp solves... may adjust this if a convincing reason
     # to use a reformulated upper problem presents itself
     m._lower_solution      = zeros(Float64, m._working_problem._variable_count)
-    m._cut_solution        = zeros(Float64, m._working_problem._variable_count)
     m._continuous_solution = zeros(Float64, m._working_problem._variable_count)
     m._upper_solution      = zeros(Float64, m._working_problem._variable_count)
     m._upper_variables     = fill(VI(-1), m._working_problem._variable_count)
@@ -270,32 +269,25 @@ or linear solvers.
 optimize_hook!(t::ExtensionType, m::Optimizer) = nothing
 
 function store_candidate_solution!(m::Optimizer)
-
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
-
         m._feasible_solution_found = true
         m._first_solution_node = m._maximum_node_id
         m._solution_value = m._upper_objective_value
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
-
     end
-    return nothing
+    return
 end
 
 function set_global_lower_bound!(m::Optimizer)
-
     if !isempty(m._stack)
-
-        min_node = minimum(m._stack)
-        lower_bound = min_node.lower_bound
+        n = minimum(m._stack)
+        lower_bound = n.lower_bound
         if m._global_lower_bound < lower_bound
             m._global_lower_bound = lower_bound
         end
-
     end
-
-    return nothing
+    return
 end
 
 """
@@ -332,45 +324,38 @@ function global_solve!(m::Optimizer)
 
             # solves & times lower bounding problem
             logging_on && (start_time = time())
-            m._cut_iterations = 1
             lower_problem!(m)
-            while cut_condition(m)
-                add_cut!(m)
-            end
             if logging_on
                 m._last_lower_problem_time = time() - start_time
             end
             print_results!(m, true)
-            print_results_post_cut!(m)
 
             # checks for infeasibility stores solution
-            if m._lower_feasibility
-                if !convergence_check(m)
+            if m._lower_feasibility && !convergence_check(m)
 
-                    logging_on && (start_time = time())
-                    upper_problem!(m)
-                    if logging_on
-                        m._last_upper_problem_time = time() - start_time
+                logging_on && (start_time = time())
+                upper_problem!(m)
+                if logging_on
+                    m._last_upper_problem_time = time() - start_time
+                end
+                print_results!(m, false)
+                store_candidate_solution!(m)
+                if m._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
+                    if !m.feasible_local_continue || m.local_solve_only
+                        break
                     end
-                    print_results!(m, false)
-                    store_candidate_solution!(m)
-                    if m._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
-                        if !m.feasible_local_continue || m.local_solve_only
-                            break
-                        end
-                    end
+                end
 
-                    # Performs and times post processing
-                    logging_on && (start_time = time())
-                    postprocess!(m)
-                    if logging_on
-                        m._last_postprocessing_time = time() - start_time
-                    end
+                # Performs and times post processing
+                logging_on && (start_time = time())
+                postprocess!(m)
+                if logging_on
+                    m._last_postprocessing_time = time() - start_time
+                end
 
-                    # Checks to see if the node
-                    if m._postprocess_feasibility
-                        repeat_check(m) ? single_storage!(m) : branch_node!(m)
-                    end
+                # Checks to see if the node
+                if m._postprocess_feasibility
+                    repeat_check(m) ? single_storage!(m) : branch_node!(m)
                 end
             end
             fathom!(m)
@@ -390,10 +375,7 @@ function global_solve!(m::Optimizer)
     revert_adjusted_upper_bound!(m)
     m._objective_value = m._global_upper_bound
 
-    # Prints the solution
     print_solution!(m)
-
-    return nothing
 end
 
 optimize!(::Val{MINCVX}, m::Optimizer) = global_solve!(m)

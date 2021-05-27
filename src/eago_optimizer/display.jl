@@ -172,22 +172,3 @@ function print_results!(m::Optimizer, flag::Bool)
     end
     return
 end
-
-"""
-$(FUNCTIONNAME)
-
-Prints the results after performing various cuts.
-"""
-function print_results_post_cut!(m::Optimizer)
-    if m._parameters.verbosity > 1
-        println(" ")
-        if m._input_problem._optimization_sense === MOI.MIN_SENSE
-            print("Lower Bound (Last Iteration): $(m._lower_objective_value)")
-        else
-            print("Upper Bound (Last Iteration): $(-m._lower_objective_value)")
-        end
-        print(", Solution: $(m._lower_solution), Feasibility: $(m._lower_feasibility)\n")
-        println(" ")
-    end
-    return
-end
