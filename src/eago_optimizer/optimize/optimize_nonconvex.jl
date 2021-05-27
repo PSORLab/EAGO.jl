@@ -97,6 +97,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     load_relaxed_problem!(m)
     initialize_stack!(m)
 
+    wp = m._working_problem
     branch_variable_count = m._branch_variable_count
 
     m._current_xref             = fill(0.0, branch_variable_count)
@@ -109,14 +110,14 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     # populate in full space until local MOI nlp solves support constraint deletion
     # uses input model for local nlp solves... may adjust this if a convincing reason
     # to use a reformulated upper problem presents itself
-    m._lower_solution      = zeros(Float64, m._working_problem._variable_count)
-    m._continuous_solution = zeros(Float64, m._working_problem._variable_count)
-    m._upper_solution      = zeros(Float64, m._working_problem._variable_count)
-    m._upper_variables     = fill(VI(-1), m._working_problem._variable_count)
+    m._lower_solution      = zeros(Float64, wp._variable_count)
+    m._continuous_solution = zeros(Float64, wp._variable_count)
+    m._upper_solution      = zeros(Float64, wp._variable_count)
+    m._upper_variables     = fill(VI(-1), wp._variable_count)
 
     # add storage for fbbt
-    m._lower_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
-    m._upper_fbbt_buffer   = zeros(Float64, m._working_problem._variable_count)
+    m._lower_fbbt_buffer   = zeros(Float64, wp._variable_count)
+    m._upper_fbbt_buffer   = zeros(Float64, wp._variable_count)
 
     # add storage for obbt ( perform obbt on all relaxed variables, potentially)
     m._obbt_working_lower_index = fill(false, branch_variable_count)
@@ -130,7 +131,6 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._obbt_variable_count      = branch_variable_count
 
     # add storage for objective cut if quadratic or nonlinear
-    wp = m._working_problem
     wp._objective_saf.terms = copy(wp._objective.saf.terms)
 
     # set subgradient refinement flag
@@ -162,63 +162,59 @@ tolerance, infeasibility, or a specified limit, returns a boolean valued true
 if algorithm should continue.
 """
 function termination_check(t::ExtensionType, m::Optimizer)
-
-    node_in_stack = length(m._stack)
+    nlen = length(m._stack)
     L = m._global_lower_bound
     U = m._global_upper_bound
-
-    if node_in_stack === 0
-
-        if m._first_solution_node > 0
-            m._termination_status_code = MOI.OPTIMAL
-            m._result_status_code = MOI.FEASIBLE_POINT
-            (m._parameters.verbosity >= 3) && println("Empty Stack: Exhaustive Search Finished")
-
-        else
-            m._termination_status_code = MOI.INFEASIBLE
-            m._result_status_code = MOI.INFEASIBILITY_CERTIFICATE
-            (m._parameters.verbosity >= 3) && println("Empty Stack: Infeasible")
-        end
-
-    elseif node_in_stack >= m._parameters.node_limit
-
-        m._termination_status_code = MOI.NODE_LIMIT
-        m._result_status_code = MOI.UNKNOWN_RESULT_STATUS
-        (m._parameters.verbosity >= 3) && println("Node Limit Exceeded")
-
+    if nlen == 0 && m._first_solution_node > 0
+        m._end_state = GS_OPTIMAL
+    elseif nlen == 0 && !(m._first_solution_node > 0)
+        m._end_state = GS_INFEASIBLE
+    elseif nlen >= m._parameters.node_limit
+        m._end_state = GS_NODE_LIMIT
     elseif m._iteration_count >= m._parameters.iteration_limit
-
-        m._termination_status_code = MOI.ITERATION_LIMIT
-        m._result_status_code = MOI.UNKNOWN_RESULT_STATUS
-        (m._parameters.verbosity >= 3) && println("Maximum Iteration Exceeded")
-
-    elseif ~relative_tolerance(L, U, m._parameters.relative_tolerance)
-
-        m._termination_status_code = MOI.OPTIMAL
-        m._result_status_code = MOI.FEASIBLE_POINT
-        (m._parameters.verbosity >= 3) && println("Relative Tolerance Achieved")
-
+        m._end_state = GS_ITERATION_LIMIT
+    elseif !relative_tolerance(L, U, m._parameters.relative_tolerance)
+        m._end_state = GS_RELATIVE_TOL
     elseif (U - L) < m._parameters.absolute_tolerance
-
-        m._termination_status_code = MOI.OPTIMAL
-        m._result_status_code = MOI.FEASIBLE_POINT
-        (m._parameters.verbosity >= 3) && println("Absolute Tolerance Achieved")
-
+        m._end_state = GS_ABSOLUTE_TOL
     elseif m._run_time > m._parameters.time_limit
-
-        m._termination_status_code = MOI.TIME_LIMIT
-        m._result_status_code = MOI.UNKNOWN_RESULT_STATUS
-        (m._parameters.verbosity >= 3) && println("Time Limit Exceeded")
-
+        m._end_state = GS_TIME_LIMIT
     else
-
         return false
-
     end
-
     return true
 end
 termination_check(m::Optimizer) = termination_check(m.ext_type, m)
+
+const GLOBALEND_TSTATUS = Dict{GlobalEndState, MOI.TerminationStatusCode}(
+        GS_OPTIMAL => MOI.OPTIMAL,
+        GS_INFEASIBLE => MOI.INFEASIBLE,
+        GS_NODE_LIMIT => MOI.NODE_LIMIT,
+        GS_ITERATION_LIMIT => MOI.ITERATION_LIMIT,
+        GS_RELATIVE_TOL => MOI.OPTIMAL,
+        GS_ABSOLUTE_TOL => MOI.OPTIMAL,
+        GS_TIME_LIMIT => MOI.TIME_LIMIT
+        )
+
+function set_termination_status!(m::Optimizer)
+    m._termination_status_code = GLOBALEND_TSTATUS[m._end_state]
+    return
+end
+
+const GLOBALEND_PSTATUS = Dict{GlobalEndState, MOI.ResultStatusCode}(
+        GS_OPTIMAL => MOI.FEASIBLE_POINT,
+        GS_INFEASIBLE => MOI.INFEASIBILITY_CERTIFICATE,
+        GS_NODE_LIMIT => MOI.UNKNOWN_RESULT_STATUS,
+        GS_ITERATION_LIMIT => MOI.UNKNOWN_RESULT_STATUS,
+        GS_RELATIVE_TOL => MOI.FEASIBLE_POINT,
+        GS_ABSOLUTE_TOL => MOI.FEASIBLE_POINT,
+        GS_TIME_LIMIT => MOI.UNKNOWN_RESULT_STATUS
+        )
+
+function set_result_status!(m::Optimizer)
+    m._result_status_code = GLOBALEND_PSTATUS[m._end_state]
+    return
+end
 
 """
 $(SIGNATURES)
@@ -374,6 +370,8 @@ function global_solve!(m::Optimizer)
 
     revert_adjusted_upper_bound!(m)
     m._objective_value = m._global_upper_bound
+    set_termination_status!(m)
+    set_primal_status!(m)
 
     print_solution!(m)
 end

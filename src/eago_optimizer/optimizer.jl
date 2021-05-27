@@ -33,8 +33,10 @@ function initialize!(d::BranchCostStorage{T}, n::Int) where T <:AbstractFloat
     return
 end
 
-@enum(ObjectiveType, UNSET, NONLINEAR, OTHER)
 @enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
+@enum(GlobalEndState, GS_OPTIMAL, GS_INFEASIBLE, GS_NODE_LIMIT,
+                      GS_ITERATION_LIMIT, GS_RELATIVE_TOL,
+                      GS_ABSOLUTE_TOL, GS_TIME_LIMIT, GS_UNSET)
 
 export EAGOParameters
 """
@@ -295,8 +297,7 @@ Base.@kwdef mutable struct ParsedProblem
     # Problem classification (set in parse_classify_problem!)
     _problem_type::ProblemType = UNCLASSIFIED
 
-    "_objective_saf stores the objective and is used for constructing linear affine cuts
-     of any ObjectiveType"
+    "_objective_saf stores the objective and is used for constructing linear affine cuts"
     _objective_saf::SAF = SAF(SAT[], 0.0)
     _objective::Union{SV,AffineFunctionIneq,BufferedQuadraticIneq,BufferedNonlinearFunction,Nothing} = nothing
 
@@ -432,6 +433,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # loaded from _input_problem by TODO
     _working_problem::ParsedProblem = ParsedProblem()
 
+    _end_state::GlobalEndState = GS_UNSET
     _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
 

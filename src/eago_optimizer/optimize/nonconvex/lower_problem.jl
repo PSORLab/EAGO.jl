@@ -402,6 +402,25 @@ preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
 """
 $(SIGNATURES)
 
+Checks if a cut should be added and computes a new reference point to add the
+cut at. If no cut should be added the constraints not modified in place are
+deleted from the relaxed optimizer and the solution is compared with the
+interval lower bound. The best lower bound is then used.
+"""
+function cut_condition(t::ExtensionType, m::Optimizer)
+    f_old = m._last_cut_objective
+    f_new = m._lower_objective_value
+    ϵ_abs = _cut_ϵ_abs(m)
+    ϵ_rel = _cut_ϵ_rel(m)
+    add_cut_flag = (m._cut_iterations < m._parameters.cut_max_iterations)
+    add_cut_flag &= f_new - f_old <= min(ϵ_rel*abs(f_new), ϵ_abs)
+    return
+end
+cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
+
+"""
+$(SIGNATURES)
+
 Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
@@ -461,22 +480,3 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     return
 end
 lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
-
-"""
-$(SIGNATURES)
-
-Checks if a cut should be added and computes a new reference point to add the
-cut at. If no cut should be added the constraints not modified in place are
-deleted from the relaxed optimizer and the solution is compared with the
-interval lower bound. The best lower bound is then used.
-"""
-function cut_condition(t::ExtensionType, m::Optimizer)
-    f_old = m._last_cut_objective
-    f_new = m._lower_objective_value
-    ϵ_abs = _cut_ϵ_abs(m)
-    ϵ_rel = _cut_ϵ_rel(m)
-    add_cut_flag = (m._cut_iterations < m._parameters.cut_max_iterations)
-    add_cut_flag &= f_new - f_old <= min(ϵ_rel*abs(f_new), ϵ_abs)
-    return
-end
-cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)

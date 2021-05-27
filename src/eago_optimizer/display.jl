@@ -23,6 +23,21 @@ solution, and time spent solving subproblems.
 function print_solution!(m::Optimizer)
     if m._parameters.verbosity > 0
         println(" ")
+        if m._end_state == GS_OPTIMAL
+            println("Empty Stack: Exhaustive Search Finished")
+        elseif m._end_state == GS_INFEASIBLE
+            println("Empty Stack: Infeasible")
+        elseif m._end_state == GS_NODE_LIMIT
+            println("Node Limit Exceeded")
+        elseif m._end_state == GS_ITERATION_LIMIT
+            println("Maximum Iteration Exceeded")
+        elseif !m._end_state == GS_RELATIVE_TOL
+            println("Relative Tolerance Achieved")
+        elseif m._end_state == GS_ABSOLUTE_TOL
+            println("Absolute Tolerance Achieved")
+        elseif m._end_state == GS_TIME_LIMIT
+            println("Time Limit Exceeded")
+        end
         println("First Solution Found at Node $(m._first_solution_node)")
         lower_bound = m._min_converged_value
         if (m._input_problem._optimization_sense !== MOI.MIN_SENSE)
