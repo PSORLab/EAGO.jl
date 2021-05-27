@@ -24,31 +24,33 @@ function is_safe_cut!(m::Optimizer, f::SAF)
     safe_l = m._parameters.cut_safe_l
     safe_u = m._parameters.cut_safe_u
     safe_b = m._parameters.cut_safe_b
-
-    # violates |b| <= safe_b
-    (abs(f.constant) > safe_b) && return false
+    (abs(f.constant) > safe_b) && return false # violates |b| <= safe_b
 
     term_count = length(f.terms)
-    for i = 1:term_count
-
-        ai = (@inbounds f.terms[i]).coefficient
+    @inbounds for i = 1:term_count
+        ai = f.terms[i].coefficient
         if ai !== 0.0
-
-            # violates safe_l <= abs(ai) <= safe_u
-            ai_abs = abs(ai)
+            ai_abs = abs(ai)                   # violates safe_l <= abs(ai) <= safe_u
             !(safe_l <= abs(ai) <= safe_u) && return false
 
-            # violates safe_l <= abs(ai/aj) <= safe_u
-            for j = i:term_count
-                aj = (@inbounds f.terms[j]).coefficient
+            @inbounds for j = i:term_count     # violates safe_l <= abs(ai/aj) <= safe_u
+                aj = f.terms[j].coefficient
                 if aj !== 0.0
                     !(safe_l <= abs(ai/aj) <= safe_u) && return false
                 end
             end
         end
     end
-
     return true
+end
+
+function add_affine_relaxation!(m::Optimizer, f::SAF, check_safe::Bool)
+    if !check_safe || is_safe_cut!(m, f)
+        s = LT(-f.constant + _constraint_tol(m))
+        f.constant = 0.0
+        push!(m._affine_relax_ci, MOI.add_constraint(m.relaxed_optimizer, f, s))
+    end
+    return
 end
 
 """
@@ -65,12 +67,8 @@ Default routine for relaxing quadratic constraint `func < 0.0` on node `n`.
 Takes affine bounds of convex part at point `x0` and secant line bounds on
 concave parts.
 """
-function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
-                                 n::NodeBB, sol_to_branch_map::Vector{Int},
-                                 x::Vector{Float64})
+function affine_relax_quadratic!(m::Optimizer, func::SQF, buffer::Dict{Int,Float64}, saf::SAF)
 
-    lower_bounds = n.lower_variable_bounds
-    upper_bounds = n.upper_variable_bounds
     quadratic_constant = func.constant
 
     # Affine terms only contribute coefficients, so the respective
@@ -79,65 +77,50 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
     # need to retrieve variable bounds from locations other than
     # the node.
     for term in func.quadratic_terms
-
         a = term.coefficient
-        idx1 = term.variable_index_1.value
-        idx2 = term.variable_index_2.value
-        sol_idx1 = sol_to_branch_map[idx1]
-        sol_idx2 = sol_to_branch_map[idx2]
-        x0_1 = x[sol_idx1]
-        xL_1 = lower_bounds[sol_idx1]
-        xU_1 = upper_bounds[sol_idx1]
-
-        if idx1 === idx2
-
+        i = term.variable_index_1.value
+        j = term.variable_index_2.value
+        x0 = _lower_solution(FullVar(), m, i)
+        xL = _lower_bound(FullVar(), m, i)
+        xU = _upper_bound(FullVar(), m, i)
+        if i == j
             if a > 0.0
-                buffer[idx1] += a*x0_1
-                quadratic_constant -= 0.5*a*x0_1*x0_1
-
+                buffer[i] += a*x0
+                quadratic_constant -= 0.5*a*x0*x0
             else
-                if !isinf(xL_1) && !isinf(xU_1)
-                    buffer[idx1] += 0.5*a*(xL_1 + xU_1)
-                    quadratic_constant -= 0.5*a*xL_1*xU_1
+                if !isinf(xL) && !isinf(xU)
+                    buffer[i] += 0.5*a*(xL + xU)
+                    quadratic_constant -= 0.5*a*xL*xU
                 else
                     return false
                 end
             end
-
         else
-            x0_2 = x[sol_idx2]
-            xL_2 = lower_bounds[sol_idx2]
-            xU_2 = upper_bounds[sol_idx2]
-
+            y0 = _current_xref(FullVar(), m, j)
+            yL = _lower_bound(FullVar(), m, j)
+            yU = _upper_bound(FullVar(), m, j)
             if a > 0.0
-                if (!isinf(xL_1) && !isinf(xL_2)) &&
-                   ((xU_1 - xL_1)*x0_2 + (xU_2 - xL_2)*x0_1 <= xU_1*xU_2 - xL_1*xL_2)
-                    buffer[idx1] += a*xL_2
-                    buffer[idx2] += a*xL_1
-                    quadratic_constant -= a*xL_1*xL_2
+                if (!isinf(xL) && !isinf(yL)) && ((xU - xL)*y0 + (yU - yL)*x0 <= xU*yU - xL*yL)
+                    buffer[i] += a*yL
+                    buffer[j] += a*xL
+                    quadratic_constant -= a*xL*yL
 
-                elseif !isinf(xU_1) && !isinf(xU_2)
-                    buffer[idx1] += a*xU_2
-                    buffer[idx2] += a*xU_1
-                    quadratic_constant -= a*xU_1*xU_2
-
+                elseif !isinf(xU) && !isinf(yU)
+                    buffer[i] += a*yU
+                    buffer[j] += a*xU
+                    quadratic_constant -= a*xU*yU
                 else
                     return false
-
                 end
             else
-                if (!isinf(xU_1) && !isinf(xL_2)) &&
-                   ((xU_1 - xL_1)*x0_2 - (xU_2 - xL_2)*x0_1 <= xU_1*xL_2 - xL_1*xU_2)
-
-                    buffer[idx1] += a*xL_2
-                    buffer[idx2] += a*xU_1
-                    quadratic_constant -= a*xU_1*xL_2
-
-                elseif !isinf(xL_1) && !isinf(xU_2)
-                    buffer[idx1] += a*xU_2
-                    buffer[idx2] += a*xL_1
-                    quadratic_constant -= a*xL_1*xU_2
-
+                if (!isinf(xU) && !isinf(yL)) && ((xU - xL)*y0 - (yU - yL)*x0 <= xU*yL - xL*yU)
+                    buffer[i] += a*yL
+                    buffer[j] += a*xU
+                    quadratic_constant -= a*xU*yL
+                elseif !isinf(xL) && !isinf(yU)
+                    buffer[i] += a*yU
+                    buffer[j] += a*xL
+                    quadratic_constant -= a*xL*yU
                 else
                     return false
                 end
@@ -145,12 +128,9 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         end
     end
 
-    for term in func.affine_terms
-        a0 = term.coefficient
-        idx = term.variable_index.value
-        buffer[idx] += a0
+    for t in func.affine_terms
+        buffer[t.variable_index.value] += t.coefficient
     end
-
     count = 1
     for (key, value) in buffer
         saf.terms[count] = SAT(value, VI(key))
@@ -158,59 +138,30 @@ function affine_relax_quadratic!(func::SQF, buffer::Dict{Int,Float64}, saf::SAF,
         count += 1
     end
     saf.constant = quadratic_constant
-
-    return true
+    return
 end
 
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::Optimizer, f::BufferedQuadraticIneq, indx::Int, check_safe::Bool)
-
-    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
-    if finite_cut_generated
-        if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant + constraint_tol)
-            f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_quadratic_ineq_ci, ci)
-        end
+function relax!(m::Optimizer, f::BufferedQuadraticIneq, k::Int, check_safe::Bool)
+    if affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
+        add_affine_relaxation!(m, f.saf, check_safe)
     end
-    #m.relaxed_to_problem_map[ci] = indx
-
-    return nothing
+    return
 end
 
 """
 $(TYPEDSIGNATURES)
 """
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
-
-    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
-    finite_cut_generated = affine_relax_quadratic!(f.func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
-    if finite_cut_generated
-        if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant + constraint_tol)
-            f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_quadratic_eq_ci, ci)
-        end
+    if affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
+        add_affine_relaxation!(m, f.saf, check_safe)
     end
-    #m.relaxed_to_problem_map[ci] = indx
-
-    finite_cut_generated = affine_relax_quadratic!(f.minus_func, f.buffer, f.saf, m._current_node, m._sol_to_branch_map, m._current_xref)
-    if finite_cut_generated
-        if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant + constraint_tol)
-            f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_quadratic_eq_ci, ci)
-        end
+    if affine_relax_quadratic!(m, f.minus_func, f.buffer, f.saf)
+        add_affine_relaxation!(m, f.saf, check_safe)
     end
-    #m.relaxed_to_problem_map[ci] = indx
-
-    return nothing
+    return
 end
 
 """
@@ -227,27 +178,18 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     if _is_num(f)
         f.saf.constant = _num(f)
         for i = 1:N
-            vval = @inbounds grad_sparsity[i]
-            f.saf.terms[i] = SAT(0.0, VI(vval))
+            f.saf.terms[i] = SAT(0.0, VI(grad_sparsity[i]))
         end
-
     else
         setvalue = _set(f)
         finite_cut &= !(isempty(setvalue) || isnan(setvalue))
-
         if finite_cut
             value = _set(f)
             f.saf.constant = use_cvx ? value.cv : -value.cc
-            for i = 1:N
-                vval = @inbounds grad_sparsity[i]
-                if use_cvx
-                    coef = @inbounds value.cv_grad[i]
-                else
-                    coef = @inbounds -value.cc_grad[i]
-                end
-                f.saf.terms[i] = SAT(coef, VI(vval))
-                xv = @inbounds x[vval]
-                f.saf.constant = sub_round(f.saf.constant , mul_round(coef, xv, RoundUp), RoundDown)
+             @inbounds for i = 1:N
+                c = use_cvx ? value.cv_grad[i] : -value.cc_grad[i]
+                f.saf.terms[i] = SAT(c, VI(grad_sparsity[i]))
+                f.saf.constant = sub_round(f.saf.constant , mul_round(c, x[vval], RoundUp), RoundDown)
             end
             if is_constraint
                 bnd_used =  use_cvx ? -_upper_bound(f) : _lower_bound(f)
@@ -263,14 +205,12 @@ end
 $(TYPEDSIGNATURES)
 """
 function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
-
-    constraint_tol = m._parameters.absolute_constraint_feas_tolerance
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant + constraint_tol)
+            lt = LT(-f.saf.constant + _constraint_tol(m))
             f.saf.constant = 0.0
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
-            push!(m._buffered_nonlinear_ci, ci)
+            push!(m._affine_relax_ci, ci)
         end
     end
     return
@@ -287,60 +227,14 @@ function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, k::Int, che
 end
 
 """
-$(TYPEDSIGNATURES)
-
-A routine that adds relaxations for all nonlinear constraints and quadratic constraints
-corresponding to the current node to the relaxed problem. This adds an objective cut
-(if specified by `objective_cut_on`) and then sets the `_new_eval_constraint` flag
-to false indicating that an initial evaluation of the constraints has occurred. If
-the `objective_cut_on` flag is `true` then the `_new_eval_objective` flag is also
-set to `false` indicating that the objective expression was evaluated.
-"""
-function relax_all_constraints!(t::ExtensionType, m::Optimizer, q::Int64)
-
-    check_safe = (q === 1) ? false : m._parameters.cut_safe_on
-    m._working_problem._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-
-    sqf_leq_list = m._working_problem._sqf_leq
-    for i = 1:m._working_problem._sqf_leq_count
-        sqf_leq = @inbounds sqf_leq_list[i]
-        relax!(m, sqf_leq, i, check_safe)
-    end
-
-    sqf_eq_list = m._working_problem._sqf_eq
-    for i = 1:m._working_problem._sqf_eq_count
-        sqf_eq = @inbounds sqf_eq_list[i]
-        relax!(m, sqf_eq, i, check_safe)
-    end
-
-    nl_list = m._working_problem._nonlinear_constr
-    for i = 1:m._working_problem._nonlinear_count
-        nl = @inbounds nl_list[i]
-        relax!(m, nl, i, check_safe)
-    end
-
-    m._new_eval_constraint = false
-
-    objective_cut!(m, check_safe)
-
-    return
-end
-relax_constraints!(t::ExtensionType, m::Optimizer, q::Int64) = relax_all_constraints!(t, m, q)
-relax_constraints!(m::Optimizer, q::Int64) = relax_constraints!(m.ext_type, m, q)
-
-"""
 $(FUNCTIONNAME)
 
 Deletes all constraints corresponding to relaxations of nonlinear terms
 added to the relaxed optimizer and clear buffers of constraint indicies.
 """
 function delete_nl_constraints!(m::Optimizer)
-    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._buffered_quadratic_ineq_ci)
-    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._buffered_quadratic_eq_ci)
-    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._buffered_nonlinear_ci)
-    empty!(m._buffered_quadratic_ineq_ci)
-    empty!(m._buffered_quadratic_eq_ci)
-    empty!(m._buffered_nonlinear_ci)
+    foreach(c -> MOI.delete(m.relaxed_optimizer, c), m._affine_relax_ci)
+    empty!(m._affine_relax_ci)
     return
 end
 

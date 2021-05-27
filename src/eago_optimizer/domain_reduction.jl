@@ -235,25 +235,7 @@ function obbt!(m::Optimizer)
     branch_to_sol_map = m._branch_to_sol_map
     relaxed_optimizer = m.relaxed_optimizer
 
-    # set node and reference point if necessary then solve initial problem to
-    # feasibility. This is repeated `obbt_repetitions` number of times in the
-    # following fashion. Relax the problem, populate affine constraints, run
-    # obbt which contracts variable bounds, delete affine constraints...
-    # update variable bounds and repeat. TODO: Keep track of which variables
-    # participate in which functions and only delete a constraint if a
-    # variable participating in a nonlinear term changes it bounds.
-    if m._obbt_performed_flag
-        reset_relaxation!(m)
-        set_first_relax_point!(m)
-    end
-
-    update_relaxed_problem_box!(m)
-    if m._nonlinear_evaluator_created
-        set_node!(m._working_problem._relaxed_evaluator, n)
-        set_reference_point!(m)
-    end
-    relax_constraints!(m, 1)
-    relax_objective!(m, 1)
+    relax_problem!(m::Optimizer)
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     MOI.optimize!(relaxed_optimizer)
 
@@ -298,10 +280,8 @@ function obbt!(m::Optimizer)
         if any(m._obbt_working_lower_index)
             for i = 1:obbt_variable_count
                 if @inbounds m._obbt_working_lower_index[i]
-                    sol_indx = branch_to_sol_map[i]
-                    temp_value = @inbounds xLP[sol_indx] - n.lower_variable_bounds[i]
-                    # Need less than or equal to handle unbounded cases
-                    if temp_value <= lower_value
+                    temp_value = _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
+                    if temp_value <= lower_value   # Need less than or equal to handle unbounded cases
                         lower_value = temp_value
                         lower_indx = i
                     end
@@ -313,8 +293,7 @@ function obbt!(m::Optimizer)
         if any(m._obbt_working_upper_index)
             for i = 1:obbt_variable_count
                 if @inbounds m._obbt_working_upper_index[i]
-                    sol_indx = branch_to_sol_map[i]
-                    temp_value = @inbounds n.upper_variable_bounds[i] - xLP[sol_indx]
+                    temp_value = _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
                     if temp_value <= upper_value
                         upper_value = temp_value
                         upper_indx = i
@@ -429,26 +408,11 @@ end
 $(FUNCTIONNAME)
 """
 function load_fbbt_buffer!(m::Optimizer)
-
-    n = m._current_node
-    sol_to_branch = m._sol_to_branch_map
-    lower_variable_bounds = n.lower_variable_bounds
-    upper_variable_bounds = n.upper_variable_bounds
-
     for i = 1:m._working_problem._variable_count
-        if @inbounds m._branch_variables[i]
-            indx = @inbounds sol_to_branch[i]
-            @inbounds m._lower_fbbt_buffer[i] = lower_variable_bounds[indx]
-            @inbounds m._upper_fbbt_buffer[i] = upper_variable_bounds[indx]
-
-        else
-            @inbounds m._lower_fbbt_buffer[i] = m._working_problem._variable_info[i].lower_bound
-            @inbounds m._upper_fbbt_buffer[i] = m._working_problem._variable_info[i].upper_bound
-
-        end
+        m._lower_fbbt_buffer[i] = _lower_bound(FullVar(), m, i)
+        m._upper_fbbt_buffer[i] = _upper_bound(FullVar(), m, i)
     end
-
-    return nothing
+    return
 end
 
 """

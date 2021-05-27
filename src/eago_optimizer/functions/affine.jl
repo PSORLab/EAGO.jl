@@ -28,21 +28,6 @@ mutable struct AffineFunctionIneq <: AbstractEAGOConstraint
     len::Int
 end
 
-"""
-$(TYPEDEF)
-
-Current only used for bound tightening. Stores a representation
-of an affine equality.
-"""
-mutable struct AffineFunctionEq <: AbstractEAGOConstraint
-    terms::Vector{Tuple{Float64,Int}}
-    constant::Float64
-    len::Int
-end
-
-###
-### Constructor definitions
-###
 AffineFunctionIneq() = AffineFunctionIneq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionIneq(f::SAF, s::LT)
     terms = map(x -> (x.coefficient, x.variable_index.value), f.terms)
@@ -56,6 +41,17 @@ function AffineFunctionIneq(func::SV, is_max = false)
     AffineFunctionIneq(Tuple{Float64,Int}[(1.0, f.variable_index.value)], 0.0, 1)
 end
 
+"""
+$(TYPEDEF)
+
+Current only used for bound tightening. Stores a representation
+of an affine equality.
+"""
+mutable struct AffineFunctionEq <: AbstractEAGOConstraint
+    terms::Vector{Tuple{Float64,Int}}
+    constant::Float64
+    len::Int
+end
 
 AffineFunctionEq() = AffineFunctionEq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionEq(func::SAF, set::ET)

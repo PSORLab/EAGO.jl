@@ -555,18 +555,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Log
     _log::Log = Log()
 
-    # set in TODO
-    _buffered_quadratic_ineq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
-    _buffered_quadratic_eq_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
-
-    _buffered_nonlinear_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
-
-    # set initially in TODO, reset in objective_cut in relax.jl
+    _affine_relax_ci = CI{SAF,LT}[]
     _objective_cut_ci_sv::CI{SV,LT} = CI{SV,LT}(-1)
-
-    # initialized to empty in constructor (or via MOI.empty), filled in objective_cut in relax.jl
-    # called by obbt in domain_reduction.jl, lower_problem, and add_cut in optimize_nonconvex.jl,
-    # emptied in delete_objective_cuts! in relax.jl
     _objective_cut_ci_saf::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
 
     # need to retreive primal _relaxed_variable_index
@@ -766,6 +756,7 @@ end
 @inline _branch_pseudocost_on(m::Optimizer) = m._parameters.branch_pseudocost_on
 @inline _cut_ϵ_abs(m::Optimizer) = m._parameters.cut_tolerance_abs
 @inline _cut_ϵ_rel(m::Optimizer) = m._parameters.cut_tolerance_rel
+@inline _constraint_tol(m::Optimizer) = m._parameters.absolute_constraint_feas_tolerance
 
 @inline _bvi(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
 @inline _svi(m::Optimizer, i::Int) = m._sol_to_branch_map[i]
