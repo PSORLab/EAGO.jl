@@ -22,7 +22,7 @@ function lower_interval_bound(m::Optimizer, f::AffineFunctionIneq)
     return fL
 end
 
-function interval_bound(m::Optimizer, f::AffineFunctionEq, y::NodeBB)
+function interval_bound(m::Optimizer, f::AffineFunctionEq)
     fL = fU = f.constant
     for (c, j) in f.terms
         xL = _lower_bound(FullVar(), m, j)
@@ -43,112 +43,60 @@ end
 ###
 
 function lower_interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
-
-    sol_branch_map = m._sol_to_branch_map
-    lo_bnds = n.lower_variable_bounds
-    up_bnds = n.upper_variable_bounds
-    lower_interval_bound = Interval{Float64}(f.func.constant)
-
-    for aff_term in f.func.affine_terms
-
-        coeff = aff_term.coefficient
-
-        vi = aff_term.variable_index.value
-        if m._branch_variables[vi]
-            mapped_vi = @inbounds sol_branch_map[vi]
-            xL = @inbounds lo_bnds[mapped_vi]
-            xU = @inbounds up_bnds[mapped_vi]
-        else
-            xL = @inbounds m._working_problem._variable_info[vi].lower_bound
-            xU = @inbounds m._working_problem._variable_info[vi].upper_bound
-        end
-
-        lower_interval_bound += coeff > 0.0 ? coeff*xL : coeff*xU
+    fval = Interval{Float64}(f.func.constant)
+    for t in f.func.affine_terms
+        c = t.coefficient
+        j = aff_term.variable_index.value
+        xL = _lower_bound(FullVar(), m, j)
+        xU = _upper_bound(FullVar(), m, j)
+        fval += c > 0.0 ? c*xL : c*xU
     end
-
-    # assumes branching on all quadratic terms, otherwise we'd need to distinguish
-    # between look ups to the node bounds and lookups to the variable info in the
-    # working problem.
-    for quad_term in f.func.quadratic_terms
-
-        coeff = quad_term.coefficient
-
-        vi1 = quad_term.variable_index_1.value
-        vi2 = quad_term.variable_index_2.value
-        mapped_vi1 = sol_branch_map[vi1]
-
-        xL = @inbounds lo_bnds[mapped_vi1]
-        xU = @inbounds up_bnds[mapped_vi1]
-
-        if vi1 === vi2
-            if coeff > 0.0
-                lower_interval_bound += (0.0 < xL) ? 0.5*coeff*xL*xL : ((xU <= 0.0) ? 0.5*coeff*xU*xU : 0.0)
+    for t in f.func.quadratic_terms
+        c = t.coefficient
+        i = t.variable_index_1.value
+        j = t.variable_index_2.value
+        xL = _lower_bound(FullVar(), m, i)
+        xU = _upper_bound(FullVar(), m, i)
+        if i == j
+            if c > 0.0
+                fval += (0.0 < xL) ? 0.5*c*xL*xL : ((xU <= 0.0) ? 0.5*c*xU*xU : 0.0)
             else
-                lower_interval_bound += (xL < xU) ? 0.5*coeff*xU*xU : 0.5*coeff*xL*xL
+                fval += (xL < xU) ? 0.5*c*xU*xU : 0.5*c*xL*xL
             end
         else
-            mapped_vi2 = sol_branch_map[vi2]
-
-            il2b = @inbounds lo_bnds[mapped_vi2]
-            iu2b = @inbounds up_bnds[mapped_vi2]
-            lower_interval_bound += coeff*Interval{Float64}(xL, xU)*Interval{Float64}(il2b, iu2b)
-
+            yL = _lower_bound(FullVar(), m, j)
+            yU = _upper_bound(FullVar(), m, j)
+            fval += c*Interval{Float64}(xL, xU)*Interval{Float64}(yL, yU)
         end
     end
-
-    return lower_interval_bound.lo
+    return fval.lo
 end
 
 function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
 
-    sol_branch_map = m._sol_to_branch_map
-    lo_bnds = n.lower_variable_bounds
-    up_bnds = n.upper_variable_bounds
-    val_intv = Interval(f.func.constant)
-
-    for aff_term in f.func.affine_terms
-
-        coeff = aff_term.coefficient
-
-        vi = aff_term.variable_index.value
-        if m._branch_variables[vi]
-            mapped_vi = @inbounds sol_branch_map[vi]
-            xL = @inbounds lo_bnds[mapped_vi]
-            xU = @inbounds up_bnds[mapped_vi]
-        else
-            xL = @inbounds m._working_problem._variable_info[vi].lower_bound
-            xU = @inbounds m._working_problem._variable_info[vi].upper_bound
-        end
-
-        val_intv += coeff*Interval(xL, xU)
+    fval = Interval{Float64}(f.func.constant)
+    for t in f.func.affine_terms
+        c = t.coefficient
+        j = aff_term.variable_index.value
+        xL = _lower_bound(FullVar(), m, j)
+        xU = _upper_bound(FullVar(), m, j)
+        fval += coeff*Interval(xL, xU)
     end
-
-    # assumes branching on all quadratic terms, otherwise we'd need to distinguish
-    # between look ups to the node bounds and lookups to the variable info in the
-    # working problem.
-    for quad_term in f.func.quadratic_terms
-
-        coeff = quad_term.coefficient
-
-        vi1 = quad_term.variable_index_1.value
-        vi2 = quad_term.variable_index_2.value
-
-        mapped_vi1 = @inbounds sol_branch_map[vi1]
-
-        xL = @inbounds lo_bnds[mapped_vi1]
-        xU = @inbounds up_bnds[mapped_vi1]
-
-        if vi1 === vi2
-            val_intv += 0.5*coeff*pow(Interval(xL, xU), 2)
+    for f.func.quadratic_terms
+        c = t.coefficient
+        i = t.variable_index_1.value
+        j = t.variable_index_2.value
+        xL = _lower_bound(FullVar(), m, i)
+        xU = _upper_bound(FullVar(), m, i)
+        if i == j
+            fval += 0.5*c*pow(Interval(xL, xU), 2)
         else
-            mapped_vi2 = @inbounds sol_branch_map[vi2]
-            @inbounds il2b = lo_bnds[mapped_vi2]
-            @inbounds iu2b = up_bnds[mapped_vi2]
-            val_intv += coeff*Interval(xL, xU)*Interval(il2b, iu2b)
+            yL = _lower_bound(FullVar(), m, j)
+            yU = _upper_bound(FullVar(), m, j)
+            fval += c*Interval(xL, xU)*Interval(yL, yU)
         end
     end
-
-    return val_intv.lo, val_intv.hi
+    return fval.lo, fval.hi
 end
 
 ###
@@ -203,8 +151,8 @@ function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V,S}, y::NodeBB)
 end
 
 bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = lower_interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = lower_interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = lower_interval_bound(m, f, n)
+bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = lower_interval_bound(m, f)
+bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = lower_interval_bound(m, f)
 bound_objective(m::Optimizer, f::SV, n::NodeBB) = _lower_bound(FullVar(), m, f.variable.value)
 function bound_objective(t::ExtensionType, m::Optimizer)
     bound_objective(m, m._working_problem._objective, m._current_node)
