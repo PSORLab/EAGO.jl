@@ -10,18 +10,34 @@
 # LP, SOCP, MILP, MISOCP, and convex problem types.
 #############################################################################
 
-function convert_to_min!(m::ParsedProblem, f::SV)
-    m._working_problem._objective = AffineFunctionIneq(f, is_max = true)
+function reform_epigraph_min!(m::ParsedProblem, f::SV)
+    ip = m._input_problem
+    wp = m._working_problem
+    flag = ip._optimization_sense == MOI.MAX_SENSE
+    wp._objective = AffineFunctionIneq(f, is_max = flag)
     return
 end
-function convert_to_min!(m::ParsedProblem, f::AffineFunctionIneq)
+function reform_epigraph_min!(m::ParsedProblem, f::AffineFunctionIneq)
+    ip = m._input_problem
     wp = m._working_problem
-    wp._objective_saf = MOIU.operate(-, Float64, wp._objective_saf)
-    wp._objective = AffineFunctionIneq(f, GT_ZERO)
+    if ip._optimization_sense == MOI.MAX_SENSE
+        wp._objective_saf = MOIU.operate(-, Float64, wp._objective_saf)
+        wp._objective = AffineFunctionIneq(f, GT_ZERO)
+    end
     return
 end
 function convert_to_min!(m::ParsedProblem, f::BufferedQuadraticIneq)
-    m._working_problem._objective.sqf = MOIU.operate(-, Float64, f.sqf)
+    wp = m._working_problem
+    ηi = m._variable_count + 1
+
+
+    f.buffer[ηi] = 0.0                            # update buffered function
+    f.len += 1
+    MOIU.operate!(+, Float64, f.sqf, SV(VI(ηi)))
+    if ip._optimization_sense == MOI.MAX_SENSE
+        MOIU.operate!(-, Float64, f.sqf)
+    end
+
     return
 end
 function convert_to_min!(m::ParsedProblem, f::BufferedNonlinearFunction)
@@ -60,43 +76,39 @@ end
 
 Performs an epigraph reformulation assuming the working_problem is a minimization problem.
 """
-function reform_epigraph!(m::Optimizer)
+function reform_epigraph_min!(m::Optimizer)
 
-    if m._parameters.presolve_epigraph_flag
-        #=
-        # add epigraph variable
-        obj_variable_index = MOI.add_variable(m)
+    # add epigraph variable
+    obj_variable_index = MOI.add_variable(m)
 
-        # converts ax + b objective to ax - y <= -b constraint with y objective
-        obj_type = m._working_problem._objective_type
-        if obj_type === SCALAR_AFFINE
+    # converts ax + b objective to ax - y <= -b constraint with y objective
+    obj_type = m._working_problem._objective_type
+    if obj_type == SCALAR_AFFINE
 
-            # update unparsed expression
-            objective_saf = m._working_problem._objective_saf
-            push!(objective_saf, SAT(-1.0, obj_variable_index))
-            obj_ci = MOI.add_constraint(m, saf, LT(-objective_saf.constant))
+        # update unparsed expression
+        objective_saf = m._working_problem._objective_saf
+        push!(objective_saf, SAT(-1.0, obj_variable_index))
+        obj_ci = MOI.add_constraint(m, saf, LT(-objective_saf.constant))
 
-            # update parsed expression (needed for interval bounds)
+        # update parsed expression (needed for interval bounds)
 
-        # converts ax + b objective to ax - y <= -b constraint with y objective
-        elseif obj_type === SCALAR_QUADRATIC
+    # converts ax + b objective to ax - y <= -b constraint with y objective
+    elseif obj_type === SCALAR_QUADRATIC
 
-            # update parsed expression
-            objective_sqf = m._working_problem._objective_sqf
-            obj_ci = MOI.add_constraint(m, saf, LT())
+        # update parsed expression
+        objective_sqf = m._working_problem._objective_sqf
+        obj_ci = MOI.add_constraint(m, saf, LT())
 
-        elseif obj_type === NONLINEAR
+    elseif obj_type === NONLINEAR
 
-            # updated parsed expressions
-            objective_nl = m._working_problem._objective_nl
+    # updated parsed expressions
+    objective_nl = m._working_problem._objective_nl
 
-        end
-
-        MOI.set(m, MOI.ObjectiveFunction{SV}(), SV(obj_variable_index))
-        =#
     end
 
-    return nothing
+    MOI.set(m, MOI.ObjectiveFunction{SV}(), SV(obj_variable_index))
+    end
+    return
 end
 
 function check_set_is_fixed(v::VariableInfo)
@@ -185,12 +197,29 @@ function label_branch_variables!(m::Optimizer)
     return
 end
 
+add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
+add_nonlinear_evaluator!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
+function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
+    m._working_problem._relaxed_evaluator = Evaluator()
 
-add_nonlinear_functions!(m::Optimizer) = add_nonlinear_functions!(m, m._input_problem._nlp_data.evaluator)
+    variable_count = length(m._working_problem._variable_info)
+    relax_eval = m._working_problem._relaxed_evaluator
+    relax_eval.user_operators = OperatorRegistry(d.m.nlp_data.user_operators)
+    relax_eval.ctx            = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
+                                                                 m._parameters.domain_violation_guard_on))
+    relax_eval.subgrad_tol           = m._parameters.subgrad_tol
+    m._nonlinear_evaluator_created = true
+    return
+end
+function add_nonlinear_evaluator!(m::Optimizer)
+    add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
+end
 
-add_nonlinear_functions!(m::Optimizer, evaluator::Nothing) = nothing
-add_nonlinear_functions!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
-function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
+add_nonlinear!(m::Optimizer, evaluator::Nothing) = nothing
+add_nonlinear!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
+function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
+
+    add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 
     nlp_data = m._input_problem._nlp_data
     MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
@@ -254,35 +283,10 @@ function add_nonlinear_functions!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     m._input_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
     m._working_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
+    relax_evaluator.subexpressions_eval = fill(false, length(relax_evaluator.subexpressions))
     return
 end
-
-function add_nonlinear_evaluator!(m::Optimizer)
-    add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
-end
-
-add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
-add_nonlinear_evaluator!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
-function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
-    m._working_problem._relaxed_evaluator = Evaluator()
-
-    variable_count = length(m._working_problem._variable_info)
-    relax_eval = m._working_problem._relaxed_evaluator
-    relax_eval.user_operators = OperatorRegistry(d.m.nlp_data.user_operators)
-    relax_eval.ctx                   = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
-                                                                        m._parameters.domain_violation_guard_on))
-    relax_eval.subgrad_tol           = m._parameters.subgrad_tol
-
-    m._nonlinear_evaluator_created = true
-
-    return nothing
-end
-
-function add_subexpression_buffers!(m::Optimizer)
-    d = m._working_problem._relaxed_evaluator
-    d.subexpressions_eval = fill(false, length(d.subexpressions))
-    return nothing
-end
+add_nonlinear!(m::Optimizer) = add_nonlinear_functions!(m, m._input_problem._nlp_data.evaluator)
 
 add_objective!(m::ParsedProblem, f) = nothing
 add_objective!(m::ParsedProblem, f::SV) = (m._objective = f; return )
@@ -309,73 +313,26 @@ function initial_parse!(m::Optimizer)
     wp._variable_count = ip._variable_count
 
     # add linear constraints to the working problem
-    linear_leq = ip._linear_leq_constraints
-    for i = 1:ip._linear_leq_count
-        linear_func, leq_set = @inbounds linear_leq[i]
-        push!(wp._saf_leq, AffineFunctionIneq(linear_func, leq_set))
-    end
+    append!(wp._saf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_leq_constraints])
+    append!(wp._sqf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_geq_constraints])
+    wp._saf_eq  = [AffineFunctionEq(c[1], c[2]) for c in ip._linear_eq_constraints]
 
-    linear_geq = ip._linear_geq_constraints
-    for i = 1:ip._linear_geq_count
-        linear_func, geq_set = @inbounds linear_geq[i]
-        push!(m._working_problem._saf_leq, AffineFunctionIneq(linear_func, geq_set))
-    end
-
-    linear_eq = ip._linear_eq_constraints
-    for i = 1:ip._linear_eq_count
-        linear_func, eq_set = @inbounds linear_eq[i]
-        push!(m._working_problem._saf_eq, AffineFunctionEq(linear_func, eq_set))
-    end
-
-    # add quadratic constraints to the working problem
-    quad_leq = ip._quadratic_leq_constraints
-    for i = 1:ip._quadratic_leq_count
-        quad_func, leq_set = @inbounds quad_leq[i]
-        push!(m._working_problem._sqf_leq, BufferedQuadraticIneq(quad_func, leq_set))
-    end
-
-    quad_geq = ip._quadratic_geq_constraints
-    for i = 1:ip._quadratic_geq_count
-        quad_func, geq_set = @inbounds quad_geq[i]
-        push!(m._working_problem._sqf_leq, BufferedQuadraticIneq(quad_func, geq_set))
-    end
-
-    quad_eq = ip._quadratic_eq_constraints
-    for i = 1:ip._quadratic_eq_count
-        quad_func, eq_set = @inbounds quad_eq[i]
-        push!(m._working_problem._sqf_eq, BufferedQuadraticEq(quad_func, eq_set))
-    end
-
-    # add conic constraints to the working problem
-    soc_vec = m._input_problem._conic_second_order
-    for i = 1:ip._conic_second_order_count
-        soc_func, soc_set = @inbounds soc_vec[i]
-        first_variable_loc = soc_func.variables[1].value
-        prior_lbnd = m._working_problem._variable_info[first_variable_loc].lower_bound
-        m._working_problem._variable_info[first_variable_loc].lower_bound = max(prior_lbnd, 0.0)
-        push!(m._working_problem._conic_second_order, BufferedSOC(soc_func, soc_set))
-    end
+    append!(wp._sqf_leq, [BufferedQuadraticIneq(c[1], c[2]) for c in ip._quadratic_leq_constraints])
+    append!(wp._sqf_leq, [BufferedQuadraticIneq(c[1], c[2]) for c in ip._quadratic_geq_constraints])
+    wp._sqf_eq  = [BufferedQuadraticEq(c[1], c[2]) for c in ip._quadratic_eq_constraints]
 
     # set objective function
     add_objective!(m._working_problem, ip._objective)
 
-    # add nonlinear constraints
-    # the nonlinear evaluator loads with populated subexpressions which are then used
-    # to asssess the linearity of subexpressions
-    add_nonlinear_evaluator!(m)
-    add_nonlinear_functions!(m)
-    add_subexpression_buffers!(m)
+    # add nonlinear constraints, evaluator, subexpressions
+    add_nonlinear!(m)
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     # this is placed after adding nonlinear functions as this prior routine
     # copies the nlp_block from the input_problem to the working problem
-    convert_to_min!(m)
-    reform_epigraph!(m)
+    reform_epigraph_min!(m)
 
-    # labels the variable info and the _fixed_variable vector for each fixed variable
     label_fixed_variables!(m)
-
-    # labels variables to branch on
     label_branch_variables!(m)
 
     # updates run and parse times
@@ -384,37 +341,6 @@ function initial_parse!(m::Optimizer)
     m._run_time = new_time
 
     return
-end
-
-### Routines for parsing the full nonconvex problem
-"""
-[FUTURE FEATURE] Reformulates quadratic terms in SOC constraints if possible.
-For <= or >=, the quadratic term is deleted if an SOCP is detected. For ==,
-the SOC check is done for each >= and <=, the convex constraint is reformulated
-to a SOC, the concave constraint is keep as a quadratic.
-"""
-function parse_classify_quadratic!(m::Optimizer)
-    #=
-    for (id, cinfo) in m._quadratic_constraint
-        is_soc, add_concave, cfunc, cset, qfunc, qset = check_convexity(cinfo.func, cinfo.set)
-        if is_soc
-            MOI.add_constraint(m, cfunc, cset)
-            deleteat!(m._quadratic_constraint, id)
-            if add_concave
-                MOI.add_constraint(m, qfunc, qset)
-            end
-        end
-    end
-    =#
-    return nothing
-end
-
-"""
-[FUTURE FEATURE] Parses provably convex nonlinear functions into a convex
-function buffer
-"""
-function parse_classify_nlp(m)
-    return nothing
 end
 
 """
@@ -426,60 +352,25 @@ function parse_classify_problem!(m::Optimizer)
     integer_variable_number = count(is_integer.(ip._variable_info))
 
     nl_expr_number = ip._objective == nothing ? 1 : 0
-    nl_expr_number += ip._nonlinear_count
-    cone_constraint_number = ip._conic_second_order_count
-    quad_constraint_number = ip._quadratic_leq_count + ip._quadratic_geq_count + ip._quadratic_eq_count
+    nl_expr_number += length(m._working_problem._nonlinear_constr)
+    cone_constraint_number = length(ip._conic_second_order)
+    quad_constraint_number = length(ip._quadratic_leq_constraints) +
+                             length(ip._quadratic_geq_constraints) +
+                             length(ip._quadratic_eq_constraints)
 
     linear_or_sv_objective = (ip._objective isa SV || ip._objective isa SAF)
     relaxed_supports_soc = false
-    #TODO: relaxed_supports_soc = MOI.supports_constraint(m.relaxed_optimizer, VECOFVAR, SOC)
 
-    if integer_variable_number === 0
-
-        if cone_constraint_number === 0 && quad_constraint_number === 0 &&
-            nl_expr_number === 0 && linear_or_sv_objective
-            m._working_problem._problem_type = LP
-            #println("LP")
-        elseif quad_constraint_number === 0 && relaxed_supports_soc &&
-               nl_expr_number === 0 && linear_or_sv_objective
-            m._working_problem._problem_type = SOCP
-            #println("SOCP")
-        else
-            #parse_classify_quadratic!(m)
-            #if iszero(m._input_nonlinear_constraint_number)
-            #    if isempty(m._quadratic_constraint)
-            #        m._problem_type = SOCP
-            #    end
-            #else
-            #    # Check if DIFF_CVX, NS_CVX, DIFF_NCVX, OR NS_NCVX
-            #    m._problem_type = parse_classify_nlp(m)
-            #end
-            m._working_problem._problem_type = MINCVX
-            #println("MINCVX")
-        end
+    if cone_constraint_number === 0 && quad_constraint_number === 0 &&
+        nl_expr_number === 0 && linear_or_sv_objective
+        m._working_problem._problem_type = LP
+    elseif quad_constraint_number === 0 && relaxed_supports_soc &&
+        nl_expr_number === 0 && linear_or_sv_objective
+        m._working_problem._problem_type = SOCP
     else
-        #=
-        if cone_constraint_number === 0 && quad_constraint_number === 0 && linear_or_sv_objective
-        elseif quad_constraint_number === 0 && relaxed_supports_soc && linear_or_sv_objective
-            m._working_problem._problem_type = MISOCP
-        else
-            #parse_classify_quadratic!(m)
-            #=
-            if iszero(m._nonlinear_constraint_number)
-                if iszero(m._quadratic_constraint_number)
-                    m._problem_type = MISOCP
-                end
-            else
-                # Performs parsing
-                _ = parse_classify_nlp(m)
-            end
-            =#
-            m._problem_type = MINCVX
-        end
-        =#
+        m._working_problem._problem_type = MINCVX
     end
-
-    return nothing
+    return
 end
 
 """
