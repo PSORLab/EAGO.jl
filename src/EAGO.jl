@@ -56,6 +56,8 @@ module EAGO
         =#
 
     const MOI = MathOptInterface
+    const MOIU = MOI.Utilities
+    const MOIB = MOI.Bridges
 
     const SV = MOI.SingleVariable
     const SAF = MOI.ScalarAffineFunction{Float64}
@@ -77,7 +79,6 @@ module EAGO
 
     const SCoefC = MOI.ScalarCoefficientChange
     const SConsC = MOI.ScalarConstantChange
-    const MOIU = MOI.Utilities
 
     const LT_ZERO = LT(0.0)
 

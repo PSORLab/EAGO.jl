@@ -12,7 +12,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
         f.constant = 0.0
         if check_safe && is_safe_cut!(m, f)
             s = LT(u - b + _constraint_tol(m))
-            c = MOI.add_constraint(m.relaxed_optimizer, f, s)::CI{SAF,LT}
+            c = MOI.add_constraint(m.relaxed_optimizer, f, s)
             m._affine_objective_cut_ci = c
         end
         f.constant = b
