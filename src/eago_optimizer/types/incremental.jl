@@ -9,8 +9,8 @@ mutable struct Incremental{Q,S} <: MOI.AbstractOptimizer
     optimizer::S
     cache::MOIB.LazyBridgeOptimizer{MOIU.GenericModel{Float64,MOIU.ModelFunctionConstraints{Float64}}}
 end
-function Incremental(m) where S
-    is_incremental = # TODO
+function Incremental(m::S) where S
+    is_incremental = MOI.supports_incremental_interface(m, false)
     cache = MOIB.full_bridge_optimizer(MOIU.Model{Float64}(), Float64)
     b = MOIB.full_bridge_optimizer(m, Float64)
     return Incremental{Val(is_incremental),typeof(b)}(b, cache)
