@@ -412,6 +412,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _end_state::GlobalEndState = GS_UNSET
     _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
+    _obj_mult::Float64 = 1.0
 
     _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
 

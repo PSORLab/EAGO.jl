@@ -203,7 +203,7 @@ function set_dual!(m::Optimizer)
 end
 
 function interval_objective_bound!(m::Optimizer)
-    fL = bound_objective(m)
+    fL = bound_objective(m)*m._obj_mult
     if fL > m._lower_objective_value
         m._lower_objective_value = fL
         fill!(m._lower_lvd, 0.0)
@@ -359,6 +359,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
             break
         end
         m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())::Float64
+        m._lower_objective_value *= m._obj_mult
         @show m._cut_iterations
         @show m._lower_objective_value
         if cut_condition(m)
@@ -397,6 +398,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     end
     if status == RRS_DUAL_FEASIBLE
         m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.DualObjectiveValue())::Float64
+        m._lower_objective_value *= m._obj_mult
     end
     interval_objective_bound!(m)
     return

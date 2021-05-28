@@ -147,8 +147,9 @@ function add_η!(m::ParsedProblem, l::Float64, u::Float64)
 end
 
 function reform_epigraph_min!(m::ParsedProblem, f::BufferedQuadraticIneq)
-
+    ip = m._input_problem
     wp = m._working_problem
+
     vi = m._variable_info
     X = Interval.(lower_bound.(vi), upper_bound.(vi))
     F = MOIU.eval_variables(i -> X[i], f.sqf)
@@ -164,21 +165,36 @@ function reform_epigraph_min!(m::ParsedProblem, f::BufferedQuadraticIneq)
 
     return
 end
-function reform_epigraph_min!(m::ParsedProblem, f::BufferedNonlinearFunction)
+function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedNonlinearFunction)
+    ip = m._input_problem
+    wp = m._working_problem
+
+    vi = m._input_problem._variable_info
+    l, u = interval_bound(d, f, NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
+    ηi = add_η!(m, l, u)
+
     # updates tape for nlp_data block (used by local optimizer)
     wp = m._working_problem
-    nd = wp._nlp_data.evaluator.m.nlp_data.nlobj.nd
-    pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-    nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-    for i = 3:length(nd)
-        @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+    nd = ip._nlp_data.evaluator.m.nlp_data.nlobj.nd
+    if ip._optimization_sense == MOI.MAX_SENSE
+        pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
+        pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
+        nd[3] = NodeData(nd[2].nodetype, nd[2].index, 2)
+        for i = 4:length(nd)
+            @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 2)
+        end
+    else
+        pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
+        nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
+        for i = 3:length(nd)
+            @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+        end
     end
+    push!(nd, NodeData(JuMP._Derivatives.VARIABLE, ηi, 1))
 
-    # updates tape used by evaluator for the nonlinear objective (used by the relaxed optimizer)
-    _negate!(wp._objective_nl.ex.g)
-    pushfirst!(_set(wp._objective_nl.ex.relax_cache), _set(wp._objective_nl))
-    pushfirst!(_num(wp._objective_nl.ex.relax_cache), 0.0)
-    pushfirst!(_is_num(wp._objective_nl.ex.relax_cache), false)
+    empty!(m.relax_evaluator.subexpressions)
+    empty!(m._working_problem._nonlinear_constr)
+    add_nonlinear!(m)
     return
 end
 
@@ -187,6 +203,8 @@ end
 Performs an epigraph reformulation assuming the working_problem is a minimization problem.
 """
 function reform_epigraph_min!(m::Optimizer)
+    ip = m._input_problem
+    m._obj_mult = (ip._optimization_sense == MOI.MAX_SENSE) ? -1.0 : 1.0
     reform_epigraph_min!(m._working_problem, m._working_problem._objective)
 end
 
