@@ -158,7 +158,6 @@ function relax_problem!(m::Optimizer)
     end
     relax_constraints!(m, m._cut_iterations)
     MOI.set(m.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    @show "ran relaxed problem"
     return
 end
 
@@ -171,21 +170,14 @@ Retrieves the lower and upper duals for variable bounds from the
 `_lower_lvd` and `_lower_uvd` storage fields.
 """
 function set_dual!(m::Optimizer)
-
-    relaxed_optimizer = m.relaxed_optimizer
-    relaxed_variable_lt = m._relaxed_variable_lt
-    relaxed_variable_gt = m._relaxed_variable_gt
-
-    for i = 1:m._working_problem._var_leq_count
-        ci_lt, i_lt = @inbounds relaxed_variable_lt[i]
-        @inbounds m._lower_uvd[i_lt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_lt)
+    d = m.relaxed_optimizer
+    for (c, i) in m._relaxed_variable_lt
+        m._lower_uvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
     end
-    for i = 1:m._working_problem._var_geq_count
-        ci_gt, i_gt = @inbounds relaxed_variable_gt[i]
-        @inbounds m._lower_lvd[i_gt] = MOI.get(relaxed_optimizer, MOI.ConstraintDual(), ci_gt)
+    for (c, i) in m._relaxed_variable_gt
+        m._lower_lvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
     end
-
-    return nothing
+    return
 end
 
 function interval_objective_bound!(m::Optimizer)
@@ -340,8 +332,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         end
         m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())::Float64
         m._lower_objective_value *= m._obj_mult
-        @show m._cut_iterations
-        @show m._lower_objective_value
         if cut_condition(m)
             m._cut_iterations += 1
         else
@@ -358,10 +348,6 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
     status = relaxed_problem_status(t_status, p_status, d_status)
-    @show MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())
-    @show t_status
-    @show p_status
-    @show d_status
 
     if status == RRS_INFEASIBLE
         m._lower_feasibility  = false

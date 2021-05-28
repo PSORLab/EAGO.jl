@@ -71,13 +71,40 @@ function lower_interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
     end
     return fval.lo
 end
+function interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
+
+    vi = m._input_problem._variable_info
+    fval = Interval{Float64}(f.func.constant)
+    for t in f.func.affine_terms
+        c = t.coefficient
+        j = t.variable_index.value
+        xL = lower_bound(vi[j])
+        xU = upper_bound(vi[j])
+        fval += c*Interval(xL, xU)
+    end
+    for t in f.func.quadratic_terms
+        c = t.coefficient
+        i = t.variable_index_1.value
+        j = t.variable_index_2.value
+        xL = lower_bound(vi[i])
+        xU = upper_bound(vi[i])
+        if i == j
+            fval += 0.5*c*pow(Interval(xL, xU), 2)
+        else
+            yL = lower_bound(vi[j])
+            yU = upper_bound(vi[j])
+            fval += c*Interval(xL, xU)*Interval(yL, yU)
+        end
+    end
+    return fval.lo, fval.hi
+end
 
 function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
 
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
-        j = aff_term.variable_index.value
+        j = t.variable_index.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
         fval += coeff*Interval(xL, xU)

@@ -96,7 +96,7 @@ function affine_relax_quadratic!(m::Optimizer, func::SQF, buffer::Dict{Int,Float
                 end
             end
         else
-            y0 = _current_xref(FullVar(), m, j)
+            y0 = _lower_solution(FullVar(), m, j)
             yL = _lower_bound(FullVar(), m, j)
             yU = _upper_bound(FullVar(), m, j)
             if a > 0.0
@@ -145,9 +145,8 @@ end
 $(TYPEDSIGNATURES)
 """
 function relax!(m::Optimizer, f::BufferedQuadraticIneq, k::Int, check_safe::Bool)
-    if affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
-        add_affine_relaxation!(m, f.saf, check_safe)
-    end
+    affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
+    add_affine_relaxation!(m, f.saf, check_safe)
     return
 end
 
@@ -155,12 +154,12 @@ end
 $(TYPEDSIGNATURES)
 """
 function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
-    if affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
-        add_affine_relaxation!(m, f.saf, check_safe)
-    end
-    if affine_relax_quadratic!(m, f.minus_func, f.buffer, f.saf)
-        add_affine_relaxation!(m, f.saf, check_safe)
-    end
+
+    affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
+    add_affine_relaxation!(m, f.saf, check_safe)
+
+    affine_relax_quadratic!(m, f.minus_func, f.buffer, f.saf)
+    add_affine_relaxation!(m, f.saf, check_safe)
     return
 end
 
@@ -210,7 +209,6 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant + _constraint_tol(m))
             f.saf.constant = 0.0
-            @show f.saf
             ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._affine_relax_ci, ci)
         end

@@ -146,23 +146,24 @@ function add_η!(m::ParsedProblem, l::Float64, u::Float64)
 end
 
 function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
-    ip = d._input_problem
-    wp = d._working_problem
+    ip = m._input_problem
 
     vi = d._variable_info
-    X = Interval.(lower_bound.(vi), upper_bound.(vi))
-    F = MOIU.eval_variables(i -> X[i], f.sqf)
-    ηi = add_η!(m, F.l, F.u)
-    m._global_lower_bound = F.l
-    m._global_upper_bound = F.u
-    wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
+    n = NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
+    m._current_node = n
+
+    l, u = interval_bound(m, f, n)
+    ηi = add_η!(d, l, u)
+    m._global_lower_bound = l
+    m._global_upper_bound = u
+    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     f.buffer[ηi] = 0.0
     f.len += 1
     if ip._optimization_sense == MOI.MAX_SENSE
-        MOIU.operate!(-, Float64, f.sqf)
+        MOIU.operate!(-, Float64, f.func)
     end
-    MOIU.operate!(-, Float64, f.sqf, SV(VI(ηi)))
+    MOIU.operate!(-, Float64, f.func, SV(VI(ηi)))
     push!(f.saf.terms, SAT(0.0, VI(ηi)))
 
     return
@@ -339,7 +340,7 @@ function initial_parse!(m::Optimizer)
     append!(wp._sqf_leq, [BufferedQuadraticIneq(c[1], c[2]) for c in ip._quadratic_geq_constraints])
     wp._sqf_eq  = [BufferedQuadraticEq(c[1], c[2]) for c in ip._quadratic_eq_constraints]
 
-    add_objective!(wp, ip)    # set objective function
+    add_objective!(wp, ip._objective)    # set objective function
     add_nonlinear!(m)         # add nonlinear constraints, evaluator, subexpressions
 
     # converts a maximum problem to a minimum problem (internally) if necessary
