@@ -13,7 +13,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
         if check_safe && is_safe_cut!(m, f)
             s = LT(u - b + _constraint_tol(m))
             c = MOI.add_constraint(m.relaxed_optimizer, f, s)::CI{SAF,LT}
-            push!(m._affine_objective_cut_ci, c)
+            m._affine_objective_cut_ci = c
         end
         f.constant = b
         m._new_eval_objective = false
@@ -146,11 +146,12 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, k::Int)
     check_safe = (k == 1) ? false : m._parameters.cut_safe_on
     wp = m._working_problem
     wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    foreach(x -> relax!(m, x[2], x[1], check_safe), enumerate(wp._sqf_leq))
-    foreach(x -> relax!(m, x[2], x[1], check_safe), enumerate(wp._sqf_eq))
-    foreach(x -> relax!(m, x[2], x[1], check_safe), enumerate(wp._nonlinear_constr))
+    foreach(x -> relax!(m, x, k, check_safe), wp._sqf_leq)
+    foreach(x -> relax!(m, x, k, check_safe), wp._sqf_eq)
+    foreach(x -> relax!(m, x, k, check_safe),wp._nonlinear_constr)
+    relax!(m, wp._objective, k, check_safe)
     m._new_eval_constraint = false
-    objective_cut!(m, check_safe)
+    (k == 1) && objective_cut!(m, check_safe)
     return
 end
 relax_constraints!(t::ExtensionType, m::Optimizer, k::Int) = relax_all_constraints!(t, m, k)
@@ -173,6 +174,7 @@ function relax_problem!(m::Optimizer)
     end
     relax_constraints!(m, m._cut_iterations)
     MOI.set(m.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    @show "ran relaxed problem"
     return
 end
 
@@ -265,21 +267,14 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     if params.fbbt_lp_depth >= m._iteration_count
         load_fbbt_buffer!(m)
         for i = 1:m._parameters.fbbt_lp_repetitions
-            if feasible_flag
-                for j = 1:wp._saf_leq_count
-                    !feasible_flag && break
-                    saf_leq =  wp._saf_leq[j]
-                    feasible_flag &= fbbt!(m, saf_leq)
-                end
-                !feasible_flag && break
-
-                for j = 1:wp._saf_eq_count
-                    !feasible_flag && break
-                    saf_eq = wp._saf_eq[j]
-                    feasible_flag &= fbbt!(m, saf_eq)
-                end
-                !feasible_flag && break
+            for f in wp._saf_leq
+                !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
             end
+            !feasible_flag && break
+            for f in wp._saf_eq
+                !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
+            end
+            !feasible_flag && break
         end
         unpack_fbbt_buffer!(m)
     end
@@ -307,7 +302,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
         m._obbt_performed_flag = true
         !feasible_flag && break
         obbt_count += 1
-        perform_obbt_flag     = (obbt_count < m._parameters.obbt_repetitions)
+        perform_obbt_flag = (obbt_count < m._parameters.obbt_repetitions)
     end
 
     m._final_volume = prod(upper_variable_bounds(m._current_node) -
@@ -347,6 +342,7 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     m._last_cut_objective = typemin(Float64)
     m._lower_objective_value = typemin(Float64)
     set_first_relax_point!(m)
+    MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
     while true
         relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value

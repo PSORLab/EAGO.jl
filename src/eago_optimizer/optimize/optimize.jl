@@ -42,5 +42,5 @@ function MOI.optimize!(m::Optimizer)
 
     end
 
-    return nothing
+    return
 end

@@ -21,7 +21,6 @@ Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
 """
 function load_relaxed_problem!(m::Optimizer)
-
     relaxed_optimizer = m.relaxed_optimizer
 
     # add variables and indices and constraints
@@ -89,6 +88,8 @@ function load_relaxed_problem!(m::Optimizer)
     # sets relaxed problem objective sense to Min as all problems
     # are internally converted in Min problems in EAGO
     MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+
     return
 end
 
@@ -129,9 +130,6 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._lower_indx_diff          = fill(false, branch_variable_count)
     m._upper_indx_diff          = fill(false, branch_variable_count)
     m._obbt_variable_count      = branch_variable_count
-
-    # add storage for objective cut if quadratic or nonlinear
-    wp._objective_saf.terms = copy(wp._objective.saf.terms)
 
     # set subgradient refinement flag
     wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten

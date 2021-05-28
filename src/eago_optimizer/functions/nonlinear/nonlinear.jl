@@ -153,7 +153,7 @@ Sets the current node in the Evaluator structure.
 """
 function set_node!(d::Evaluator, n::NodeBB)
     d.node = NodeBB(n)
-    @inbounds for i = 1:length(n)
+    for i = 1:length(n)
         vi = d.variable_values.node_to_variable_map[i]
         d.variable_values.lower_variable_bounds[vi] = n.lower_variable_bounds[i]
         d.variable_values.upper_variable_bounds[vi] = n.upper_variable_bounds[i]

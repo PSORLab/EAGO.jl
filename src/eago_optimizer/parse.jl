@@ -121,16 +121,17 @@ function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 end
 add_nonlinear!(m::Optimizer) = add_nonlinear!(m, m._input_problem._nlp_data.evaluator)
 
-function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::SV)
-    ip = m._input_problem
-    wp = m._working_problem
+function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::SV)
+    ip = d._input_problem
+    wp = d._working_problem
     flag = ip._optimization_sense == MOI.MAX_SENSE
     wp._objective = AffineFunctionIneq(f, is_max = flag)
+    wp._objective_saf = SAF([SAT(1.0, VI(f.variable.value))], 0.0)
     return
 end
-function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::AffineFunctionIneq)
-    ip = m._input_problem
-    wp = m._working_problem
+function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::AffineFunctionIneq)
+    ip = d._input_problem
+    wp = d._working_problem
     if ip._optimization_sense == MOI.MAX_SENSE
         wp._objective_saf = MOIU.operate(-, Float64, wp._objective_saf)
         wp._objective = AffineFunctionIneq(f, GT_ZERO)
@@ -144,14 +145,17 @@ function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     return m._variable_count
 end
 
-function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedQuadraticIneq)
-    ip = m._input_problem
-    wp = m._working_problem
+function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
+    ip = d._input_problem
+    wp = d._working_problem
 
-    vi = m._variable_info
+    vi = d._variable_info
     X = Interval.(lower_bound.(vi), upper_bound.(vi))
     F = MOIU.eval_variables(i -> X[i], f.sqf)
     ηi = add_η!(m, F.l, F.u)
+    m._global_lower_bound = F.l
+    m._global_upper_bound = F.u
+    wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     f.buffer[ηi] = 0.0
     f.len += 1
@@ -163,14 +167,38 @@ function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedQuadrat
 
     return
 end
-function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedNonlinearFunction)
-    vi = d._input_problem._variable_info
-    l, u = interval_bound(d, f, NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi)))
-    ηi = add_η!(m, l, u)
+function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonlinearFunction)
+    ip = m._input_problem
+    wp = m._working_problem
+
+    vi = ip._variable_info
+    vi_mid = mid.(vi)
+    vi_lo = lower_bound.(vi)
+    vi_hi = upper_bound.(vi)
+
+    q = _variable_num(FullVar(), m)
+    v = VariableValues{Float64}(x = vi_mid,
+                                lower_variable_bounds = vi_lo,
+                                upper_variable_bounds = vi_hi,
+                                node_to_variable_map = [i for i in 1:q],
+                                variable_to_node_map = [i for i in 1:q])
+    wp._relaxed_evaluator.variable_values = v
+    _set_variable_storage!(f,v)
+
+    n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
+    m._current_node = n
+    set_node!(wp._relaxed_evaluator, n)
+
+    l, u = interval_bound(m, f, n)
+    m._global_lower_bound = l
+    m._global_upper_bound = u
+    ηi = add_η!(d, l, u)
+    wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     # updates tape for nlp_data block (used by local optimizer)
-    nd = d._input_problem._nlp_data.evaluator.m.nlp_data.nlobj.nd
-    if d._input_problem._optimization_sense == MOI.MAX_SENSE
+    @variable(ip._nlp_data.evaluator.m, l <= η <= u)
+    nd = ip._nlp_data.evaluator.m.nlp_data.nlobj.nd
+    if ip._optimization_sense == MOI.MAX_SENSE
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
         nd[3] = NodeData(nd[2].nodetype, nd[2].index, 2)
@@ -186,9 +214,9 @@ function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedNonline
     end
     push!(nd, NodeData(JuMP._Derivatives.VARIABLE, ηi, 1))
 
-    empty!(d.relax_evaluator.subexpressions)
-    empty!(m._nonlinear_constr)
-    add_nonlinear!(d)
+    empty!(d._relaxed_evaluator.subexpressions)
+    empty!(d._nonlinear_constr)
+    add_nonlinear!(m)
     return
 end
 
