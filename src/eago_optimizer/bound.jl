@@ -132,7 +132,7 @@ function lower_interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V,S}, n
     _is_num(d) ? _num(d) : _interval(d).lo
 end
 function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V,S}, n::NodeBB) where {V,S<:Real}
-    !_has_value(d) && forward_pass!(d.evaluator, d)
+    !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     v = _is_num(d) ? Interval{S}(_num(d)) : _interval(d)
     return v.lo, v.hi
 end

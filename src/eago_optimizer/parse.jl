@@ -116,21 +116,19 @@ function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
                                                                               m._parameters.relax_tag))
     end
 
-    m._input_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
-    m._working_problem._nonlinear_count = length(m._working_problem._nonlinear_constr)
     relax_evaluator.subexpressions_eval = fill(false, length(relax_evaluator.subexpressions))
     return
 end
-add_nonlinear!(m::Optimizer) = add_nonlinear_functions!(m, m._input_problem._nlp_data.evaluator)
+add_nonlinear!(m::Optimizer) = add_nonlinear!(m, m._input_problem._nlp_data.evaluator)
 
-function reform_epigraph_min!(m::ParsedProblem, f::SV)
+function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::SV)
     ip = m._input_problem
     wp = m._working_problem
     flag = ip._optimization_sense == MOI.MAX_SENSE
     wp._objective = AffineFunctionIneq(f, is_max = flag)
     return
 end
-function reform_epigraph_min!(m::ParsedProblem, f::AffineFunctionIneq)
+function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::AffineFunctionIneq)
     ip = m._input_problem
     wp = m._working_problem
     if ip._optimization_sense == MOI.MAX_SENSE
@@ -142,11 +140,11 @@ end
 
 function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     m._variable_count += 1
-    push!(m._variable_info, VariableInfo{Float64}(MOI.Interval{Float64}(l, u)))
+    push!(m._variable_info, VariableInfo(MOI.Interval{Float64}(l, u)))
     return m._variable_count
 end
 
-function reform_epigraph_min!(m::ParsedProblem, f::BufferedQuadraticIneq)
+function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedQuadraticIneq)
     ip = m._input_problem
     wp = m._working_problem
 
@@ -166,17 +164,13 @@ function reform_epigraph_min!(m::ParsedProblem, f::BufferedQuadraticIneq)
     return
 end
 function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedNonlinearFunction)
-    ip = m._input_problem
-    wp = m._working_problem
-
-    vi = m._input_problem._variable_info
-    l, u = interval_bound(d, f, NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
+    vi = d._input_problem._variable_info
+    l, u = interval_bound(d, f, NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi)))
     ηi = add_η!(m, l, u)
 
     # updates tape for nlp_data block (used by local optimizer)
-    wp = m._working_problem
-    nd = ip._nlp_data.evaluator.m.nlp_data.nlobj.nd
-    if ip._optimization_sense == MOI.MAX_SENSE
+    nd = d._input_problem._nlp_data.evaluator.m.nlp_data.nlobj.nd
+    if d._input_problem._optimization_sense == MOI.MAX_SENSE
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
         nd[3] = NodeData(nd[2].nodetype, nd[2].index, 2)
@@ -192,9 +186,9 @@ function reform_epigraph_min!(d::Optimizer, m::ParsedProblem, f::BufferedNonline
     end
     push!(nd, NodeData(JuMP._Derivatives.VARIABLE, ηi, 1))
 
-    empty!(m.relax_evaluator.subexpressions)
-    empty!(m._working_problem._nonlinear_constr)
-    add_nonlinear!(m)
+    empty!(d.relax_evaluator.subexpressions)
+    empty!(m._nonlinear_constr)
+    add_nonlinear!(d)
     return
 end
 
@@ -205,7 +199,7 @@ Performs an epigraph reformulation assuming the working_problem is a minimizatio
 function reform_epigraph_min!(m::Optimizer)
     ip = m._input_problem
     m._obj_mult = (ip._optimization_sense == MOI.MAX_SENSE) ? -1.0 : 1.0
-    reform_epigraph_min!(m._working_problem, m._working_problem._objective)
+    reform_epigraph_min!(m, m._working_problem, m._working_problem._objective)
 end
 
 function check_set_is_fixed(v::VariableInfo)
