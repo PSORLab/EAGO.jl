@@ -746,14 +746,14 @@ end
 @inline _sparsity(::BranchVar, m::Optimizer, i::Int) = view(m._branch_variable_sparsity,1,:)
 
 @inline _variable_num(::BranchVar, m::Optimizer) = m._branch_variable_count
-@inline _variable_num(::FullVar, m::Optimizer) = m._input_problem._variable_count
+@inline _variable_num(::FullVar, m::Optimizer) = m._working_problem._variable_count
 
 @inline _is_integer(::BranchVar, m::Optimizer, i::Int) = is_integer(_current_node(m), i)
 @inline function _is_integer(::FullVar, m::Optimizer, i::Int)
      if _is_branch_var(m,i)
         return is_integer(_current_node(m), _svi(m, i))
      end
-    is_integer(_variable_info(m,i))
+    is_integer(_working_variable_info(m,i))
 end
 
 @inline _lower_bound(::BranchVar, m::Optimizer, i::Int) = lower_variable_bounds(_current_node(m), i)
@@ -761,7 +761,7 @@ end
      if _is_branch_var(m,i)
          return lower_variable_bounds(_current_node(m), _svi(m, i))
      end
-    lower_bound(_variable_info(m,i))
+    lower_bound(_working_variable_info(m,i))
 end
 
 @inline _upper_bound(::BranchVar, m::Optimizer, i::Int) = upper_variable_bounds(_current_node(m), i)
@@ -769,7 +769,7 @@ end
     if _is_branch_var(m,i)
         return upper_variable_bounds(_current_node(m), _svi(m, i))
     end
-    upper_bound(_variable_info(m,i))
+    upper_bound(_working_variable_info(m,i))
 end
 
 @inline _mid(::BranchVar, m::Optimizer, i::Int) = mid(_current_node(m), i)
@@ -777,7 +777,7 @@ end
     if _is_branch_var(m,i)
         return mid(_current_node(m), _svi(m, i))
     end
-    mid(_variable_info(m,i))
+    mid(_working_variable_info(m,i))
 end
 
 @inline _diam(::BranchVar, m::Optimizer, i::Int) = diam(_current_node(m), i)
@@ -785,7 +785,7 @@ end
     if _is_branch_var(m,i)
         return diam(_current_node(m), _svi(m, i))
     end
-    diam(_variable_info(m,i))
+    diam(_working_variable_info(m,i))
 end
 
 @inline _lower_solution(::BranchVar, m::Optimizer, i::Int) = m._lower_solution[_bvi(m, i)]

@@ -15,7 +15,7 @@ Base.@kwdef struct VariableInfo{T<:AbstractFloat}
     has_upper_bound::Bool                                       = false
     "Boolean indicating variable is fixed to a finite value."
     is_fixed::Bool                                              = false
-    "Indicates that no constraints have been set"
+    "Indicates that constraints have been set"
     has_constraints::Bool                                       = false
     "Lower bounds. May be -Inf."
     lower_bound::T                                              = typemin(T)
