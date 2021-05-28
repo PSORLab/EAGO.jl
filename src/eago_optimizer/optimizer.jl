@@ -226,26 +226,15 @@ Base.@kwdef mutable struct InputProblem
     _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
     _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
 
-    _linear_leq_count::Int = 0
-    _linear_geq_count::Int = 0
-    _linear_eq_count::Int = 0
-
     # quadratic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
     _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
     _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
     _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
 
-    _quadratic_leq_count::Int = 0
-    _quadratic_geq_count::Int = 0
-    _quadratic_eq_count::Int = 0
-
     # conic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
     _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
 
-    _conic_second_order_count::Int = 0
-
     # nonlinear constraint storage
-    _nonlinear_count::Int = 0
     _objective::Union{SV,SAF,SQF,Nothing} = nothing
 
     # nlp constraints (set by MOI.set(m, ::NLPBlockData...) in optimizer.jl)
@@ -308,21 +297,11 @@ Base.@kwdef mutable struct ParsedProblem
     _sqf_eq::Vector{BufferedQuadraticEq} = BufferedQuadraticEq[]
     _conic_second_order::Vector{BufferedSOC} = BufferedSOC[]
 
-    # count of non-single variable constraints (set in initial_parse)
-    _saf_leq_count::Int = 0
-    _saf_eq_count::Int = 0
-    _sqf_leq_count::Int = 0
-    _sqf_eq_count::Int = 0
-    _conic_second_order_count::Int = 0
-
     # nlp constraints (set in initial_parse)
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
 
     # storage for nonlinear functions
     _nonlinear_constr::Vector{BufferedNonlinearFunction} = BufferedNonlinearFunction[]
-
-    # nonlinear constraint storage
-    _nonlinear_count::Int = 0
 
     # nonlinear evaluator
     _relaxed_evaluator = Evaluator()

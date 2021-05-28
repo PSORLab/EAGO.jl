@@ -16,7 +16,7 @@ function convert_to_min!(m::ParsedProblem, f::SV)
 end
 function convert_to_min!(m::ParsedProblem, f::AffineFunctionIneq)
     wp = m._working_problem
-    wp._objective_saf = MOIU.operate(-, Float64, m._working_problem._objective_saf)
+    wp._objective_saf = MOIU.operate(-, Float64, wp._objective_saf)
     wp._objective = AffineFunctionIneq(f, GT_ZERO)
     return
 end
@@ -126,66 +126,37 @@ function label_branch_variables!(m::Optimizer)
     wp = m._working_problem
     m._user_branch_variables = !isempty(m._parameters.branch_variable)
     if m._user_branch_variables
-        append!(m._branch_variables, m._parameters.branch_variable)
+        m._branch_variables = m._parameters.branch_variable
     else
-
-        append!(m._branch_variables, fill(false, m._working_problem._variable_count))
-
-        # adds nonlinear terms in quadratic constraints
-        sqf_leq = wp._sqf_leq
-        for i = 1:wp._sqf_leq_count
-            quad_ineq = @inbounds sqf_leq[i]
-            for term in quad_ineq.func.quadratic_terms
-                variable_index_1 = term.variable_index_1.value
-                variable_index_2 = term.variable_index_2.value
-                @inbounds m._branch_variables[variable_index_1] = true
-                @inbounds m._branch_variables[variable_index_2] = true
-            end
+        m._branch_variables = fill(false, m._working_problem._variable_count)
+        for f in wp._sqf_leq, t in f.func.quadratic_terms
+            m._branch_variables[t.variable_index_1.value] = true
+            m._branch_variables[t.variable_index_2.value] = true
         end
-
-        sqf_eq = wp._sqf_eq
-        for i = 1:wp._sqf_eq_count
-            quad_eq = @inbounds sqf_eq[i]
-            for term in quad_eq.func.quadratic_terms
-                variable_index_1 = term.variable_index_1.value
-                variable_index_2 = term.variable_index_2.value
-                @inbounds m._branch_variables[variable_index_1] = true
-                @inbounds m._branch_variables[variable_index_2] = true
-            end
+        for f in wp._sqf_eq, t in f.func.quadratic_terms
+            m._branch_variables[t.variable_index_1.value] = true
+            m._branch_variables[t.variable_index_2.value] = true
         end
-
+        for f in wp._nonlinear_constr, i in _sparsity(f)
+            m._branch_variables[i] = true
+        end
         if wp._objective isa BufferedQuadraticIneq
-            for term in wp._objective.func.quadratic_terms
-                variable_index_1 = term.variable_index_1.value
-                variable_index_2 = term.variable_index_2.value
-                @inbounds m._branch_variables[variable_index_1] = true
-                @inbounds m._branch_variables[variable_index_2] = true
+            for t in wp._objective.func.quadratic_terms
+                m._branch_variables[t.variable_index_1.value] = true
+                m._branch_variables[t.variable_index_2.value] = true
             end
-        end
-
-        # label nonlinear branch variables (assumes affine terms have been extracted)
-        nl_constr = wp._nonlinear_constr
-        for i = 1:wp._nonlinear_count
-            nl_constr_eq = @inbounds nl_constr[i]
-            for indx in _sparsity(nl_constr_eq)
-                @inbounds m._branch_variables[indx] = true
-            end
-        end
-
-        if wp._objective isa BufferedQuadraticIneq
-            for indx in _sparsity(wp._objective)
-                @inbounds m._branch_variables[indx] = true
+        elseif wp._objective isa BufferedNonlinearFunction
+            for i in _sparsity(wp._objective)
+                m._branch_variables[i] = true
             end
         end
     end
 
     # add a map of branch/node index to variables in the continuous solution
     for i = 1:wp._variable_count
-        if wp._variable_info[i].is_fixed
+        if is_fixed(wp._variable_info[i])
             m._branch_variables[i] = false
-            continue
-        end
-        if m._branch_variables[i]
+        elseif m._branch_variables[i]
             push!(m._branch_to_sol_map, i)
         end
     end
@@ -333,29 +304,27 @@ function initial_parse!(m::Optimizer)
 
     # add variables to working model
     ip = m._input_problem
-    append!(m._working_problem._variable_info, ip._variable_info)
-    m._working_problem._variable_count = ip._variable_count
+    wp = m._working_problem
+    append!(wp._variable_info, ip._variable_info)
+    wp._variable_count = ip._variable_count
 
     # add linear constraints to the working problem
     linear_leq = ip._linear_leq_constraints
     for i = 1:ip._linear_leq_count
         linear_func, leq_set = @inbounds linear_leq[i]
-        push!(m._working_problem._saf_leq, AffineFunctionIneq(linear_func, leq_set))
-        m._working_problem._saf_leq_count += 1
+        push!(wp._saf_leq, AffineFunctionIneq(linear_func, leq_set))
     end
 
     linear_geq = ip._linear_geq_constraints
     for i = 1:ip._linear_geq_count
         linear_func, geq_set = @inbounds linear_geq[i]
         push!(m._working_problem._saf_leq, AffineFunctionIneq(linear_func, geq_set))
-        m._working_problem._saf_leq_count += 1
     end
 
     linear_eq = ip._linear_eq_constraints
     for i = 1:ip._linear_eq_count
         linear_func, eq_set = @inbounds linear_eq[i]
         push!(m._working_problem._saf_eq, AffineFunctionEq(linear_func, eq_set))
-        m._working_problem._saf_eq_count += 1
     end
 
     # add quadratic constraints to the working problem
@@ -363,21 +332,18 @@ function initial_parse!(m::Optimizer)
     for i = 1:ip._quadratic_leq_count
         quad_func, leq_set = @inbounds quad_leq[i]
         push!(m._working_problem._sqf_leq, BufferedQuadraticIneq(quad_func, leq_set))
-        m._working_problem._sqf_leq_count += 1
     end
 
     quad_geq = ip._quadratic_geq_constraints
     for i = 1:ip._quadratic_geq_count
         quad_func, geq_set = @inbounds quad_geq[i]
         push!(m._working_problem._sqf_leq, BufferedQuadraticIneq(quad_func, geq_set))
-        m._working_problem._sqf_leq_count += 1
     end
 
     quad_eq = ip._quadratic_eq_constraints
     for i = 1:ip._quadratic_eq_count
         quad_func, eq_set = @inbounds quad_eq[i]
         push!(m._working_problem._sqf_eq, BufferedQuadraticEq(quad_func, eq_set))
-        m._working_problem._sqf_eq_count += 1
     end
 
     # add conic constraints to the working problem
@@ -388,7 +354,6 @@ function initial_parse!(m::Optimizer)
         prior_lbnd = m._working_problem._variable_info[first_variable_loc].lower_bound
         m._working_problem._variable_info[first_variable_loc].lower_bound = max(prior_lbnd, 0.0)
         push!(m._working_problem._conic_second_order, BufferedSOC(soc_func, soc_set))
-        m._working_problem._conic_second_order_count += 1
     end
 
     # set objective function
@@ -418,7 +383,7 @@ function initial_parse!(m::Optimizer)
     m._parse_time = new_time
     m._run_time = new_time
 
-    return nothing
+    return
 end
 
 ### Routines for parsing the full nonconvex problem
