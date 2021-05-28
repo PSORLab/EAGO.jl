@@ -64,32 +64,16 @@ Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
 optimizer.
 """
 function update_relaxed_problem_box!(m::Optimizer)
-
-    opt = m.relaxed_optimizer
-    wp = m._working_problem
-
-    n = m._current_node
-    lower_bound = n.lower_variable_bounds
-    upper_bound = n.upper_variable_bounds
-
-    relaxed_variable_eq = m._relaxed_variable_eq
-    for i = 1:wp._var_eq_count
-        constr_indx, node_indx =  relaxed_variable_eq[i]
-        MOI.set(opt, MOI.ConstraintSet(), constr_indx, ET( lower_bound[node_indx]))
+    d = m.relaxed_optimizer
+    for (c,i) in m._relaxed_variable_eq
+        MOI.set(d, MOI.ConstraintSet(), c, ET(_lower_bound(BranchVar(), m, i)))
     end
-
-    relaxed_variable_lt = m._relaxed_variable_lt
-    for i = 1:wp._var_leq_count
-        constr_indx, node_indx =  relaxed_variable_lt[i]
-        MOI.set(opt, MOI.ConstraintSet(), constr_indx, LT( upper_bound[node_indx]))
+    for (c,i) in m._relaxed_variable_lt
+        MOI.set(d, MOI.ConstraintSet(), c, LT(_upper_bound(BranchVar(), m, i)))
     end
-
-    relaxed_variable_gt = m._relaxed_variable_gt
-    for i = 1:wp._var_geq_count
-        constr_indx, node_indx =  relaxed_variable_gt[i]
-        MOI.set(opt, MOI.ConstraintSet(), constr_indx, GT( lower_bound[node_indx]))
+    for (c,i) in m._relaxed_variable_gt
+        MOI.set(d, MOI.ConstraintSet(), c, GT(_lower_bound(BranchVar(), m, i)))
     end
-
     return
 end
 

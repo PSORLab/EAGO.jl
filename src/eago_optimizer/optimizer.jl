@@ -309,11 +309,6 @@ Base.@kwdef mutable struct ParsedProblem
     # variables (set in initial_parse)
     _variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
     _variable_count::Int = 0
-
-    # count of single variable constraint types (set in load_relaxed_problem!)
-    _var_leq_count::Int = 0
-    _var_geq_count::Int = 0
-    _var_eq_count::Int = 0
 end
 
 function Base.isempty(x::ParsedProblem)

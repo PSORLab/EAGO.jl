@@ -192,32 +192,18 @@ Selects and deletes nodes from stack with lower bounds greater than global
 upper bound.
 """
 function fathom!(t::ExtensionType, m::Optimizer)
-
-    upper = m._global_upper_bound
+    u = m._global_upper_bound
     continue_flag = !isempty(m._stack)
-
     while continue_flag
-        max_node = maximum(m._stack)
-        max_check = (max_node.lower_bound > upper)
-
+        n = maximum(m._stack)
+        max_check = n.lower_bound > u
         if max_check
             popmax!(m._stack)
             m._node_count -= 1
-            if isempty(m._stack)
-                continue_flag = false
-            end
-
-        else
-            if !max_check
-                continue_flag = false
-            elseif isempty(m._stack)
-                continue_flag = false
-            end
-
         end
+        continue_flag = !isempty(m._stack) && max_check
     end
-
-    return nothing
+    return
 end
 fathom!(m::Optimizer) = fathom!(m.ext_type, m)
 

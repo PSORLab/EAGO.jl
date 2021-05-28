@@ -27,8 +27,7 @@ function load_relaxed_problem!(m::Optimizer)
     wp = m._working_problem
     branch_variable_count = 0
 
-    variable_count = wp._variable_count
-    for i = 1:variable_count
+    for i = 1:_variable_num(FullVar(), m)
 
         relaxed_variable_indx = MOI.add_variable(relaxed_optimizer)
         relaxed_variable = SV(relaxed_variable_indx)
@@ -40,28 +39,22 @@ function load_relaxed_problem!(m::Optimizer)
         is_branch_variable && (branch_variable_count += 1)
 
         if vinfo.is_integer
-
         elseif vinfo.is_fixed
             ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
             if is_branch_variable
                 push!(m._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
-                wp._var_eq_count += 1
             end
-
         else
             if vinfo.has_lower_bound
                 ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
                 if is_branch_variable
                     push!(m._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
-                    wp._var_geq_count += 1
                 end
             end
-
             if vinfo.has_upper_bound
                 ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
                 if is_branch_variable
                     push!(m._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
-                    wp._var_leq_count += 1
                 end
             end
         end
@@ -70,13 +63,11 @@ function load_relaxed_problem!(m::Optimizer)
     # set node index to single variable constraint index maps
     m._node_to_sv_leq_ci = fill(CI{SV,LT}(-1), branch_variable_count)
     m._node_to_sv_geq_ci = fill(CI{SV,GT}(-1), branch_variable_count)
-    for i = 1:wp._var_leq_count
-        ci_sv_lt, branch_index = m._relaxed_variable_lt[i]
-        m._node_to_sv_leq_ci[branch_index] = ci_sv_lt
+    for v in m._relaxed_variable_lt
+        m._node_to_sv_leq_ci[v[2]] = v[1]
     end
-    for i = 1:wp._var_geq_count
-        ci_sv_gt, branch_index = m._relaxed_variable_gt[i]
-        m._node_to_sv_geq_ci[branch_index] = ci_sv_gt
+    for v in m._relaxed_variable_gt
+        m._node_to_sv_geq_ci[v[2]] = v[1]
     end
 
     # set number of variables to branch on

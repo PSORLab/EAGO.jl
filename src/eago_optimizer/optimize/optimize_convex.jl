@@ -62,7 +62,7 @@ function add_soc_constraints_as_quad!(m::Optimizer, opt::T) where T
     return nothing
 end
 
-function _update_branch_variables!(d, m::Optimizer)
+function _update_upper_variables!(d, m::Optimizer)
     for i = 1:_variable_num(FullVar(), m)
         v = MOI.SingleVariable(m._upper_variables[i])
         if !_is_integer(FullVar(), m, i)
@@ -161,7 +161,7 @@ function solve_local_nlp!(m::Optimizer)
     for i = 1:m._working_problem._variable_count
         m._upper_variables[i] = MOI.add_variable(upper_optimizer)
     end
-    _update_branch_variables!(upper_optimizer, m)
+    _update_upper_variables!(upper_optimizer, m)
     _set_starting_point!(upper_optimizer, m)
 
     # Add linear and quadratic constraints to model
