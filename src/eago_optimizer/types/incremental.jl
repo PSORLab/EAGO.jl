@@ -40,23 +40,27 @@ end
 function MOI.set(d::Incremental{Q,S}, ::MOI.ObjectiveSense, s) where {Q, S}
     MOI.set(_get_storage(d), MOI.ObjectiveSense(), s)
 end
+function MOI.set(d::Incremental{Q,S}, ::MOI.Silent, s) where {Q, S}
+    MOI.set(_get_storage(d), MOI.Silent(), s)
+end
+
 function MOI.set(d::Incremental{Q,S}, ::MOI.VariablePrimalStart, v::VI, x) where {Q, S}
     MOI.set(_get_storage(d), MOI.VariablePrimalStart(), v, x)
 end
 
-function MOI.set(d::Incremental{Q,S}, ::MOI.NLPBlock, x) where {Q, S}
-    MOI.set(_get_storage(d), MOI.NLPBlock(), x)
+function MOI.set(d::Incremental{Q,S}, ::MOI.NLPBlock, s) where {Q, S}
+    MOI.set(_get_storage(d), MOI.NLPBlock(), s)
 end
 
 # Add variable/constraint
 function MOI.add_variable(d::Incremental{Q,S}) where {Q, S}
     MOI.add_variable(_get_storage(d))
 end
-function MOI.add_constraint(d::Incremental{Q,S}, f::SV, s::Union{LT,GT,ET}) where {Q, S}
+function MOI.add_constraint(d::Incremental{Q,S}, f::SV, s::Union{LT,GT,ET,IT}) where {Q, S}
     MOI.add_constraint(_get_storage(d), f, s)
 end
 
-function MOI.add_constraint(d::Incremental{Q,S}, f::Union{SAF,SQF}, s::Union{LT,GT,ET}) where {Q, S}
+function MOI.add_constraint(d::Incremental{Q,S}, f::Union{SAF,SQF}, s::Union{LT,GT,ET,IT}) where {Q, S}
     MOI.add_constraint(_get_storage(d), f, s)
 end
 
@@ -66,7 +70,7 @@ function MOI.delete(d::Incremental{Q,S}, ci::CI{SAF,LT}) where {Q, S}
 end
 
 # Set modifications
-function MOI.set(d::Incremental{Q,S}, ::MOI.ConstraintSet, ci::CI{SV,T}, s::T) where  {T <: Union{LT,GT,ET}, Q, S}
+function MOI.set(d::Incremental{Q,S}, ::MOI.ConstraintSet, ci::CI{SV,T}, s::T) where  {T <: Union{LT,GT,ET,IT}, Q, S}
      MOI.set(_get_storage(d), MOI.ConstraintSet(), ci, s)
 end
 
@@ -82,6 +86,9 @@ function MOI.get(d::Incremental{Q,T}, ::MOI.VariablePrimal, vi::VI) where {Q,T}
 end
 function MOI.get(d::Incremental{Q,T}, ::MOI.ConstraintDual, ci::Union{CI{SV,LT},CI{SV,GT}}) where {Q,T}
     MOI.get(d.optimizer, MOI.ConstraintDual(), ci)
+end
+function MOI.get(d::Incremental{Q,T}, ::MOI.ResultCount) where {Q,T}
+    MOI.get(d.optimizer, MOI.ResultCount())
 end
 
 # define optimize!

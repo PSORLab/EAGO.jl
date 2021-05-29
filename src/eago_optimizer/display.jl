@@ -31,7 +31,7 @@ function print_solution!(m::Optimizer)
             println("Node Limit Exceeded")
         elseif m._end_state == GS_ITERATION_LIMIT
             println("Maximum Iteration Exceeded")
-        elseif !m._end_state == GS_RELATIVE_TOL
+        elseif m._end_state == GS_RELATIVE_TOL
             println("Relative Tolerance Achieved")
         elseif m._end_state == GS_ABSOLUTE_TOL
             println("Absolute Tolerance Achieved")

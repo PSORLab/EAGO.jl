@@ -122,19 +122,15 @@ end
 add_nonlinear!(m::Optimizer) = add_nonlinear!(m, m._input_problem._nlp_data.evaluator)
 
 function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::SV)
-    ip = m._input_problem
-    wp = m._working_problem
-    flag = ip._optimization_sense == MOI.MAX_SENSE
+    flag = m._input_problem._optimization_sense == MOI.MAX_SENSE
     d._objective = AffineFunctionIneq(f, is_max = flag)
     d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
     return
 end
 function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::AffineFunctionIneq)
-    ip = d._input_problem
-    wp = d._working_problem
-    if ip._optimization_sense == MOI.MAX_SENSE
-        wp._objective_saf = MOIU.operate(-, Float64, wp._objective_saf)
-        wp._objective = AffineFunctionIneq(f, GT_ZERO)
+    if m._input_problem._optimization_sense == MOI.MAX_SENSE
+        d._objective_saf = MOIU.operate(-, Float64, d._objective_saf)
+        d._objective = AffineFunctionIneq(f, GT_ZERO)
     end
     return
 end
