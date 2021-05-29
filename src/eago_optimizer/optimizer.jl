@@ -364,7 +364,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Options for optimality-based bound tightening
     # set as a user-specified option
     relaxed_optimizer::MOI.AbstractOptimizer = Incremental(GLPK.Optimizer())
-    upper_optimizer::MOI.AbstractOptimizer = default_nlp_solver() # Incremental(default_nlp_solver())
+    upper_optimizer::MOI.AbstractOptimizer = Incremental(default_nlp_solver())
 
     # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     obbt_variable_values::Vector{Bool} = Bool[]

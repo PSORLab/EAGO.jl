@@ -57,7 +57,7 @@ function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 
     nlp_data = m._input_problem._nlp_data
-    MOI.initialize(evaluator, Symbol[:Grad, :ExprGraph])
+    MOI.initialize(evaluator, Symbol[:Grad, :Jac, :Hess, :HessVec, :ExprGraph])
     user_operator_registry = OperatorRegistry(evaluator.m.nlp_data.user_operators)
 
     # set nlp data structure
@@ -211,10 +211,21 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonline
         end
     end
     push!(nd, NodeData(JuMP._Derivatives.VARIABLE, ηi, 1))
+    nlobj = ip._nlp_data.evaluator.m.nlp_data.nlobj
+    nlexpr = JuMP._NonlinearExprData(copy(nlobj.nd), copy(nlobj.const_values))
+    nlcons = JuMP._NonlinearConstraint(nlexpr, -Inf, 0.0)
+
+    ip._nlp_data.evaluator.m.nlp_data.nlobj = nothing
+    ip._nlp_data.evaluator.has_nlobj = false
+    push!(ip._nlp_data.evaluator.m.nlp_data.nlconstr, nlcons)
+    constraint_bounds = ip._nlp_data.constraint_bounds
+    push!(constraint_bounds, MOI.NLPBoundsPair(-Inf, 0.0))
+    ip._nlp_data = MOI.NLPBlockData(constraint_bounds, ip._nlp_data.evaluator, false)
 
     empty!(d._relaxed_evaluator.subexpressions)
     empty!(d._nonlinear_constr)
     add_nonlinear!(m)
+    m._obj_var_slack_added = true
     return
 end
 
