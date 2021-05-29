@@ -40,8 +40,8 @@ function print_solution!(m::Optimizer)
         end
         println("First Solution Found at Node $(m._first_solution_node)")
         if (m._input_problem._optimization_sense !== MOI.MIN_SENSE)
-            println("LBD = $(MOI.get(m, MOI.ObjectiveValue()))")
-            println("UBD = $(MOI.get(m, MOI.ObjectiveBound()))")
+            println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
+            println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         else
             println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
             println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
@@ -83,14 +83,6 @@ every `header_interval`, the iteration info is displayed every `iteration_interv
 function print_iteration!(m::Optimizer)
 
     if m._parameters.verbosity > 0
-
-        if m._input_problem._optimization_sense === MOI.MAX_SENSE && m._iteration_count === 1
-            println(" ")
-            println("For maximization problems a max(f) = -min(-f) transformation is applied.")
-            println("Objectives values for each subproblem as a negative value of the objective")
-            println("in the original problem and reconciled after branch and bound terminates.")
-            println(" ")
-        end
 
         # prints header line every B.hdr_intv times
         if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
@@ -193,6 +185,23 @@ function print_results!(m::Optimizer, flag::Bool)
             println("Termination Status Code: $(m._upper_termination_status)")
             println("Result Code: $(m._upper_result_status)")
         end
+    end
+    return
+end
+
+"""
+$(FUNCTIONNAME)
+
+Prints the iteration information based on verbosity. The header is displayed
+every `header_interval`, the iteration info is displayed every `iteration_interval`.
+"""
+function print_preamble!(m::Optimizer)
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE && m._iteration_count === 1
+        println(" ")
+        println("For maximization problems a max(f) = -min(-f) transformation is applied.")
+        println("Objectives values for each subproblem as a negative value of the objective")
+        println("in the original problem and reconciled after branch and bound terminates.")
+        println(" ")
     end
     return
 end

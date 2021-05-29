@@ -234,7 +234,6 @@ function store_candidate_solution!(m::Optimizer)
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
         m._feasible_solution_found = true
         m._first_solution_node = m._maximum_node_id
-        m._solution_value = m._upper_objective_value
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
     end
@@ -267,6 +266,8 @@ function global_solve!(m::Optimizer)
 
     logging_on = m._parameters.log_on
     verbosity = m._parameters.verbosity
+
+    (verbosity >= 3) && print_preamble!(m)
 
     # terminates when max nodes or iteration is reach, or when node stack is empty
     while !termination_check(m)
@@ -329,8 +330,6 @@ function global_solve!(m::Optimizer)
         m._iteration_count += 1
     end
 
-    revert_adjusted_upper_bound!(m)
-    m._objective_value = m._global_upper_bound
     set_termination_status!(m)
     set_result_status!(m)
 

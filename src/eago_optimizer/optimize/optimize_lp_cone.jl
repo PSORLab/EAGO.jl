@@ -100,7 +100,6 @@ function unpack_local_solve!(m::Optimizer, opt::T) where T
 
         m._global_lower_bound = objective_value
         m._global_upper_bound = objective_value
-        m._objective_value = objective_value
         m._best_upper_value = objective_value
         m._solution_value = objective_value
     end

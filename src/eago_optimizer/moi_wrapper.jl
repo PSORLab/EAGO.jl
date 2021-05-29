@@ -193,18 +193,19 @@ function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
 end
 
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
-    return m._obj_mult*m._objective_value
+    if m._input_problem._optimization_sense == MOI.MIN_SENSE
+        return m._global_upper_bound
+    end
+    -m._global_lower_bound
 end
 
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
 
 function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
-    if m._input_problem._optimization_sense === MOI.MAX_SENSE
-        bound = m._obj_mult*m._global_lower_bound
-    else
-        bound = m._global_upper_bound
+    if m._input_problem._optimization_sense == MOI.MIN_SENSE
+        return m._global_lower_bound
     end
-    return bound
+    -m._global_upper_bound
 end
 
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
