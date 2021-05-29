@@ -32,7 +32,7 @@ _get_storage(d::Incremental{Val{true},S}) where S = d.optimizer
 _get_storage(d::Incremental{Val{false},S}) where S = d.cache
 
 # Set attributes
-for F in (SAF, SV)
+for F in (SV, SAF, SQF)
     @eval function MOI.set(d::Incremental{Q,S}, ::MOI.ObjectiveFunction{$F}, f::$F) where {Q, S}
         MOI.set(_get_storage(d), MOI.ObjectiveFunction{$F}(), f)
     end
@@ -44,6 +44,10 @@ function MOI.set(d::Incremental{Q,S}, ::MOI.VariablePrimalStart, v::VI, x) where
     MOI.set(_get_storage(d), MOI.VariablePrimalStart(), v, x)
 end
 
+function MOI.set(d::Incremental{Q,S}, ::MOI.NLPBlock, x) where {Q, S}
+    MOI.set(_get_storage(d), MOI.NLPBlock(), x)
+end
+
 # Add variable/constraint
 function MOI.add_variable(d::Incremental{Q,S}) where {Q, S}
     MOI.add_variable(_get_storage(d))
@@ -52,7 +56,7 @@ function MOI.add_constraint(d::Incremental{Q,S}, f::SV, s::Union{LT,GT,ET}) wher
     MOI.add_constraint(_get_storage(d), f, s)
 end
 
-function MOI.add_constraint(d::Incremental{Q,S}, f::SAF, s::LT) where {Q, S}
+function MOI.add_constraint(d::Incremental{Q,S}, f::Union{SAF,SQF}, s::Union{LT,GT,ET}) where {Q, S}
     MOI.add_constraint(_get_storage(d), f, s)
 end
 
