@@ -15,7 +15,7 @@ module EAGO
 
     import MathOptInterface
 
-    using Reexport, Cassette, IntervalArithmetic, NumericIO, DocStringExtensions
+    using Reexport, Cassette, IntervalArithmetic, DocStringExtensions
     using FastRounding, SpecialFunctions
 
     using JuMP
@@ -31,6 +31,7 @@ module EAGO
     using DataStructures: OrderedDict, BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse, findnz
     using LinearAlgebra: eigmin, norm
+    using Printf
 
     import IntervalArithmetic: mid
 
@@ -103,8 +104,6 @@ module EAGO
 
     # load internal storage functions
     include("eago_optimizer/functions/functions.jl")
-
-    #include("eago_optimizer/evaluator/evaluator.jl")
 
     # defines the optimizer structures
     include("eago_optimizer/optimizer.jl")

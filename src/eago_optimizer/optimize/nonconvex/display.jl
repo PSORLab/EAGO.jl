@@ -11,9 +11,6 @@
 # ambiguity.
 #############################################################################
 
-const PRINTING_IOFORMAT = :SCI
-const PRINTING_CHARSET = :ASCII
-
 """
 $(FUNCTIONNAME)
 
@@ -117,37 +114,37 @@ function print_iteration!(m::Optimizer)
             end
             #temp_str = string(round(lower, sigdigits = 5))
             #temp_str = string(lower, sigdigits = 3))
-            temp_str = formatted(lower, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            temp_str = @sprintf "%.2E" lower
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             #temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             #temp_str = string(upper, sigdigits = 3))
-            temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            temp_str = @sprintf "%.2E" upper
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
             max_len = 12
             #temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
-            temp_str = formatted(abs(m._global_upper_bound - m._global_lower_bound), PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            temp_str = @sprintf "%.2E" abs(m._global_upper_bound - m._global_lower_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  | "
 
             max_len = 12
             #temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
-            temp_str = formatted(relative_gap(m._global_lower_bound, m._global_upper_bound), PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            temp_str = @sprintf "%.2E" relative_gap(m._global_lower_bound, m._global_upper_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 12
             #temp_str = string(round(x._run_time, sigdigits = 3))
-            temp_str = formatted(m._run_time, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            temp_str = @sprintf "%.2E" m._run_time
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |  "
 
             max_len = 12
             #temp_str = string(round(x._time_left, sigdigits = 4))
-            temp_str = formatted(m._time_left, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
+            temp_str = @sprintf "%.2E" m._time_left
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*"  |"
 
