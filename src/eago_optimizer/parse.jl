@@ -199,7 +199,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonline
     if ip._optimization_sense == MOI.MAX_SENSE
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
-        nd[3] = NodeData(nd[2].nodetype, nd[2].index, 2)
+        nd[3] = NodeData(nd[3].nodetype, nd[3].index, 2)
         for i = 4:length(nd)
             @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 2)
         end
