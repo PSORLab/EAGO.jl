@@ -39,12 +39,13 @@ function print_solution!(m::Optimizer)
             println("Time Limit Exceeded")
         end
         println("First Solution Found at Node $(m._first_solution_node)")
-        lower_bound = m._min_converged_value
         if (m._input_problem._optimization_sense !== MOI.MIN_SENSE)
-            lower_bound *= -1.0
+            println("LBD = $(MOI.get(m, MOI.ObjectiveValue()))")
+            println("UBD = $(MOI.get(m, MOI.ObjectiveBound()))")
+        else
+            println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
+            println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         end
-        println("LBD = $(lower_bound)")
-        println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         println("Solution is :")
         if m._feasible_solution_found
             k = _obj_var_slack_added(m) ? 1 : 0
@@ -82,6 +83,14 @@ every `header_interval`, the iteration info is displayed every `iteration_interv
 function print_iteration!(m::Optimizer)
 
     if m._parameters.verbosity > 0
+
+        if m._input_problem._optimization_sense === MOI.MAX_SENSE && m._iteration_count === 1
+            println(" ")
+            println("For maximization problems a max(f) = -min(-f) transformation is applied.")
+            println("Objectives values for each subproblem as a negative value of the objective")
+            println("in the original problem and reconciled after branch and bound terminates.")
+            println(" ")
+        end
 
         # prints header line every B.hdr_intv times
         if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
@@ -166,27 +175,24 @@ function print_results!(m::Optimizer, flag::Bool)
         k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
         if flag
-            obj_val = m._lower_objective_value
             if m._input_problem._optimization_sense === MOI.MIN_SENSE
-                print("Lower Bound (First Iteration): $(obj_val),")
+                print("Lower Bound (First Iteration): $(m._lower_objective_value),")
             else
-                print("Upper Bound (First Iteration): $(-obj_val),")
+                print("Upper Bound (First Iteration): $(m._lower_objective_value),")
             end
             print(" Solution: $(m._lower_solution[1:k]), Feasibility: $(m._lower_feasibility)\n")
             println("Termination Status Code: $(m._lower_termination_status)")
             println("Result Code: $(m._lower_primal_status)")
         else
-            obj_val = m._upper_objective_value
             if m._input_problem._optimization_sense === MOI.MIN_SENSE
-                print("Upper Bound: $(obj_val), ")
+                print("Upper Bound: $(m._upper_objective_value), ")
             else
-                print("Lower Bound: $(-obj_val), ")
+                print("Lower Bound: $(m._upper_objective_value), ")
             end
             print(" Solution: $(m._upper_solution[1:k]), Feasibility: $(m._upper_feasibility)\n")
             println("Termination Status Code: $(m._upper_termination_status)")
             println("Result Code: $(m._upper_result_status)")
         end
-        println(" ")
     end
     return
 end

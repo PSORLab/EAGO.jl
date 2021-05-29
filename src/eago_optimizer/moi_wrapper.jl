@@ -193,18 +193,14 @@ function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
 end
 
 function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
-    mult = 1.0
-    if m._input_problem._optimization_sense === MOI.MAX_SENSE
-        mult *= -1.0
-    end
-    return mult*m._objective_value
+    return m._obj_mult*m._objective_value
 end
 
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
 
 function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
     if m._input_problem._optimization_sense === MOI.MAX_SENSE
-        bound = -m._global_lower_bound
+        bound = m._obj_mult*m._global_lower_bound
     else
         bound = m._global_upper_bound
     end
@@ -212,14 +208,9 @@ function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
 end
 
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
-    LBD = m._global_lower_bound
-    UBD = m._global_upper_bound
-    if m._input_problem._optimization_sense === MOI.MAX_SENSE
-        gap = abs(UBD - LBD)/abs(LBD)
-    else
-        gap = abs(UBD - LBD)/abs(UBD)
-    end
-    return gap
+    b = MOI.get(m, MOI.ObjectiveBound())
+    v = MOI.get(m, MOI.ObjectiveValue())
+    return relative_gap(b,v)
 end
 
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
@@ -232,6 +223,7 @@ MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m.time_limit
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
+    @show model._continuous_solution
     return model._continuous_solution[vi.value]
 end
 
