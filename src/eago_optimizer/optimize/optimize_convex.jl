@@ -186,8 +186,6 @@ function solve_local_nlp!(m::Optimizer)
     # Add nonlinear evaluation block
     MOI.set(upper_optimizer, MOI.NLPBlock(), m._working_problem._nlp_data)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-    # set objective as NECESSARY
     MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
 
     # Optimizes the object

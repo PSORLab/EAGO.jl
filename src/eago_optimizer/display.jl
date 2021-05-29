@@ -47,7 +47,8 @@ function print_solution!(m::Optimizer)
         println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         println("Solution is :")
         if m._feasible_solution_found
-            for i = 1:m._input_problem._variable_count
+            k = _obj_var_slack_added(m) ? 1 : 0
+            for i = 1:(m._input_problem._variable_count - k)
                 println("    X[$i] = $(m._continuous_solution[i])")
             end
         end
@@ -64,9 +65,10 @@ Prints node information for the B&B problem. Node id, bound, and interval box.
 function print_node!(m::Optimizer)
     n = m._current_node
     bound = (m._input_problem._optimization_sense === MOI.MIN_SENSE) ? n.lower_bound : -n.lower_bound
+    k = length(n) - (_obj_var_slack_added(m) ? 1 : 0)
     println(" ")
     println("Node ID: $(n.id), Lower Bound: $(bound), Lower Variable Bounds:
-             $(n.lower_variable_bounds), Upper Variable Bounds: $(n.upper_variable_bounds)")
+             $(n.lower_variable_bounds[1:k]), Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
     println(" ")
     return
 end
@@ -161,6 +163,7 @@ Prints the results of a single bounding problem.
 """
 function print_results!(m::Optimizer, flag::Bool)
     if m._parameters.verbosity > 1
+        k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
         if flag
             obj_val = m._lower_objective_value
@@ -169,7 +172,7 @@ function print_results!(m::Optimizer, flag::Bool)
             else
                 print("Upper Bound (First Iteration): $(-obj_val),")
             end
-            print(" Solution: $(m._lower_solution), Feasibility: $(m._lower_feasibility)\n")
+            print(" Solution: $(m._lower_solution[1:k]), Feasibility: $(m._lower_feasibility)\n")
             println("Termination Status Code: $(m._lower_termination_status)")
             println("Result Code: $(m._lower_primal_status)")
         else
@@ -179,7 +182,7 @@ function print_results!(m::Optimizer, flag::Bool)
             else
                 print("Lower Bound: $(-obj_val), ")
             end
-            print(" Solution: $(m._upper_solution), Feasibility: $(m._upper_feasibility)\n")
+            print(" Solution: $(m._upper_solution[1:k]), Feasibility: $(m._upper_feasibility)\n")
             println("Termination Status Code: $(m._upper_termination_status)")
             println("Result Code: $(m._upper_result_status)")
         end

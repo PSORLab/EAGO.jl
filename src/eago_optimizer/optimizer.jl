@@ -384,6 +384,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _obj_mult::Float64 = 1.0
+    _obj_var_slack_added::Bool = false
 
     _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
 
@@ -715,6 +716,7 @@ end
 @inline _cp_repetitions(m::Optimizer) = m._parameters.cp_repetitions
 
 @inline _iteration_count(m::Optimizer) = m._iteration_count
+@inline _obj_var_slack_added(m) = m._obj_var_slack_added
 
 @inline _bvi(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
 @inline _svi(m::Optimizer, i::Int) = m._sol_to_branch_map[i]

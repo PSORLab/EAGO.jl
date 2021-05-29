@@ -161,6 +161,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedQuadrat
     end
     MOIU.operate!(-, Float64, f.func, SV(VI(ηi)))
     push!(f.saf.terms, SAT(0.0, VI(ηi)))
+    m._obj_var_slack_added = true
 
     return
 end
@@ -305,8 +306,6 @@ function label_branch_variables!(m::Optimizer)
                                 node_to_variable_map = m._branch_to_sol_map,
                                 variable_to_node_map = m._sol_to_branch_map)
     wp._relaxed_evaluator.variable_values = v
-    # sets variable_values in nonlinear expressions/functions to v
-    # add nonlinear objective
     (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
     foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
     foreach(i -> _set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
