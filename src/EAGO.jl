@@ -98,6 +98,7 @@ module EAGO
     include(joinpath(@__DIR__, "eago_optimizer", "types", "variable_info.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "types", "node_bb.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "types", "extension.jl"))
+    include(joinpath(@__DIR__, "eago_optimizer", "types", "incremental.jl"))
 
     # load internal storage functions
     include("eago_optimizer/functions/functions.jl")

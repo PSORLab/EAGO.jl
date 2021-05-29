@@ -297,13 +297,9 @@ Base.@kwdef mutable struct ParsedProblem
     _sqf_eq::Vector{BufferedQuadraticEq} = BufferedQuadraticEq[]
     _conic_second_order::Vector{BufferedSOC} = BufferedSOC[]
 
-    # nlp constraints (set in initial_parse)
+    # nlp constraints
     _nlp_data::MOI.NLPBlockData = empty_nlp_data()
-
-    # storage for nonlinear functions
     _nonlinear_constr::Vector{BufferedNonlinearFunction} = BufferedNonlinearFunction[]
-
-    # nonlinear evaluator
     _relaxed_evaluator = Evaluator()
 
     # variables (set in initial_parse)
@@ -382,13 +378,11 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Options for optimality-based bound tightening
     # set as a user-specified option
-    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
+    relaxed_optimizer::MOI.AbstractOptimizer = Incremental(GLPK.Optimizer())
+    upper_optimizer::MOI.AbstractOptimizer = Incremental(default_nlp_solver())
 
     # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     obbt_variable_values::Vector{Bool} = Bool[]
-
-    # Upper bounding options (set as a user-specified option)
-    upper_optimizer::MOI.AbstractOptimizer = default_nlp_solver()
 
     # Extensions (set as user-specified option)
     enable_optimize_hook::Bool = false
@@ -398,10 +392,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # set as user-specified option
     _parameters::EAGOParameters = EAGOParameters()
 
-    # set by MOI manipulations (see Input problem structure)
     _input_problem::InputProblem = InputProblem()
-
-    # loaded from _input_problem by TODO
     _working_problem::ParsedProblem = ParsedProblem()
 
     _end_state::GlobalEndState = GS_UNSET
@@ -610,11 +601,9 @@ end
 #####
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
-
      m._parameters.verbosity = 0
      m._parameters.log_on = false
-     return nothing
-
+     return
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
@@ -686,6 +675,9 @@ function MOI.get(m::Optimizer, p::MOI.RawParameter)
 end
 function MOI.set(m::Optimizer, p::MOI.RawParameter, x)
     s = _to_sym(p.name)
+    if (s == :relaxed_optimizer || s == :upper_optimizer)
+        setfield!(m, s, Incremental(x))
+    end
     s in EAGO_PARAMETERS ? setfield!(m._parameters, s, x) : setfield!(m, s, x)
     return
 end

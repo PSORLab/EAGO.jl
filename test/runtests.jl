@@ -1,13 +1,17 @@
 #!/usr/bin/env julia
 
-using Test
-using EAGO, JuMP, MathOptInterface, Ipopt, ForwardDiff
-using IntervalArithmetic, SpecialFunctions
-const MOI = MathOptInterface
-using ForwardDiff: Dual, Partials
+using Test, Printf, EAGO, MathOptInterface, Cbc #, MINLPTests
 
-include("branch_bound.jl")
-include("domain_reduction.jl")
-include("optimizer.jl")
-include("script_optimizer.jl")
-include("semiinfinite.jl")
+const MOI = MathOptInterface
+const MOIT = MOI.Test
+const MOIU = MOI.Utilities
+const MOIB = MOI.Bridges
+
+
+include(joinpath(@__DIR__, "moit_tests.jl"))
+
+#include("branch_bound.jl")
+#include("domain_reduction.jl")
+#include("optimizer.jl")
+#include("script_optimizer.jl")
+#include("semiinfinite.jl")

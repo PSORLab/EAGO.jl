@@ -122,11 +122,11 @@ end
 add_nonlinear!(m::Optimizer) = add_nonlinear!(m, m._input_problem._nlp_data.evaluator)
 
 function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::SV)
-    ip = d._input_problem
-    wp = d._working_problem
+    ip = m._input_problem
+    wp = m._working_problem
     flag = ip._optimization_sense == MOI.MAX_SENSE
-    wp._objective = AffineFunctionIneq(f, is_max = flag)
-    wp._objective_saf = SAF([SAT(1.0, VI(f.variable.value))], 0.0)
+    d._objective = AffineFunctionIneq(f, is_max = flag)
+    d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
     return
 end
 function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::AffineFunctionIneq)
@@ -333,7 +333,7 @@ function initial_parse!(m::Optimizer)
 
     # add linear constraints to the working problem
     append!(wp._saf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_leq_constraints])
-    append!(wp._sqf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_geq_constraints])
+    append!(wp._saf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_geq_constraints])
     wp._saf_eq  = [AffineFunctionEq(c[1], c[2]) for c in ip._linear_eq_constraints]
 
     append!(wp._sqf_leq, [BufferedQuadraticIneq(c[1], c[2]) for c in ip._quadratic_leq_constraints])
