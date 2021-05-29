@@ -80,6 +80,7 @@ end
 function reset_relaxation!(m::Optimizer)
 
     m._cut_iterations = 1
+    m._obbt_performed_flag = false
     m._working_problem._relaxed_evaluator.is_first_eval = true
     fill!(m._working_problem._relaxed_evaluator.subexpressions_eval, false)
 
@@ -228,64 +229,42 @@ constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
 """
 function preprocess!(t::ExtensionType, m::Optimizer)
+
+    feasible_flag = true
     reset_relaxation!(m)
 
-    wp = m._working_problem
-    params = m._parameters
-
-    # Sets initial feasibility
-    feasible_flag = true
-    m._obbt_performed_flag = false
-
-    # compute initial volume
-    m._initial_volume = prod(upper_variable_bounds(m._current_node) -
-                             lower_variable_bounds(m._current_node))
-    if params.fbbt_lp_depth >= m._iteration_count
+    if _fbbt_lp_depth(m) >= _iteration_count(m)
         load_fbbt_buffer!(m)
-        for i = 1:m._parameters.fbbt_lp_repetitions
-            for f in wp._saf_leq
+        for i = 1:_fbbt_lp_repetitions(m)
+            for f in m._working_problem._saf_leq
                 !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
             end
             !feasible_flag && break
-            for f in wp._saf_eq
+            for f in m._working_problem._saf_eq
                 !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
             end
             !feasible_flag && break
         end
         unpack_fbbt_buffer!(m)
     end
+
     # done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
-
-    cp_walk_count = 0
-    perform_cp_walk_flag = feasible_flag
-    perform_cp_walk_flag &= (params.cp_depth >= m._iteration_count)
-    perform_cp_walk_flag &= (cp_walk_count < m._parameters.cp_repetitions)
-    while perform_cp_walk_flag
-        feasible_flag &= set_constraint_propagation_fbbt!(m)
-        !feasible_flag && break
-        cp_walk_count += 1
-        perform_cp_walk_flag = (cp_walk_count < m._parameters.cp_repetitions)
+    if _cp_depth(m) >= _iteration_count(m)
+        for i = 1:_cp_repetitions(m)
+            feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
+            !feasible_flag && break
+        end
     end
 
-    obbt_count = 0
-    perform_obbt_flag = feasible_flag
-    perform_obbt_flag &= (params.obbt_depth >= m._iteration_count)
-    perform_obbt_flag &= (obbt_count < m._parameters.obbt_repetitions)
-
-    while perform_obbt_flag
-        feasible_flag &= obbt!(m)
-        m._obbt_performed_flag = true
-        !feasible_flag && break
-        obbt_count += 1
-        perform_obbt_flag = (obbt_count < m._parameters.obbt_repetitions)
+    if _obbt_depth(m) >= _iteration_count(m)
+        for i = 1:_obbt_repetitions(m)
+            feasible_flag = feasible_flag && obbt!(m)
+            m._obbt_performed_flag = true
+            !feasible_flag && break
+        end
     end
-
-    m._final_volume = prod(upper_variable_bounds(m._current_node) -
-                           lower_variable_bounds(m._current_node))
-
     m._preprocess_feasibility = feasible_flag
-
     return
 end
 preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
@@ -322,16 +301,15 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     while true
         relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
-        MOI.optimize!(m.relaxed_optimizer)::Nothing
-        t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
-        p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
-        d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())::MOI.ResultStatusCode
+        MOI.optimize!(m.relaxed_optimizer)
+        t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+        p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+        d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
         status = relaxed_problem_status(t_status, p_status, d_status)
         if status != RRS_OPTIMAL
             break
         end
-        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())::Float64
-        m._lower_objective_value *= m._obj_mult
+        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())
         if cut_condition(m)
             m._cut_iterations += 1
         else
@@ -341,9 +319,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     # activate integrality conditions for MIP & solve MIP subproblem
 
-    t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
-    p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
-    d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())::MOI.ResultStatusCode
+    t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
+    p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
+    d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
     m._lower_termination_status = t_status
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
@@ -354,17 +332,16 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
         m._lower_objective_value = -Inf
         return
     elseif status == RRS_INVALID
-        return fallback_interval_lower_bound!(m, n)::Nothing
+        return fallback_interval_lower_bound!(m, n)
     end
 
     set_dual!(m)
     m._lower_feasibility = true
     for i = 1:m._working_problem._variable_count
-         m._lower_solution[i] = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])::Float64
+         m._lower_solution[i] = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
     end
     if status == RRS_DUAL_FEASIBLE
-        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.DualObjectiveValue())::Float64
-        m._lower_objective_value *= m._obj_mult
+        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.DualObjectiveValue())
     end
     interval_objective_bound!(m)
     return

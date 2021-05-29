@@ -521,8 +521,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Options for Repetition (If DBBT Performed Well)
     # set in within preprocess in optimize_nonconvex.jl
     _node_repetitions::Int = 0
-    _initial_volume::Float64 = 0.0
-    _final_volume::Float64 = 0.0
 
     # Log
     _log::Log = Log()
@@ -729,6 +727,17 @@ end
 @inline _cut_ϵ_rel(m::Optimizer) = m._parameters.cut_tolerance_rel
 @inline _cut_max_iterations(m::Optimizer) = m._parameters.cut_max_iterations
 @inline _constraint_tol(m::Optimizer) = m._parameters.absolute_constraint_feas_tolerance
+
+@inline _fbbt_lp_depth(m::Optimizer) = m._parameters.fbbt_lp_depth
+@inline _fbbt_lp_repetitions(m::Optimizer) = m._parameters.fbbt_lp_repetitions
+
+@inline _obbt_depth(m::Optimizer) = m._parameters.obbt_depth
+@inline _obbt_repetitions(m::Optimizer) = m._parameters.obbt_repetitions
+
+@inline _cp_depth(m::Optimizer) = m._parameters.cp_depth
+@inline _cp_repetitions(m::Optimizer) = m._parameters.cp_repetitions
+
+@inline _iteration_count(m::Optimizer) = m._iteration_count
 
 @inline _bvi(m::Optimizer, i::Int) = m._branch_to_sol_map[i]
 @inline _svi(m::Optimizer, i::Int) = m._sol_to_branch_map[i]

@@ -188,7 +188,7 @@ function solve_local_nlp!(m::Optimizer)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
 
     # set objective as NECESSARY
-    add_sv_or_aff_obj!(m, upper_optimizer,  m._input_problem._objective)
+    MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
 
     # Optimizes the object
     MOI.optimize!(upper_optimizer)
