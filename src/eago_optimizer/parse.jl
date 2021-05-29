@@ -130,7 +130,7 @@ end
 function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::AffineFunctionIneq)
     if m._input_problem._optimization_sense == MOI.MAX_SENSE
         d._objective_saf = MOIU.operate(-, Float64, d._objective_saf)
-        d._objective = AffineFunctionIneq(f, GT_ZERO)
+        d._objective = AffineFunctionIneq([(-i,j) for (i,j) in f.terms], -f.constant, f.len)
     end
     return
 end

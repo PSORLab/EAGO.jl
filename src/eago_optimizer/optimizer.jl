@@ -111,10 +111,6 @@ Base.@kwdef mutable struct EAGOParameters
     relative_tolerance::Float64 = 1E-3
     "Absolute constraint feasibility tolerance"
     absolute_constraint_feas_tolerance::Float64 = 1E-6
-    "Perform only a local solve of the problem (default = false)."
-    local_solve_only::Bool = false
-    "[TO BE REMOVED] Flag stops B&B loop if feasible point found."
-    feasible_local_continue::Bool = false
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
@@ -146,17 +142,6 @@ Base.@kwdef mutable struct EAGOParameters
     fbbt_lp_depth::Int  = 1000
     "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
     fbbt_lp_repetitions::Int  = 3
-
-    # Options for quadratic bound tightening
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which univariate quadratic FBBT should be disabled (default = -1)"
-    quad_uni_depth::Int = -1
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of univariate quadratic FBBT to perform in preprocessing (default = 2)"
-    quad_uni_repetitions::Int = 2
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Depth in B&B tree above which bivariate
-    quadratic FBBT should be disabled (default = -1)"
-    quad_bi_depth::Int = -1
-    "[FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED] Number of repetitions of bivariate quadratic FBBT to perform in preprocessing (default = 2)."
-    quad_bi_repetitions::Int = 2
 
     # Duality-based bound tightening (DBBT) options
     "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
@@ -379,7 +364,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Options for optimality-based bound tightening
     # set as a user-specified option
     relaxed_optimizer::MOI.AbstractOptimizer = Incremental(GLPK.Optimizer())
-    upper_optimizer::MOI.AbstractOptimizer = Incremental(default_nlp_solver())
+    upper_optimizer::MOI.AbstractOptimizer = default_nlp_solver() # Incremental(default_nlp_solver())
 
     # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     obbt_variable_values::Vector{Bool} = Bool[]

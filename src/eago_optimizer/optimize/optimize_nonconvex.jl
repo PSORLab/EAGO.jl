@@ -325,11 +325,6 @@ function global_solve!(m::Optimizer)
                 end
                 print_results!(m, false)
                 store_candidate_solution!(m)
-                if m._input_problem._optimization_sense === MOI.FEASIBILITY_SENSE
-                    if !m.feasible_local_continue || m.local_solve_only
-                        break
-                    end
-                end
 
                 # Performs and times post processing
                 logging_on && (start_time = time())

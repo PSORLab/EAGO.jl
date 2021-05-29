@@ -76,11 +76,20 @@ end
 
 # Get attributes
 for attr in (MOI.TerminationStatus, MOI.PrimalStatus, MOI.DualStatus, MOI.ObjectiveValue,
-             MOI.DualObjectiveValue, MOI.ListOfConstraintIndices{SAF,LT})
+             MOI.DualObjectiveValue)
     @eval function MOI.get(d::Incremental{Q,T}, ::$attr) where {Q,T}
         MOI.get(d.optimizer, $attr())
     end
 end
+for attr in (MOI.ConstraintFunction, MOI.ConstraintSet, MOI.ListOfConstraints)
+    @eval function MOI.get(d::Incremental{Q,T}, ::$attr) where {Q,T}
+        MOI.get(_get_storage(d), $attr())
+    end
+end
+function MOI.get(d::Incremental{Q,T}, ::MOI.ListOfConstraintIndices{F,S}) where {Q,T,F,S}
+    MOI.get(_get_storage(d), MOI.ListOfConstraintIndices{F,S}())
+end
+
 function MOI.get(d::Incremental{Q,T}, ::MOI.VariablePrimal, vi::VI) where {Q,T}
     MOI.get(d.optimizer, MOI.VariablePrimal(), vi)
 end
