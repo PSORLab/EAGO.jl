@@ -95,6 +95,7 @@ module EAGO
     # creates a context that removes domain violations when constructing bounds
     include("eago_optimizer/guarded_context.jl")
 
+    include(joinpath(@__DIR__, "eago_optimizer", "types", "log.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "types", "variable_info.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "types", "node_bb.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "types", "extension.jl"))
@@ -105,17 +106,11 @@ module EAGO
 
     #include("eago_optimizer/evaluator/evaluator.jl")
 
-    # defines structure used to store information at each iteration of global optimize
-    include("eago_optimizer/logging/log.jl")
-
     # defines the optimizer structures
     include("eago_optimizer/optimizer.jl")
 
     # defines routines to add variable, saf, sqf, and nlp block constraints
-    include(joinpath(@__DIR__, "eago_optimizer", "moi_constraints.jl"))
-
-    # functions which print information to console
-    include("eago_optimizer/display.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "moi_wrapper.jl"))
 
     #
     include("eago_optimizer/relax.jl")
@@ -126,9 +121,6 @@ module EAGO
 
     #
     include("eago_optimizer/parse.jl")
-
-    #
-    include("eago_optimizer/logging/log_iteration.jl")
 
     #
     include("eago_optimizer/optimize/optimize.jl")

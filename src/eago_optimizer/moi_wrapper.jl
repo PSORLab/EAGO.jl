@@ -125,3 +125,159 @@ function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::SOC)
     return CI{VECOFVAR, SOC}(m._input_problem._last_constraint_index)
 end
 =#
+
+const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
+                                         :enable_optimize_hook, :ext, :ext_type, :_parameters]
+const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem, :_branch_cost]
+const EAGO_MODEL_NOT_STRUCT_ATTRIBUTES = setdiff(fieldnames(Optimizer), union(EAGO_OPTIMIZER_ATTRIBUTES,
+                                                                              EAGO_MODEL_STRUCT_ATTRIBUTES))
+
+function MOI.empty!(m::Optimizer)
+
+    # create a new empty optimizer and copy fields to m
+    new_optimizer = Optimizer()
+    for field in union(EAGO_MODEL_STRUCT_ATTRIBUTES, EAGO_MODEL_NOT_STRUCT_ATTRIBUTES)
+        setfield!(m, field, getfield(new_optimizer, field))
+    end
+
+    return nothing
+end
+
+function MOI.is_empty(m::Optimizer)
+
+    is_empty_flag = uninitialized(_current_node(m))
+    is_empty_flag &= isempty(m._stack)
+    is_empty_flag &= isempty(m._log)
+    is_empty_flag &= isempty(m._input_problem)
+    is_empty_flag &= isempty(m._working_problem)
+
+    new_optimizer = Optimizer()
+    for field in EAGO_MODEL_NOT_STRUCT_ATTRIBUTES
+        if getfield(m, field) != getfield(new_optimizer, field)
+            is_empty_flag = false
+            break
+        end
+    end
+
+    return is_empty_flag
+end
+
+function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
+    return MOI.Utilities.default_copy_to(model, src, copy_names)
+end
+
+#####
+#####
+##### Set & get attributes of model
+#####
+#####
+
+function MOI.set(m::Optimizer, ::MOI.Silent, value)
+     m._parameters.verbosity = 0
+     m._parameters.log_on = false
+     return
+end
+
+function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
+    m._parameters.time_limit = Inf
+    return
+end
+
+function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
+    m._parameters.time_limit = value
+    return
+end
+
+function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
+    return [MOI.VariableIndex(i) for i = 1:length(m._input_problem._variable_info)]
+end
+
+function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
+    mult = 1.0
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
+        mult *= -1.0
+    end
+    return mult*m._objective_value
+end
+
+MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
+
+function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
+        bound = -m._global_lower_bound
+    else
+        bound = m._global_upper_bound
+    end
+    return bound
+end
+
+function MOI.get(m::Optimizer, ::MOI.RelativeGap)
+    LBD = m._global_lower_bound
+    UBD = m._global_upper_bound
+    if m._input_problem._optimization_sense === MOI.MAX_SENSE
+        gap = abs(UBD - LBD)/abs(LBD)
+    else
+        gap = abs(UBD - LBD)/abs(UBD)
+    end
+    return gap
+end
+
+MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
+MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
+MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
+MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
+MOI.get(m::Optimizer, ::MOI.NodeCount) = m._maximum_node_id
+MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
+MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m.time_limit
+
+function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
+    check_inbounds!(model, vi)
+    return model._continuous_solution[vi.value]
+end
+
+const EAGO_PARAMETERS = fieldnames(EAGOParameters)
+
+_to_sym(d) = error("EAGO only supports raw parameters with Symbol or String names.")
+_to_sym(d::String) = Symbol(d)
+_to_sym(d::Symbol) = d
+
+function MOI.get(m::Optimizer, p::MOI.RawParameter)
+    s = _to_sym(p.name)
+    s in EAGO_PARAMETERS ? getfield(m._parameters, s) : getfield(m, s)
+end
+function MOI.set(m::Optimizer, p::MOI.RawParameter, x)
+    s = _to_sym(p.name)
+    if (s == :relaxed_optimizer || s == :upper_optimizer)
+        setfield!(m, s, Incremental(x))
+    end
+    s in EAGO_PARAMETERS ? setfield!(m._parameters, s, x) : setfield!(m, s, x)
+    return
+end
+
+#####
+#####
+##### Support, set, and evaluate objective functions
+#####
+#####
+MOI.supports(::Optimizer, ::MOI.TimeLimitSec) = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
+
+function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
+    if nlp_data.has_objective
+        m._input_problem._objective = nothing
+    end
+    m._input_problem._nlp_data = nlp_data
+    return
+end
+
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Union{SV,SAF,SQF}
+    check_inbounds!(m, f)
+    m._input_problem._objective = f
+    return
+end
+
+function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, s::MOI.OptimizationSense)
+    m._input_problem._optimization_sense = s
+    return
+end

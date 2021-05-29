@@ -32,6 +32,9 @@ _rf_findmax((fm, m), (fx, x)) = isless(fm, fx) ? (fx, x) : (fm, m)
 map_findmax(f, itr) = mapfoldl(((k, v),) -> (f(v), k), _rf_findmax, pairs(itr))
 map_argmax(f, itr) = map_findmax(f, itr)[2]
 
+relative_gap(L::Float64, U::Float64) = ((L > -Inf) && (U < Inf)) ?  abs(U - L)/(max(abs(L), abs(U))) : Inf
+relative_tolerance(L::Float64, U::Float64, tol::Float64) = relative_gap(L, U)  > tol || ~(L > -Inf)
+
 """
     gershgorin_λmin
 
