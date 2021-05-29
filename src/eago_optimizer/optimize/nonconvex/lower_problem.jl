@@ -182,8 +182,9 @@ function set_dual!(m::Optimizer)
 end
 
 function interval_objective_bound!(m::Optimizer)
-    fL = bound_objective(m)*m._obj_mult
-    if fL > m._lower_objective_value
+    fL, fU = bound_objective(m)
+    fv = _is_input_min(m) ? fL : -fU
+    if fv > m._lower_objective_value
         m._lower_objective_value = fL
         fill!(m._lower_lvd, 0.0)
         fill!(m._lower_uvd, 0.0)

@@ -177,10 +177,14 @@ function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V,S}, y::NodeBB)
     feasible_flag && (lower_value > _upper_bound(f))
 end
 
-bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = lower_interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = lower_interval_bound(m, f)
-bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = lower_interval_bound(m, f)
-bound_objective(m::Optimizer, f::SV, n::NodeBB) = _lower_bound(FullVar(), m, f.variable.value)
+bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = interval_bound(m, f, n)
+bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = interval_bound(m, f)
+bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = interval_bound(m, f)
+function bound_objective(m::Optimizer, f::SV, n::NodeBB)
+    l = _lower_bound(FullVar(), m, f.variable.value)
+    u = _lower_bound(FullVar(), m, f.variable.value)
+    return l, u
+end
 function bound_objective(t::ExtensionType, m::Optimizer)
     bound_objective(m, m._working_problem._objective, m._current_node)
 end

@@ -533,6 +533,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
 
+@inline _is_input_min(m::Optimizer) = m._input_problem._optimization_sense == MOI.MIN_SENSE
+
 @inline _branch_cost(m::Optimizer) = m._branch_cost.cost
 @inline _cost_offset_β(m::Optimizer) = m._branch_cost.β
 @inline _branch_cvx_α(m::Optimizer) =  m._parameters.branch_cvx_factor

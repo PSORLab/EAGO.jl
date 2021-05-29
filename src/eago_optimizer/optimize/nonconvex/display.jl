@@ -68,8 +68,9 @@ function print_node!(m::Optimizer)
     bound = (m._input_problem._optimization_sense === MOI.MIN_SENSE) ? n.lower_bound : -n.lower_bound
     k = length(n) - (_obj_var_slack_added(m) ? 1 : 0)
     println(" ")
-    println("Node ID: $(n.id), Lower Bound: $(bound), Lower Variable Bounds:
-             $(n.lower_variable_bounds[1:k]), Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
+    println("Node ID: $(n.id), Lower Bound: $(bound)")
+    println("Lower Variable Bounds: $(n.lower_variable_bounds[1:k])")
+    println("Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
     println(" ")
     return
 end
@@ -107,7 +108,7 @@ function print_iteration!(m::Optimizer)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 12
-            if m._input_problem._optimization_sense === MOI.MIN_SENSE
+            if _is_input_min(m)
                 lower = m._global_lower_bound
                 upper = m._global_upper_bound
             else
@@ -167,7 +168,7 @@ function print_results!(m::Optimizer, flag::Bool)
         k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
         if flag
-            if m._input_problem._optimization_sense === MOI.MIN_SENSE
+            if _is_input_min(m)
                 print("Lower Bound (First Iteration): $(m._lower_objective_value),")
             else
                 print("Upper Bound (First Iteration): $(m._lower_objective_value),")
@@ -196,7 +197,7 @@ Prints the iteration information based on verbosity. The header is displayed
 every `header_interval`, the iteration info is displayed every `iteration_interval`.
 """
 function print_preamble!(m::Optimizer)
-    if m._input_problem._optimization_sense === MOI.MAX_SENSE && m._iteration_count === 1
+    if !_is_input_min(m) && m._iteration_count === 1
         println(" ")
         println("For maximization problems a max(f) = -min(-f) transformation is applied.")
         println("Objectives values for each subproblem as a negative value of the objective")

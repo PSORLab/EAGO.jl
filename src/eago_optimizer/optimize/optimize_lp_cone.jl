@@ -94,7 +94,7 @@ function unpack_local_solve!(m::Optimizer, opt::T) where T
         objective_value = MOI.get(opt, MOI.ObjectiveValue())
 
         # corrects for standard printing multiplier
-        if m._input_problem._optimization_sense === MOI.MAX_SENSE
+        if !_is_input_min(m)
             objective_value *= -1.0
         end
 

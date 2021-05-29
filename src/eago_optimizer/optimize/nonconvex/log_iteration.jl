@@ -23,7 +23,7 @@ function log_iteration!(x::Optimizer)
         log = x._log
         if (mod(x._iteration_count, x._parameters.log_interval) == 0 || x._iteration_count == 1)
             if x._parameters.log_subproblem_info
-                if x._input_problem._optimization_sense === MOI.MIN_SENSE
+                if _is_input_min(m)
                     push!(log.current_lower_bound, x._lower_objective_value)
                     push!(log.current_upper_bound, x._upper_objective_value)
                 else
@@ -42,7 +42,7 @@ function log_iteration!(x::Optimizer)
                 push!(log.postprocess_feasibility, x._postprocess_feasibility)
             end
 
-            if x._input_problem._optimization_sense === MOI.MIN_SENSE
+            if _is_input_min(m)
                 push!(log.global_lower_bound, x._global_lower_bound)
                 push!(log.global_upper_bound, x._global_upper_bound)
             else
