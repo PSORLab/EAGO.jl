@@ -15,17 +15,18 @@
 
 A type-stable cache used to wrapper for an optimizer that enables incremental
 modification of solvers that don't inherently suppport this. Explicitly checks
-support of MOI functionality used in EAGO.
+support of MOI functionality used in EAGO. For `Q = Val{true}`, the subsolver
+supports incremental loading. For `Q = Val{false}`, the subsolver does not.
 """
-mutable struct Incremental{Q,S} <: MOI.AbstractOptimizer
-    optimizer::S
-    cache::MOIB.LazyBridgeOptimizer{MOIU.GenericModel{Float64,MOIU.ModelFunctionConstraints{Float64}}}
+mutable struct Incremental{Q,S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
+    optimizer::MOIB.LazyBridgeOptimizer{S}
+    cache::MOIB.LazyBridgeOptimizer{MOIU.CachingOptimizer{S,MOIU.GenericModel{Float64,MOIU.ModelFunctionConstraints{Float64}}}}
 end
-function Incremental(m::S) where S
+function Incremental(m::S) where S <: MOI.AbstractOptimizer
     is_incremental = MOIU.supports_default_copy_to(m, false)
-    cache = MOIB.full_bridge_optimizer(MOIU.Model{Float64}(), Float64)
     b = MOIB.full_bridge_optimizer(m, Float64)
-    return Incremental{Val{is_incremental},typeof(b)}(b, cache)
+    cache = MOIB.full_bridge_optimizer(MOIU.CachingOptimizer(MOIU.Model{Float64}(), m), Float64)
+    return Incremental{Val{is_incremental},typeof(m)}(b, cache)
 end
 
 _get_storage(d::Incremental{Val{true},S}) where S = d.optimizer
@@ -50,6 +51,10 @@ end
 
 function MOI.set(d::Incremental{Q,S}, ::MOI.NLPBlock, s) where {Q, S}
     MOI.set(_get_storage(d), MOI.NLPBlock(), s)
+end
+
+function MOI.set(d::Incremental{Q,S}, p::MOI.RawParameter, s) where {Q, S}
+    MOI.set(_get_storage(d), p, s)
 end
 
 # Add variable/constraint
@@ -99,6 +104,9 @@ end
 function MOI.get(d::Incremental{Q,T}, ::MOI.ResultCount) where {Q,T}
     MOI.get(d.optimizer, MOI.ResultCount())
 end
+function MOI.get(d::Incremental{Q,S}, n::MOI.SolverName) where {Q, S}
+    MOI.get(d.optimizer, n)
+end
 
 # define optimize!
 function MOI.optimize!(d::Incremental{Val{:true},S}) where S
@@ -106,8 +114,7 @@ function MOI.optimize!(d::Incremental{Val{:true},S}) where S
     return
 end
 function MOI.optimize!(d::Incremental{Val{:false},S}) where S
-    MOIU.copy_to(d.optimizer, d.cache)
-    MOI.optimize!(d.optimizer)
+    MOI.optimize!(d.cache)
     return
 end
 

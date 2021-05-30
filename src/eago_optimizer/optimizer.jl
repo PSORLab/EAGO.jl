@@ -189,6 +189,9 @@ Base.@kwdef mutable struct EAGOParameters
     domain_violation_guard_on::Bool = false
     "Amount about a domain violation to ignore when propagating bounds."
     domain_violation_ϵ::Float64 = 1E-9
+
+    "If true, then EAGO forgos its default configuration process for subsolvers"
+    user_solver_config::Bool = false
 end
 
 """
@@ -325,23 +328,6 @@ function Base.isempty(x::ParsedProblem)
     return is_empty_flag
 end
 
-
-function default_nlp_solver()
-
-    upper_optimizer = Ipopt.Optimizer()
-
-    MOI.set(upper_optimizer, MOI.RawParameter("max_iter"),5000)
-    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_tol"), 1E30)
-    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_iter"), 500)
-    MOI.set(upper_optimizer, MOI.RawParameter("constr_viol_tol"), 0.000001)
-    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_compl_inf_tol"), 0.000001)
-    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_dual_inf_tol"), 1.0)
-    MOI.set(upper_optimizer, MOI.RawParameter("acceptable_constr_viol_tol"), 0.000001)
-    MOI.set(upper_optimizer, MOI.RawParameter("print_level"), 0)
-
-    return upper_optimizer
-end
-
 export Optimizer
 """
 $(TYPEDEF)
@@ -363,8 +349,8 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     # Options for optimality-based bound tightening
     # set as a user-specified option
-    relaxed_optimizer::MOI.AbstractOptimizer = Incremental(GLPK.Optimizer())
-    upper_optimizer::MOI.AbstractOptimizer = Incremental(default_nlp_solver())
+    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
+    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer()
 
     # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     obbt_variable_values::Vector{Bool} = Bool[]
@@ -543,6 +529,9 @@ end
 @inline _cut_ϵ_abs(m::Optimizer) = m._parameters.cut_tolerance_abs
 @inline _cut_ϵ_rel(m::Optimizer) = m._parameters.cut_tolerance_rel
 @inline _cut_max_iterations(m::Optimizer) = m._parameters.cut_max_iterations
+
+@inline _absolute_tol(m::Optimizer) = m._parameters.absolute_tolerance
+@inline _relative_tol(m::Optimizer) = m._parameters.relative_tolerance
 @inline _constraint_tol(m::Optimizer) = m._parameters.absolute_constraint_feas_tolerance
 
 @inline _fbbt_lp_depth(m::Optimizer) = m._parameters.fbbt_lp_depth
@@ -550,6 +539,9 @@ end
 
 @inline _obbt_depth(m::Optimizer) = m._parameters.obbt_depth
 @inline _obbt_repetitions(m::Optimizer) = m._parameters.obbt_repetitions
+
+@inline _user_solver_config(m::Optimizer) = m._parameters.user_solver_config
+@inline _verbosity(m) = m._parameters.verbosity
 
 @inline _cp_depth(m::Optimizer) = m._parameters.cp_depth
 @inline _cp_repetitions(m::Optimizer) = m._parameters.cp_repetitions

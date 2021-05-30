@@ -334,6 +334,10 @@ function initial_parse!(m::Optimizer)
     # reset initial time and solution statistics
     m._time_left = m._parameters.time_limit
 
+    # wrap subsolvers with Incremental
+    m.relaxed_optimizer = Incremental(m.relaxed_optimizer)
+    m.upper_optimizer = Incremental(m.upper_optimizer)
+
     # add variables to working model
     ip = m._input_problem
     wp = m._working_problem

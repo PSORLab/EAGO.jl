@@ -16,6 +16,7 @@ include(joinpath(@__DIR__,"nonconvex","upper_problem.jl"))
 include(joinpath(@__DIR__,"nonconvex","post_process.jl"))
 include(joinpath(@__DIR__,"nonconvex","log_iteration.jl"))
 include(joinpath(@__DIR__,"nonconvex","display.jl"))
+include(joinpath(@__DIR__,"nonconvex","configure_subsolver.jl"))
 
 """
 $(TYPEDSIGNATURES)
@@ -89,6 +90,7 @@ end
 
 function presolve_global!(t::ExtensionType, m::Optimizer)
 
+    set_default_config!(m)
     load_relaxed_problem!(m)
     initialize_stack!(m)
 
@@ -265,16 +267,14 @@ function global_solve!(m::Optimizer)
     presolve_global!(m)
 
     logging_on = m._parameters.log_on
-    verbosity = m._parameters.verbosity
-
-    (verbosity >= 3) && print_preamble!(m)
+    print_preamble!(m)
 
     # terminates when max nodes or iteration is reach, or when node stack is empty
     while !termination_check(m)
 
         # Selects node, deletes it from stack, prints based on verbosity
         node_selection!(m)
-        (verbosity >= 3) && print_node!(m)
+        print_node!(m)
 
         # Performs prepocessing and times
         logging_on && (start_time = time())

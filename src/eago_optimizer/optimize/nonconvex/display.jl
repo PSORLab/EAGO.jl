@@ -18,7 +18,7 @@ Prints solution information for the B&B problem. Displays first node found, solu
 solution, and time spent solving subproblems.
 """
 function print_solution!(m::Optimizer)
-    if m._parameters.verbosity > 0
+    if _verbosity(m) > 0
         println(" ")
         if m._end_state == GS_OPTIMAL
             println("Empty Stack: Exhaustive Search Finished")
@@ -36,7 +36,7 @@ function print_solution!(m::Optimizer)
             println("Time Limit Exceeded")
         end
         println("First Solution Found at Node $(m._first_solution_node)")
-        if (m._input_problem._optimization_sense !== MOI.MIN_SENSE)
+        if !_is_input_min(m)
             println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
             println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         else
@@ -61,14 +61,16 @@ $(FUNCTIONNAME)
 Prints node information for the B&B problem. Node id, bound, and interval box.
 """
 function print_node!(m::Optimizer)
-    n = m._current_node
-    bound = (m._input_problem._optimization_sense === MOI.MIN_SENSE) ? n.lower_bound : -n.lower_bound
-    k = length(n) - (_obj_var_slack_added(m) ? 1 : 0)
-    println(" ")
-    println("Node ID: $(n.id), Lower Bound: $(bound)")
-    println("Lower Variable Bounds: $(n.lower_variable_bounds[1:k])")
-    println("Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
-    println(" ")
+    if _verbosity(m) >= 3
+        n = m._current_node
+        bound = _is_input_min(m) ? n.lower_bound : -n.lower_bound
+        k = length(n) - (_obj_var_slack_added(m) ? 1 : 0)
+        println(" ")
+        println("Node ID: $(n.id), Lower Bound: $(bound)")
+        println("Lower Variable Bounds: $(n.lower_variable_bounds[1:k])")
+        println("Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
+        println(" ")
+    end
     return
 end
 
@@ -80,7 +82,7 @@ every `header_interval`, the iteration info is displayed every `iteration_interv
 """
 function print_iteration!(m::Optimizer)
 
-    if m._parameters.verbosity > 0
+    if _verbosity(m) > 0
 
         # prints header line every B.hdr_intv times
         if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
@@ -161,7 +163,7 @@ $(FUNCTIONNAME)
 Prints the results of a single bounding problem.
 """
 function print_results!(m::Optimizer, flag::Bool)
-    if m._parameters.verbosity > 1
+    if _verbosity(m) > 1
         k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
         if flag
@@ -174,7 +176,7 @@ function print_results!(m::Optimizer, flag::Bool)
             println("Termination Status Code: $(m._lower_termination_status)")
             println("Result Code: $(m._lower_primal_status)")
         else
-            if m._input_problem._optimization_sense === MOI.MIN_SENSE
+            if _is_input_min(m)
                 print("Upper Bound: $(m._upper_objective_value), ")
             else
                 print("Lower Bound: $(m._upper_objective_value), ")
@@ -194,12 +196,14 @@ Prints the iteration information based on verbosity. The header is displayed
 every `header_interval`, the iteration info is displayed every `iteration_interval`.
 """
 function print_preamble!(m::Optimizer)
-    if !_is_input_min(m) && m._iteration_count === 1
-        println(" ")
-        println("For maximization problems a max(f) = -min(-f) transformation is applied.")
-        println("Objectives values for each subproblem as a negative value of the objective")
-        println("in the original problem and reconciled after branch and bound terminates.")
-        println(" ")
+    if _verbosity(m) >= 3
+        if !_is_input_min(m) && m._iteration_count === 1
+            println(" ")
+            println("For maximization problems a max(f) = -min(-f) transformation is applied.")
+            println("Objectives values for each subproblem as a negative value of the objective")
+            println("in the original problem and reconciled after branch and bound terminates.")
+            println(" ")
+        end
     end
     return
 end
