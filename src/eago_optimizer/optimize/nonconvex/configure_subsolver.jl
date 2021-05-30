@@ -82,7 +82,7 @@ function set_default_subsolver_config!(ext::DefaultExt, d::Optimizer,  m::T, loc
     elseif !_user_solver_config(d)
         set_default_config_udf!(sname, m)
     end
-    MOI.set(d, MOI.Silent())
+    MOI.set(m, MOI.Silent(), true)
     return
 end
 function set_default_config!(ext::DefaultExt, m::T) where T

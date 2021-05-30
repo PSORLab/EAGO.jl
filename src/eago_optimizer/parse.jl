@@ -188,9 +188,8 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonline
     set_node!(wp._relaxed_evaluator, n)
 
     l, u = interval_bound(m, f, n)
-    if ip._optimization_sense == MOI.MAX_SENSE
-        l = -u
-        u = -l
+    if !_is_input_min(m)
+        l, u = -u, -l
     end
     ηi = add_η!(d, l, u)
     @variable(ip._nlp_data.evaluator.m, l <= η <= u)
@@ -199,7 +198,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonline
     wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     nd = ip._nlp_data.evaluator.m.nlp_data.nlobj.nd
-    if ip._optimization_sense == MOI.MAX_SENSE
+    if !_is_input_min(m)
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
         nd[3] = NodeData(nd[3].nodetype, nd[3].index, 2)
