@@ -503,7 +503,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Log
     _log::Log = Log()
 
-    _affine_relax_ci = CI{SAF,LT}[]
+    _affine_relax_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
     _affine_objective_cut_ci::Union{CI{SV,LT},CI{SAF,LT},Nothing} = nothing
 
     # need to retreive primal _relaxed_variable_index

@@ -48,7 +48,8 @@ function add_affine_relaxation!(m::Optimizer, f::SAF, check_safe::Bool)
     if !check_safe || is_safe_cut!(m, f)
         s = LT(-f.constant + _constraint_tol(m))
         f.constant = 0.0
-        push!(m._affine_relax_ci, MOI.add_constraint(m.relaxed_optimizer, f, s))
+        ci = MOI.add_constraint(m.relaxed_optimizer, f, s)::CI{SAF,LT}
+        push!(m._affine_relax_ci, ci)
     end
     return
 end
@@ -209,7 +210,7 @@ function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant + _constraint_tol(m))
             f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)::CI{SAF,LT}
             push!(m._affine_relax_ci, ci)
         end
     end
