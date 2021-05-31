@@ -12,7 +12,6 @@
 # copy_subexpression_value!, eliminate_fixed_variables!
 #############################################################################
 
-include(joinpath(@__DIR__, "empty_evaluator.jl"))
 include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "abstract_graph.jl"))
 include(joinpath(@__DIR__, "constant", "constant.jl"))

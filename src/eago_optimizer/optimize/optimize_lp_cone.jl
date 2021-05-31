@@ -11,18 +11,6 @@
 # linear constraints, soc constraints, and unpack solutions.
 #############################################################################
 
-#=
-LP          -> COPY TO RELAXED SOLVER AND SOLVE
-MILP        -> COPY TO RELAXED SOLVER AND SOLVE
-SOCP        -> COPY TO RELAXED SOLVER AND SOLVE
-MISOCP      -> COPY TO RELAXED SOLVER AND SOLVE
-DIFF_CVX    -> COPY TO NLP SOLVER AND SOLVE (POTENTIAL MULTISTART)
-NS_CVX      -> COPY TO NLP SOLVER AND SOLVE (POTENTIAL MULTISTART)
-DIFF_NCVX   -> APPLY GLOBAL SOLVER (UNLESS USER REQUEST LOCAL SOLVE THEN NLP)
-NS_NCVX     -> APPLY GLOBAL SOLVER (UNLESS USER REQUEST LOCAL SOLVE THEN NLP)
-MINCVX      -> APPLY GLOBAL SOLVER (LOCAL SOLVE OPTION FUTURE FEATURE)
-=#
-
 function add_variables(m::Optimizer, optimizer::T, variable_number::Int) where T
 
     variable_index = fill(VI(1), variable_number)
@@ -114,7 +102,7 @@ function unpack_local_solve!(m::Optimizer, opt::T) where T
     return nothing
 end
 
-function optimize!(::Val{LP}, m::Optimizer)
+function optimize!(::LP, m::Optimizer)
 
     relaxed_optimizer = m.relaxed_optimizer
     MOI.empty!(relaxed_optimizer)
@@ -136,9 +124,9 @@ function optimize!(::Val{LP}, m::Optimizer)
     return nothing
 end
 
-optimize!(::Val{MILP}, m::Optimizer) = optimize!(Val{LP}(), m)
+optimize!(::MILP, m::Optimizer) = optimize!(LP(), m)
 
-function optimize!(::Val{SOCP}, m::Optimizer)
+function optimize!(::SOCP, m::Optimizer)
 
     relaxed_optimizer = m.relaxed_optimizer
     MOI.empty!(relaxed_optimizer)
@@ -158,7 +146,7 @@ function optimize!(::Val{SOCP}, m::Optimizer)
 
     unpack_local_solve!(m, relaxed_optimizer)
 
-    return nothing
+    return
 end
 
-optimize!(::Val{MISOCP}, m::Optimizer) = optimize!(Val{SOCP}(), m)
+optimize!(::MISOCP, m::Optimizer) = optimize!(SOCP(), m)

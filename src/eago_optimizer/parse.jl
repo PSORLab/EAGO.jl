@@ -29,7 +29,6 @@ end
 Adds a Evaluator structure if nonlinear terms are attached.
 """
 add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
-add_nonlinear_evaluator!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
 function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
 
@@ -51,7 +50,6 @@ end
 Adds a Evaluator, nonlinear functions, and populates each appropriately.
 """
 add_nonlinear!(m::Optimizer, evaluator::Nothing) = nothing
-add_nonlinear!(m::Optimizer, evaluator::EmptyNLPEvaluator) = nothing
 function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
 
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
@@ -391,12 +389,12 @@ function parse_classify_problem!(m::Optimizer)
 
     if cone_constraint_number === 0 && quad_constraint_number === 0 &&
         nl_expr_number === 0 && linear_or_sv_objective
-        m._working_problem._problem_type = LP
+        m._working_problem._problem_type = LP()
     elseif quad_constraint_number === 0 && relaxed_supports_soc &&
         nl_expr_number === 0 && linear_or_sv_objective
-        m._working_problem._problem_type = SOCP
+        m._working_problem._problem_type = SOCP()
     else
-        m._working_problem._problem_type = MINCVX
+        m._working_problem._problem_type = MINCVX()
     end
     return
 end

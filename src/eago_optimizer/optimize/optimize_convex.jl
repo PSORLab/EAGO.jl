@@ -174,4 +174,4 @@ function solve_local_nlp!(m::Optimizer)
     _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 
-optimize!(::Val{DIFF_CVX}, m::Optimizer) = solve_local_nlp!(m)
+optimize!(::DIFF_CVX, m::Optimizer) = solve_local_nlp!(m)

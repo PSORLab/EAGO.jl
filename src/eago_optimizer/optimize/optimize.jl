@@ -34,7 +34,7 @@ function MOI.optimize!(m::Optimizer)
         m._parse_time = m._start_time - time()
 
         # Throws the problem to the appropriate solution routine
-        optimize!(Val{m._working_problem._problem_type}(), m)
+        optimize!(m._working_problem._problem_type, m)
     else
 
         # throws to user-defined optimization hook

@@ -33,7 +33,28 @@ function initialize!(d::BranchCostStorage{T}, n::Int) where T <:AbstractFloat
     return
 end
 
-@enum(ProblemType, UNCLASSIFIED, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX)
+#=
+LP          -> COPY TO RELAXED SOLVER AND SOLVE
+MILP        -> COPY TO RELAXED SOLVER AND SOLVE
+SOCP        -> COPY TO RELAXED SOLVER AND SOLVE
+MISOCP      -> COPY TO RELAXED SOLVER AND SOLVE
+DIFF_CVX    -> COPY TO NLP SOLVER AND SOLVE (POTENTIAL MULTISTART)
+NS_CVX      -> COPY TO NLP SOLVER AND SOLVE (POTENTIAL MULTISTART)
+DIFF_NCVX   -> APPLY GLOBAL SOLVER (UNLESS USER REQUEST LOCAL SOLVE THEN NLP)
+NS_NCVX     -> APPLY GLOBAL SOLVER (UNLESS USER REQUEST LOCAL SOLVE THEN NLP)
+MINCVX      -> APPLY GLOBAL SOLVER (LOCAL SOLVE OPTION FUTURE FEATURE)
+=#
+
+abstract type AbstractProblemType end
+struct LP <: AbstractProblemType end
+struct MILP <: AbstractProblemType end
+struct SOCP <: AbstractProblemType end
+struct MISOCP <: AbstractProblemType end
+struct DIFF_CVX <: AbstractProblemType end
+struct MINCVX <: AbstractProblemType end
+
+const ANY_PROBLEM_TYPE = Union{Nothing, LP, MILP, SOCP, MISOCP, DIFF_CVX, MINCVX}
+
 @enum(GlobalEndState, GS_OPTIMAL, GS_INFEASIBLE, GS_NODE_LIMIT,
                       GS_ITERATION_LIMIT, GS_RELATIVE_TOL,
                       GS_ABSOLUTE_TOL, GS_TIME_LIMIT, GS_UNSET)
@@ -226,7 +247,7 @@ Base.@kwdef mutable struct InputProblem
     _objective::Union{SV,SAF,SQF,Nothing} = nothing
 
     # nlp constraints (set by MOI.set(m, ::NLPBlockData...) in optimizer.jl)
-    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+    _nlp_data::Union{MOI.NLPBlockData,Nothing} = nothing
 
     # objective sense information (set by MOI.set(m, ::ObjectiveSense...) in optimizer.jl)
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
@@ -252,9 +273,7 @@ function Base.isempty(x::InputProblem)
         end
     end
 
-    is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
-    is_empty_flag &= !x._nlp_data.has_objective
-    is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
+    is_empty_flag &= x._nlp_data == nothing
     is_empty_flag &= x._objective == nothing
 
     return is_empty_flag
@@ -269,7 +288,7 @@ relaxed problems.
 Base.@kwdef mutable struct ParsedProblem
 
     # Problem classification (set in parse_classify_problem!)
-    _problem_type::ProblemType = UNCLASSIFIED
+    _problem_type::ANY_PROBLEM_TYPE = nothing
 
     "_objective_saf stores the objective and is used for constructing linear affine cuts"
     _objective_saf::SAF = SAF(SAT[], 0.0)
@@ -286,9 +305,9 @@ Base.@kwdef mutable struct ParsedProblem
     _conic_second_order::Vector{BufferedSOC} = BufferedSOC[]
 
     # nlp constraints
-    _nlp_data::MOI.NLPBlockData = empty_nlp_data()
+    _nlp_data::Union{MOI.NLPBlockData,Nothing} = nothing
     _nonlinear_constr::Vector{BufferedNonlinearFunction} = BufferedNonlinearFunction[]
-    _relaxed_evaluator = Evaluator()
+    _relaxed_evaluator::Evaluator = Evaluator()
 
     # variables (set in initial_parse)
     _variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
@@ -317,10 +336,7 @@ function Base.isempty(x::ParsedProblem)
         end
     end
 
-    is_empty_flag &= x._nlp_data.evaluator isa EmptyNLPEvaluator
-    is_empty_flag &= !x._nlp_data.has_objective
-    is_empty_flag &= isempty(x._nlp_data.constraint_bounds)
-
+    is_empty_flag &= x._nlp_data == nothing
     is_empty_flag &= isempty(x._objective_saf.terms)
     is_empty_flag &= x._objective_saf.constant === 0.0
     is_empty_flag &= x._objective === nothing

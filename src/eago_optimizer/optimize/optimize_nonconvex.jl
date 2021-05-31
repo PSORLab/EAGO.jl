@@ -277,39 +277,24 @@ function global_solve!(m::Optimizer)
         print_node!(m)
 
         # Performs prepocessing and times
-        logging_on && (start_time = time())
-        preprocess!(m)
-        if logging_on
-            m._last_preprocess_time = time() - start_time
-        end
+        m._last_preprocess_time += @elapsed preprocess!(m)
 
         if m._preprocess_feasibility
 
             # solves & times lower bounding problem
-            logging_on && (start_time = time())
-            lower_problem!(m)
-            if logging_on
-                m._last_lower_problem_time = time() - start_time
-            end
+            m._last_lower_problem_time += @elapsed lower_problem!(m)
             print_results!(m, true)
 
             # checks for infeasibility stores solution
             if m._lower_feasibility && !convergence_check(m)
 
-                logging_on && (start_time = time())
-                upper_problem!(m)
-                if logging_on
-                    m._last_upper_problem_time = time() - start_time
-                end
+                # Solves upper problem
+                m._last_upper_problem_time += @elapsed upper_problem!(m)
                 print_results!(m, false)
                 store_candidate_solution!(m)
 
-                # Performs and times post processing
-                logging_on && (start_time = time())
-                postprocess!(m)
-                if logging_on
-                    m._last_postprocessing_time = time() - start_time
-                end
+                # Performs post processing
+                m._last_postprocessing_time += @elapsed postprocess!(m)
 
                 # Checks to see if the node
                 if m._postprocess_feasibility
@@ -336,4 +321,4 @@ function global_solve!(m::Optimizer)
     print_solution!(m)
 end
 
-optimize!(::Val{MINCVX}, m::Optimizer) = global_solve!(m)
+optimize!(::MINCVX, m::Optimizer) = global_solve!(m)
