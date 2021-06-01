@@ -177,7 +177,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
     grad_sparsity = _sparsity(f)
     if _is_num(f)
         f.saf.constant = _num(f)
-        for i = 1:N
+        for i = 1:length(grad_sparsity)
             f.saf.terms[i] = SAT(0.0, VI(grad_sparsity[i]))
         end
     else
@@ -186,15 +186,14 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluato
         if finite_cut
             value = _set(f)
             f.saf.constant = use_cvx ? value.cv : -value.cc
-             @inbounds for i = 1:N
-                vval = grad_sparsity[i]
+            for (i, k) in enumerate(grad_sparsity)
                 c = use_cvx ? value.cv_grad[i] : -value.cc_grad[i]
-                f.saf.terms[i] = SAT(c, VI(vval))
-                f.saf.constant = sub_round(f.saf.constant , mul_round(c, x[vval], RoundUp), RoundDown)
+                f.saf.terms[i] = SAT(c, VI(k))
+                f.saf.constant -= c*x[k]
             end
             if is_constraint
-                bnd_used =  use_cvx ? -_upper_bound(f) : _lower_bound(f)
-                f.saf.constant = add_round(f.saf.constant, bnd_used, RoundDown)
+                bnd_used = use_cvx ? -_upper_bound(f) : _lower_bound(f)
+                f.saf.constant += bnd_used
             end
         end
     end

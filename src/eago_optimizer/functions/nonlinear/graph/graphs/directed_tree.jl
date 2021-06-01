@@ -136,5 +136,5 @@ function _negate!(d::DirectedTree{S}) where S<:Real
     push!(d.nodes, Node(Val(false), Val(MINUS), Int[_node_count(d)]))
     d.node_count += 1
     d.sink_bnd = -d.sink_bnd
-    return nothing
+    return
 end
