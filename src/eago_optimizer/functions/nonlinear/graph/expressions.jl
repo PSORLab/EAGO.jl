@@ -3,7 +3,7 @@
 # McCormick.jl/EAGO.jl.
 oftf(x, y) = oftype(float(x), y)
 leakyrelu(x, a=oftf(x, 0.01)) = max(a * x, x)
-swish(x) = x * sigmoid(x)
+swish1(x) = x * sigmoid(x)
 
 """
     AtomType
@@ -18,7 +18,7 @@ swish(x) = x * sigmoid(x)
                 ASINH, ACOSH, ATANH, ACSCH, ASECH, ACOTH,
                 ERF, ERFC, ERFINV, ERFCINV, SQRT, CBRT,
                 # ML specific functions
-                RELU, LEAKYRELU, SOFTPLUS, SOFTSIGN, GELU, SILU, SIGMOID, SWISH,
+                RELU, LEAKYRELU, SOFTPLUS, SOFTSIGN, GELU, SILU, SIGMOID,
                 # EAGO modeling functions
                 XLOGX, ARH,
                 # EAGO bound enforcing functions
@@ -49,7 +49,7 @@ UNIVARIATE_ATOM_DICT[LOG1P]     = :log1p
 UNIVARIATE_ATOM_DICT[EXP]       = :exp
 UNIVARIATE_ATOM_DICT[EXP2]      = :exp2
 UNIVARIATE_ATOM_DICT[EXP10]     = :exp10
-UNIVARIATE_ATOM_DICT[EXP10]     = :expm1
+UNIVARIATE_ATOM_DICT[EXPM1]     = :expm1
 
 UNIVARIATE_ATOM_DICT[SIN]       = :sin
 UNIVARIATE_ATOM_DICT[COS]       = :cos
@@ -94,7 +94,7 @@ UNIVARIATE_ATOM_DICT[SIGMOID]    = :sigmoid
 UNIVARIATE_ATOM_DICT[GELU]       = :gelu
 UNIVARIATE_ATOM_DICT[SOFTPLUS]   = :softplus
 UNIVARIATE_ATOM_DICT[SOFTSIGN]   = :softsign
-UNIVARIATE_ATOM_DICT[SWISH]      = :swish
+UNIVARIATE_ATOM_DICT[SILU]       = :swish1
 
 UNIVARIATE_ATOM_DICT[XLOGX]      = :xlogx
 

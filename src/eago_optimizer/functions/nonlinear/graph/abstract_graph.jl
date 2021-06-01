@@ -2,8 +2,8 @@
 TODO: Each graph representation is assumed to be static... so
 =#
 
-abstract type AbstractDirectedGraph{S<:Real} end
-abstract type AbstractDirectedAcyclicGraph{S<:Real} <: AbstractDirectedGraph{S} end
+abstract type AbstractDirectedGraph end
+abstract type AbstractDirectedAcyclicGraph <: AbstractDirectedGraph end
 
 const AbstractDG = AbstractDirectedGraph
 const AbstractDAG = AbstractDirectedAcyclicGraph
@@ -53,46 +53,6 @@ Retreive the ith multivariate user function evaluator stored in the graph.
 """
 _user_multivariate_operator(g::AbstractDG, i) = error("_user_multivariate_operator(g,i) not defined for g::$(typeof(g)).")
 
-# node property access functions that can be defined at abstract type
-@inline _node(g::AbstractDG, i)           = @inbounds getindex(_nodes(g), i)
-@inline _variable(g::AbstractDG, i)       = @inbounds getindex(_variables(g), i)
-@inline _variable_type(g::AbstractDG, i)  = @inbounds getindex(_variable_types(g), i)
-@inline function _constant_value(g::AbstractDG{S}, i) where S <: Real
-    @inbounds getindex(_constant_values(g), i)
-end
-@inline function _parameter_value(g::AbstractDG{S}, i) where S <: Real
-    @inbounds getindex(_parameter_values(g), i)
-end
-
-@inline _node_class(g::AbstractDG, i)      = _node_class(_node(g, i))
-@inline _ex_type(g::AbstractDG, i)         = _ex_type(_node(g, i))
-@inline _first_index(g::AbstractDG, i)     = _first_index(_node(g, i))
-@inline _secondary_index(g::AbstractDG, i) = _secondary_index(_node(g, i))
-@inline _arity(g::AbstractDG, i)           = _arity(_node(g, i))
-@inline _children(g::AbstractDG, i)        = _children(_node(g, i))
-@inline _child(g::AbstractDG, i, j)        = _child(_node(g, j), i)
-
-"""
-    _node_count
-
-Number of nodes in graph g.
-"""
-@inline _node_count(g::AbstractDG) = length(_nodes(g))
-
-"""
-    _variable_count
-
-Number of variables in graph g.
-"""
-@inline _variable_count(g::AbstractDG) = length(_variable(g))
-
-"""
-    _constant_count
-
-Number of constants in graph g.
-"""
-@inline _constant_count(g::AbstractDG) = length(_constant_count(g))
-
 """
     _rev_sparsity
 
@@ -129,3 +89,45 @@ include(joinpath(@__DIR__, "expressions.jl"))
 include(joinpath(@__DIR__, "abstract_node.jl"))
 include(joinpath(@__DIR__, "abstract_cache.jl"))
 include(joinpath(@__DIR__, "graphs", "directed_tree.jl"))
+
+const ALLGRAPHS = Union{DAT}
+
+# node property access functions that can be defined at abstract type
+@inline _node(g::ALLGRAPHS, i)           = @inbounds getindex(_nodes(g), i)
+@inline _variable(g::ALLGRAPHS, i)       = @inbounds getindex(_variables(g), i)
+@inline _variable_type(g::ALLGRAPHS, i)  = @inbounds getindex(_variable_types(g), i)
+@inline function _constant_value(g::ALLGRAPHS, i)
+    @inbounds getindex(_constant_values(g), i)
+end
+@inline function _parameter_value(g::ALLGRAPHS, i)
+    @inbounds getindex(_parameter_values(g), i)
+end
+
+@inline _node_class(g::ALLGRAPHS, i)      = _node_class(_node(g, i))
+@inline _ex_type(g::ALLGRAPHS, i)         = _ex_type(_node(g, i))
+@inline _first_index(g::ALLGRAPHS, i)     = _first_index(_node(g, i))
+@inline _secondary_index(g::ALLGRAPHS, i) = _secondary_index(_node(g, i))
+@inline _arity(g::ALLGRAPHS, i)           = _arity(_node(g, i))
+@inline _children(g::ALLGRAPHS, i)        = _children(_node(g, i))
+@inline _child(g::ALLGRAPHS, i, j)        = _child(_node(g, j), i)
+
+"""
+    _node_count
+
+Number of nodes in graph g.
+"""
+@inline _node_count(g::ALLGRAPHS) = length(_nodes(g))
+
+"""
+    _variable_count
+
+Number of variables in graph g.
+"""
+@inline _variable_count(g::ALLGRAPHS) = length(_variable(g))
+
+"""
+    _constant_count
+
+Number of constants in graph g.
+"""
+@inline _constant_count(g::ALLGRAPHS) = length(_constant_count(g))

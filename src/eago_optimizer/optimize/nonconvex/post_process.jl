@@ -20,4 +20,4 @@ $(SIGNATURES)
 Checks to see if current node should be reprocessed.
 """
 repeat_check(t::ExtensionType, m::Optimizer) = false
-repeat_check(m::Optimizer) = repeat_check(m.ext_type, m)
+repeat_check(m::Optimizer)::Bool = repeat_check(m.ext_type, m)

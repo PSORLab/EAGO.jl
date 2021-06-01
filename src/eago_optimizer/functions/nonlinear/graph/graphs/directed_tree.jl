@@ -1,26 +1,26 @@
 """
-    DirectedTree{S<:Real}
+    DirectedTree
 
 A tree graph with a single sink node.
 """
-Base.@kwdef mutable struct DirectedTree{S<:Real} <: AbstractDirectedAcyclicGraph{S}
+Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
     "List of nodes"
     nodes::Vector{Node}                       = Node[]
     "List of index of variables in this tree"
     variables::Dict{Int,Int}                  = Dict{Int,Int}()
     "Information on all variables..."
-    v::VariableValues{S}                      = VariableValues{S}()
+    v::VariableValues{Float64}                = VariableValues{Float64}()
     "List of constant values"
-    constant_values::Vector{S}                = S[]
+    constant_values::Vector{Float64}          = Float64[]
     "List of constant values"
-    parameter_values::Vector{S}               = S[]
+    parameter_values::Vector{Float64}         = Float64[]
     "Number of nodes"
     node_count::Int                           = 0
     "Number of variables"
     variable_count::Int                       = 0
     "Number of constants"
     constant_count::Int                       = 0
-    sink_bnd::Interval{S}                     = Interval{S}(-Inf,Inf)
+    sink_bnd::Interval{Float64}               = Interval{Float64}(-Inf,Inf)
     ""
     sparsity::Vector{Int}                     = Int[]
     ""
@@ -84,8 +84,7 @@ function rprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute
     return flag
 end
 
-# TODO Fix constructor...
-function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values) where S<:Real
+function DirectedTree(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values)
 
     nd = copy(d.nd)
     adj = copy(d.adj)
@@ -99,7 +98,7 @@ function DirectedTree{S}(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{
 
     nodes = _convert_node_list(d.nd, op)
     lin = linearity(nd, adj, subexpr_linearity)
-    DirectedTree{S}(nodes = nodes,
+    DirectedTree(nodes = nodes,
                     variables = rev_sparsity,
                     constant_values = const_values,
                     parameter_values = parameter_values,
@@ -132,7 +131,7 @@ pushfirst!(V, true)
 m._working_problem._objective_nl.ex.adj = sparse(I, J, V)
 =#
 
-function _negate!(d::DirectedTree{S}) where S<:Real
+function _negate!(d::DirectedTree)
     push!(d.nodes, Node(Val(false), Val(MINUS), Int[_node_count(d)]))
     d.node_count += 1
     d.sink_bnd = -d.sink_bnd

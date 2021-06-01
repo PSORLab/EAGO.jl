@@ -167,7 +167,7 @@ end
 """
 $(FUNCTIONNAME)
 """
-function affine_relax_nonlinear!(f::BufferedNonlinearFunction{MC{N,T}}, evaluator::Evaluator,
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{N,T}, evaluator::Evaluator,
                                  use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {N,T<:RelaxTag}
 
     new_pass && forward_pass!(evaluator, f)
@@ -204,12 +204,12 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
+function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{N,T}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant + _constraint_tol(m))
             f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)::CI{SAF,LT}
+            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
             push!(m._affine_relax_ci, ci)
         end
     end
@@ -219,7 +219,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::Optimizer, f::BufferedNonlinearFunction{MC{N,T}}, k::Int, check_safe::Bool) where {N,T<:RelaxTag}
+function relax!(m::Optimizer, f::BufferedNonlinearFunction{N,T}, k::Int, check_safe::Bool) where {N,T<:RelaxTag}
     d = m._working_problem._relaxed_evaluator
     check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
     check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)

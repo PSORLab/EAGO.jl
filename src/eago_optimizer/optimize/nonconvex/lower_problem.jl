@@ -286,7 +286,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     flag &= obj_new - obj_old > _cut_ϵ_rel(m)*abs(obj_new)
     return flag
 end
-cut_condition(m::Optimizer) = cut_condition(m.ext_type, m)
+cut_condition(m::Optimizer)::Bool = cut_condition(m.ext_type, m)
 
 """
 $(SIGNATURES)

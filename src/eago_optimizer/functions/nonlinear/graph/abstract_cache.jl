@@ -119,6 +119,7 @@ f_switch = binary_switch(forward_uni, is_forward = true)
     id = _ex_type(g, k)
     $f_switch
     error("fprop! for ex_type = $id not defined.")
+    return
 end
 
 reverse_uni = [i for i in instances(AtomType)]
@@ -128,4 +129,5 @@ r_switch = binary_switch(reverse_uni, is_forward = false)
     id = _ex_type(g, k)
     $r_switch
     error("rprop! for ex_type = $id not defined.")
+    return
 end

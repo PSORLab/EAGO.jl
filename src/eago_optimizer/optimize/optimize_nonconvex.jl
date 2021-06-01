@@ -167,7 +167,7 @@ function termination_check(t::ExtensionType, m::Optimizer)
     end
     return true
 end
-termination_check(m::Optimizer) = termination_check(m.ext_type, m)
+termination_check(m::Optimizer)::Bool = termination_check(m.ext_type, m)
 
 const GLOBALEND_TSTATUS = Dict{GlobalEndState, MOI.TerminationStatusCode}(
         GS_OPTIMAL => MOI.OPTIMAL,
@@ -222,7 +222,7 @@ function convergence_check(t::ExtensionType, m::Optimizer)
 
   return t
 end
-convergence_check(m::Optimizer) = convergence_check(m.ext_type, m)
+convergence_check(m::Optimizer)::Bool = convergence_check(m.ext_type, m)
 
 """
 $(SIGNATURES)

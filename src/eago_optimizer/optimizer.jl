@@ -363,15 +363,11 @@ which are expected to be constant over the entire solve are stored in
 """
 Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
-    # Options for optimality-based bound tightening
-    # set as a user-specified option
-    relaxed_optimizer::MOI.AbstractOptimizer = GLPK.Optimizer()
-    upper_optimizer::MOI.AbstractOptimizer = Ipopt.Optimizer()
+    relaxed_optimizer::Incremental = Incremental(GLPK.Optimizer())
+    upper_optimizer::Incremental = Incremental(Ipopt.Optimizer())
 
-    # set as a user-specified option (if empty set to all nonlinear by TODO in TODO)
     obbt_variable_values::Vector{Bool} = Bool[]
 
-    # Extensions (set as user-specified option)
     enable_optimize_hook::Bool = false
     ext::Dict{Symbol, Any} = Dict{Symbol,Any}()
     ext_type::ExtensionType = DefaultExt()
@@ -389,8 +385,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _obj_var_slack_added::Bool = false
 
     _stack::BinaryMinMaxHeap{NodeBB} = BinaryMinMaxHeap{NodeBB}()
-
-    # set in node_selection!
     _current_node::NodeBB = NodeBB()
 
     _first_relax_point_set::Bool = false
@@ -401,7 +395,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _current_objective_xref::Vector{Float64} = Float64[]
     _prior_objective_xref::Vector{Float64} = Float64[]
 
-    # set in label_branch_variables! and label_fixed_variables! respectively in parse.jl
     _user_branch_variables::Bool = false
     _fixed_variable::Vector{Bool} = Bool[]
     _branch_variable_count::Int = 0
@@ -410,8 +403,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _continuous_solution::Vector{Float64} = Float64[]
 
-    # all subproblem immutable subproblem status are set in global_solve in corresponding routines
-    # in optimize_nonconvex.jl
     _preprocess_feasibility::Bool = true
     _preprocess_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
     _preprocess_dual_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
@@ -422,8 +413,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _lower_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _lower_feasibility::Bool = true
     _lower_objective_value::Float64 = -Inf
-
-    # set in TODO
     _lower_solution::Vector{Float64} = Float64[]
     _lower_lvd::Vector{Float64} = Float64[]
     _lower_uvd::Vector{Float64} = Float64[]
@@ -434,11 +423,7 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _upper_termination_status::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED
     _upper_feasibility::Bool = true
     _upper_objective_value::Float64 = Inf
-
-    # array is initialized to correct size in TODO, reset in single_nlp_solve! in optimize_convex.jl
     _upper_variables::Vector{VI} =  VI[]
-
-    # set in TODO
     _upper_solution::Vector{Float64} = Float64[]
 
     _postprocess_feasibility::Bool = true
@@ -471,7 +456,6 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     _best_upper_value::Float64 = Inf
 
     # Optimality-Based Bound Tightening (OBBT) Options
-    # set in TODO
     _obbt_working_lower_index::Vector{Bool} = Bool[]
     _obbt_working_upper_index::Vector{Bool} = Bool[]
     _lower_indx_diff::Vector{Bool} = Bool[]
@@ -487,35 +471,24 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
     # Buffers for fbbt, set in presolve, used in preprocess
     _lower_fbbt_buffer::Vector{Float64} = Float64[]
     _upper_fbbt_buffer::Vector{Float64} = Float64[]
-
-    # Feasibility-Based Bound Tightening Options
-    # set in set_constraint_propagation_fbbt in domain_reduction.jl
     _cp_improvement::Float64 = 0.0
     _cp_evaluation_reverse::Bool = false
 
     _cut_iterations::Int = 0
     _cut_add_flag::Bool = false
-
-    # Options for Repetition (If DBBT Performed Well)
-    # set in within preprocess in optimize_nonconvex.jl
     _node_repetitions::Int = 0
 
-    # Log
     _log::Log = Log()
 
     _affine_relax_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
     _affine_objective_cut_ci::Union{CI{SV,LT},CI{SAF,LT},Nothing} = nothing
 
-    # need to retreive primal _relaxed_variable_index
-    # set in TODO
-    #"Number of variables actively branched on in B&B routine (excludes linear and fixed)"
     _relaxed_variable_number::Int = 0
     _relaxed_variable_index::Vector{VI} = VI[]
     _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
     _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
     _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
 
-    # set as user-input
     _branch_variables::Vector{Bool} = Bool[]
 
     _new_eval_constraint::Bool = false
@@ -523,16 +496,11 @@ Base.@kwdef mutable struct Optimizer <: MOI.AbstractOptimizer
 
     _node_to_sv_leq_ci::Vector{CI{SV,LT}} = CI{SV,LT}[]
     _node_to_sv_geq_ci::Vector{CI{SV,GT}} = CI{SV,GT}[]
-
-    #"Set to true if a nonlinear evaluator was created (NLconstraint or NLobjective specified)"
     _nonlinear_evaluator_created::Bool = false
 
     _branch_cost::BranchCostStorage{Float64} = BranchCostStorage{Float64}()
     _branch_variable_sparsity::SparseMatrixCSC{Bool,Int} = spzeros(Bool,1,1)
     _constraint_infeasiblity::Vector{Float64} = Float64[]
-
-    #_relaxed_evaluator::Evaluator = Evaluator{1,NS}()
-    #_relaxed_constraint_bounds::Vector{MOI.NLPBoundsPair} = Vector{MOI.NLPBoundsPair}[]
 end
 
 @inline _is_input_min(m::Optimizer) = m._input_problem._optimization_sense == MOI.MIN_SENSE

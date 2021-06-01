@@ -26,18 +26,18 @@ $(TYPEDEF)
 
 Stores a general quadratic function with a buffer.
 """
-mutable struct NonlinearExpression{V,S} <: AbstractEAGOConstraint
-    g::DirectedTree{Float64}
-    relax_cache::RelaxCache{V,S}
+mutable struct NonlinearExpression{N,T<:RelaxTag} <: AbstractEAGOConstraint
+    g::DirectedTree
+    relax_cache::RelaxCache{N,T}
     has_value::Bool
     last_reverse::Bool
-    lower_bound::S
-    upper_bound::S
+    lower_bound::Float64
+    upper_bound::Float64
 end
 function NonlinearExpression()
-    g = DirectedTree{Float64}()
-    c = RelaxCache{MC{1,NS},Float64}()
-    return NonlinearExpression{MC{1,NS},Float64}(g, c, false, false, -Inf, Inf)
+    g = DirectedTree()
+    c = RelaxCache{1,NS}()
+    return NonlinearExpression{1,NS}(g, c, false, false, -Inf, Inf)
 end
 
 function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
@@ -46,15 +46,15 @@ function NonlinearExpression!(sub::Union{JuMP._SubexpressionStorage,JuMP._Functi
                               subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
                               op::OperatorRegistry, parameter_values,
                               tag::T; is_sub::Bool = false) where T
-    g = DirectedTree{Float64}(sub, op, sub_sparsity, subexpr_linearity, parameter_values)
+    g = DirectedTree(sub, op, sub_sparsity, subexpr_linearity, parameter_values)
     grad_sparsity = _sparsity(g,1)
     n = length(grad_sparsity)
     if is_sub
         sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
     end
-    c = RelaxCache{MC{n,T},Float64}()
+    c = RelaxCache{n,T}()
     initialize!(c, g)
-    return NonlinearExpression{MC{n,T},Float64}(g, c, false, false, b.lower, b.upper)
+    return NonlinearExpression{n,T}(g, c, false, false, b.lower, b.upper)
 end
 
 @inline _has_value(d::NonlinearExpression) = d.has_value
@@ -66,8 +66,8 @@ end
     return
 end
 @inbounds _sparsity(d::NonlinearExpression) = _sparsity(d.g, 1)
-@inbounds _set(d::NonlinearExpression{V,S}) where {V,S<:Real} = _set(d.relax_cache, 1)
-@inbounds _num(d::NonlinearExpression{V,S}) where {V,S<:Real} = _num(d.relax_cache, 1)
+@inbounds _set(d::NonlinearExpression{V}) where V = _set(d.relax_cache, 1)
+@inbounds _num(d::NonlinearExpression{V}) where V = _num(d.relax_cache, 1)
 @inbounds _is_num(d::NonlinearExpression) = _is_num(d.relax_cache, 1)
 
 """
@@ -76,14 +76,14 @@ $(TYPEDEF)
 Stores a general nonlinear function with a buffer represented by the sum of a tape
 and a scalar affine function.
 """
-mutable struct BufferedNonlinearFunction{V,S} <: AbstractEAGOConstraint
-    ex::NonlinearExpression{V,S}
+mutable struct BufferedNonlinearFunction{N,T<:RelaxTag} <: AbstractEAGOConstraint
+    ex::NonlinearExpression{N,T}
     saf::SAF
 end
 function BufferedNonlinearFunction()
     ex = NonlinearExpression()
     saf = SAF(SAT[], 0.0)
-    return BufferedNonlinearFunction{MC{1,NS},Float64}(ex, saf)
+    return BufferedNonlinearFunction{1,NS}(ex, saf)
 end
 
 function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
@@ -95,25 +95,25 @@ function BufferedNonlinearFunction(f::JuMP._FunctionStorage, b::MOI.NLPBoundsPai
     ex = NonlinearExpression!(f, b, sub_sparsity, -1, subexpr_lin, op, parameter_values, tag)
     n = length(_sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
-    return BufferedNonlinearFunction{MC{n,T},Float64}(ex, saf)
+    return BufferedNonlinearFunction{n,T}(ex, saf)
 end
 
-@inline _set_last_reverse!(d::BufferedNonlinearFunction, v::Bool) = _set_last_reverse!(d.ex, v)
-@inline function _set_variable_storage!(d::BufferedNonlinearFunction, v::VariableValues{S}) where S<:Real
+@inline _set_last_reverse!(d::BufferedNonlinearFunction{N,T}, v::Bool) where {N,T<:RelaxTag} = _set_last_reverse!(d.ex, v)
+function _set_variable_storage!(d::BufferedNonlinearFunction{N,T}, v::VariableValues{Float64}) where {N,T<:RelaxTag}
     _set_variable_storage!(d.ex, v)
 end
 
-@inline _has_value(d::BufferedNonlinearFunction) where {V,S<:Real} = _has_value(d.ex)
-@inline _dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
-@inline _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
-@inline _sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex)
-@inline _set(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _set(d.ex)
-@inline _num(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = _num(d.ex)
-@inline _lower_bound(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = d.ex.lower_bound
-@inline _upper_bound(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = d.ex.upper_bound
+_has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
+_dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
+_set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
+_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex)
+_set(d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag} = _set(d.ex)
+_num(d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag} = _num(d.ex)
+_lower_bound(d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag} = d.ex.lower_bound
+_upper_bound(d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag} = d.ex.upper_bound
 # returns the interval bounds associated with the set
-@inline _interval(d::BufferedNonlinearFunction{V,S}) where {V,S<:Real} = Interval{S}(_set(d))
-@inline _is_num(d::BufferedNonlinearFunction) = _is_num(d.ex)
+_interval(d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag} = Interval{Float64}(_set(d))
+_is_num(d::BufferedNonlinearFunction) = _is_num(d.ex)
 
 
 """
@@ -210,7 +210,7 @@ function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpr
     return nothing
 end
 
-function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{VariableInfo}) where V
+function eliminate_fixed_variables!(f::NonlinearExpression{N,T}, v::Vector{VariableInfo}) where {N,T<:RelaxTag}
     num_constants = length(f.const_values)
     indx_to_const_loc = Dict{Int,Int}()
     for i = 1:length(expr.nd)
@@ -235,37 +235,37 @@ function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{Variabl
     return nothing
 end
 
-function eliminate_fixed_variables!(f::BufferedNonlinearFunction{V,S}, v::Vector{VariableInfo}) where {V,S}
+function eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T<:RelaxTag}
     eliminate_fixed_variables!(f.ex, v)
 end
 
-function forward_pass!(x::Evaluator, d::NonlinearExpression{V}) where V  # Hold reference to subexpressions in DAG?
+function forward_pass!(x::Evaluator, d::NonlinearExpression{N,T}) where {N,T<:RelaxTag}
     # Fix subexpression code...
     #for i = 1:_dep_subexpr_count(d)
     #    !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])
     #end
     #_load_subexprs!(d.relax_cache, x.subexpressions)
-    if x.relax_type == STD_RELAX
+    #if x.relax_type == STD_RELAX
         fprop!(Relax(), d.g, d.relax_cache)
-    elseif x.relax_type == MC_AFF_RELAX
-        fprop!(RelaxAA(), d.g, d.relax_cache)
-    elseif x.relax_type == MC_ENUM_RELAX
-        fprop!(RelaxMulEnum(), d.g, d.relax_cache)
-    end
+    #elseif x.relax_type == MC_AFF_RELAX
+    #    fprop!(RelaxAA(), d.g, d.relax_cache)
+    #elseif x.relax_type == MC_ENUM_RELAX
+    #    fprop!(RelaxMulEnum(), d.g, d.relax_cache)
+    #end
     return
 end
 
-function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,S}) where {V,S}
+function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag}
     forward_pass!(x, d.ex)
     _set_has_value!(d, true)
     _set_last_reverse!(d, false)
     return
 end
 
-function rprop!(::Relax, x::Evaluator, d::NonlinearExpression{V}) where V
+function rprop!(::Relax, x::Evaluator, d::NonlinearExpression{N,T}) where {N,T<:RelaxTag}
     return rprop!(Relax(), d.g, d.relax_cache)
 end
-function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{V,S}) where {V,S}
+function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{N,T}) where {N,T<:RelaxTag}
     _set_last_reverse!(d, true)
     return rprop!(Relax(), x, d.ex)
 end

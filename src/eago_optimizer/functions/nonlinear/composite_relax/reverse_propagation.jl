@@ -9,7 +9,7 @@
 # Functions used to compute reverse pass of nonlinear functions.
 #############################################################################
 
-function r_init!(t::Relax, g::DirectedTree{S}, c::RelaxCache{V,S}) where {V,S<:Real}
+function r_init!(t::Relax, g::DirectedTree, c::RelaxCache{N,T}) where {N,T<:RelaxTag}
     if !_is_num(c, 1)
         z = _set(c, 1) ∩ g.sink_bnd
         _store_set!(c, z, 1)
@@ -17,10 +17,10 @@ function r_init!(t::Relax, g::DirectedTree{S}, c::RelaxCache{V,S}) where {V,S<:R
     return !isempty(z)
 end
 
-function rprop!(t::Relax, v::Variable, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V,S}
+function rprop!(t::Relax, v::Variable, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     i = _first_index(g, k)
     x = _val(c, i)
-    z = _var_set(V, _rev_sparsity(g, i, k), x, x, _lbd(c, i), _ubd(c, i))
+    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, _lbd(c, i), _ubd(c, i))
     if _first_eval(c)
         z = z ∩ _interval(c, k)
     end
@@ -28,7 +28,7 @@ function rprop!(t::Relax, v::Variable, g::AbstractDG, c::RelaxCache{V,S}, k::Int
     return !isempty(z)
 end
 
-function rprop!(t::Relax, v::Subexpression, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V,S}
+function rprop!(t::Relax, v::Subexpression, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     _store_subexpression!(c, _set(c, k), _first_index(g, k))
     return true
 end
@@ -40,7 +40,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = x + y` which updates x & y.
 """
-function rprop_2!(t::Relax, v::Val{PLUS}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V,S}
+function rprop_2!(t::Relax, v::Val{PLUS}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
 
     _is_num(c, k) && (return true)
     x = _child(g, 1, k)
@@ -58,11 +58,11 @@ function rprop_2!(t::Relax, v::Val{PLUS}, g::AbstractDG, c::RelaxCache{V,S}, k::
 
     if !x_is_num
         isempty(a) && (return false)
-        _store_set!(b, V(a), x)
+        _store_set!(b, MC{N,T}(a), x)
     end
     if !y_is_num
         isempty(q) && (return false)
-        _store_set!(b, V(q), y)
+        _store_set!(b, MC{N,T}(q), y)
     end
     return true
 end
@@ -72,7 +72,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = +(x,y,z...)` which updates x, y, z and so on.
 """
-function rprop_n!(t::Relax, v::Val{PLUS}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V,S}
+function rprop_n!(t::Relax, v::Val{PLUS}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
     count = 0
@@ -80,7 +80,7 @@ function rprop_n!(t::Relax, v::Val{PLUS}, g::AbstractDG, c::RelaxCache{V,S}, k::
     for i in children_idx
         _is_num(c, i) && continue                     # don't contract a number valued argument
         (count >= MAX_ASSOCIATIVE_REVERSE) && break
-        tsum = zero(V)
+        tsum = zero(MC{N,T})
         count += 1
         for j in children_idx
             if j != i
@@ -93,7 +93,7 @@ function rprop_n!(t::Relax, v::Val{PLUS}, g::AbstractDG, c::RelaxCache{V,S}, k::
         end
         q, w, z = IntervalContractors.plus_rev(_interval(c, k), _interval(c, i), interval(tsum))
         isempty(w) && (return false)
-        _store_set!(c, V(w), i)
+        _store_set!(c, MC{N,T}(w), i)
     end
     return true
 end
@@ -103,7 +103,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = x * y` which updates x & y.
 """
-function rprop_2!(t::Relax, v::Val{MULT}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V,S}
+function rprop_2!(t::Relax, v::Val{MULT}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
 
     _is_num(b,k) && (return true)
     x = _child(g, 1, k)
@@ -121,11 +121,11 @@ function rprop_2!(t::Relax, v::Val{MULT}, g::AbstractDG, c::RelaxCache{V,S}, k::
 
     if !x_is_num
         isempty(a) && (return false)
-        _store_set!(c, V(a), x)
+        _store_set!(c, MC{N,T}(a), x)
     end
     if !y_is_num
         isempty(q) && (return false)
-        _store_set!(c, V(q), y)
+        _store_set!(c, MC{N,T}(q), y)
     end
     return true
 end
@@ -135,14 +135,14 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = *(x,y,z...)` which updates x, y, z and so on.
 """
-function rprop_n!(t::Relax, v::Val{MULT}, g::AbstractDG, c::RelaxCache{V,S}, k::Int) where {V,S}
+function rprop_n!(t::Relax, v::Val{MULT}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     # a reverse is then compute with respect to this argument
     count = 0
     children_idx = _children(g, k)
     for i in children_idx
         _is_num(b, i) && continue                     # don't contract a number valued argument
         (count >= MAX_ASSOCIATIVE_REVERSE) && break
-        tmul = one(V)
+        tmul = one(MC{N,T})
         count += 1
         for j in children_idx
             if i != j
@@ -155,7 +155,7 @@ function rprop_n!(t::Relax, v::Val{MULT}, g::AbstractDG, c::RelaxCache{V,S}, k::
         end
         q, w, z = IntervalContractors.mul_rev(_interval(b, k), _interval(b, c), interval(tmul))
         isempty(w) && (return false)
-        _store_set!(c, V(w), i)
+        _store_set!(c, MC{N,T}(w), i)
     end
     return true
 end
@@ -163,7 +163,7 @@ end
 for (f, fc, F) in ((-, MINUS, IntervalContractors.minus_rev),
                    (^, POW, IntervalContractors.power_rev),
                    (/, DIV, IntervalContractors.div_rev))
-    @eval function rprop!(t::Relax, v::Val{$fc}, g::AbstractDG, b::RelaxCache{V,S}, k::Int) where {V,S}
+    @eval function rprop!(t::Relax, v::Val{$fc}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
         _is_num(b,k) && (return true)
         x = _child(g, 1, k)
         y = _child(g, 2, k)
@@ -180,23 +180,23 @@ for (f, fc, F) in ((-, MINUS, IntervalContractors.minus_rev),
 
         if !x_is_num
             isempty(a) && (return false)
-            _store_set!(b, V(u), x)
+            _store_set!(b, MC{N,T}(u), x)
         end
         if !y_is_num
             isempty(b) && (return false)
-            _store_set!(b, V(v), y)
+            _store_set!(b, MC{N,T}(v), y)
         end
         return true
     end
 end
 
-rprop!(t::Relax, v::Val{USER}, g::AbstractDG, b::RelaxCache, k::Int) = true
-rprop!(t::Relax, v::Val{USERN}, g::AbstractDG, b::RelaxCache, k::Int) = true
+rprop!(t::Relax, v::Val{USER}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true
+rprop!(t::Relax, v::Val{USERN}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true
 
 for ft in UNIVARIATE_ATOM_TYPES
     f = UNIVARIATE_ATOM_DICT[ft]
     if f == :user || f == :+ || f == :-
         continue
     end
-    @eval rprop!(t::Relax, v::Val{$ft}, g::AbstractDG, b::RelaxCache, k::Int) = true
+    @eval rprop!(t::Relax, v::Val{$ft}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true
 end

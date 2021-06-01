@@ -107,7 +107,7 @@ function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
         j = t.variable_index.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
-        fval += coeff*Interval(xL, xU)
+        fval += c*Interval(xL, xU)
     end
     for t in f.func.quadratic_terms
         c = t.coefficient
@@ -154,11 +154,11 @@ end
 ###
 ### NONLINEAR FUNCTIONS
 ###
-function lower_interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V,S}, n::NodeBB) where {V,S<:Real}
+function lower_interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     _is_num(d) ? _num(d) : _interval(d).lo
 end
-function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V,S}, n::NodeBB) where {V,S<:Real}
+function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     v = _is_num(d) ? Interval{S}(_num(d)) : _interval(d)
     return v.lo, v.hi
@@ -171,7 +171,7 @@ function is_feasible(m::Optimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq
     l, u = lower_interval_bound(m, f, y)
     l <= 0.0 <= u
 end
-function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V,S}, y::NodeBB) where {V,S<:Real}
+function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V}, y::NodeBB) where V
     l, u = lower_interval_bound(m, f, y)
     feasible_flag = (upper_value < _lower_bound(f))
     feasible_flag && (lower_value > _upper_bound(f))
