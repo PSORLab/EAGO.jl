@@ -48,7 +48,7 @@ end
 has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_upper_bound
 has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_lower_bound
 is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].is_fixed
-is_integer(m::Optimizer, i::Int64) = is_integer(m._input_problem._variable_info[i])
+_is_integer(m::Optimizer, i::Int) = _is_integer(m._input_problem._variable_info[i])
 
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
@@ -56,7 +56,6 @@ function MOI.add_variable(m::Optimizer)
     push!(m._input_problem._variable_info, VariableInfo{Float64}())
     return VI(m._input_problem._variable_count)
 end
-MOI.add_variables(m::Optimizer, n::Int) = [MOI.add_variable(m) for i in 1:n]
 
 ##### Supports function and add_constraint for single variable functions
 const INEQ_SETS = Union{LT, GT, ET}

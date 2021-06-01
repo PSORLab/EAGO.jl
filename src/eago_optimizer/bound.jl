@@ -173,8 +173,8 @@ function is_feasible(m::Optimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq
 end
 function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V}, y::NodeBB) where V
     l, u = lower_interval_bound(m, f, y)
-    feasible_flag = (upper_value < _lower_bound(f))
-    feasible_flag && (lower_value > _upper_bound(f))
+    feasible_flag = (u < _lower_bound(f))
+    feasible_flag && (l > _upper_bound(f))
 end
 
 bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = interval_bound(m, f, n)

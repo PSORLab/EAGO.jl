@@ -168,23 +168,23 @@ function _cut(x::MC{N,T}, lastx::MC{N,T}, v::VariableValues, ϵ::Float64, s::Vec
 end
 
 for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MAX, :max), (:fprop!, DIV, :/))
-    @eval function ($f)(t::Relax, v::Val{$F}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-        x = _child(g, 1, k)
-        y = _child(g, 2, k)
-        x_is_num = _is_num(b, x)
-        y_is_num = _is_num(b, y)
-        if !x_is_num && y_is_num
-            z = ($fc)(_set(b, x), _num(b, y))
-        elseif x_is_num && !y_is_num
-            z = ($fc)(_num(b, x), _set(b, y))
-        else
-            z = ($fc)(_set(b, x), _set(b, y))
+    eval(quote
+        function ($f)(t::Relax, v::Val{$F}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+            x = _child(g, 1, k)
+            y = _child(g, 2, k)
+            if !_is_num(b, x) && _is_num(b, y)
+                z = ($fc)(_set(b, x), _num(b, y))
+            elseif _is_num(b, x) && !_is_num(b, y)
+                z = ($fc)(_num(b, x), _set(b, y))
+            else
+                z = ($fc)(_set(b, x), _set(b, y))
+            end
+            z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+            _store_set!(b, z, k)
+            (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+            return
         end
-        z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
-        _store_set!(b, z, k)
-        (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
-        return
-    end
+    end)
 end
 function fprop!(t::Relax, v::Val{MINUS}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     x = _child(g, 1, k)
@@ -247,26 +247,27 @@ end
 for (F, FT, SV, NV) in ((:+,   PLUS, :(zero(MC{N,T})), zero(Float64)),
                         (:min, MIN,  :(inf(MC{N,T})),  Inf),
                         (:max, MAX,  :(-inf(MC{N,T})), -Inf))
-    @eval function fprop_n!(t::Relax, v::Val{$FT}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-        z = $SV
-        znum = $NV
-        for i in _children(g, k)
-            if _is_num(b, i)
-                znum = ($F)(znum, _num(b, i))
-                continue
+    eval(quote 
+            function fprop_n!(t::Relax, v::Val{$FT}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+                z = $SV
+                znum = $NV
+                for i in _children(g, k)
+                    if _is_num(b, i)
+                        znum = ($F)(znum, _num(b, i))
+                        continue
+                    end
+                    z = ($F)(z, _set(b, i))
+                end
+                z = ($F)(z, znum)
+                z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+                _store_set!(b, z, k)
+                (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+                return
             end
-            z = ($F)(z, _set(b, i))
-        end
-        z = ($F)(z, znum)
-        z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
-        _store_set!(b, z, k)
-        (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
-        return
-    end
+        end)
 end
 function fprop_n!(t::Relax, ::Val{MULT}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     z = one(MC{N,T})
-    zaff = one(MC{N,T})
     znum = one(Float64)
     count = 0
     for i in _children(g, k)
@@ -308,13 +309,15 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::In
 end
 
 for F in (PLUS, MULT, MIN, MAX)
-    @eval function fprop!(t::Relax, v::Val{$F}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-        n = _arity(g, k)
-        if n == 2
-            return fprop_2!(Relax(), Val($F), g, b, k)
-        end
-        fprop_n!(Relax(), Val($F), g, b, k)
-    end
+    eval(quote
+            function fprop!(t::Relax, v::Val{$F}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+            n = _arity(g, k)
+            if n == 2
+                return fprop_2!(Relax(), Val($F), g, b, k)
+            end
+            fprop_n!(Relax(), Val($F), g, b, k)
+            end
+    end)
 end
 function fprop!(t::Relax, v::Val{POW}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     x = _child(g, 1, k)
@@ -376,14 +379,16 @@ for ft in UNIVARIATE_ATOM_TYPES
     if f == :user || f == :+ || f == :-
         continue
     end
-    @eval function fprop!(t::Relax, v::Val{$ft}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-        x = _set(b, _child(g, 1, k))
-        z = ($f)(x)
-        z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
-        _store_set!(b, z, k)
-        (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
-        return
-    end
+    eval(quote
+        function fprop!(t::Relax, v::Val{$ft}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+            x = _set(b, _child(g, 1, k))
+            z = ($f)(x)
+            z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
+            _store_set!(b, z, k)
+            (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
+            return
+        end
+    end)
 end
 
 function fprop!(t::Relax, v::Val{ARH}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
@@ -414,7 +419,6 @@ end
 function fprop!(t::Relax, v::Val{LOWER_BND}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     z = _set(b, _child(g, 1, k))
     y = _child(g, 2, k)
-    y_is_num = _is_num(b, y)
     if _is_num(b, y)
         z = lower_bnd(z, _num(b, y))
     end
@@ -427,7 +431,6 @@ end
 function fprop!(t::Relax, v::Val{UPPER_BND}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     z = _set(b, _child(g, 1, k))
     y = _child(g, 2, k)
-    y_is_num = _is_num(b, y)
     if _is_num(b, y)
         z = upper_bnd(z, _num(b, y))
     end
@@ -438,7 +441,7 @@ function fprop!(t::Relax, v::Val{UPPER_BND}, g::ALLGRAPHS, b::RelaxCache{N,T}, k
 end
 
 function fprop!(t::Relax, v::Val{BND}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-    x = _set(b, _child(g, 1, k))
+    z = _set(b, _child(g, 1, k))
     y = _child(g, 2, k)
     r = _child(g, 3, k)
     if _is_num(b, y) && _is_num(b, r)

@@ -332,7 +332,6 @@ function obbt!(m::Optimizer)
                 # constraints are internally bridged by EAGO. So the only L <= x
                 # constraint in the model is a GreaterThan.
                 if updated_value > previous_value && (updated_value - previous_value) > 1E-6
-                    ci_list = MOI.get(relaxed_optimizer, MOI.ListOfConstraintIndices{SAF,LT}())
                     sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
                     MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
                     @inbounds n.lower_variable_bounds[lower_indx] = updated_value

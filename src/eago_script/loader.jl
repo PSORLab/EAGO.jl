@@ -21,7 +21,7 @@ function tape_to_list(tape::Tape)
     node_count = 1
 
     while !isempty(queue)
-        (active_node_num, prior_prt) = popfirst!(queue)
+        (active_node_num, _) = popfirst!(queue)
         @inbounds active_node = tape.nd[active_node_num]
         @inbounds active_node_child1 = active_node.children[1]
 
@@ -59,7 +59,7 @@ function remove_subexpr_children!(expr::_NonlinearExprData)
     node_count = 1
 
     while !isempty(queue)
-        (node_num, prior_prt) = popfirst!(queue)
+        (node_num, _) = popfirst!(queue)
         @inbounds active_node = nd[node_num]
         if (active_node.nodetype !== SUBEXPRESSION &&
             active_node.nodetype !== MOIVARIABLE &&
@@ -177,7 +177,6 @@ function udf_loader!(x::AbstractOptimizer)
     x._nlp_data = NLPBlockData(x._nlp_data.constraint_bounds, evaluator, x._nlp_data.has_objective)
 
     # reinitialize evaluator
-    features = features_available(x._nlp_data.evaluator)
     init_feat = Symbol[:Grad, :Hess]
     num_nlp_constraints = length(x._nlp_data.constraint_bounds)
     num_nlp_constraints > 0 && push!(init_feat, :Jac)

@@ -5,7 +5,7 @@ const F_RELAX_CTX{T} = RelaxCtx{RelaxMeta{T}}
 
 for k in UNIVARIATE_ATOM_TYPES
     f = UNIVARIATE_ATOM_DICT[k]
-    @eval Cassette.overdub(F_RELAX_CTX{T}, ::typeof($f), x::T) where {T<:Number} = $f(x)
+    eval(quote Cassette.overdub(F_RELAX_CTX{T}, ::typeof($f), x::T) where {T<:Number} = $f(x) end)
 end
 Cassette.overdub(c::F_RELAX_CTX{T}, ::typeof($f), x::T) where {T<:Number} = $f(x)
 

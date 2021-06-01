@@ -17,6 +17,8 @@ const AbstractDAG = AbstractDirectedAcyclicGraph
 Access node list for graph g.
 """
 _nodes(g::AbstractDG) = error("_nodes(g) not defined for g::$(typeof(g)).")
+_node(g::AbstractDG, i) = _nodes(g)[i] 
+
 
 """
     _variable
@@ -30,7 +32,7 @@ _variable(g::AbstractDG) = error("_variables(g) not defined for g::$(typeof(g)).
 
 Access variable type list for graph g.
 """
-_variable_types(g::AbstractDG, i) = error("_variable_types(g) not defined for g::$(typeof(g)).")
+_variable_types(g::AbstractDG, i) = error("_variable_type(g) not defined for g::$(typeof(g)).")
 
 """
     _constant_values
@@ -93,23 +95,19 @@ include(joinpath(@__DIR__, "graphs", "directed_tree.jl"))
 const ALLGRAPHS = Union{DAT}
 
 # node property access functions that can be defined at abstract type
-@inline _node(g::ALLGRAPHS, i)           = @inbounds getindex(_nodes(g), i)
-@inline _variable(g::ALLGRAPHS, i)       = @inbounds getindex(_variables(g), i)
-@inline _variable_type(g::ALLGRAPHS, i)  = @inbounds getindex(_variable_types(g), i)
-@inline function _constant_value(g::ALLGRAPHS, i)
-    @inbounds getindex(_constant_values(g), i)
-end
-@inline function _parameter_value(g::ALLGRAPHS, i)
-    @inbounds getindex(_parameter_values(g), i)
-end
+_node(g::ALLGRAPHS, i)            = getindex(_nodes(g), i)
+_variable(g::ALLGRAPHS, i)        = getindex(_variables(g), i)
+_variable_type(g::ALLGRAPHS, i)   = getindex(_variable_types(g), i)
+_constant_value(g::ALLGRAPHS, i)  = getindex(_constant_values(g), i)
+_parameter_value(g::ALLGRAPHS, i) = getindex(_parameter_values(g), i)
 
-@inline _node_class(g::ALLGRAPHS, i)      = _node_class(_node(g, i))
-@inline _ex_type(g::ALLGRAPHS, i)         = _ex_type(_node(g, i))
-@inline _first_index(g::ALLGRAPHS, i)     = _first_index(_node(g, i))
-@inline _secondary_index(g::ALLGRAPHS, i) = _secondary_index(_node(g, i))
-@inline _arity(g::ALLGRAPHS, i)           = _arity(_node(g, i))
-@inline _children(g::ALLGRAPHS, i)        = _children(_node(g, i))
-@inline _child(g::ALLGRAPHS, i, j)        = _child(_node(g, j), i)
+_node_class(g::ALLGRAPHS, i)      = _node_class(_node(g, i))
+_ex_type(g::ALLGRAPHS, i)         = _ex_type(_node(g, i))
+_first_index(g::ALLGRAPHS, i)     = _first_index(_node(g, i))
+_secondary_index(g::ALLGRAPHS, i) = _secondary_index(_node(g, i))
+_arity(g::ALLGRAPHS, i)           = _arity(_node(g, i))
+_children(g::ALLGRAPHS, i)        = _children(_node(g, i))
+_child(g::ALLGRAPHS, i, j)        = _child(_node(g, j), i)
 
 """
     _node_count

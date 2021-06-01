@@ -30,19 +30,6 @@ function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
     return nothing
 end
 
-# translates quadratic cone
-function add_soc_constraints_as_quad!(m::Optimizer, opt::T) where T
-
-    for (func, set) in m._input_problem._conic_second_order
-        # quadratic cone implies variable[1] >= 0.0, bounds contracted accordingly in initial_parse!
-        quad_terms = SQT[SQT((), func.variables[i], func.variables[i]) for i = 1:length(func.variables)]
-        sqf = SQF(SQT[], SAF[], 0.0)
-        MOI.add_constraint(opt, sqf, LT_ZERO)
-    end
-
-    return nothing
-end
-
 function _update_upper_variables!(d, m::Optimizer)
     for i = 1:_variable_num(FullVar(), m)
         v = MOI.SingleVariable(m._upper_variables[i])
@@ -158,12 +145,8 @@ function solve_local_nlp!(m::Optimizer)
         MOI.add_constraint(upper_optimizer, func, set)
     end
 
-    if MOI.supports_constraint(upper_optimizer, VECOFVAR, SOC)
-        add_soc_constraints!(m, upper_optimizer)
-    else
-        add_soc_constraints_as_quad!(m, upper_optimizer)
-    end
-
+    add_soc_constraints!(m, upper_optimizer)
+  
     # Add nonlinear evaluation block
     MOI.set(upper_optimizer, MOI.NLPBlock(), m._working_problem._nlp_data)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)

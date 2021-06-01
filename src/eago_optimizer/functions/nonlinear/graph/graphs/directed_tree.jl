@@ -52,38 +52,6 @@ end
     @inbounds g.user_operators.multivariate_operator_evaluator[i]
 end
 
-function fprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
-    f_init!(t, g, b)
-    for k = _node_count(g):-1:1
-        if _is_unlocked(b, k)
-            nt = _node_class(g, k)
-            if nt == EXPRESSION
-                fprop!(t, Expression(), g, b, k)
-            elseif nt == VARIABLE
-                fprop!(t, Variable(), g, b, k)
-            elseif nt == SUBEXPRESSION
-                fprop!(t, Subexpression(), g, b, k)
-            end
-        end
-    end
-    return
-end
-
-function rprop!(t::T, g::DAT, b::AbstractCache) where {T<:AbstractCacheAttribute}
-    flag = r_init!(t, g, b)
-    for k = 1:_node_count(g)
-        if _is_unlocked(b, k)
-            nt = _node_class(g, k)
-            if nt == EXPRESSION
-                flag = rprop!(t, Expression(), g, b, k)
-            elseif nt == VARIABLE
-                flag = rprop!(t, Variable(), g, b, k)
-            end
-        end
-    end
-    return flag
-end
-
 function DirectedTree(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values)
 
     nd = copy(d.nd)

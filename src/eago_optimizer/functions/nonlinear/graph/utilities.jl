@@ -23,8 +23,8 @@ function binary_switch(ids; is_forward = true)
 end
 
 # Access gradient sparsity of JuMP storage.
-_sparsity(d::JuMP._FunctionStorage) where S<:Real = d.grad_sparsity
-_sparsity(d::JuMP._SubexpressionStorage) where S<:Real = d.sparsity
+_sparsity(d::JuMP._FunctionStorage) = d.grad_sparsity
+_sparsity(d::JuMP._SubexpressionStorage) = d.sparsity
 
 # Compute gradient sparsity from JuMP storage.
 function _compute_sparsity(d::JuMP._FunctionStorage, sparse_dist::Dict{Int,Vector{Int}})
@@ -41,7 +41,7 @@ end
 function _compute_sparsity(d::JuMP._SubexpressionStorage, sparse_dist::Dict{Int,Vector{Int}})
     dep_subexpression = Int[]
     variable_dict = Dict{Int,Bool}()
-    for (i,n) in enumerate(d.nd)
+    for n in d.nd
         if node.nodetype == JuMP._Derivatives.VARIABLE
             if !haskey(variable_dict, n.index)
                 variable_dict[n.index] = true

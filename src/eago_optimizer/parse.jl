@@ -32,7 +32,6 @@ add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
 function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
 
-    variable_count = length(m._working_problem._variable_info)
     relax_eval = m._working_problem._relaxed_evaluator
     relax_eval.user_operators = OperatorRegistry(d.m.nlp_data.user_operators)
     relax_eval.ctx            = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
@@ -91,8 +90,6 @@ function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
         Script.udf_loader!(m)
     end
 
-    parameter_values = copy(evaluator.parameter_values)
-
     # add nonlinear objective
     if evaluator.has_nlobj
         m._working_problem._objective = BufferedNonlinearFunction(evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
@@ -143,7 +140,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedQuadrat
     ip = m._input_problem
 
     vi = d._variable_info
-    n = NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
+    n = NodeBB(lower_bound.(vi), upper_bound.(vi), _is_integer.(vi))
     m._current_node = n
 
     l, u = interval_bound(m, f, n)
@@ -181,7 +178,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonline
     wp._relaxed_evaluator.variable_values = v
     _set_variable_storage!(f,v)
 
-    n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
+    n = NodeBB(vi_lo, vi_hi, _is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
 
@@ -371,9 +368,8 @@ Classifies the problem type
 function parse_classify_problem!(m::Optimizer)
 
     ip = m._input_problem
-    integer_variable_number = count(is_integer.(ip._variable_info))
 
-    nl_expr_number = ip._objective == nothing ? 1 : 0
+    nl_expr_number = ip._objective === nothing ? 1 : 0
     nl_expr_number += length(m._working_problem._nonlinear_constr)
     cone_constraint_number = length(ip._conic_second_order)
     quad_constraint_number = length(ip._quadratic_leq_constraints) +

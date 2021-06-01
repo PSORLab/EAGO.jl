@@ -236,7 +236,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
 
     if _fbbt_lp_depth(m) >= _iteration_count(m)
         load_fbbt_buffer!(m)
-        for i = 1:_fbbt_lp_repetitions(m)
+        for _ = 1:_fbbt_lp_repetitions(m)
             for f in m._working_problem._saf_leq
                 !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
             end
@@ -252,14 +252,14 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     # done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
     if _cp_depth(m) >= _iteration_count(m)
-        for i = 1:_cp_repetitions(m)
+        for _ = 1:_cp_repetitions(m)
             feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
             !feasible_flag && break
         end
     end
 
     if _obbt_depth(m) >= _iteration_count(m)
-        for i = 1:_obbt_repetitions(m)
+        for _ = 1:_obbt_repetitions(m)
             feasible_flag = feasible_flag && obbt!(m)
             m._obbt_performed_flag = true
             !feasible_flag && break

@@ -35,10 +35,10 @@ function initialize!(c::RelaxCache{N,T}, g::DirectedTree) where {N,T<:RelaxTag}
     m = _dep_subexpr_count(g)
     p = length(_sparsity(g, 1))
 
-    cnst = ConstantCache{Float64}(n)
+    cnst = ConstantCache(n)
     initialize!(cnst, g)
-    c._num                 = copy(_num(cnst))
-    c._is_num              = copy(_is_num(cnst))
+    c._num                 = copy(cnst._num)
+    c._is_num              = copy(cnst._is_num)
     c._set                 = zeros(MC{N,T}, n)
     c._info                = zeros(MC{N,T}, n)
     c._subexpression_value = zeros(MC{N,T}, m)
@@ -85,5 +85,38 @@ end
     return view(b.set_mv_buffer, 1:n)
 end
 
+
 include(joinpath(@__DIR__, "forward_propagation.jl"))
 include(joinpath(@__DIR__, "reverse_propagation.jl"))
+
+function fprop!(t::Relax, g::ALLGRAPHS, b::RelaxCache{N,T}) where {N,T<:RelaxTag}
+    f_init!(t, g, b)
+    for k = _node_count(g):-1:1
+        if _is_unlocked(b, k)
+            nt = _node_class(g, k)
+            if nt === EXPRESSION
+                fprop!(Relax(), Expression(), g, b, k)
+            elseif nt === VARIABLE
+                fprop!(Relax(), Variable(), g, b, k)
+            elseif nt === SUBEXPRESSION
+                fprop!(Relax(), Subexpression(), g, b, k)
+            end
+        end
+    end
+    return
+end
+
+function rprop!(t::Relax, g::ALLGRAPHS, b::RelaxCache{N,T}) where {N,T<:RelaxTag}
+    flag = r_init!(t, g, b)
+    for k = 1:_node_count(g)
+        if _is_unlocked(b, k)
+            nt = _node_class(g, k)
+            if nt === EXPRESSION
+                flag = rprop!(Relax(), Expression(), g, b, k)
+            elseif nt === VARIABLE
+                flag = rprop!(Relax(), Variable(), g, b, k)
+            end
+        end
+    end
+    return flag
+end

@@ -26,7 +26,7 @@ function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: Abstr
     return model, v
 end
 function build_model(t::ExtensionType, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    build_model(DefaultExt(), s, p)
+    build_model(DefaultExt(), a, s, p)
 end
 
 ###
@@ -88,11 +88,9 @@ function add_uncertainty_constraint!(m::JuMP.Model, prob::SIPProblem)
     return nothing
 end
 
-for (p, s) in ((:LowerLevel1,:lbd), (:LowerLevel2, :ubd), (:LowerLevel3,:res))
-    @eval function get_xbar(t::DefaultExt, alg::A, s::$p, sr::SIPSubResult) where {A <: AbstractSIPAlgo}
-        sr.$s.sol
-    end
-end
+get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel1, sr::SIPSubResult) = sr.lbd.sol
+get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel2, sr::SIPSubResult) = sr.ubd.sol
+get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel3, sr::SIPSubResult) = sr.lbd.res
 
 function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
     valid, feasible = is_globally_optimal(t, r)
@@ -154,7 +152,7 @@ end
 function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
                      sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sip_llp!(DefaultSubproblem(), s, result, sr, prob, cb, i)
+    sip_llp!(DefaultSubproblem(), alg, s, result, sr, prob, cb, i)
 end
 
 """
@@ -303,7 +301,7 @@ algorithm `alg::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via t
 command `get_sip_optimizer(t::ExtensionType, alg::AbstractSIPAlgo, s::AbstractSubproblemType)`.
 """
 function get_sip_optimizer(t::ExtensionType, alg::A, s::AbstractSubproblemType) where {A <: AbstractSIPAlgo}
-    return get_sip_optimizer(DefaultExt(), s)
+    return get_sip_optimizer(DefaultExt(), alg, s)
 end
 
 # Printing

@@ -34,55 +34,55 @@ _get_storage(d::Incremental{Val{false},S}) where S = d.cache
 
 # Set attributes
 for F in (SV, SAF, SQF)
-    @eval function MOI.set(d::Incremental{Q,S}, ::MOI.ObjectiveFunction{$F}, f::$F) where {Q, S}
+    @eval function MOI.set(d::Incremental, ::MOI.ObjectiveFunction{$F}, f::$F)
         MOI.set(_get_storage(d), MOI.ObjectiveFunction{$F}(), f)
         return
     end
 end
-function MOI.set(d::Incremental{Q,S}, ::MOI.ObjectiveSense, s) where {Q, S}
+function MOI.set(d::Incremental, ::MOI.ObjectiveSense, s)
     MOI.set(_get_storage(d), MOI.ObjectiveSense(), s)
     return
 end
-function MOI.set(d::Incremental{Q,S}, ::MOI.Silent, s) where {Q, S}
+function MOI.set(d::Incremental, ::MOI.Silent, s)
     MOI.set(_get_storage(d), MOI.Silent(), s)
     return
 end
 
-function MOI.set(d::Incremental{Q,S}, ::MOI.VariablePrimalStart, v::VI, x) where {Q, S}
+function MOI.set(d::Incremental, ::MOI.VariablePrimalStart, v::VI, x)
     MOI.set(_get_storage(d), MOI.VariablePrimalStart(), v, x)
     return
 end
 
-function MOI.set(d::Incremental{Q,S}, ::MOI.NLPBlock, s) where {Q, S}
+function MOI.set(d::Incremental, ::MOI.NLPBlock, s)
     MOI.set(_get_storage(d), MOI.NLPBlock(), s)
     return
 end
 
-function MOI.set(d::Incremental{Q,S}, p::MOI.RawParameter, s) where {Q, S}
+function MOI.set(d::Incremental, p::MOI.RawParameter, s)
     MOI.set(_get_storage(d), p, s)
     return
 end
 
 # Add variable/constraint
-function MOI.add_variable(d::Incremental{Q,S}) where {Q, S}
+function MOI.add_variable(d::Incremental)
     MOI.add_variable(_get_storage(d))::VI
 end
-function MOI.add_constraint(d::Incremental{Q,S}, f::SV, s::T) where {Q, S, T<:Union{LT,GT,ET,IT}}
+function MOI.add_constraint(d::Incremental, f::SV, s::T) where T<:Union{LT,GT,ET,IT}
     MOI.add_constraint(_get_storage(d), f, s)::CI{SV,T}
 end
 
-function MOI.add_constraint(d::Incremental{Q,S}, f::R, s::T) where {Q, S, R<:Union{SAF,SQF}, T<:Union{LT,GT,ET,IT}}
+function MOI.add_constraint(d::Incremental, f::R, s::T) where {R<:Union{SAF,SQF},T<:Union{LT,GT,ET,IT}}
     MOI.add_constraint(_get_storage(d), f, s)::CI{R,T}
 end
 
 # Delete
-function MOI.delete(d::Incremental{Q,S}, ci::CI{SAF,LT}) where {Q, S}
+function MOI.delete(d::Incremental, ci::CI{SAF,LT})
      MOI.delete(_get_storage(d), ci)
      return
 end
 
 # Set modifications
-function MOI.set(d::Incremental{Q,S}, ::MOI.ConstraintSet, ci::CI{SV,T}, s::T) where  {T <: Union{LT,GT,ET,IT}, Q, S}
+function MOI.set(d::Incremental, ::MOI.ConstraintSet, ci::CI{SV,T}, s::T) where T <: Union{LT,GT,ET,IT}
      MOI.set(_get_storage(d), MOI.ConstraintSet(), ci, s)
      return
 end

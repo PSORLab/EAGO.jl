@@ -53,28 +53,28 @@ for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
 end
 
 for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
-    @eval function Node(::Val{true}, ::Val{$v}, children::Vector{Int})
-        arity = length(children)
-        return Node(EXPRESSION, $v, 0, 0, arity, children)
-    end
+    eval(quote
+        function Node(::Val{true}, ::Val{$v}, c::Vector{Int})
+            return Node(EXPRESSION, $v, 0, 0, length(c), c)
+        end
+    end)
 end
-@eval function Node(::Val{true}, ::Val{USERN}, i::Int, children::Vector{Int})
-    arity = length(children)
-    return Node(EXPRESSION, USERN, i, 0, arity, children)
+@eval function Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int})
+    return Node(EXPRESSION, USERN, i, 0, length(c), c)
 end
 for d in ALL_ATOM_TYPES
-    @eval function Node(::Val{false}, ::Val{$d}, children::Vector{Int})
-        return Node(EXPRESSION, $d, 0, 0, 1, children)
+    @eval function Node(::Val{false}, ::Val{$d}, c::Vector{Int})
+        return Node(EXPRESSION, $d, 0, 0, 1, c)
     end
 end
 
-@inline _node_class(n::Node)   = n.node_class
-@inline _ex_type(n::Node)      = n.ex_type
-@inline _first_index(n::Node)  = n.first_index
-@inline _second_index(n::Node) = n.node_second_index
-@inline _arity(n::Node)        = n.arity
-@inline _children(n::Node)     = n.children
-@inline _child(n::Node, i)     = @inbounds getindex(n.children, i)
+_node_class(n::Node)   = n.node_class
+_ex_type(n::Node)      = n.ex_type
+_first_index(n::Node)  = n.first_index
+_second_index(n::Node) = n.node_second_index
+_arity(n::Node)        = n.arity
+_children(n::Node)     = n.children
+_child(n::Node, i)     = @inbounds getindex(n.children, i)
 
 mv_eago_not_jump = setdiff(JuMP._Derivatives.operators,
                            union(Symbol[k for k in keys(REV_BIVARIATE_ATOM_DICT)],

@@ -23,7 +23,7 @@ module EAGO
     using JuMP._Derivatives: univariate_operators,
                              univariate_operator_to_id
     import JuMP: _SubexpressionStorage
-    import JuMP._Derivatives: NodeType, NodeData, UserOperatorRegistry
+    import JuMP._Derivatives: NodeType, UserOperatorRegistry
     const JuMPOpReg = JuMP._Derivatives.UserOperatorRegistry
 
     using Ipopt, GLPK

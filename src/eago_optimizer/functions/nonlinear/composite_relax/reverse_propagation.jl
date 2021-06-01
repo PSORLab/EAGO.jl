@@ -91,7 +91,7 @@ function rprop_n!(t::Relax, v::Val{PLUS}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::I
                 end
             end
         end
-        q, w, z = IntervalContractors.plus_rev(_interval(c, k), _interval(c, i), interval(tsum))
+        _, w, _ = IntervalContractors.plus_rev(_interval(c, k), _interval(c, i), interval(tsum))
         isempty(w) && (return false)
         _store_set!(c, MC{N,T}(w), i)
     end
@@ -153,7 +153,7 @@ function rprop_n!(t::Relax, v::Val{MULT}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::I
                 end
             end
         end
-        q, w, z = IntervalContractors.mul_rev(_interval(b, k), _interval(b, c), interval(tmul))
+        _, w, _ = IntervalContractors.mul_rev(_interval(b, k), _interval(b, c), interval(tmul))
         isempty(w) && (return false)
         _store_set!(c, MC{N,T}(w), i)
     end
@@ -163,31 +163,33 @@ end
 for (f, fc, F) in ((-, MINUS, IntervalContractors.minus_rev),
                    (^, POW, IntervalContractors.power_rev),
                    (/, DIV, IntervalContractors.div_rev))
-    @eval function rprop!(t::Relax, v::Val{$fc}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-        _is_num(b,k) && (return true)
-        x = _child(g, 1, k)
-        y = _child(g, 2, k)
-        x_is_num = _is_num(b, x)
-        y_is_num = _is_num(b, x)
+    eval(quote 
+        function rprop!(t::Relax, v::Val{$fc}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+            _is_num(b,k) && (return true)
+            x = _child(g, 1, k)
+            y = _child(g, 2, k)
+            x_is_num = _is_num(b, x)
+            y_is_num = _is_num(b, x)
 
-        if !x_is_num && y_is_num
-            z, u, v = ($F)(_interval(b, k), _interval(b, x), _num(b, y))
-        elseif x_is_num && y_is_num
-            z, u, v = ($F)(_interval(b, k), _num(b, x), _interval(b, y))
-        else
-            z, u, v = ($F)(_interval(b, k), _interval(b, x), _interval(b, y))
-        end
+            if !x_is_num && y_is_num
+                z, u, v = ($F)(_interval(b, k), _interval(b, x), _num(b, y))
+            elseif x_is_num && y_is_num
+                z, u, v = ($F)(_interval(b, k), _num(b, x), _interval(b, y))
+            else
+                z, u, v = ($F)(_interval(b, k), _interval(b, x), _interval(b, y))
+            end
 
-        if !x_is_num
-            isempty(a) && (return false)
-            _store_set!(b, MC{N,T}(u), x)
+            if !x_is_num
+                isempty(a) && (return false)
+                _store_set!(b, MC{N,T}(u), x)
+            end
+            if !y_is_num
+                isempty(b) && (return false)
+                _store_set!(b, MC{N,T}(v), y)
+            end
+            return true
         end
-        if !y_is_num
-            isempty(b) && (return false)
-            _store_set!(b, MC{N,T}(v), y)
-        end
-        return true
-    end
+    end)
 end
 
 rprop!(t::Relax, v::Val{USER}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true

@@ -273,8 +273,8 @@ function Base.isempty(x::InputProblem)
         end
     end
 
-    is_empty_flag &= x._nlp_data == nothing
-    is_empty_flag &= x._objective == nothing
+    is_empty_flag &= x._nlp_data === nothing
+    is_empty_flag &= x._objective === nothing
 
     return is_empty_flag
 end
@@ -336,7 +336,7 @@ function Base.isempty(x::ParsedProblem)
         end
     end
 
-    is_empty_flag &= x._nlp_data == nothing
+    is_empty_flag &= x._nlp_data === nothing
     is_empty_flag &= isempty(x._objective_saf.terms)
     is_empty_flag &= x._objective_saf.constant === 0.0
     is_empty_flag &= x._objective === nothing
@@ -547,12 +547,12 @@ end
 @inline _variable_num(::BranchVar, m::Optimizer) = m._branch_variable_count
 @inline _variable_num(::FullVar, m::Optimizer) = m._working_problem._variable_count
 
-@inline _is_integer(::BranchVar, m::Optimizer, i::Int) = is_integer(_current_node(m), i)
+@inline _is_integer(::BranchVar, m::Optimizer, i::Int) = _is_integer(_current_node(m), i)
 @inline function _is_integer(::FullVar, m::Optimizer, i::Int)
      if _is_branch_var(m,i)
-        return is_integer(_current_node(m), _svi(m, i))
+        return _is_integer(_current_node(m), _svi(m, i))
      end
-    is_integer(_working_variable_info(m,i))
+     _is_integer(_working_variable_info(m,i))
 end
 
 @inline _lower_bound(::BranchVar, m::Optimizer, i::Int) = lower_variable_bounds(_current_node(m), i)
