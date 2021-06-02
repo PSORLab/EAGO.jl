@@ -205,11 +205,12 @@ end
 $(TYPEDSIGNATURES)
 """
 function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{N,T}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
+    d = m.relaxed_optimizer
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant + _constraint_tol(m))
             f.saf.constant = 0.0
-            ci = MOI.add_constraint(m.relaxed_optimizer, f.saf, lt)
+            ci = MOI.add_constraint(d, f.saf, lt)
             push!(m._affine_relax_ci, ci)
         end
     end

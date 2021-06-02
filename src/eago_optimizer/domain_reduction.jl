@@ -51,10 +51,11 @@ Excludes OBBT on variable indices that are tight for the solution of the relaxat
 """
 function trivial_filtering!(m::Optimizer, n::NodeBB)
 
+    d = m.relaxed_optimizer
     obbt_tolerance = m._parameters.obbt_tolerance
-    m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-    m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-    m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+    m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+    m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+    m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
     status = relaxed_problem_status(m._preprocess_termination_status,
                                     m._preprocess_primal_status,
                                     m._preprocess_dual_status)
@@ -106,6 +107,7 @@ Excludes OBBT on variable indices after a search in a filtering direction.
 function aggressive_filtering!(m::Optimizer, n::NodeBB)
 
     # Initial filtering vector (negative one direction per remark in Gleixner2017)
+    d = m.relaxed_optimizer
     variable_number = m._working_problem._variable_count
     v = -ones(variable_number)
 
@@ -152,22 +154,22 @@ function aggressive_filtering!(m::Optimizer, n::NodeBB)
         end
 
         # Set objective in OBBT problem to filtering vector
-        MOI.set(m.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+        MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
         saf = SAF(SAT.(v, m._relaxed_variable_index), 0.0)
-        MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), saf)
+        MOI.set(d, MOI.ObjectiveFunction{SAF}(), saf)
 
         # Optimizes the problem and if successful filter additional bounds
         MOI.optimize!(m.relaxed_optimizer)
 
-        m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-        m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-        m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+        m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+        m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+        m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
         status = relaxed_problem_status(m._preprocess_termination_status,
                                         m._preprocess_primal_status,
                                         m._preprocess_dual_status)
 
         if status == RRS_OPTIMAL
-            variable_primal = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+            variable_primal = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
             copyto!(m._new_low_index, m._old_low_index)
             copyto!(m._new_upp_index, m._old_upp_index)
             for i = 1:obbt_variable_count
@@ -233,11 +235,11 @@ function obbt!(m::Optimizer)
 
     n = m._current_node
     branch_to_sol_map = m._branch_to_sol_map
-    relaxed_optimizer = m.relaxed_optimizer
+    d = m.relaxed_optimizer
 
     relax_problem!(m::Optimizer)
-    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.optimize!(relaxed_optimizer)
+    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.optimize!(d)
 
     # Sets indices to attempt OBBT on
     obbt_variable_count = m._obbt_variable_count
@@ -255,15 +257,15 @@ function obbt!(m::Optimizer)
     end
 
     # extracts info from relaxed problem (redundant if aggressive obbt is called)
-    m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-    m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-    m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+    m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+    m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+    m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
     status = relaxed_problem_status(m._preprocess_termination_status,
                                     m._preprocess_primal_status,
                                     m._preprocess_dual_status)
 
     if status == RRS_OPTIMAL
-        xLP = MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+        xLP = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
     else
         return false
     end
@@ -308,19 +310,19 @@ function obbt!(m::Optimizer)
             @inbounds m._obbt_working_lower_index[lower_indx] = false
             var = SV(m._relaxed_variable_index[lower_indx])
 
-            MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
+            MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+            MOI.set(d, MOI.ObjectiveFunction{SV}(), var)
 
-            MOI.optimize!(m.relaxed_optimizer)
-            m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-            m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-            m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+            MOI.optimize!(d)
+            m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+            m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+            m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
             status = relaxed_problem_status(m._preprocess_termination_status,
                                             m._preprocess_primal_status,
                                             m._preprocess_dual_status)
 
             if status == RRS_OPTIMAL
-                xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+                xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
 
                 node_index = branch_to_sol_map[lower_indx]
                 updated_value = xLP[node_index]
@@ -333,7 +335,7 @@ function obbt!(m::Optimizer)
                 # constraint in the model is a GreaterThan.
                 if updated_value > previous_value && (updated_value - previous_value) > 1E-6
                     sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
-                    MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
+                    MOI.set(d, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
                     @inbounds n.lower_variable_bounds[lower_indx] = updated_value
                 end
 
@@ -354,18 +356,18 @@ function obbt!(m::Optimizer)
 
             m._obbt_working_upper_index[upper_indx] = false
             var = SV(m._relaxed_variable_index[upper_indx])
-            MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-            MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SV}(), var)
-            MOI.optimize!(relaxed_optimizer)
-            m._preprocess_termination_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-            m._preprocess_primal_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-            m._preprocess_dual_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+            MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+            MOI.set(d, MOI.ObjectiveFunction{SV}(), var)
+            MOI.optimize!(d)
+            m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+            m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+            m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
             status = relaxed_problem_status(m._preprocess_termination_status,
                                             m._preprocess_primal_status,
                                             m._preprocess_dual_status)
 
             if status == RRS_OPTIMAL
-                xLP .= MOI.get(relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index)
+                xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
                 node_index = branch_to_sol_map[upper_indx]
                 updated_value = xLP[node_index]
                 previous_value = n.upper_variable_bounds[upper_indx]
@@ -377,7 +379,7 @@ function obbt!(m::Optimizer)
                 # constraint in the model is a LessThan.
                 if updated_value < previous_value && (previous_value - updated_value) > 1E-6
                     sv_leq_ci = m._node_to_sv_leq_ci[upper_indx]
-                    MOI.set(relaxed_optimizer, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
+                    MOI.set(d, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
                     @inbounds n.upper_variable_bounds[upper_indx] = updated_value
                 end
 

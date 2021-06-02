@@ -66,7 +66,7 @@ Return the index of the ith variable at node k.
 struct OperatorRegistry
     multivariate_id::Vector{Symbol}
     multivariate_operator_to_id::Dict{Symbol,Int}
-    multivariate_operator_evaluator::Vector{MOI.AbstractNLPEvaluator}
+    multivariate_operator_evaluator::Vector{Any}
     univariate_operator_id::Vector{Symbol}
     univariate_operator_to_id::Dict{Symbol,Int}
     univariate_operator_f::Vector{Any}
@@ -77,7 +77,7 @@ function OperatorRegistry()
     return OperatorRegistry(
         Symbol[],
         Dict{Symbol,Int}(),
-        MOI.AbstractNLPEvaluator[],
+        [],
         Symbol[],
         Dict{Symbol,Int}(),
         [],

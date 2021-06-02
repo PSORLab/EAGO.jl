@@ -1,6 +1,9 @@
 # C:\Users\wilhe\AppData\Local\Programs\Julia-1.6.0\bin\julia.exe --track-allocation=user 
-#
+# include("C:\\Users\\wilhe\\Desktop\\Package Development\\EAGO.jl\\benchmark\\memory_allocation_analysis.jl"); exit()
+#using Coverage; m = analyze_malloc("C:\\Users\\wilhe\\Desktop\\Package Development\\EAGO.jl\\src")
+#filter!(x -> x.bytes > 0, m)
 
+#=
 using JuMP, EAGO
 
 m = Model(EAGO.Optimizer)
@@ -16,3 +19,4 @@ xU = [2000.0; 16000.0; 120.0; 5000.0; 2000.0; 93.0; 95.0; 12.0; 4.0; 162.0]
 
 
 JuMP.optimize!(m)
+=#
