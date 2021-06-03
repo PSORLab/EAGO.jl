@@ -28,19 +28,17 @@ end
 
 Adds a Evaluator structure if nonlinear terms are attached.
 """
-add_nonlinear_evaluator!(m::Optimizer, evaluator::Nothing) = nothing
-function add_nonlinear_evaluator!(m::Optimizer, d::JuMP.NLPEvaluator)
+add_nonlinear_evaluator!(m::GlobalOptimizer, evaluator::Nothing) = nothing
+function add_nonlinear_evaluator!(m::GlobalOptimizer, d::JuMP.NLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
 
     relax_eval = m._working_problem._relaxed_evaluator
     relax_eval.user_operators = OperatorRegistry(d.m.nlp_data.user_operators)
-    relax_eval.ctx            = GuardCtx(metadata = GuardTracker(m._parameters.domain_violation_ϵ,
-                                                                 m._parameters.domain_violation_guard_on))
-    relax_eval.subgrad_tol         = m._parameters.subgrad_tol
+    relax_eval.subgrad_tol    = m._parameters.subgrad_tol
     m._nonlinear_evaluator_created = true
     return
 end
-function add_nonlinear_evaluator!(m::Optimizer)
+function add_nonlinear_evaluator!(m::GlobalOptimizer)
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 end
 
@@ -48,8 +46,8 @@ end
 
 Adds a Evaluator, nonlinear functions, and populates each appropriately.
 """
-add_nonlinear!(m::Optimizer, evaluator::Nothing) = nothing
-function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
+add_nonlinear!(m::GlobalOptimizer, evaluator::Nothing) = nothing
+function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 
@@ -114,15 +112,15 @@ function add_nonlinear!(m::Optimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator.subexpressions_eval = fill(false, length(relax_evaluator.subexpressions))
     return
 end
-add_nonlinear!(m::Optimizer) = add_nonlinear!(m, m._input_problem._nlp_data.evaluator)
+add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_data.evaluator)
 
-function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::SV)
+function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::SV)
     flag = m._input_problem._optimization_sense == MOI.MAX_SENSE
     d._objective = AffineFunctionIneq(f, is_max = flag)
     d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
     return
 end
-function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::AffineFunctionIneq)
+function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::AffineFunctionIneq)
     if m._input_problem._optimization_sense == MOI.MAX_SENSE
         d._objective_saf = MOIU.operate(-, Float64, d._objective_saf)
         d._objective = AffineFunctionIneq([(-i,j) for (i,j) in f.terms], -f.constant, f.len)
@@ -136,11 +134,11 @@ function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     return m._variable_count
 end
 
-function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
+function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
     ip = m._input_problem
 
     vi = d._variable_info
-    n = NodeBB(lower_bound.(vi), upper_bound.(vi), _is_integer.(vi))
+    n = NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
     m._current_node = n
 
     l, u = interval_bound(m, f, n)
@@ -160,7 +158,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedQuadrat
 
     return
 end
-function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonlinearFunction)
+function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedNonlinearFunction)
     ip = m._input_problem
     wp = m._working_problem
 
@@ -178,7 +176,7 @@ function reform_epigraph_min!(m::Optimizer, d::ParsedProblem, f::BufferedNonline
     wp._relaxed_evaluator.variable_values = v
     _set_variable_storage!(f,v)
 
-    n = NodeBB(vi_lo, vi_hi, _is_integer.(vi))
+    n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
 
@@ -230,7 +228,7 @@ end
 
 Performs an epigraph reformulation assuming the working_problem is a minimization problem.
 """
-function reform_epigraph_min!(m::Optimizer)
+function reform_epigraph_min!(m::GlobalOptimizer)
     ip = m._input_problem
     m._obj_mult = (ip._optimization_sense == MOI.MAX_SENSE) ? -1.0 : 1.0
     reform_epigraph_min!(m, m._working_problem, m._working_problem._objective)
@@ -248,7 +246,7 @@ $(TYPEDSIGNATURES)
 Detects any variables set to a fixed value by equality or inequality constraints
 and populates the `_fixed_variable` storage array.
 """
-function label_fixed_variables!(m::Optimizer)
+function label_fixed_variables!(m::GlobalOptimizer)
     map!(x -> check_set_is_fixed(x), m._fixed_variable, m._working_problem._variable_info)
 end
 
@@ -258,7 +256,7 @@ $(TYPEDSIGNATURES)
 Detects any variables participating in nonconvex terms and populates the
 `_branch_variables` storage array.
 """
-function label_branch_variables!(m::Optimizer)
+function label_branch_variables!(m::GlobalOptimizer)
 
     wp = m._working_problem
     m._user_branch_variables = !isempty(m._parameters.branch_variable)
@@ -323,14 +321,15 @@ end
 """
 Translates input problem to working problem. Routines and checks and optional manipulation is left to the presolve stage.
 """
-function initial_parse!(m::Optimizer)
+function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
 
     # reset initial time and solution statistics
-    m._time_left = m._parameters.time_limit
+    m._global_optimizer._time_left = m._parameters.time_limit
 
     # add variables to working model
-    ip = m._input_problem
-    wp = m._working_problem
+    ip = m._global_optimizer._input_problem = m._input_problem
+    wp = m._global_optimizer._working_problem = m._working_problem
+    m._global_optimizer._parameters = m._parameters
     append!(wp._variable_info, ip._variable_info)
     wp._variable_count = ip._variable_count
 
@@ -344,20 +343,20 @@ function initial_parse!(m::Optimizer)
     wp._sqf_eq  = [BufferedQuadraticEq(c[1], c[2]) for c in ip._quadratic_eq_constraints]
 
     add_objective!(wp, ip._objective)    # set objective function
-    add_nonlinear!(m)         # add nonlinear constraints, evaluator, subexpressions
+    add_nonlinear!(m._global_optimizer)         # add nonlinear constraints, evaluator, subexpressions
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     # this is placed after adding nonlinear functions as this prior routine
     # copies the nlp_block from the input_problem to the working problem
-    reform_epigraph_min!(m)
+    reform_epigraph_min!(m._global_optimizer)
 
-    label_fixed_variables!(m)
-    label_branch_variables!(m)
+    label_fixed_variables!(m._global_optimizer)
+    label_branch_variables!(m._global_optimizer)
 
     # updates run and parse times
-    new_time = time() - m._start_time
-    m._parse_time = new_time
-    m._run_time = new_time
+    new_time = time() - m._global_optimizer._start_time
+    m._global_optimizer._parse_time = new_time
+    m._global_optimizer._run_time = new_time
 
     return
 end
@@ -365,7 +364,7 @@ end
 """
 Classifies the problem type
 """
-function parse_classify_problem!(m::Optimizer)
+function parse_classify_problem!(m::GlobalOptimizer)
 
     ip = m._input_problem
 
@@ -390,10 +389,3 @@ function parse_classify_problem!(m::Optimizer)
     end
     return
 end
-
-"""
-
-Basic parsing for global solutions (no extensive manipulation)
-"""
-parse_global!(t::ExtensionType, m::Optimizer) = nothing
-parse_global!(m::Optimizer) = parse_global!(m.ext_type, m)

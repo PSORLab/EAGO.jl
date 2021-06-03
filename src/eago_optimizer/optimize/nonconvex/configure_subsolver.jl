@@ -10,15 +10,9 @@
 # solvers along with routines needed to adjust tolerances to mirror tolerance
 # adjustments in the global solve.
 #############################################################################
-
-const SUPPORTED_SUBSOLVER_NAMES = Dict{String,Symbol}("GLPK" => :glpk,
-                                                      "Clp"  => :clp,
-                                                      "COIN Branch-and-Cut (Cbc)" => :cbc,
-                                                      "Ipopt" => :ipopt)
-
-function set_default_config_udf!(s::String, m::Optimizer)
+function set_default_config_udf!(s::String, m::GlobalOptimizer)
     if _verbosity(m) > 0
-        println("EAGO lacks a specialized configuration routine for the subsolver ($s)")
+        println("EAGO lacks a specialized configuration routine for the subsolver ($(MOI.get(m, MOI.SolverName())))")
         println("you selected. As a result, EAGO cannot set the subsolver tolerances based on the")
         println("absolute_tolerance, relative tolerance, and absolute_constraint_feas_tolerance")
         println("parameters passed to the EAGO optimizer. Consequently, need to ensure that the tolerances")
@@ -31,63 +25,21 @@ function set_default_config_udf!(s::String, m::Optimizer)
     return
 end
 
-function set_default_config!(::Val{:clp}, ext::ExtensionType, d::Optimizer, m::T, local_solver::Bool) where T
-    MOI.set(m, MOI.RawParameter("PrimalTolerance"),       _absolute_tol(d)*1E-2)
-    MOI.set(m, MOI.RawParameter("DualTolerance"),         _absolute_tol(d)*1E-2)
-    MOI.set(m, MOI.RawParameter("DualObjectiveLimit"),    1e308)
-    MOI.set(m, MOI.RawParameter("MaximumIterations"),     2147483647)
-    MOI.set(m, MOI.RawParameter("PresolveType"),          0)
-    MOI.set(m, MOI.RawParameter("SolveType"),             5)
-    MOI.set(m, MOI.RawParameter("InfeasibleReturn"),      1)
-    MOI.set(m, MOI.RawParameter("Scaling"),               3)
-    MOI.set(m, MOI.RawParameter("Perturbation"),          100)
-    return
+function set_default_config!(ext::ExtensionType, d::GlobalOptimizer, m::MOI.AbstractOptimizer, local_solver::Bool)
+    set_default_config_udf!(MOI.get(m, MOI.SolverName()), d)
 end
 
-function set_default_config!(::Val{:cbc}, ext::ExtensionType, d::Optimizer, m::T, local_solver::Bool) where T
-    MOI.set(m, MOI.RawParameter("allowableGap"), _absolute_tol(d)*1E-2)
-    MOI.set(m, MOI.RawParameter("ratioGap"),     _absolute_tol(d)*1E-2)
-    #MOI.set(m, MOI.RawParameter("threads"), Threads.nthreads())
-    return
-end
-
-function set_default_config!(::Val{:glpk}, ext::ExtensionType, d::Optimizer, m::T, local_solver::Bool) where T
-    return
-end
-
-function set_default_config!(::Val{:ipopt}, ext::ExtensionType, d::Optimizer, m::T, local_solver::Bool) where T
-    c_tol = _constraint_tol(d)*1E-3
-    MOI.set(m, MOI.RawParameter("tol"),_absolute_tol(d)*1E-3)
-    MOI.set(m, MOI.RawParameter("print_level"), 0)
-    MOI.set(m, MOI.RawParameter("constr_viol_tol"), c_tol)
-    if local_solver
-        MOI.set(m, MOI.RawParameter("max_iter"),3000)
-        MOI.set(m, MOI.RawParameter("acceptable_tol"), 1E30)
-        MOI.set(m, MOI.RawParameter("acceptable_iter"), 300)
-        MOI.set(m, MOI.RawParameter("acceptable_compl_inf_tol"), c_tol)
-        MOI.set(m, MOI.RawParameter("acceptable_dual_inf_tol"), 1.0)
-        MOI.set(m, MOI.RawParameter("acceptable_constr_viol_tol"), c_tol)
-    else
-        MOI.set(m, MOI.RawParameter("max_iter"), 1E5)
-        MOI.set(m, MOI.RawParameter("acceptable_iter"), 1E5+1)
-    end
-    return
-end
-
-function set_default_subsolver_config!(ext::DefaultExt, d::Optimizer,  m::T, local_solver::Bool) where T
-    sname = MOI.get(m, MOI.SolverName())
-    if (sname in keys(SUPPORTED_SUBSOLVER_NAMES)) && !_user_solver_config(d)
-        sym = SUPPORTED_SUBSOLVER_NAMES[sname]
-        set_default_config!(Val(sym), ext, d, m, local_solver)
-    elseif !_user_solver_config(d)
-        set_default_config_udf!(sname, m)
+function set_default_subsolver_config!(ext::DefaultExt, d::GlobalOptimizer,  m::T, local_solver::Bool) where T
+    if !_user_solver_config(d)
+        set_default_config!(ext, d, m, local_solver)
     end
     MOI.set(m, MOI.Silent(), true)
     return
 end
-function set_default_config!(ext::DefaultExt, m::T) where T
-    set_default_subsolver_config!(DefaultExt(), m, m.relaxed_optimizer, false)
-    set_default_subsolver_config!(DefaultExt(), m, m.upper_optimizer, true)
+
+function set_default_config!(ext::DefaultExt, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} 
+    set_default_subsolver_config!(DefaultExt(), m, m._subsolvers.relaxed_optimizer, false)
+    set_default_subsolver_config!(DefaultExt(), m, m._subsolvers.upper_optimizer, true)
 end
 
 """
@@ -97,9 +49,9 @@ Configures subsolver tolerances based on tolerance parameters provided to
 EAGO (provided that a specialized subsolver configuration routine has been
 provided and `m.user_solver_config = false`).
 """
-function set_default_config!(ext::ExtensionType, m::T) where T
+function set_default_config!(ext::ExtensionType, m::GlobalOptimizer)
     set_default_config!(DefaultExt(), m)
 end
-function set_default_config!(m::T) where T
-    set_default_config!(m.ext_type, m)
+function set_default_config!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} 
+    set_default_config!(_ext_typ(m), m)
 end

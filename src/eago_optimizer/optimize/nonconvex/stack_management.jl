@@ -10,7 +10,7 @@
 # single_storage!, branch_node!, and fathom!.
 #############################################################################
 
-function _variable_infeasibility(m::Optimizer, i::Int)
+function _variable_infeasibility(m::GlobalOptimizer, i::Int)
     tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)
     d = m._branch_cost
     for j in _sparsity(BranchVar(), m, i)
@@ -22,7 +22,7 @@ function _variable_infeasibility(m::Optimizer, i::Int)
     return d.μ1*tsum + d.μ2*tmin + d.μ3*tmax
 end
 
-function _store_pseudocosts!(m::Optimizer, n::NodeBB)
+function _store_pseudocosts!(m::GlobalOptimizer, n::NodeBB)
     k = n.last_branch
     d = m._branch_cost
     if n.branch_direction == BD_POS
@@ -37,7 +37,7 @@ function _store_pseudocosts!(m::Optimizer, n::NodeBB)
     return
 end
 
-function _lo_extent(m::Optimizer, xb::Float64, k::Int)
+function _lo_extent(m::GlobalOptimizer, xb::Float64, k::Int)
     c = _branch_cost(m)
     (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
 
@@ -52,7 +52,7 @@ function _lo_extent(m::Optimizer, xb::Float64, k::Int)
     return (c == BC_INTERVAL_LP) ? (y - l) : (u - y)
 end
 
-function _hi_extent(m::Optimizer, xb::Float64, k::Int)
+function _hi_extent(m::GlobalOptimizer, xb::Float64, k::Int)
     c = _branch_cost(m)
     (c == BC_INFEASIBLE)   && return _variable_infeasibility(m, k)
 
@@ -72,12 +72,12 @@ end
     _score(d.𝛹n[i]*d.δn[i], d.𝛹p[i]*d.δp[i], d.μ_score)
 end
 
-function _select_branch_variable_cost(m::Optimizer)
+function _select_branch_variable_cost(m::GlobalOptimizer)
     return map_argmax(i -> score(m.branch_cost, i), 1:_variable_num(BranchVar(),m))
 end
 
-rel_diam(m::Optimizer, i::Int) = _diam(BranchVar(),m,i)/_diam(FullVar(),m,_bvi(m, i))
-function _select_branch_variable_width(m::Optimizer)
+rel_diam(m::GlobalOptimizer, i::Int) = _diam(BranchVar(),m,i)/_diam(FullVar(),m,_bvi(m, i))
+function _select_branch_variable_width(m::GlobalOptimizer)
     map_argmax(i -> rel_diam(m,i), 1:_variable_num(BranchVar(), m))
 end
 
@@ -87,7 +87,7 @@ $(SIGNATURES)
 Selects the variable to branch on psuedocost branching is used if
 (parameter: `branch_pseudocost_on` = true).
 """
-function select_branch_variable(t::ExtensionType, m::Optimizer)
+function select_branch_variable(t::ExtensionType, m::GlobalOptimizer)
     _branch_pseudocost_on(m) && return _select_branch_variable_cost(m)
     return _select_branch_variable_width(m)
 end
@@ -100,7 +100,7 @@ Selects a point `xb` which is a convex combination (parameter:
 node. If this solution lies within (parameter: `branch_offset`) of a bound then
 the branch point is moved to a distance of `branch_offset` from the bound.
 """
-function select_branch_point(t::ExtensionType, m::Optimizer, i)
+function select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
     l = _lower_bound(BranchVar(), m, i)
     u = _upper_bound(BranchVar(), m, i)
     s = _lower_solution(BranchVar(), m, i)
@@ -115,7 +115,7 @@ $(SIGNATURES)
 Creates two nodes from `current_node` and stores them to the stack. Calls
 `select_branch_variable(t, m)` and `select_branch_point(t, m, k)`.
 """
-function branch_node!(t::ExtensionType, m::Optimizer)
+function branch_node!(t::ExtensionType, m::GlobalOptimizer)
 
     k = select_branch_variable(t, m)
     x = select_branch_point(t, m, k)
@@ -130,7 +130,7 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     l_ubd = copy(n.upper_variable_bounds);  u_ubd = copy(n.upper_variable_bounds)
     l_int = copy(n.is_integer);             u_int = copy(n.is_integer)
 
-    flag = _is_integer(BranchVar(), m, k)
+    flag = is_integer(BranchVar(), m, k)
     if flag
         l_int[k] = floor(x) != n.lower_variable_bound[k]
         u_int[k] = ceil(x)  != n.upper_variable_bound[k]
@@ -154,14 +154,14 @@ function branch_node!(t::ExtensionType, m::Optimizer)
     m._node_count += 2
     return
 end
-branch_node!(m::Optimizer) = branch_node!(m.ext_type, m)
+branch_node!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = branch_node!(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
 
 Stores the current node to the stack after updating lower/upper bounds.
 """
-function single_storage!(t::ExtensionType, m::Optimizer)
+function single_storage!(t::ExtensionType, m::GlobalOptimizer)
     y = m._current_node
     m._node_repetitions += 1
     m._node_count += 1
@@ -171,19 +171,19 @@ function single_storage!(t::ExtensionType, m::Optimizer)
                            lower_bound, upper_bound, y.depth, y.id))
     return
 end
-single_storage!(m::Optimizer) = single_storage!(m.ext_type, m)
+single_storage!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = single_storage!(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
 
 Selects node with the lowest lower bound in stack.
 """
-function node_selection!(t::ExtensionType, m::Optimizer)
+function node_selection!(t::ExtensionType, m::GlobalOptimizer)
     m._node_count -= 1
     m._current_node = popmin!(m._stack)
     return
 end
-node_selection!(m::Optimizer) = node_selection!(m.ext_type, m)
+node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_selection!(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
@@ -191,7 +191,7 @@ $(SIGNATURES)
 Selects and deletes nodes from stack with lower bounds greater than global
 upper bound.
 """
-function fathom!(t::ExtensionType, m::Optimizer)
+function fathom!(t::ExtensionType, m::GlobalOptimizer)
     u = m._global_upper_bound
     continue_flag = !isempty(m._stack)
     while continue_flag
@@ -205,14 +205,14 @@ function fathom!(t::ExtensionType, m::Optimizer)
     end
     return
 end
-fathom!(m::Optimizer) = fathom!(m.ext_type, m)
+fathom!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = fathom!(_ext_typ(m), m)
 
 """
 $(TYPEDSIGNATURES)
 
 Creates an initial node with initial box constraints and adds it to the stack.
 """
-function initialize_stack!(m::Optimizer)
+function initialize_stack!(m::GlobalOptimizer)
     d = _working_variable_info.(m, m._branch_to_sol_map)
     push!(m._stack, NodeBB(lower_bound.(d), upper_bound.(d), is_integer.(d)))
     m._node_count = 1

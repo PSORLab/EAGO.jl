@@ -81,15 +81,13 @@ end
 @propagate_inbounds _lbd(b::RelaxCache{N,T}, i::Int) where {N,T<:RelaxTag} = _lbd(b.v, i)
 @propagate_inbounds _ubd(b::RelaxCache{N,T}, i::Int) where {N,T<:RelaxTag} = _ubd(b.v, i)
 
-@propagate_inbounds function _set_input(b::RelaxCache{N,T}, n::Int) where {N,T<:RelaxTag}
-    return view(b.set_mv_buffer, 1:n)
-end
+_set_input(b::RelaxCache{N,T}, n::Int) where {N,T<:RelaxTag} = view(b.set_mv_buffer, 1:n)
 
 
 include(joinpath(@__DIR__, "forward_propagation.jl"))
 include(joinpath(@__DIR__, "reverse_propagation.jl"))
 
-function fprop!(t::Relax, g::ALLGRAPHS, b::RelaxCache{N,T}) where {N,T<:RelaxTag}
+function fprop!(t::Relax, g::DAT, b::RelaxCache{N,T}) where {N,T<:RelaxTag}
     f_init!(t, g, b)
     for k = _node_count(g):-1:1
         if _is_unlocked(b, k)
@@ -98,15 +96,15 @@ function fprop!(t::Relax, g::ALLGRAPHS, b::RelaxCache{N,T}) where {N,T<:RelaxTag
                 fprop!(Relax(), Expression(), g, b, k)
             elseif nt === VARIABLE
                 fprop!(Relax(), Variable(), g, b, k)
-            elseif nt === SUBEXPRESSION
-                fprop!(Relax(), Subexpression(), g, b, k)
+            #elseif nt === SUBEXPRESSION
+           #     fprop!(Relax(), Subexpression(), g, b, k)
             end
         end
     end
     return
 end
 
-function rprop!(t::Relax, g::ALLGRAPHS, b::RelaxCache{N,T}) where {N,T<:RelaxTag}
+function rprop!(t::Relax, g::DAT, b::RelaxCache{N,T}) where {N,T<:RelaxTag}
     flag = r_init!(t, g, b)
     for k = 1:_node_count(g)
         if _is_unlocked(b, k)

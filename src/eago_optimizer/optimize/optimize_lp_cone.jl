@@ -11,7 +11,7 @@
 # linear constraints, soc constraints, and unpack solutions.
 #############################################################################
 
-function add_variables(m::Optimizer, optimizer::T, variable_number::Int) where T
+function add_variables(m::GlobalOptimizer, optimizer, variable_number::Int)
 
     variable_index = fill(VI(1), variable_number)
     for i = 1:variable_number
@@ -37,7 +37,7 @@ function add_variables(m::Optimizer, optimizer::T, variable_number::Int) where T
 end
 
 ### LP and MILP routines
-function add_linear_constraints!(m::Optimizer, opt::T) where T
+function add_linear_constraints!(m::GlobalOptimizer, opt::T) where T
 
     # add linear constraints
     for (func, set) in m._input_problem._linear_leq_constraints
@@ -54,7 +54,7 @@ function add_linear_constraints!(m::Optimizer, opt::T) where T
 end
 
 ### LP and MILP routines
-function add_soc_constraints!(m::Optimizer, opt::T) where T
+function add_soc_constraints!(m::GlobalOptimizer, opt::T) where T
 
     for (func, set) in m._input_problem._conic_second_order
          MOI.add_constraint(opt, func, set)
@@ -63,13 +63,13 @@ function add_soc_constraints!(m::Optimizer, opt::T) where T
     return nothing
 end
 
-add_sv_or_aff_obj!(m::Optimizer, d::T, f::Nothing) where T = nothing
-function add_sv_or_aff_obj!(m::Optimizer, d::T, f::F) where {T,F<:Union{SV,SAF}}
+add_sv_or_aff_obj!(m::GlobalOptimizer, d::T, f::Nothing) where T = nothing
+function add_sv_or_aff_obj!(m::GlobalOptimizer, d::T, f::F) where {T,F<:Union{SV,SAF}}
     MOI.set(d, MOI.ObjectiveFunction{F}(), f)
     return
 end
 
-function unpack_local_solve!(m::Optimizer, opt::T) where T
+function unpack_local_solve!(m::GlobalOptimizer, opt::T) where T
 
     m._maximum_node_id = 0
 
@@ -102,7 +102,7 @@ function unpack_local_solve!(m::Optimizer, opt::T) where T
     return nothing
 end
 
-function optimize!(::LP, m::Optimizer)
+function optimize!(::LP, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
     relaxed_optimizer = m.relaxed_optimizer
     MOI.empty!(relaxed_optimizer)
@@ -124,9 +124,9 @@ function optimize!(::LP, m::Optimizer)
     return nothing
 end
 
-optimize!(::MILP, m::Optimizer) = optimize!(LP(), m)
+optimize!(::MILP, m::GlobalOptimizer) = optimize!(LP(), m)
 
-function optimize!(::SOCP, m::Optimizer)
+function optimize!(::SOCP, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
     relaxed_optimizer = m.relaxed_optimizer
     MOI.empty!(relaxed_optimizer)
@@ -149,4 +149,4 @@ function optimize!(::SOCP, m::Optimizer)
     return
 end
 
-optimize!(::MISOCP, m::Optimizer) = optimize!(SOCP(), m)
+optimize!(::MISOCP, m::GlobalOptimizer) = optimize!(SOCP(), m)

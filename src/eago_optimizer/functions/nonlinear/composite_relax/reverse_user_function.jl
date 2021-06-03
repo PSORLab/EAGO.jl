@@ -1,3 +1,4 @@
+#=
 # TODO: Infer dimensionality of user function from context type
 mutable struct RevRelaxMeta{T} end
 Cassette.@context RelaxCtx
@@ -103,3 +104,4 @@ end
 =#
 
 #@scalar_set_rule(imag(x::Real) Zero()
+=#

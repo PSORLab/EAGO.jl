@@ -12,7 +12,7 @@
 ###
 ### AFFINE FUNCTIONS
 ###
-function lower_interval_bound(m::Optimizer, f::AffineFunctionIneq)
+function lower_interval_bound(m::GlobalOptimizer, f::AffineFunctionIneq)
     fL = f.constant
     for (c, j) in f.terms
         xL = _lower_bound(FullVar(), m, j)
@@ -22,7 +22,7 @@ function lower_interval_bound(m::Optimizer, f::AffineFunctionIneq)
     return fL
 end
 
-function interval_bound(m::Optimizer, f::AffineFunctionEq)
+function interval_bound(m::GlobalOptimizer, f::AffineFunctionEq)
     fL = fU = f.constant
     for (c, j) in f.terms
         xL = _lower_bound(FullVar(), m, j)
@@ -42,7 +42,7 @@ end
 ### QUADRATIC FUNCTIONS
 ###
 
-function lower_interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
+function lower_interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq, n::NodeBB)
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
@@ -71,7 +71,7 @@ function lower_interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
     end
     return fval.lo
 end
-function interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
+function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq, n::NodeBB)
 
     vi = m._input_problem._variable_info
     fval = Interval{Float64}(f.func.constant)
@@ -99,7 +99,7 @@ function interval_bound(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB)
     return fval.lo, fval.hi
 end
 
-function interval_bound(m::Optimizer, f::BufferedQuadraticEq, n::NodeBB)
+function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticEq, n::NodeBB)
 
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
@@ -129,7 +129,7 @@ end
 ###
 ### SECOND-ORDER CONE
 ###
-function lower_interval_bound(m::Optimizer, d::BufferedSOC, n::NodeBB)
+function lower_interval_bound(m::GlobalOptimizer, d::BufferedSOC, n::NodeBB)
 
     sol_branch_map = m._sol_to_branch_map
     lo_bnds = n.lower_variable_bounds
@@ -154,38 +154,38 @@ end
 ###
 ### NONLINEAR FUNCTIONS
 ###
-function lower_interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+function lower_interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     _is_num(d) ? _num(d) : _interval(d).lo
 end
-function interval_bound(m::Optimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
+function interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V}, n::NodeBB) where V
     !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     v = _is_num(d) ? Interval{Float64}(_num(d)) : _interval(d)
     return v.lo, v.hi
 end
 
-function is_feasible(m::Optimizer, f::Union{AffineFunctionIneq,BufferedQuadraticIneq}, y::NodeBB)
+function is_feasible(m::GlobalOptimizer, f::Union{AffineFunctionIneq,BufferedQuadraticIneq}, y::NodeBB)
     lower_interval_bound(m, f, y) <= 0.0
 end
-function is_feasible(m::Optimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq}, y::NodeBB)
+function is_feasible(m::GlobalOptimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq}, y::NodeBB)
     l, u = lower_interval_bound(m, f, y)
     l <= 0.0 <= u
 end
-function is_feasible(m::Optimizer, f::BufferedNonlinearFunction{V}, y::NodeBB) where V
+function is_feasible(m::GlobalOptimizer, f::BufferedNonlinearFunction{V}, y::NodeBB) where V
     l, u = lower_interval_bound(m, f, y)
     feasible_flag = (u < _lower_bound(f))
     feasible_flag && (l > _upper_bound(f))
 end
 
-bound_objective(m::Optimizer, f::BufferedNonlinearFunction, n::NodeBB) = interval_bound(m, f, n)
-bound_objective(m::Optimizer, f::AffineFunctionIneq, n::NodeBB) = interval_bound(m, f)
-bound_objective(m::Optimizer, f::BufferedQuadraticIneq, n::NodeBB) = interval_bound(m, f)
-function bound_objective(m::Optimizer, f::SV, n::NodeBB)
+bound_objective(m::GlobalOptimizer, f::BufferedNonlinearFunction, n::NodeBB) = interval_bound(m, f, n)
+bound_objective(m::GlobalOptimizer, f::AffineFunctionIneq, n::NodeBB) = interval_bound(m, f)
+bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq, n::NodeBB) = interval_bound(m, f)
+function bound_objective(m::GlobalOptimizer, f::SV, n::NodeBB)
     l = _lower_bound(FullVar(), m, f.variable.value)
     u = _lower_bound(FullVar(), m, f.variable.value)
     return l, u
 end
-function bound_objective(t::ExtensionType, m::Optimizer)
+function bound_objective(t::ExtensionType, m::GlobalOptimizer)
     bound_objective(m, m._working_problem._objective, m._current_node)
 end
-bound_objective(m::Optimizer) = bound_objective(m.ext_type, m)
+bound_objective(m::GlobalOptimizer{R,Q,S}) where {R,Q,S<:ExtensionType} = bound_objective(_ext_typ(m), m)

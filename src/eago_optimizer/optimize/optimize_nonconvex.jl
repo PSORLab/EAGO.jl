@@ -13,10 +13,17 @@
 include(joinpath(@__DIR__,"nonconvex","stack_management.jl"))
 include(joinpath(@__DIR__,"nonconvex","lower_problem.jl"))
 include(joinpath(@__DIR__,"nonconvex","upper_problem.jl"))
-include(joinpath(@__DIR__,"nonconvex","post_process.jl"))
+include(joinpath(@__DIR__,"nonconvex","postprocess.jl"))
 include(joinpath(@__DIR__,"nonconvex","log_iteration.jl"))
 include(joinpath(@__DIR__,"nonconvex","display.jl"))
 include(joinpath(@__DIR__,"nonconvex","configure_subsolver.jl"))
+
+"""
+
+Basic parsing for global solutions (no extensive manipulation)
+"""
+parse_global!(t::ExtensionType, m::GlobalOptimizer) = nothing
+parse_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}  = parse_global!(_ext_typ(m), m)
 
 """
 $(TYPEDSIGNATURES)
@@ -24,8 +31,8 @@ $(TYPEDSIGNATURES)
 Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
 """
-function load_relaxed_problem!(m::Optimizer)
-    relaxed_optimizer = m.relaxed_optimizer
+function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    relaxed_optimizer = _relaxed_optimizer(m)
 
     # add variables and indices and constraints
     wp = m._working_problem
@@ -88,7 +95,7 @@ function load_relaxed_problem!(m::Optimizer)
     return
 end
 
-function presolve_global!(t::ExtensionType, m::Optimizer)
+function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
 
     set_default_config!(m)
     load_relaxed_problem!(m)
@@ -135,7 +142,7 @@ function presolve_global!(t::ExtensionType, m::Optimizer)
     m._presolve_time = time() - m._parse_time
     return
 end
-presolve_global!(m::Optimizer) = presolve_global!(m.ext_type, m)
+presolve_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = presolve_global!(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
@@ -144,7 +151,7 @@ Checks for termination of algorithm due to satisfying absolute or relative
 tolerance, infeasibility, or a specified limit, returns a boolean valued true
 if algorithm should continue.
 """
-function termination_check(t::ExtensionType, m::Optimizer)
+function termination_check(t::ExtensionType, m::GlobalOptimizer)
     nlen = length(m._stack)
     L = m._global_lower_bound
     U = m._global_upper_bound
@@ -167,7 +174,7 @@ function termination_check(t::ExtensionType, m::Optimizer)
     end
     return true
 end
-termination_check(m::Optimizer)::Bool = termination_check(m.ext_type, m)
+termination_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = termination_check(_ext_typ(m), m)
 
 const GLOBALEND_TSTATUS = Dict{GlobalEndState, MOI.TerminationStatusCode}(
         GS_OPTIMAL => MOI.OPTIMAL,
@@ -179,7 +186,7 @@ const GLOBALEND_TSTATUS = Dict{GlobalEndState, MOI.TerminationStatusCode}(
         GS_TIME_LIMIT => MOI.TIME_LIMIT
         )
 
-function set_termination_status!(m::Optimizer)
+function set_termination_status!(m::GlobalOptimizer)
     m._termination_status_code = GLOBALEND_TSTATUS[m._end_state]
     return
 end
@@ -194,7 +201,7 @@ const GLOBALEND_PSTATUS = Dict{GlobalEndState, MOI.ResultStatusCode}(
         GS_TIME_LIMIT => MOI.UNKNOWN_RESULT_STATUS
         )
 
-function set_result_status!(m::Optimizer)
+function set_result_status!(m::GlobalOptimizer)
     m._result_status_code = GLOBALEND_PSTATUS[m._end_state]
     return
 end
@@ -205,7 +212,7 @@ $(SIGNATURES)
 Checks for convergence of algorithm with respect to absolute and/or relative
 tolerances.
 """
-function convergence_check(t::ExtensionType, m::Optimizer)
+function convergence_check(t::ExtensionType, m::GlobalOptimizer)
 
   L = m._lower_objective_value
   U = m._global_upper_bound
@@ -222,7 +229,7 @@ function convergence_check(t::ExtensionType, m::Optimizer)
 
   return t
 end
-convergence_check(m::Optimizer)::Bool = convergence_check(m.ext_type, m)
+convergence_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = convergence_check(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
@@ -230,9 +237,9 @@ $(SIGNATURES)
 Provides a hook for extensions to EAGO as opposed to standard global, local,
 or linear solvers.
 """
-optimize_hook!(t::ExtensionType, m::Optimizer) = nothing
+optimize_hook!(t::ExtensionType, m::GlobalOptimizer) = nothing
 
-function store_candidate_solution!(m::Optimizer)
+function store_candidate_solution!(m::GlobalOptimizer)
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
         m._feasible_solution_found = true
         m._first_solution_node = m._maximum_node_id
@@ -242,7 +249,7 @@ function store_candidate_solution!(m::Optimizer)
     return
 end
 
-function set_global_lower_bound!(m::Optimizer)
+function set_global_lower_bound!(m::GlobalOptimizer)
     if !isempty(m._stack)
         n = minimum(m._stack)
         lower_bound = n.lower_bound
@@ -258,7 +265,7 @@ $(TYPEDSIGNATURES)
 
 Solves the branch and bound problem with the input EAGO optimizer object.
 """
-function global_solve!(m::Optimizer)
+function global_solve!(m::GlobalOptimizer)
 
     m._iteration_count = 1
     m._node_count = 1
@@ -320,4 +327,27 @@ function global_solve!(m::Optimizer)
     print_solution!(m)
 end
 
-optimize!(::MINCVX, m::Optimizer) = global_solve!(m)
+function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    g = m._global_optimizer
+    
+    m._termination_status_code = g._termination_status_code
+    m._result_status_code      = g._result_status_code
+
+    m._run_time = g._run_time
+    m._node_count = g._maximum_node_id
+
+
+    if g._input_problem._optimization_sense == MOI.MIN_SENSE
+        m._objective_bound = g._global_lower_bound
+        m._objective_value = g._global_upper_bound
+    end
+    m._objective_bound = -g._global_upper_bound
+    m._objective_value = -g._global_lower_bound
+    return
+end
+
+function optimize!(::MINCVX, m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    global_solve!(m._global_optimizer)
+    unpack_global_solution!(m)
+    return
+end

@@ -49,9 +49,9 @@ $(FUNCTIONNAME)
 
 Excludes OBBT on variable indices that are tight for the solution of the relaxation.
 """
-function trivial_filtering!(m::Optimizer, n::NodeBB)
+function trivial_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType} 
 
-    d = m.relaxed_optimizer
+    d = _relaxed_optimizer(m)
     obbt_tolerance = m._parameters.obbt_tolerance
     m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
     m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
@@ -64,7 +64,7 @@ function trivial_filtering!(m::Optimizer, n::NodeBB)
         for j = 1:length(m._obbt_working_lower_index)
             if @inbounds m._obbt_working_lower_index[j]
                 vi = @inbounds m._relaxed_variable_index[j]
-                diff = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), vi)
+                diff = MOI.get(d, MOI.VariablePrimal(), vi)
                 diff -= @inbounds n.lower_variable_bounds[j]
                 if abs(diff) <= obbt_tolerance
                     @inbounds m._obbt_working_lower_index[j] = false
@@ -74,7 +74,7 @@ function trivial_filtering!(m::Optimizer, n::NodeBB)
         for j = 1:length(m._obbt_working_upper_index)
             if @inbounds m._obbt_working_upper_index[j]
                 vi = @inbounds m._relaxed_variable_index[j]
-                diff = -MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), vi)
+                diff = -MOI.get(d, MOI.VariablePrimal(), vi)
                 diff += @inbounds n.upper_variable_bounds[j]
                 if abs(diff) <= obbt_tolerance
                     @inbounds m._obbt_working_upper_index[j] = false
@@ -104,10 +104,10 @@ $(FUNCTIONNAME)
 
 Excludes OBBT on variable indices after a search in a filtering direction.
 """
-function aggressive_filtering!(m::Optimizer, n::NodeBB)
+function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType}
 
     # Initial filtering vector (negative one direction per remark in Gleixner2017)
-    d = m.relaxed_optimizer
+    d = _relaxed_optimizer(m)
     variable_number = m._working_problem._variable_count
     v = -ones(variable_number)
 
@@ -159,7 +159,7 @@ function aggressive_filtering!(m::Optimizer, n::NodeBB)
         MOI.set(d, MOI.ObjectiveFunction{SAF}(), saf)
 
         # Optimizes the problem and if successful filter additional bounds
-        MOI.optimize!(m.relaxed_optimizer)
+        MOI.optimize!(d)
 
         m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
         m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
@@ -193,7 +193,7 @@ end
 """
 $(FUNCTIONNAME)
 """
-function set_reference_point!(m::Optimizer)
+function set_reference_point!(m::GlobalOptimizer)
 
     wp = m._working_problem
     evaluator = wp._relaxed_evaluator
@@ -229,15 +229,15 @@ Performs OBBT with filtering and greedy ordering as detailed in:
 Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731.
 https://doi.org/10.1007/s10898-016-0450-4
 """
-function obbt!(m::Optimizer)
+function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
     feasibility = true
 
     n = m._current_node
     branch_to_sol_map = m._branch_to_sol_map
-    d = m.relaxed_optimizer
+    d = _relaxed_optimizer(m)
 
-    relax_problem!(m::Optimizer)
+    relax_problem!(m)
     MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     MOI.optimize!(d)
 
@@ -408,7 +408,7 @@ end
 """
 $(FUNCTIONNAME)
 """
-function load_fbbt_buffer!(m::Optimizer)
+function load_fbbt_buffer!(m::GlobalOptimizer)
     for i = 1:m._working_problem._variable_count
         m._lower_fbbt_buffer[i] = _lower_bound(FullVar(), m, i)
         m._upper_fbbt_buffer[i] = _upper_bound(FullVar(), m, i)
@@ -419,7 +419,7 @@ end
 """
 $(FUNCTIONNAME)
 """
-function unpack_fbbt_buffer!(m::Optimizer)
+function unpack_fbbt_buffer!(m::GlobalOptimizer)
 
     n = m._current_node
     sol_to_branch = m._sol_to_branch_map
@@ -449,7 +449,7 @@ Performs feasibility-based bound tightening on a back-end constraint and returns
 """
 function fbbt! end
 
-function fbbt!(m::Optimizer, f::AffineFunctionIneq)
+function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
 
     # compute full sum
     lower_bounds = m._lower_fbbt_buffer
@@ -513,7 +513,7 @@ function fbbt!(m::Optimizer, f::AffineFunctionIneq)
     return true
 end
 
-function fbbt!(m::Optimizer, f::AffineFunctionEq)
+function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
 
     # compute full sum
     lower_bounds = m._lower_fbbt_buffer
@@ -591,7 +591,7 @@ function fbbt!(m::Optimizer, f::AffineFunctionEq)
     return true
 end
 
-cp_condition(m::Optimizer) = false
+cp_condition(m::GlobalOptimizer) = false
 
 _propagate_constraint!(d, f) = true
 function _propagate_constraint!(d, f::BufferedNonlinearFunction)
@@ -604,7 +604,7 @@ end
 Performs bound tightening based on forward/reverse interval and/or McCormick passes. This routine
 resets the current node with new interval bounds.
 """
-function set_constraint_propagation_fbbt!(m::Optimizer)
+function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     feasible_flag = true
 
     wp = m._working_problem

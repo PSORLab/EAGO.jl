@@ -18,7 +18,7 @@ Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_toleranc
 This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
 tolerance (local problem is minimum).
 """
-function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
+function stored_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
     adj_atol = d._parameters.absolute_tolerance/100.0
     adj_rtol = d._parameters.relative_tolerance/100.0
     if v > 0.0
@@ -30,10 +30,10 @@ function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
     return nothing
 end
 
-function _update_upper_variables!(d, m::Optimizer)
+function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     for i = 1:_variable_num(FullVar(), m)
         v = MOI.SingleVariable(m._upper_variables[i])
-        if !_is_integer(FullVar(), m, i)
+        if !is_integer(FullVar(), m, i)
             vi = _variable_info(m,i)
             l  = _lower_bound(FullVar(), m, i)
             u  = _upper_bound(FullVar(), m, i)
@@ -56,7 +56,7 @@ function _finite_mid(l::T, u::T) where T
     (isfinite(l) && isfinite(u)) && return 0.5*(l + u)
     isfinite(l) ? l : (isfinite(u) ? u : zero(T))
 end
-function _set_starting_point!(d, m::Optimizer)
+function _set_starting_point!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     for i = 1:_variable_num(FullVar(), m)
         l  = _lower_bound(FullVar(), m, i)
         u  = _upper_bound(FullVar(), m, i)
@@ -98,7 +98,7 @@ function local_problem_status(t::MOI.TerminationStatusCode,
     return LRS_OTHER
 end
 
-function _unpack_local_nlp_solve!(m::Optimizer, opt::T) where T
+function _unpack_local_nlp_solve!(m::GlobalOptimizer, opt::T) where T
     tstatus = MOI.get(opt, MOI.TerminationStatus())
     pstatus = MOI.get(opt, MOI.PrimalStatus())
     m._upper_termination_status = tstatus
@@ -121,9 +121,9 @@ end
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
 """
-function solve_local_nlp!(m::Optimizer)
+function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
-    upper_optimizer = m.upper_optimizer
+    upper_optimizer = _upper_optimizer(m)
     MOI.empty!(upper_optimizer)
 
     for i = 1:m._working_problem._variable_count
@@ -157,4 +157,4 @@ function solve_local_nlp!(m::Optimizer)
     _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 
-optimize!(::DIFF_CVX, m::Optimizer) = solve_local_nlp!(m)
+optimize!(::DIFF_CVX, m::GlobalOptimizer) = solve_local_nlp!(m)

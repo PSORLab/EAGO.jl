@@ -6,9 +6,16 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/types/incremental.jl
-# A type-stable wrapper for optimizers used by EAGO to enable bridging and
-# incremental loading.
+# A type-stable wrapper with for optimizers used by EAGO to enable bridging and
+# incremental loading. This is taylored to the internal routines used by EAGO.jl
+# so methods may be specialized by optimizer types and error checking is often
+# avoided.
 #############################################################################
+
+#=
+mutable struct IncrementalCache{S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer}
+end
+=#
 
 """
     Incremental{Q,S}
@@ -18,19 +25,18 @@ modification of solvers that don't inherently suppport this. Explicitly checks
 support of MOI functionality used in EAGO. For `Q = Val{true}`, the subsolver
 supports incremental loading. For `Q = Val{false}`, the subsolver does not.
 """
-mutable struct Incremental{Q,S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
+mutable struct Incremental{S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
     optimizer::MOIB.LazyBridgeOptimizer{S}
     cache::MOIB.LazyBridgeOptimizer{MOIU.CachingOptimizer{S,MOIU.GenericModel{Float64,MOIU.ModelFunctionConstraints{Float64}}}}
 end
 function Incremental(m::S) where S <: MOI.AbstractOptimizer
-    is_incremental = MOIU.supports_default_copy_to(m, false)
     b = MOIB.full_bridge_optimizer(m, Float64)
     cache = MOIB.full_bridge_optimizer(MOIU.CachingOptimizer(MOIU.Model{Float64}(), m), Float64)
-    return Incremental{Val{is_incremental},typeof(m)}(b, cache)
+    return Incremental{S}(b, cache)
 end
 
-_get_storage(d::Incremental{Val{true},S}) where S = d.optimizer
-_get_storage(d::Incremental{Val{false},S}) where S = d.cache
+_is_incremental(x) = false
+_get_storage(d::Incremental{S}) where S = _is_incremental(S) ? d.optimizer : d.cache
 
 # Set attributes
 for F in (SV, SAF, SQF)
@@ -67,13 +73,21 @@ end
 function MOI.add_variable(d::Incremental)
     MOI.add_variable(_get_storage(d))::VI
 end
-function MOI.add_constraint(d::Incremental, f::SV, s::T) where T<:Union{LT,GT,ET,IT}
-    MOI.add_constraint(_get_storage(d), f, s)::CI{SV,T}
-end
 
-function MOI.add_constraint(d::Incremental, f::R, s::T) where {R<:Union{SAF,SQF},T<:Union{LT,GT,ET,IT}}
-    MOI.add_constraint(_get_storage(d), f, s)::CI{R,T}
-end
+MOI.add_constraint(d::Incremental, f::SV, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,LT}
+MOI.add_constraint(d::Incremental, f::SV, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,GT}
+MOI.add_constraint(d::Incremental, f::SV, s::ET) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,ET}
+MOI.add_constraint(d::Incremental, f::SV, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,IT}
+
+MOI.add_constraint(d::Incremental, f::SAF, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,LT}
+MOI.add_constraint(d::Incremental, f::SAF, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,GT}
+MOI.add_constraint(d::Incremental, f::SAF, s::ET) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,ET}
+MOI.add_constraint(d::Incremental, f::SAF, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,IT}
+
+MOI.add_constraint(d::Incremental, f::SQF, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SQF,LT}
+MOI.add_constraint(d::Incremental, f::SQF, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SQF,GT}
+MOI.add_constraint(d::Incremental, f::SQF, s::ET) = MOI.add_constraint(_get_storage(d), f, s)::CI{SQF,ET}
+MOI.add_constraint(d::Incremental, f::SQF, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SQF,IT}
 
 # Delete
 function MOI.delete(d::Incremental, ci::CI{SAF,LT})
@@ -88,46 +102,44 @@ function MOI.set(d::Incremental, ::MOI.ConstraintSet, ci::CI{SV,T}, s::T) where 
 end
 
 # Get attributes
-function MOI.get(d::Incremental{Q,T}, ::MOI.TerminationStatus) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.TerminationStatus) where S
     MOI.get(d.optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
 end
-function MOI.get(d::Incremental{Q,T}, ::MOI.PrimalStatus) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.PrimalStatus) where S
     MOI.get(d.optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
 end
-function MOI.get(d::Incremental{Q,T}, ::MOI.DualStatus) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.DualStatus) where S
     MOI.get(d.optimizer, MOI.DualStatus())::MOI.ResultStatusCode
 end
-function MOI.get(d::Incremental{Q,T}, ::MOI.ObjectiveValue) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.ObjectiveValue) where S
     MOI.get(d.optimizer, MOI.ObjectiveValue())::Float64
 end
-function MOI.get(d::Incremental{Q,T}, ::MOI.DualObjectiveValue) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.DualObjectiveValue) where S
     MOI.get(d.optimizer, MOI.DualObjectiveValue())::Float64
 end
 
-function MOI.get(d::Incremental{Q,T}, ::MOI.VariablePrimal, vi::VI) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.VariablePrimal, vi::VI) where S
     MOI.get(d.optimizer, MOI.VariablePrimal(), vi)::Float64
 end
-function MOI.get(d::Incremental{Q,T}, ::MOI.ConstraintDual, ci::Union{CI{SV,LT},CI{SV,GT}}) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.ConstraintDual, ci::Union{CI{SV,LT},CI{SV,GT}}) where S
     MOI.get(d.optimizer, MOI.ConstraintDual(), ci)::Float64
 end
-function MOI.get(d::Incremental{Q,T}, ::MOI.ResultCount) where {Q,T}
+function MOI.get(d::Incremental{S}, ::MOI.ResultCount) where S
     MOI.get(d.optimizer, MOI.ResultCount())::Int
 end
-function MOI.get(d::Incremental{Q,S}, n::MOI.SolverName) where {Q, S}
+function MOI.get(d::Incremental{S}, n::MOI.SolverName) where S
     MOI.get(d.optimizer, n)::String
 end
 
 # define optimize!
-function MOI.optimize!(d::Incremental{Val{:true},S}) where S
-    MOI.optimize!(d.optimizer)
-    return
-end
-function MOI.optimize!(d::Incremental{Val{:false},S}) where S
-    MOI.optimize!(d.cache)
+function MOI.optimize!(d::Incremental{S}) where S
+    MOI.optimize!(_get_storage(d))
     return
 end
 
-function MOI.empty!(d::Incremental{Q,S}) where {Q, S}
+function MOI.empty!(d::Incremental{S}) where S
     MOI.empty!(_get_storage(d))
     return
 end
+
+MOI.is_empty(d::Incremental{S}) where S = MOI.is_empty(_get_storage(d))

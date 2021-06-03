@@ -48,7 +48,7 @@ end
 has_upper_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_upper_bound
 has_lower_bound(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].has_lower_bound
 is_fixed(m::Optimizer, vi::MOI.VariableIndex) = m._input_problem._variable_info[vi.value].is_fixed
-_is_integer(m::Optimizer, i::Int) = _is_integer(m._input_problem._variable_info[i])
+is_integer(m::Optimizer, i::Int) = is_integer(m._input_problem._variable_info[i])
 
 ##### Add unconstrained variables
 function MOI.add_variable(m::Optimizer)
@@ -124,41 +124,49 @@ function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::SOC)
     return CI{VECOFVAR, SOC}(m._input_problem._last_constraint_index)
 end
 =#
+function MOI.empty!(m::Optimizer{R,S,T}) where {R,S,T}
 
-const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :relaxed_optimizer_kwargs, :upper_optimizer,
-                                         :enable_optimize_hook, :ext, :ext_type, :_parameters]
-const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem, :_branch_cost]
-const EAGO_MODEL_NOT_STRUCT_ATTRIBUTES = setdiff(fieldnames(Optimizer), union(EAGO_OPTIMIZER_ATTRIBUTES,
-                                                                              EAGO_MODEL_STRUCT_ATTRIBUTES))
+    MOI.empty!(m.subsolver_block)
+    MOI.empty!(m._global_optimizer)
+    m._input_problem = InputProblem()
+    m._working_problem = ParsedProblem()
 
-function MOI.empty!(m::Optimizer)
+    m._termination_status_code = MOI.OPTIMIZE_NOT_CALLED
+    m._result_status_code = MOI.OTHER_RESULT_STATUS
 
-    # create a new empty optimizer and copy fields to m
-    new_optimizer = Optimizer()
-    for field in union(EAGO_MODEL_STRUCT_ATTRIBUTES, EAGO_MODEL_NOT_STRUCT_ATTRIBUTES)
-        setfield!(m, field, getfield(new_optimizer, field))
-    end
+    # set constructor reset on empty! and  to zero in initial parse! in parse.jl
+    m._run_time = 0.0
+
+    m._objective_value  = -Inf
+    m._objective_bound  =  Inf
+    m. _relative_gap     = Inf
+    m._iteration_count  = 0
+    m._node_count       = 0
 
     return nothing
 end
 
-function MOI.is_empty(m::Optimizer)
+function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
+                           
+    flag = true
+    flag &= MOI.is_empty(m._global_optimizer)
+    flag &= isempty(m._input_problem)
+    flag &= isempty(m._working_problem)
+    flag &= isempty(m.subsolver_block)
 
-    is_empty_flag = uninitialized(_current_node(m))
-    is_empty_flag &= isempty(m._stack)
-    is_empty_flag &= isempty(m._log)
-    is_empty_flag &= isempty(m._input_problem)
-    is_empty_flag &= isempty(m._working_problem)
+    flag &= m._termination_status_code === MOI.OPTIMIZE_NOT_CALLED
+    flag &= m._result_status_code === MOI.OTHER_RESULT_STATUS
 
-    new_optimizer = Optimizer()
-    for field in EAGO_MODEL_NOT_STRUCT_ATTRIBUTES
-        if getfield(m, field) != getfield(new_optimizer, field)
-            is_empty_flag = false
-            break
-        end
-    end
+    # set constructor reset on empty! and  to zero in initial parse! in parse.jl
+    flag &= m._run_time == 0.0
 
-    return is_empty_flag
+    flag &= m._objective_value  == -Inf
+    flag &= m._objective_bound  ==  Inf
+    flag &= m. _relative_gap    == Inf
+    flag &= m._iteration_count  == 0
+    flag &= m._node_count       == 0
+
+    return flag
 end
 
 function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
@@ -191,22 +199,10 @@ function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
     return [MOI.VariableIndex(i) for i = 1:length(m._input_problem._variable_info)]
 end
 
-function MOI.get(m::Optimizer, ::MOI.ObjectiveValue)
-    if m._input_problem._optimization_sense == MOI.MIN_SENSE
-        return m._global_upper_bound
-    end
-    -m._global_lower_bound
-end
+MOI.get(m::Optimizer, ::MOI.ObjectiveValue) = m._objective_value
 
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
-
-function MOI.get(m::Optimizer, ::MOI.ObjectiveBound)
-    if m._input_problem._optimization_sense == MOI.MIN_SENSE
-        return m._global_lower_bound
-    end
-    -m._global_upper_bound
-end
-
+MOI.get(m::Optimizer, ::MOI.ObjectiveBound) = m._objective_bound
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
     b = MOI.get(m, MOI.ObjectiveBound())
     v = MOI.get(m, MOI.ObjectiveValue())
@@ -217,14 +213,13 @@ MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimizati
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
-MOI.get(m::Optimizer, ::MOI.NodeCount) = m._maximum_node_id
+MOI.get(m::Optimizer, ::MOI.NodeCount) = m._node_count
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
 MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m.time_limit
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
-    @show model._continuous_solution
-    return model._continuous_solution[vi.value]
+    return model._global_optimizer._continuous_solution[vi.value]
 end
 
 const EAGO_PARAMETERS = fieldnames(EAGOParameters)

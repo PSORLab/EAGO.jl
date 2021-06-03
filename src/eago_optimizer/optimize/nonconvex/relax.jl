@@ -19,7 +19,7 @@ ensure that only numerically safe affine relaxations are added. Checks that
 i) ``|b| <= safe b`, ii) `safe_l <= abs(ai) <= safe u`, and iii) violates
 `safe_l <= abs(ai/aj) <= safe_u`.
 """
-function is_safe_cut!(m::Optimizer, f::SAF)
+function is_safe_cut!(m::GlobalOptimizer, f::SAF)
 
     safe_l = m._parameters.cut_safe_l
     safe_u = m._parameters.cut_safe_u
@@ -44,11 +44,11 @@ function is_safe_cut!(m::Optimizer, f::SAF)
     return true
 end
 
-function add_affine_relaxation!(m::Optimizer, f::SAF, check_safe::Bool)
+function add_affine_relaxation!(m::GlobalOptimizer{R,S,Q}, f::SAF, check_safe::Bool) where {R,S,Q<:ExtensionType}
     if !check_safe || is_safe_cut!(m, f)
         s = LT(-f.constant + _constraint_tol(m))
         f.constant = 0.0
-        ci = MOI.add_constraint(m.relaxed_optimizer, f, s)::CI{SAF,LT}
+        ci = MOI.add_constraint(_relaxed_optimizer(m), f, s)::CI{SAF,LT}
         push!(m._affine_relax_ci, ci)
     end
     return
@@ -68,7 +68,7 @@ Default routine for relaxing quadratic constraint `func < 0.0` on node `n`.
 Takes affine bounds of convex part at point `x0` and secant line bounds on
 concave parts.
 """
-function affine_relax_quadratic!(m::Optimizer, func::SQF, buffer::Dict{Int,Float64}, saf::SAF)
+function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int,Float64}, saf::SAF) where {R,S,Q<:ExtensionType}
 
     quadratic_constant = func.constant
 
@@ -145,7 +145,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::Optimizer, f::BufferedQuadraticIneq, k::Int, check_safe::Bool)
+function relax!(m::GlobalOptimizer, f::BufferedQuadraticIneq, k::Int, check_safe::Bool)
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
     add_affine_relaxation!(m, f.saf, check_safe)
     return
@@ -154,7 +154,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::Optimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
+function relax!(m::GlobalOptimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
     add_affine_relaxation!(m, f.saf, check_safe)
@@ -204,8 +204,8 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function check_set_affine_nl!(m::Optimizer, f::BufferedNonlinearFunction{N,T}, finite_cut_generated::Bool, check_safe::Bool) where {N,T<:RelaxTag}
-    d = m.relaxed_optimizer
+function check_set_affine_nl!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{N,T}, finite_cut_generated::Bool, check_safe::Bool) where {R,S,N,T<:RelaxTag,Q<:ExtensionType}
+    d = _relaxed_optimizer(m)
     if finite_cut_generated
         if !check_safe || is_safe_cut!(m, f.saf)
             lt = LT(-f.saf.constant + _constraint_tol(m))
@@ -220,11 +220,11 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::Optimizer, f::BufferedNonlinearFunction{N,T}, k::Int, check_safe::Bool) where {N,T<:RelaxTag}
+function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{N,T}, k::Int, check_safe::Bool) where {R,S,N,T<:RelaxTag,Q<:ExtensionType}
     d = m._working_problem._relaxed_evaluator
     check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
     check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
     return
 end
 
-relax!(m::Optimizer, f::Union{Nothing, SV, AffineFunctionIneq}, k::Int, b::Bool) = nothing
+relax!(m::GlobalOptimizer, f::Union{Nothing, SV, AffineFunctionIneq}, k::Int, b::Bool) = nothing

@@ -13,7 +13,7 @@
 #############################################################################
 
 include(joinpath(@__DIR__, "register_special.jl"))
-include(joinpath(@__DIR__, "graph", "abstract_graph.jl"))
+include(joinpath(@__DIR__, "graph", "graph.jl"))
 include(joinpath(@__DIR__, "constant", "constant.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 
@@ -134,7 +134,6 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     variable_values::VariableValues{Float64} = VariableValues{Float64}()
     subgrad_tighten::Bool = false
     reverse_subgrad_tighten::Bool = false
-    ctx::GuardCtx = GuardCtx()
     subexpressions::Vector{NonlinearExpression} = NonlinearExpression[]
     subexpressions_eval::Vector{Bool}           = Bool[]
     is_post::Bool = false

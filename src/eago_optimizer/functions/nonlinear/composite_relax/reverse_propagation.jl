@@ -9,7 +9,7 @@
 # Functions used to compute reverse pass of nonlinear functions.
 #############################################################################
 
-function r_init!(t::Relax, g::DirectedTree, c::RelaxCache{N,T}) where {N,T<:RelaxTag}
+function r_init!(t::Relax, g::DAT, c::RelaxCache{N,T}) where {N,T<:RelaxTag}
     if !_is_num(c, 1)
         z = _set(c, 1) ∩ g.sink_bnd
         _store_set!(c, z, 1)
@@ -17,7 +17,7 @@ function r_init!(t::Relax, g::DirectedTree, c::RelaxCache{N,T}) where {N,T<:Rela
     return !isempty(z)
 end
 
-function rprop!(t::Relax, v::Variable, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function rprop!(t::Relax, v::Variable, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     i = _first_index(g, k)
     x = _val(c, i)
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, _lbd(c, i), _ubd(c, i))
@@ -28,7 +28,7 @@ function rprop!(t::Relax, v::Variable, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int)
     return !isempty(z)
 end
 
-function rprop!(t::Relax, v::Subexpression, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function rprop!(t::Relax, v::Subexpression, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     _store_subexpression!(c, _set(c, k), _first_index(g, k))
     return true
 end
@@ -40,7 +40,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = x + y` which updates x & y.
 """
-function rprop_2!(t::Relax, v::Val{PLUS}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function rprop_2!(t::Relax, v::Val{PLUS}, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
 
     _is_num(c, k) && (return true)
     x = _child(g, 1, k)
@@ -72,7 +72,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = +(x,y,z...)` which updates x, y, z and so on.
 """
-function rprop_n!(t::Relax, v::Val{PLUS}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function rprop_n!(t::Relax, v::Val{PLUS}, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     # out loops makes a temporary sum (minus one argument)
     # a reverse is then compute with respect to this argument
     count = 0
@@ -103,7 +103,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = x * y` which updates x & y.
 """
-function rprop_2!(t::Relax, v::Val{MULT}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function rprop_2!(t::Relax, v::Val{MULT}, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
 
     _is_num(b,k) && (return true)
     x = _child(g, 1, k)
@@ -135,7 +135,7 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evalution of node representing `n = *(x,y,z...)` which updates x, y, z and so on.
 """
-function rprop_n!(t::Relax, v::Val{MULT}, g::ALLGRAPHS, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function rprop_n!(t::Relax, v::Val{MULT}, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
     # a reverse is then compute with respect to this argument
     count = 0
     children_idx = _children(g, k)
@@ -164,7 +164,7 @@ for (f, fc, F) in ((-, MINUS, IntervalContractors.minus_rev),
                    (^, POW, IntervalContractors.power_rev),
                    (/, DIV, IntervalContractors.div_rev))
     eval(quote 
-        function rprop!(t::Relax, v::Val{$fc}, g::ALLGRAPHS, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+        function rprop!(t::Relax, v::Val{$fc}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
             _is_num(b,k) && (return true)
             x = _child(g, 1, k)
             y = _child(g, 2, k)
@@ -192,13 +192,13 @@ for (f, fc, F) in ((-, MINUS, IntervalContractors.minus_rev),
     end)
 end
 
-rprop!(t::Relax, v::Val{USER}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true
-rprop!(t::Relax, v::Val{USERN}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true
+rprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache, k::Int) = true
+rprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache, k::Int) = true
 
 for ft in UNIVARIATE_ATOM_TYPES
     f = UNIVARIATE_ATOM_DICT[ft]
     if f == :user || f == :+ || f == :-
         continue
     end
-    @eval rprop!(t::Relax, v::Val{$ft}, g::ALLGRAPHS, b::RelaxCache, k::Int) = true
+    @eval rprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache, k::Int) = true
 end

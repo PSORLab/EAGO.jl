@@ -3,7 +3,7 @@ $(FUNCTIONNAME)
 
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
-function objective_cut!(m::Optimizer, check_safe::Bool)
+function objective_cut!(m::GlobalOptimizer, check_safe::Bool)
     wp = m._working_problem
     f = wp._objective_saf
     u = m._global_upper_bound
@@ -12,7 +12,7 @@ function objective_cut!(m::Optimizer, check_safe::Bool)
         f.constant = 0.0
         if check_safe && is_safe_cut!(m, f)
             s = LT(u - b + _constraint_tol(m))
-            c = MOI.add_constraint(m.relaxed_optimizer, f, s)
+            c = MOI.add_constraint(_relaxed_optimizer(m), f, s)
             m._affine_objective_cut_ci = c
         end
         f.constant = b
@@ -63,8 +63,8 @@ Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
 `xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
 optimizer.
 """
-function update_relaxed_problem_box!(m::Optimizer)
-    d = m.relaxed_optimizer
+function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    d = _relaxed_optimizer(m)
     for (c,i) in m._relaxed_variable_eq
         MOI.set(d, MOI.ConstraintSet(), c, ET(_lower_bound(BranchVar(), m, i)))
     end
@@ -77,8 +77,8 @@ function update_relaxed_problem_box!(m::Optimizer)
     return
 end
 
-function reset_relaxation!(m::Optimizer)
-
+function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    d = _relaxed_optimizer(m)
     m._cut_iterations = 1
     m._obbt_performed_flag = false
     m._working_problem._relaxed_evaluator.is_first_eval = true
@@ -88,12 +88,12 @@ function reset_relaxation!(m::Optimizer)
     m._new_eval_constraint = true
 
     # delete added affine constraints
-    foreach(c -> MOI.delete(m.relaxed_optimizer, c)::Nothing, m._affine_relax_ci)
+    foreach(c -> MOI.delete(d, c), m._affine_relax_ci)
     empty!(m._affine_relax_ci)
 
     # delete objective cut
     if m._affine_objective_cut_ci !== nothing
-        MOI.delete(m.relaxed_optimizer, m._affine_objective_cut_ci)::Nothing
+        MOI.delete(d, m._affine_objective_cut_ci)
     end
 
     return
@@ -104,7 +104,7 @@ val_or_zero(x) = isnan(x) ? 0.0 : x
 $(FUNCTIONNAME)
 
 """
-function set_first_relax_point!(m::Optimizer)
+function set_first_relax_point!(m::GlobalOptimizer)
     if m._cut_iterations == 1
         m._working_problem._relaxed_evaluator.is_first_eval = true
         m._new_eval_constraint = true
@@ -127,7 +127,7 @@ to false indicating that an initial evaluation of the constraints has occurred. 
 the `objective_cut_on` flag is `true` then the `_new_eval_objective` flag is also
 set to `false` indicating that the objective expression was evaluated.
 """
-function relax_all_constraints!(t::ExtensionType, m::Optimizer, k::Int)
+function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
     check_safe = (k == 1) ? false : m._parameters.cut_safe_on
     wp = m._working_problem
     wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
@@ -139,10 +139,10 @@ function relax_all_constraints!(t::ExtensionType, m::Optimizer, k::Int)
     (k == 1) && objective_cut!(m, check_safe)
     return
 end
-relax_constraints!(t::ExtensionType, m::Optimizer, k::Int) = relax_all_constraints!(t, m, k)
-relax_constraints!(m::Optimizer, k::Int) = relax_constraints!(m.ext_type, m, k)
+relax_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int) = relax_all_constraints!(t, m, k)
+relax_constraints!(m::GlobalOptimizer{R,S,Q}, k::Int) where {R,S,Q<:ExtensionType} = relax_constraints!(_ext_typ(m), m, k)
 
-function relax_problem!(m::Optimizer)
+function relax_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     wp = m._working_problem
     if m._cut_iterations == 1
         reset_relaxation!(m)
@@ -158,7 +158,7 @@ function relax_problem!(m::Optimizer)
         set_first_relax_point!(m)
     end
     relax_constraints!(m, m._cut_iterations)
-    MOI.set(m.relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(_relaxed_optimizer(m), MOI.ObjectiveSense(), MOI.MIN_SENSE)
     return
 end
 
@@ -170,8 +170,8 @@ Retrieves the lower and upper duals for variable bounds from the
 `relaxed_optimizer` and sets the appropriate values in the
 `_lower_lvd` and `_lower_uvd` storage fields.
 """
-function set_dual!(m::Optimizer)
-    d = m.relaxed_optimizer
+function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    d = _relaxed_optimizer(m)
     for (c, i) in m._relaxed_variable_lt
         m._lower_uvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
     end
@@ -181,7 +181,7 @@ function set_dual!(m::Optimizer)
     return
 end
 
-function interval_objective_bound!(m::Optimizer)
+function interval_objective_bound!(m::GlobalOptimizer)
     fL, fU = bound_objective(m)
     fv = _is_input_min(m) ? fL : -fU
     if fv > m._lower_objective_value
@@ -201,7 +201,7 @@ calculation. This is called when the optimizer used to compute the lower bound
 does not return a termination and primal status code indicating that it
 successfully solved the relaxation to a globally optimal point.
 """
-function fallback_interval_lower_bound!(m::Optimizer, n::NodeBB)
+function fallback_interval_lower_bound!(m::GlobalOptimizer, n::NodeBB)
     feas = true
     wp = m._working_problem
     if !cp_condition(m)
@@ -229,7 +229,7 @@ Runs interval, linear, quadratic contractor methods followed by obbt and a
 constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
 """
-function preprocess!(t::ExtensionType, m::Optimizer)
+function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
     feasible_flag = true
     reset_relaxation!(m)
@@ -268,7 +268,7 @@ function preprocess!(t::ExtensionType, m::Optimizer)
     m._preprocess_feasibility = feasible_flag
     return
 end
-preprocess!(m::Optimizer) = preprocess!(m.ext_type, m)
+preprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = preprocess!(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
@@ -278,7 +278,7 @@ cut at. If no cut should be added the constraints not modified in place are
 deleted from the relaxed optimizer and the solution is compared with the
 interval lower bound. The best lower bound is then used.
 """
-function cut_condition(t::ExtensionType, m::Optimizer)
+function cut_condition(t::ExtensionType, m::GlobalOptimizer)
     obj_old = m._last_cut_objective
     obj_new = m._lower_objective_value
     flag = m._cut_iterations < _cut_max_iterations(m)
@@ -286,7 +286,7 @@ function cut_condition(t::ExtensionType, m::Optimizer)
     flag &= obj_new - obj_old > _cut_ϵ_rel(m)*abs(obj_new)
     return flag
 end
-cut_condition(m::Optimizer)::Bool = cut_condition(m.ext_type, m)
+cut_condition(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = cut_condition(_ext_typ(m), m)
 
 """
 $(SIGNATURES)
@@ -294,23 +294,24 @@ $(SIGNATURES)
 Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
-function lower_problem!(t::ExtensionType, m::Optimizer)
+function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    d = _relaxed_optimizer(m)
     m._last_cut_objective = typemin(Float64)
     m._lower_objective_value = typemin(Float64)
     set_first_relax_point!(m)
-    MOI.set(m.relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
+    MOI.set(d, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
     while true
         relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
-        MOI.optimize!(m.relaxed_optimizer)
-        t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-        p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-        d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+        MOI.optimize!(d)
+        t_status = MOI.get(d, MOI.TerminationStatus())
+        p_status = MOI.get(d, MOI.PrimalStatus())
+        d_status = MOI.get(d, MOI.DualStatus())
         status = relaxed_problem_status(t_status, p_status, d_status)
         if status != RRS_OPTIMAL
             break
         end
-        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.ObjectiveValue())
+        m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
         if cut_condition(m)
             m._cut_iterations += 1
         else
@@ -320,9 +321,9 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
 
     # activate integrality conditions for MIP & solve MIP subproblem
 
-    t_status = MOI.get(m.relaxed_optimizer, MOI.TerminationStatus())
-    p_status = MOI.get(m.relaxed_optimizer, MOI.PrimalStatus())
-    d_status = MOI.get(m.relaxed_optimizer, MOI.DualStatus())
+    t_status = MOI.get(d, MOI.TerminationStatus())
+    p_status = MOI.get(d, MOI.PrimalStatus())
+    d_status = MOI.get(d, MOI.DualStatus())
     m._lower_termination_status = t_status
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
@@ -339,12 +340,12 @@ function lower_problem!(t::ExtensionType, m::Optimizer)
     set_dual!(m)
     m._lower_feasibility = true
     for i = 1:m._working_problem._variable_count
-         m._lower_solution[i] = MOI.get(m.relaxed_optimizer, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+         m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
     end
     if status == RRS_DUAL_FEASIBLE
-        m._lower_objective_value = MOI.get(m.relaxed_optimizer, MOI.DualObjectiveValue())
+        m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
     end
     interval_objective_bound!(m)
     return
 end
-lower_problem!(m::Optimizer) = lower_problem!(m.ext_type, m)
+lower_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = lower_problem!(_ext_typ(m), m)

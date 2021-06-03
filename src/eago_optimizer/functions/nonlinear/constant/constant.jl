@@ -19,9 +19,9 @@ end
 ConstantCache(n::Int) = ConstantCache(zeros(n), fill(false, n))
 
 _num(b::ConstantCache) = b._num
-_num(b::ConstantCache, i::Int) = getindex(b._num, i)
+_num(b::ConstantCache, i) = b._num[i]
 _is_num(b::ConstantCache) = b._is_num
-_is_num(b::ConstantCache, i::Int) = getindex(b._is_num, i)
+_is_num(b::ConstantCache, i) = b._is_num[i]
 
 function _store_data!(b::ConstantCache, i::Int, v::ConstData)
     b._num[i] = v._num
@@ -29,7 +29,7 @@ function _store_data!(b::ConstantCache, i::Int, v::ConstData)
     return
 end
 
-function initialize!(c::ConstantCache, g::ALLGRAPHS)
+function initialize!(c::ConstantCache, g::DAT)
     n = _node_count(g)
     c._num     = zeros(Float64, n)
     c._is_num  = zeros(Bool, n)
@@ -48,7 +48,7 @@ end
 
 for (F,C) in ((:+, PLUS), (:*, MULT), (:min, MIN), (:max, MAX), (:usern, USERN))
 eval(quote
-    function fprop!(::ConstInfo, ::Val{$C}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+    function fprop!(::ConstInfo, ::Val{$C}, g::DAT, b::ConstantCache, k::Int)
         clist = _children(g, k)
         if any(i -> !_is_num(b, i), clist)
             z = ConstData()
@@ -60,7 +60,7 @@ eval(quote
 end)
 end
 
-function fprop_2!(::ConstInfo, ::Val{MINUS}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+function fprop_2!(::ConstInfo, ::Val{MINUS}, g::DAT, b::ConstantCache, k::Int)
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     if _is_num(b, x) && _is_num(b, y)
@@ -70,7 +70,7 @@ function fprop_2!(::ConstInfo, ::Val{MINUS}, g::ALLGRAPHS, b::ConstantCache, k::
     end
     store_data!(b, k, z)
 end
-function fprop_n!(::ConstInfo, ::Val{MINUS}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+function fprop_n!(::ConstInfo, ::Val{MINUS}, g::DAT, b::ConstantCache, k::Int)
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     if _is_num(b, x) && _is_num(b, y)
@@ -80,7 +80,7 @@ function fprop_n!(::ConstInfo, ::Val{MINUS}, g::ALLGRAPHS, b::ConstantCache, k::
     end
     store_data!(b, k, z)
 end
-function fprop!(::ConstInfo, ::Val{MINUS}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+function fprop!(::ConstInfo, ::Val{MINUS}, g::DAT, b::ConstantCache, k::Int)
     n = _arity(g, k)
     if n == 2
         return fprop_2!(ConstInfo(), Val(MINUS), g, b, k)
@@ -88,7 +88,7 @@ function fprop!(::ConstInfo, ::Val{MINUS}, g::ALLGRAPHS, b::ConstantCache, k::In
     fprop_n!(ConstInfo(), Val(MINUS), g, b, k)
 end
 
-function fprop!(::ConstInfo, ::Val{POW}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+function fprop!(::ConstInfo, ::Val{POW}, g::DAT, b::ConstantCache, k::Int)
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     xc = _num(b, x)
@@ -107,7 +107,7 @@ for F in BIVARIATE_ATOM_TYPES
         continue
     end
     eval(quote 
-        function fprop!(::ConstInfo, ::Val{$F}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+        function fprop!(::ConstInfo, ::Val{$F}, g::DAT, b::ConstantCache, k::Int)
             x = _child(g, 1, k)
             y = _child(g, 2, k)
             if _is_num(b, x) && _is_num(b, y)
@@ -126,7 +126,7 @@ for F in UNIVARIATE_ATOM_TYPES
         continue
     end
     eval(quote 
-        function fprop!(::ConstInfo, ::Val{$F}, g::ALLGRAPHS, b::ConstantCache, k::Int)
+        function fprop!(::ConstInfo, ::Val{$F}, g::DAT, b::ConstantCache, k::Int)
             x = _first_child(g, k)
             z = _is_num(b, x) ? ConstData() : ConstData(($f)(_num(b, x)), true)
             store_data!(b, k, z)
@@ -135,7 +135,7 @@ for F in UNIVARIATE_ATOM_TYPES
 end
 
 
-function fprop!(::ConstInfo, g::ALLGRAPHS, b::ConstantCache)
+function fprop!(::ConstInfo, g::DAT, b::ConstantCache)
     f_init!(t, g, b)
     for k = _node_count(g):-1:1
         if _is_unlocked(b, k)
@@ -152,7 +152,7 @@ function fprop!(::ConstInfo, g::ALLGRAPHS, b::ConstantCache)
     return
 end
 
-function rprop!(::ConstInfo, g::ALLGRAPHS, b::ConstantCache)
+function rprop!(::ConstInfo, g::DAT, b::ConstantCache)
     flag = r_init!(t, g, b)
     for k = 1:_node_count(g)
         if _is_unlocked(b, k)

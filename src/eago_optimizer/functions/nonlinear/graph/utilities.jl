@@ -22,6 +22,39 @@ function binary_switch(ids; is_forward = true)
     end
 end
 
+function Node(d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::OperatorRegistry)
+    nt = d.nodetype
+    i = d.index
+    if nt == JuMP._Derivatives.CALL
+        return _create_call_node(i, child_vec, c, op)
+    elseif nt == JuMP._Derivatives.CALLUNIVAR
+        return _create_call_node_uni(i, child_vec, c, op)
+    elseif nt == JuMP._Derivatives.VARIABLE
+        return Node(Variable(), i)
+    elseif nt == JuMP._Derivatives.VALUE
+        return Node(Constant(), i)
+    elseif nt == JuMP._Derivatives.PARAMETER
+        return Node(Parameter(), i)
+    elseif nt == JuMP._Derivatives.SUBEXPRESSION
+        return Node(Subexpression(), i)
+    elseif nt == JuMP._Derivatives.LOGIC
+        error("Unable to load JuMP expression. Logical operators not currently supported.")
+    elseif nt == JuMP._Derivatives.COMPARISON
+        error("Unable to load JuMP expression. Comparisons not currently supported.")
+    end
+    error("Node type = $nt not expected from JuMP.")
+end
+
+function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData}, op)
+    y = Vector{Node}(undef, length(x))
+    adj = JuMP._Derivatives.adjmat(x)
+    child_vec = rowvals(adj)
+    for i in eachindex(x)
+        y[i] = Node(x[i], child_vec, nzrange(adj, i), op)
+    end
+    return y
+end
+
 # Access gradient sparsity of JuMP storage.
 _sparsity(d::JuMP._FunctionStorage) = d.grad_sparsity
 _sparsity(d::JuMP._SubexpressionStorage) = d.sparsity
@@ -76,12 +109,13 @@ function linearity(nd::Vector{JuMP._Derivatives.NodeData},
 end
 
 function OperatorRegistry(d::JuMP._Derivatives.UserOperatorRegistry)
-    OperatorRegistry(Symbol[k for k in keys(d.multivariate_operator_to_id)],
-                     d.multivariate_operator_to_id,
-                     d.multivariate_operator_evaluator,
-                     Symbol[k for k in keys(d.univariate_operator_to_id)],
-                     d.univariate_operator_to_id,
-                     d.univariate_operator_f,
-                     d.univariate_operator_fprime,
-                     d.univariate_operator_fprimeprime)
+    mv_id = collect(keys(d.multivariate_operator_to_id))
+    mv_operator_to_id = d.multivariate_operator_to_id
+    mv_operator_evaluator = d.multivariate_operator_evaluator
+    u_operator_id = collect(keys(d.univariate_operator_to_id))
+    u_to_id = d.univariate_operator_to_id
+    u_to_f = d.univariate_operator_f
+    u_fprime = d.univariate_operator_fprime
+    u_fprimeprime = d.univariate_operator_fprimeprime
+    return OperatorRegistry(mv_id, mv_operator_to_id, mv_operator_evaluator, u_operator_id, u_to_id, u_to_f, u_fprime, u_fprimeprime)
 end

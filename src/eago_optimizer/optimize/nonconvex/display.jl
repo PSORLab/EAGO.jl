@@ -17,7 +17,7 @@ $(FUNCTIONNAME)
 Prints solution information for the B&B problem. Displays first node found, solution value,
 solution, and time spent solving subproblems.
 """
-function print_solution!(m::Optimizer)
+function print_solution!(m::GlobalOptimizer)
     if _verbosity(m) > 0
         println(" ")
         if m._end_state == GS_OPTIMAL
@@ -60,7 +60,7 @@ $(FUNCTIONNAME)
 
 Prints node information for the B&B problem. Node id, bound, and interval box.
 """
-function print_node!(m::Optimizer)
+function print_node!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
         n = m._current_node
         bound = _is_input_min(m) ? n.lower_bound : -n.lower_bound
@@ -80,7 +80,7 @@ $(FUNCTIONNAME)
 Prints the iteration information based on verbosity. The header is displayed
 every `header_interval`, the iteration info is displayed every `iteration_interval`.
 """
-function print_iteration!(m::Optimizer)
+function print_iteration!(m::GlobalOptimizer)
 
     if _verbosity(m) > 0
 
@@ -162,7 +162,7 @@ $(FUNCTIONNAME)
 
 Prints the results of a single bounding problem.
 """
-function print_results!(m::Optimizer, flag::Bool)
+function print_results!(m::GlobalOptimizer, flag::Bool)
     if _verbosity(m) > 1
         k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
@@ -195,7 +195,7 @@ $(FUNCTIONNAME)
 Prints the iteration information based on verbosity. The header is displayed
 every `header_interval`, the iteration info is displayed every `iteration_interval`.
 """
-function print_preamble!(m::Optimizer)
+function print_preamble!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
         if !_is_input_min(m) && m._iteration_count === 1
             println(" ")

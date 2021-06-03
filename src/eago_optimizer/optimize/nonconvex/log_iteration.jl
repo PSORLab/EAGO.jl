@@ -10,14 +10,14 @@
 #############################################################################
 
 """
-    log_iteration!(x::Optimizer)
+    log_iteration!(x::GlobalOptimizer)
 
 If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
 'run_time', and 'node_count' are stored every 'log_interval'. If
 'log_subproblem_info' then the lower bound, feasibility and run times of the
 subproblems are logged every 'log_interval'.
 """
-function log_iteration!(x::Optimizer)
+function log_iteration!(x::GlobalOptimizer)
 
     if x._parameters.log_on
         log = x._log

@@ -156,38 +156,3 @@ atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
     end
     $atom_switch
 end
-
-function Node(d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::OperatorRegistry)
-    nt = d.nodetype
-    i = d.index
-    if nt == JuMP._Derivatives.CALL
-        return _create_call_node(i, child_vec, c, op)
-    elseif nt == JuMP._Derivatives.CALLUNIVAR
-        return _create_call_node_uni(i, child_vec, c, op)
-    elseif nt == JuMP._Derivatives.VARIABLE
-        return Node(Variable(), i)
-    elseif nt == JuMP._Derivatives.MOIVARIABLE
-        error("MOI variable not supported.") # TODO: Confirm this error doesn't hit and delete.
-    elseif nt == JuMP._Derivatives.VALUE
-        return Node(Constant(), i)
-    elseif nt == JuMP._Derivatives.PARAMETER
-        return Node(Parameter(), i)
-    elseif nt == JuMP._Derivatives.SUBEXPRESSION
-        return Node(Subexpression(), i)
-    elseif nt == JuMP._Derivatives.LOGIC
-        error("Unable to load JuMP expression. Logical operators not currently supported.")
-    elseif nt == JuMP._Derivatives.COMPARISON
-        error("Unable to load JuMP expression. Comparisons not currently supported.")
-    end
-    error("Node type = $nt not expected from JuMP.")
-end
-
-function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData}, op::OperatorRegistry)
-    y = Vector{Node}(undef, length(x))
-    adj = JuMP._Derivatives.adjmat(x)
-    child_vec = rowvals(adj)
-    for i in eachindex(x)
-        y[i] = Node(x[i], child_vec, nzrange(adj, i), op)
-    end
-    return y
-end

@@ -22,7 +22,7 @@ Base.@kwdef struct VariableInfo{T<:AbstractFloat}
     "Upper bounds. May be Inf."
     upper_bound::T                                              = typemax(T)
 end
-_is_integer(x::VariableInfo) = x.is_integer
+is_integer(x::VariableInfo) = x.is_integer
 has_lower_bound(x::VariableInfo) = x.has_lower_bound
 has_upper_bound(x::VariableInfo) = x.has_upper_bound
 lower_bound(x::VariableInfo{T}) where {T <: AbstractFloat} = x.lower_bound
@@ -96,7 +96,7 @@ function VariableInfo(v::VariableInfo{T}, ::ZO) where {T <: AbstractFloat}
     isempty(v) && (return v)
     l = max(zero(T), lower_bound(v))
     u = min(one(T), upper_bound(v))
-    check_isempty(l, u, _is_integer(v)) && return empty_variable_info(T)
+    check_isempty(l, u, is_integer(v)) && return empty_variable_info(T)
     return VariableInfo{T}(is_integer = true,
                         has_lower_bound = true,
                         has_upper_bound = true,
@@ -110,8 +110,8 @@ function VariableInfo(v::VariableInfo{T}, it::MOI.Interval{T}) where {T <: Abstr
     isempty(v) && return v
     l = max(it.lower, lower_bound(v))
     u = min(it.upper, upper_bound(v))
-    check_isempty(l, u, _is_integer(v)) && return empty_variable_info(T)
-    return VariableInfo(is_integer = _is_integer(v),
+    check_isempty(l, u, is_integer(v)) && return empty_variable_info(T)
+    return VariableInfo(is_integer = is_integer(v),
                         has_lower_bound = !isinf(l),
                         has_upper_bound = !isinf(u),
                         has_constraints = !isinf(l) | !isinf(u),
@@ -124,8 +124,8 @@ function VariableInfo(v::VariableInfo{T}, gt::MOI.GreaterThan{T}) where {T <: Ab
     isempty(v) && return v
     l = max(gt.lower, lower_bound(v))
     u = upper_bound(v)
-    check_isempty(l, u, _is_integer(v)) && return empty_variable_info(T)
-    return VariableInfo(is_integer = _is_integer(v),
+    check_isempty(l, u, is_integer(v)) && return empty_variable_info(T)
+    return VariableInfo(is_integer = is_integer(v),
                         has_lower_bound = !isinf(l),
                         has_upper_bound = !isinf(u),
                         has_constraints = !isinf(l) | !isinf(u),
@@ -137,8 +137,8 @@ function VariableInfo(v::VariableInfo{T}, lt::MOI.LessThan{T}) where {T <: Abstr
     isempty(v) && return v
     l = lower_bound(v)
     u = min(lt.upper, upper_bound(v))
-    check_isempty(l, u, _is_integer(v)) && return empty_variable_info(T)
-    return VariableInfo(is_integer = _is_integer(v),
+    check_isempty(l, u, is_integer(v)) && return empty_variable_info(T)
+    return VariableInfo(is_integer = is_integer(v),
                         has_lower_bound = !isinf(l),
                         has_upper_bound = !isinf(u),
                         has_constraints = !isinf(l) | !isinf(u),

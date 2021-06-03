@@ -1,0 +1,1 @@
+_is_incremental(::Type{Hypatia.Optimizer}) = false

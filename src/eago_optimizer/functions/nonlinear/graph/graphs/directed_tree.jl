@@ -1,4 +1,38 @@
 """
+    AbstractCache
+
+Abstract supertype used for information storage object the directed acyclic graph.
+"""
+abstract type AbstractCache end
+
+"""
+    AbstractCacheAttribute
+
+Abstract supertype used for attributes stored in a cache.
+"""
+abstract type AbstractCacheAttribute end
+
+Base.@kwdef mutable struct VariableValues{T<:Real}
+    x::Vector{T}                           = T[]
+    lower_variable_bounds::Vector{T}       = T[]
+    upper_variable_bounds::Vector{T}       = T[]
+    node_to_variable_map::Vector{Int}      = Int[]
+    variable_to_node_map::Vector{Int}      = Int[]
+    variable_types::Vector{VariableType}   = VariableType[]
+end
+
+@inline _val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
+@inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
+@inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
+function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where T<:Real
+    @inbounds for i = 1:length(v.node_to_variable_map)
+        out[i] = v.x[v.node_to_variable_map[i]]
+    end
+    return nothing
+end
+
+
+"""
     DirectedTree
 
 A tree graph with a single sink node.
@@ -33,24 +67,37 @@ Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
 end
 const DAT = DirectedTree
 
-# graph property access functions
-@inline _nodes(g::DAT)             = g.nodes
-@inline _variables(g::DAT)         = g.variables
-@inline _variable_types(g::DAT)    = g.v.variable_types
-@inline _constant_values(g::DAT)   = g.constant_values
-@inline _parameter_values(g::DAT)  = g.parameter_values
-@inline _dep_subexpr_count(g::DAT) = g.dep_subexpr_count
-# Each tree has a unique sparsity for a DAT since there is a single sink
-@inline _sparsity(g::DAT, i)                  = g.sparsity
-@inline _rev_sparsity(g::DAT, i::Int, k::Int) =  g.rev_sparsity[i]
+# node property access functions that can be defined at abstract type
+_node(g::DAT, i)            = g.nodes[i]
+_nodes(g::DAT)              = g.nodes
 
-# user-define function access
-@inline function _user_univariate_operator(g::DAT, i)
-    @inbounds g.user_operators.univariate_operator_f[i]
-end
-@inline function _user_multivariate_operator(g::DAT, i)
-    @inbounds g.user_operators.multivariate_operator_evaluator[i]
-end
+_variable(g::DAT, i)        = g.variables[i]
+_variables(g::DAT)          = g.variables
+
+_constant_value(g::DAT, i)  = g.constant_values[i]
+_constant_values(g::DAT)    = g.constant_values
+_parameter_value(g::DAT, i) = g.parameter_values[i]
+_parameter_values(g::DAT)   = g.parameter_values
+
+_node_class(g::DAT, i)      = _node_class(_node(g, i))
+_ex_type(g::DAT, i)         = _ex_type(_node(g, i))
+_first_index(g::DAT, i)     = _first_index(_node(g, i))
+_secondary_index(g::DAT, i) = _secondary_index(_node(g, i))
+_arity(g::DAT, i)           = _arity(_node(g, i))
+_children(g::DAT, i)        = _children(_node(g, i))
+_child(g::DAT, i, j)        = _child(_node(g, j), i)
+
+_node_count(g::DAT)     = g.node_count
+_variable_count(g::DAT) = g.variable_count
+_constant_count(g::DAT) = g.constant_count
+
+_dep_subexpr_count(g::DAT)            = g.dep_subexpr_count
+_sparsity(g::DAT, i)                  = g.sparsity
+_rev_sparsity(g::DAT, i::Int, k::Int) = g.rev_sparsity[i]
+
+_user_univariate_operator(g::DAT, i) = g.user_operators.univariate_operator_f[i]
+_user_multivariate_operator(g::DAT, i) = g.user_operators.multivariate_operator_evaluator[i]
+
 
 function DirectedTree(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values)
 
@@ -83,25 +130,22 @@ function DirectedTree(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int
                     )
 end
 
-#=
-nd = wp._objective_nl.ex.nd
-pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, -1))
-nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-for i = 3:length(nd)
-    @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
+forward_uni = [i for i in instances(AtomType)]
+setdiff!(forward_uni, [VAR_ATOM; PARAM_ATOM; CONST_ATOM; SELECT_ATOM; SUBEXPR])
+f_switch = binary_switch(forward_uni, is_forward = true)
+@eval function fprop!(t::T, ex::Expression, g::DAT, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
+    id = _ex_type(g, k)
+    $f_switch
+    #error("fprop! for ex_type = $id not defined.")
+    return
 end
-I, J, V = findnz(wp._objective_nl.ex.adj)
-I .+= 1
-J .+= 1
-pushfirst!(I, 2)
-pushfirst!(J, 1)
-pushfirst!(V, true)
-m._working_problem._objective_nl.ex.adj = sparse(I, J, V)
-=#
 
-function _negate!(d::DirectedTree)
-    push!(d.nodes, Node(Val(false), Val(MINUS), Int[_node_count(d)]))
-    d.node_count += 1
-    d.sink_bnd = -d.sink_bnd
+reverse_uni = [i for i in instances(AtomType)]
+setdiff!(reverse_uni, [VAR_ATOM; PARAM_ATOM; CONST_ATOM; SELECT_ATOM; SUBEXPR])
+r_switch = binary_switch(reverse_uni, is_forward = false)
+@eval function rprop!(t::T, ex::Expression, g::DAT, c::AbstractCache, k::Int) where T<:AbstractCacheAttribute
+    id = _ex_type(g, k)
+    $r_switch
+    #error("rprop! for ex_type = $id not defined.")
     return
 end

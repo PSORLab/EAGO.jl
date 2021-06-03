@@ -128,7 +128,7 @@ function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Un
         variable_info_1 = v[term.variable_index_1.value]
         variable_info_2 = v[term.variable_index_2.value]
         if variable_info_1.is_fixed && variable_index_2.is_fixed
-            f.sqf.constant += coeff*variable_info_1.lower_bound*variable_index_2.lower_bound
+            f.sqf.constant += coeff*variable_info_1.lower_bound*variable_info_2.lower_bound
             deleteat!(f.sqf.terms, i)
             deleted_count += 1
         else

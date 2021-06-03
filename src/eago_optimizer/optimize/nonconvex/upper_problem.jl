@@ -6,7 +6,7 @@ The upper bounding problem is run on every node up to depth `upper_bounding_dept
 and is triggered with a probability of `0.5^(depth - upper_bounding_depth)`
 afterwards.
 """
-function default_nlp_heurestic(m::Optimizer)
+function default_nlp_heurestic(m::GlobalOptimizer)
     bool = false
     ubd_limit = m._parameters.upper_bounding_depth
     depth = m._current_node.depth
@@ -20,7 +20,7 @@ $(SIGNATURES)
 Default upper bounding problem which simply calls `solve_local_nlp!` to solve
 the nlp locally.
 """
-function upper_problem!(t::ExtensionType, m::Optimizer)
+function upper_problem!(t::ExtensionType, m::GlobalOptimizer)
     if !default_nlp_heurestic(m)
         m._upper_feasibility = false
         m._upper_objective_value = Inf
@@ -29,4 +29,4 @@ function upper_problem!(t::ExtensionType, m::Optimizer)
     end
     return
 end
-upper_problem!(m::Optimizer) = upper_problem!(m.ext_type, m)
+upper_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = upper_problem!(_ext_typ(m), m)

@@ -1,4 +1,4 @@
-
+#=
 # TODO: Infer dimensionality of user function from context type
 struct RelaxMeta{T} end
 const F_RELAX_CTX{T} = RelaxCtx{RelaxMeta{T}}
@@ -23,7 +23,7 @@ function Cassette.overdub(::F_RELAX_CTX{T}, ::typeof(vcat), A::AbstractArray, Bs
     vR = zeros(T, size(vA)...)
     return copyto!(vR,vA)
 end
-
+=#
 #=
 # solution object
 function Cassette.overdub(::F_RELAX_CTX{T}, ::typeof(ODEProblem), f, u0, tspan) where {T<:Number}
