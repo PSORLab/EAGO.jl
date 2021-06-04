@@ -13,7 +13,9 @@ A non-default LP solver can then be selected by the user via a series of keyword
 ```julia
 
 # Create opt EAGO Optimizer with Gurobi as a lower subsolver
-m = Model(optimizer_with_attributes(EAGO.Optimizer, "relaxed_optimizer" => Gurobi.Optimizer(OutputFlag=0))
+subsolver_config = SubSolvers(relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0))
+eago_factory = () -> EAGO.Optimizer(subsolvers = subsolver_config)
+m = Model(eago_factory)
 ```
 
 ## Rounding Mode

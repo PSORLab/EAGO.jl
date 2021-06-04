@@ -1,6 +1,7 @@
-#=
 using EAGO, JuMP, Cthulhu
 
+
+####### Example of interest
 m = Model(EAGO.Optimizer)
 set_optimizer_attribute(m, "output_iterations", 1)
 set_optimizer_attribute(m, "iteration_limit", 5)
@@ -12,8 +13,9 @@ xU = [2000.0; 16000.0; 120.0; 5000.0; 2000.0; 93.0; 95.0; 12.0; 4.0; 162.0]
 @variable(m, xL[1] <= x[1] <= xU[1])
 @NLobjective(m, Max, -2.0 * x[1])
 
-
 JuMP.optimize!(m)
+
+####### Define code to reduce need to transverse tree to get to functions of interest
 b = backend(m).optimizer.model.optimizer
 nlr = b._working_problem._nonlinear_constr[1]
 function g()
@@ -22,16 +24,12 @@ end
 function q(b, nlr)
     EAGO.relax!(b, nlr, 1, true)
 end
-=#
+k(m) = JuMP.optimize!(m)
 
-using EAGO
+f() = k(m)
 
-using SnoopCompileCore, SnoopCompile
-trees = invalidation_trees(@snoopr using EAGO)
-methinvs = trees[end]
-root = methinvs.backedges[end]
-ascend(root)
-
+####### Define descend
+@descend f()
 
 
 
