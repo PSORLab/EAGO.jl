@@ -64,7 +64,10 @@ Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
     dependent_subexpressions::Vector{Int}     = Int[]
     linearity::Linearity                      = LIN_CONSTANT
     user_operators::OperatorRegistry          = OperatorRegistry()
+    #children::SpraseMatrixCSC{Bool,Int}      = spzeros(Bool,1,1)
+    #parents::SparseMatrixCSC{Bool,Int}       = spzeros(Bool,1,1)
 end
+#DirectedTree(n::Int) = DirectedTree(children = spzeros(Bool,n,n), parents=spzeros(Bool,n,n))
 const DAT = DirectedTree
 
 # node property access functions that can be defined at abstract type
