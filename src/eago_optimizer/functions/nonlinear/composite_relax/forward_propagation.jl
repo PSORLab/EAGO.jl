@@ -1,3 +1,4 @@
+using Base: Float64
 # Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
 # This code is licensed under MIT license (see LICENSE.md for full details)
 #############################################################################
@@ -10,7 +11,9 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
-@inline affine_expand(x, x0, fx0, ∇fx0) = fx0 + dot(∇fx0, x - x0)
+function affine_expand(x::Vector{Float64}, x0::Vector{Float64}, fx0::Union{Float64,Interval{Float64}}, ∇fx0::SVector{N,Float64}) where N
+    fx0 + ntuple(i -> ∇fx0[i]*(x[i] - x0[i]), Val(N))
+end
 
 f_init!(::Relax, g::DAT, b::RelaxCache) = nothing
 
