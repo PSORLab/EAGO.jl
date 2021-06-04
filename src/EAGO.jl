@@ -88,7 +88,7 @@ module EAGO
     # Add storage types for EAGO optimizers
     export NodeBB, get_history, get_lower_bound, get_upper_bound, get_lower_time,
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
-           get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap
+           get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap, SubSolvers
 
     export register_eago_operators!
 

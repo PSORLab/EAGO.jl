@@ -49,8 +49,12 @@ function MOI.set(d::Incremental, ::MOI.ObjectiveSense, s)
     MOI.set(_get_storage(d), MOI.ObjectiveSense(), s)
     return
 end
-function MOI.set(d::Incremental, ::MOI.Silent, s)
-    MOI.set(_get_storage(d), MOI.Silent(), s)
+function MOI.set(d::Incremental{S}, ::MOI.Silent, s) where S <: MOI.AbstractOptimizer
+    if _is_incremental(S)
+        MOI.set(d.optimizer, MOI.Silent(), s)
+    else
+        MOI.set(d.cache.model.optimizer, MOI.Silent(), s)
+    end
     return
 end
 
