@@ -52,43 +52,34 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     _iteration_count::Int
     _node_count::Int
 end
-function Optimizer{Q,S,T}(; subsolver_block::SubSolvers{Q,S,T} = SubSolvers{Q,S,T}(),
-                            enable_optimize_hook::Bool = false,
-                            ext::Dict{Symbol, Any} = Dict{Symbol,Any}(),
-                            _global_optimizer::GlobalOptimizer{Q,S,T} = GlobalOptimizer{Q,S,T}(),
-                            _input_problem::InputProblem = InputProblem(),
-                            _working_problem::ParsedProblem = ParsedProblem(),
-                            _parameters::EAGOParameters = EAGOParameters(),
-                            _termination_status_code::MOI.TerminationStatusCode = MOI.OPTIMIZE_NOT_CALLED,
-                            _result_status_code::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS,
-                            _run_time::Float64   = 0.0,
-                            _objective_value::Float64 = -Inf,
-                            _objective_bound::Float64 =  Inf,
-                            _relative_gap::Float64    = Inf,
-                            _iteration_count::Int     = 0,
-                            _node_count::Int          = 0) where {Q,S,T}
+function Optimizer{Q,S,T}(subsolver_block::SubSolvers{Q,S,T}) where {Q,S,T}
 
-    Optimizer{Q,S,T}(subsolver_block,
-                     enable_optimize_hook,
-                     ext, 
-                     _global_optimizer,
-                     _input_problem,
-                     _working_problem,
-                     _parameters,
-                     _termination_status_code,
-                     _result_status_code,
-                     _run_time,
-                     _objective_value,
-                     _objective_bound,
-                     _relative_gap ,
-                     _iteration_count,
-                     _node_count)
+    return Optimizer{Q,S,T}(subsolver_block, false, Dict{Symbol,Any}(), GlobalOptimizer{Q,S,T}(),
+                     InputProblem(), ParsedProblem(), EAGOParameters(),
+                     MOI.OPTIMIZE_NOT_CALLED, MOI.OTHER_RESULT_STATUS,
+                     0.0, -Inf, Inf, Inf, 0, 0)
+end
+Optimizer{Q,S,T}() where {Q,S,T} = Optimizer{Q,S,T}(SubSolvers{Q,S,T}())
+function Optimizer{Q,S,T}(; kwargs...) where {Q,S,T}
+    if length(kwargs) > 0
+        error("""Passing optimizer attributes as keyword arguments to `EAGO.Optimizer` is deprecated. 
+                 Use MOI.set(model, MOI.RawParameter("key"), value) or 
+                 JuMP.set_optimizer_attribute(model, "key", value) instead.""")
+    end
+    return Optimizer{Q,S,T}(SubSolvers{Q,S,T}())
 end
 
-function Optimizer(; subsolver_block::SubSolvers{Q,S,T} = SubSolvers(), kwargs...) where {Q,S,T}
+function Optimizer(subsolver_block::SubSolvers{Q,S,T}; kwargs...) where {Q,S,T}
+    if length(kwargs) > 0
+        error("""Passing optimizer attributes as keyword arguments to `EAGO.Optimizer` is deprecated. 
+                 Use MOI.set(model, MOI.RawParameter("key"), value) or 
+                 JuMP.set_optimizer_attribute(model, "key", value) instead.""")
+    end
     sb = SubSolvers{Incremental{Q},Incremental{S},T}(Incremental(subsolver_block.relaxed_optimizer), 
                                                      Incremental(subsolver_block.upper_optimizer), 
                                                      subsolver_block.ext_typ )
     gopt = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb)
     return Optimizer{Incremental{Q},Incremental{S},T}(; subsolver_block = sb, _global_optimizer = gopt)
 end
+
+Optimizer(; kwargs...) = Optimizer(SubSolvers())
