@@ -1,3 +1,23 @@
+function is_integer_feasible(m::GlobalOptimizer)
+    bool = true
+    atol = _integer_abs_tol(m)
+    rtol = _integer_rel_tol(m)
+    for i = 1:_variable_num(BranchVar(), m)
+        if _is_integer(BranchVar(), m, i)
+            xsol = _lower_solution(BranchVar(), m, i)
+            if isapprox(floor(xsol), xsol; atol = atol, rtol = rtol)
+                continue
+            elseif isapprox(ceil(xsol), xsol; atol = atol, rtol = rtol)
+                continue
+            else
+                bool &= false
+                break
+            end
+        end
+    end
+    return bool
+end
+
 """
 $(SIGNATURES)
 

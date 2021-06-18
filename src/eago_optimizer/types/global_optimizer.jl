@@ -201,6 +201,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     "If true, then EAGO forgos its default configuration process for subsolvers"
     user_solver_config::Bool = false
+
+    integer_abs_tol::Float64 = 1E-9
+    integer_rel_tol::Float64 = 1E-9
 end
 
 """
@@ -528,6 +531,9 @@ _ext_typ(m::GlobalOptimizer{R,S,Q})           where {R,S,Q} = m._subsolvers.ext_
 @inline _cut_ϵ_abs(m::GlobalOptimizer) = m._parameters.cut_tolerance_abs
 @inline _cut_ϵ_rel(m::GlobalOptimizer) = m._parameters.cut_tolerance_rel
 @inline _cut_max_iterations(m::GlobalOptimizer) = m._parameters.cut_max_iterations
+
+@inline _integer_abs_tol(m::GlobalOptimizer) = m._parameters.integer_abs_tol
+@inline _integer_rel_tol(m::GlobalOptimizer) = m._parameters.integer_rel_tol
 
 @inline _absolute_tol(m::GlobalOptimizer) = m._parameters.absolute_tolerance
 @inline _relative_tol(m::GlobalOptimizer) = m._parameters.relative_tolerance
