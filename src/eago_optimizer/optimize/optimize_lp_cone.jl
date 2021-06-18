@@ -37,17 +37,17 @@ function add_variables(m::GlobalOptimizer, optimizer, variable_number::Int)
 end
 
 ### LP and MILP routines
-function add_linear_constraints!(m::GlobalOptimizer, opt::T) where T
+function add_linear_constraints!(m::GlobalOptimizer, d::T) where T
 
     # add linear constraints
-    for (func, set) in m._input_problem._linear_leq_constraints
-         MOI.add_constraint(opt, func, set)
+    for (f, leq) in m._input_problem._linear_leq_constraints
+        MOI.add_constraint(d, f, leq)
     end
-    for (func, set) in m._input_problem._linear_geq_constraints
-        MOI.add_constraint(opt, func, set)
+    for (f, geq) in m._input_problem._linear_geq_constraints
+        MOI.add_constraint(d, f, geq)
     end
-    for (func, set) in m._input_problem._linear_eq_constraints
-        MOI.add_constraint(opt, func, set)
+    for (f, eq) in m._input_problem._linear_eq_constraints
+        MOI.add_constraint(d, f, eq)
     end
 
     return nothing

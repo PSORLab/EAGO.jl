@@ -74,6 +74,13 @@ function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
     for (c,i) in m._relaxed_variable_gt
         MOI.set(d, MOI.ConstraintSet(), c, GT(_lower_bound(BranchVar(), m, i)))
     end
+    for (c,i) in m._relaxed_variable_zo
+        if _is_integer(BranchVar(), m, i)
+            MOI.set(d, MOI.ConstraintSet(), c, ET(_upper_bound(BranchVar(), m, i)))
+        else
+            MOI.set(d, MOI.ConstraintSet(), c, IT(0.0, 1.0))
+        end
+    end
     return
 end
 
@@ -131,9 +138,15 @@ function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
     check_safe = (k == 1) ? false : m._parameters.cut_safe_on
     wp = m._working_problem
     wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    foreach(x -> relax!(m, x, k, check_safe), wp._sqf_leq)
-    foreach(x -> relax!(m, x, k, check_safe), wp._sqf_eq)
-    foreach(x -> relax!(m, x, k, check_safe),wp._nonlinear_constr)
+    for leq in wp._sqf_leq
+        relax!(m, leq, k, check_safe)
+    end
+    for eq in wp._sqf_eq
+        relax!(m, eq, k, check_safe)
+    end
+    for nl in wp._nonlinear_constr
+        relax!(m, nl, k, check_safe)
+    end
     relax!(m, wp._objective, k, check_safe)
     m._new_eval_constraint = false
     (k == 1) && objective_cut!(m, check_safe)
@@ -326,6 +339,15 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     end
 
     # activate integrality conditions for MIP & solve MIP subproblem
+    if is_integer(_current_node(m))
+        m._last_cut_objective = m._lower_objective_value
+        for (c,i) in m._relaxed_variable_zo
+            if _is_integer(BranchVar(), m, i)
+                MOI.set(d, MOI.ConstraintSet(), c, ZO())
+            end
+        end
+        MOI.optimize!(d)
+    end
 
     t_status = MOI.get(d, MOI.TerminationStatus())
     p_status = MOI.get(d, MOI.PrimalStatus())
