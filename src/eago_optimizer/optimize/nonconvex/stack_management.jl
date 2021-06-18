@@ -145,10 +145,14 @@ function branch_node!(t::ExtensionType, m::GlobalOptimizer)
     psuedo_cost_flag = _branch_pseudocost_on(m)
     l_ext = psuedo_cost_flag ? _lo_extent(m, lx, k) : zero(Float64)
     u_ext = psuedo_cost_flag ? _hi_extent(m, ux, k) : zero(Float64)
+
+    l_idepth = (flag && l_cont) ? n.depth + 1 : n.cont_depth
+    u_idepth = (flag && u_cont) ? n.depth + 1 : n.cont_depth
+
     push!(m._stack, NodeBB(l_lbd, l_ubd, l_int, l_cont, l_bound, u_bound,
-                           n.depth + 1, n.id + 1, BD_NEG, k, l_ext))
+                           n.depth + 1, l_idepth, n.id + 1, BD_NEG, k, l_ext))
     push!(m._stack, NodeBB(u_lbd, u_ubd, u_int, u_cont, l_bound, u_bound,
-                           n.depth + 1, n.id + 2, BD_POS, k, u_ext))
+                           n.depth + 1, u_idepth, n.id + 2, BD_POS, k, u_ext))
     m._node_repetitions = 1
     m._maximum_node_id += 2
     m._node_count += 2

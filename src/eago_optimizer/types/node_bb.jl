@@ -39,6 +39,8 @@ struct NodeBB
     upper_bound::Float64
     "Depth of node in B&B tree."
     depth::Int
+    "Depth of first parent in B&B tree that was continuously valued"
+    cont_depth::Int
     "Unique id for each node."
     id::Int
     "Whether last branch was negative or positive in direction"
@@ -53,16 +55,16 @@ end
 function NodeBB(l::Vector{Float64}, u::Vector{Float64}, d::BitVector)
     NodeBB(l, u, d, any(d), -Inf, Inf, 1, 1, BD_NONE, -1, 0.0)
 end
-NodeBB() = NodeBB(Float64[], Float64[], BitVector(), false, -Inf, Inf, 0, 1, BD_NONE, -1, 0.0)
+NodeBB() = NodeBB(Float64[], Float64[], BitVector(), false, -Inf, Inf, 0, -1, 1, BD_NONE, -1, 0.0)
 NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
-                           copy(x.is_integer), x.continuous,
+                           copy(x.is_integer), x.cont_depth, x.continuous,
                            x.lower_bound, x.upper_bound, x.depth, x.id,
                            x.branch_direction, x.last_branch, x.branch_extent)
 
 # Copy utilities
 Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
                               copy(x.upper_variable_bounds),
-                              copy(x.is_integer), x.continuous,
+                              copy(x.is_integer), x.cont_depth, x.continuous,
                               x.lower_bound, x.upper_bound, x.depth, x.id,
                               x.branch_direction, x.last_branch, x.branch_extent)
 
@@ -74,6 +76,7 @@ function uninitialized(x::NodeBB)
     flag &= x.lower_bound === -Inf
     flag &= x.upper_bound === Inf
     flag &= x.depth === 0
+    flag &= x.cont_depth === -1 
     flag &= x.id === 1
     return flag
 end
@@ -90,6 +93,7 @@ end
 @inline lower_bound(x::NodeBB) = x.lower_bound
 @inline upper_bound(x::NodeBB) = x.upper_bound
 @inline depth(x::NodeBB) = x.depth
+@inline cont_depth(x::NodeBB) = x.cont_depth
 
 # Iterations Functions
 Base.isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
