@@ -59,9 +59,13 @@ for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
         end
     end)
 end
-@eval function Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int})
+function Node(::Val{true}, ::Val{USER}, i::Int, c::Vector{Int})
+    return Node(EXPRESSION, USER, i, 0, 1, c)
+end
+function Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int})
     return Node(EXPRESSION, USERN, i, 0, length(c), c)
 end
+
 for d in ALL_ATOM_TYPES
     @eval function Node(::Val{false}, ::Val{$d}, c::Vector{Int})
         return Node(EXPRESSION, $d, 0, 0, 1, c)
@@ -150,7 +154,9 @@ atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
 @eval function _create_call_node_uni(i::Int, v, c::UnitRange{Int}, op::OperatorRegistry)
 
     if i >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-        d = op.d.univariate_operator_to_id[i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1]
+        @show op.univariate_operator_id
+        dop = op.univariate_operator_id[i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1]
+        d = op.univariate_operator_to_id[dop]
         $eago_uni_switch
         return Node(Val(true), Val(USER), i, v[c])
     end
