@@ -167,7 +167,7 @@ function retrieve_node(d::Evaluator)
     return NodeBB(copy(d.variable_values.lower_variable_bounds[nv_map]),
                   copy(d.variable_values.upper_variable_bounds[nv_map]),
                   copy(n.is_integer), n.continuous,
-                  n.lower_bound, n.upper_bound, n.depth, n.id,
+                  n.lower_bound, n.upper_bound, n.depth, n.cont_depth, n.id,
                   n.branch_direction, n.last_branch, n.branch_extent)
 end
 @inline function _get_x!(::Type{BranchVar}, out::Vector{Float64}, d::Evaluator)

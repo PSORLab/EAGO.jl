@@ -154,11 +154,12 @@ atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
 @eval function _create_call_node_uni(i::Int, v, c::UnitRange{Int}, op::OperatorRegistry)
 
     if i >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-        @show op.univariate_operator_id
-        dop = op.univariate_operator_id[i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1]
+        j = i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
+        dop = op.univariate_operator_id[j]
         d = op.univariate_operator_to_id[dop]
+        @show dop, d
         $eago_uni_switch
-        return Node(Val(true), Val(USER), i, v[c])
+        return Node(Val(true), Val(USER), j, v[c])
     end
     $atom_switch
 end

@@ -53,12 +53,12 @@ end
 
 # Constructors
 function NodeBB(l::Vector{Float64}, u::Vector{Float64}, d::BitVector)
-    NodeBB(l, u, d, any(d), -Inf, Inf, 1, 1, BD_NONE, -1, 0.0)
+    NodeBB(l, u, d, any(d), -Inf, Inf, 1, -1, 1, BD_NONE, -1, 0.0)
 end
 NodeBB() = NodeBB(Float64[], Float64[], BitVector(), false, -Inf, Inf, 0, -1, 1, BD_NONE, -1, 0.0)
 NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
-                           copy(x.is_integer), x.cont_depth, x.continuous,
-                           x.lower_bound, x.upper_bound, x.depth, x.id,
+                           copy(x.is_integer), x.continuous,
+                           x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
                            x.branch_direction, x.last_branch, x.branch_extent)
 
 # Copy utilities
@@ -90,6 +90,7 @@ end
 @inline upper_variable_bounds(x::NodeBB, id::Int, nid::Int) = x.upper_variable_bounds[id:nid]
 @inline is_integer(x::NodeBB) = x.is_integer
 @inline is_integer(x::NodeBB, id::Int) = x.is_integer[id]
+@inline continuous(x::NodeBB) = x.continuous
 @inline lower_bound(x::NodeBB) = x.lower_bound
 @inline upper_bound(x::NodeBB) = x.upper_bound
 @inline depth(x::NodeBB) = x.depth
