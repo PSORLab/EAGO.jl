@@ -52,34 +52,22 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     _iteration_count::Int
     _node_count::Int
 end
-function Optimizer{Q,S,T}(subsolver_block::SubSolvers{Q,S,T}) where {Q,S,T}
-
-    return Optimizer{Q,S,T}(subsolver_block, false, Dict{Symbol,Any}(), GlobalOptimizer{Q,S,T}(),
+function Optimizer{Q,S,T}(sb::SubSolvers{Q,S,T}) where {Q,S,T}
+    return Optimizer{Q,S,T}(sb, false, Dict{Symbol,Any}(), GlobalOptimizer{Q,S,T}( _subsolvers = sb),
                      InputProblem(), ParsedProblem(), EAGOParameters(),
                      MOI.OPTIMIZE_NOT_CALLED, MOI.OTHER_RESULT_STATUS,
                      0.0, -Inf, Inf, Inf, 0, 0)
 end
-Optimizer{Q,S,T}() where {Q,S,T} = Optimizer{Q,S,T}(SubSolvers{Q,S,T}())
-function Optimizer{Q,S,T}(; kwargs...) where {Q,S,T}
-    if length(kwargs) > 0
-        error("""Passing optimizer attributes as keyword arguments to `EAGO.Optimizer` is deprecated. 
-                 Use MOI.set(model, MOI.RawParameter("key"), value) or 
-                 JuMP.set_optimizer_attribute(model, "key", value) instead.""")
-    end
-    return Optimizer{Q,S,T}(SubSolvers{Q,S,T}())
-end
-
-function Optimizer(subsolver_block::SubSolvers{Q,S,T}; kwargs...) where {Q,S,T}
+function Optimizer(subsolver_block::SubSolvers{Q,S,T} = SubSolvers(); kwargs...) where {Q,S,T}
     if length(kwargs) > 0
         error("""Passing optimizer attributes as keyword arguments to `EAGO.Optimizer` is deprecated. 
                  Use MOI.set(model, MOI.RawParameter("key"), value) or 
                  JuMP.set_optimizer_attribute(model, "key", value) instead.""")
     end
     sb = SubSolvers{Incremental{Q},Incremental{S},T}(Incremental(subsolver_block.relaxed_optimizer), 
-                                                     Incremental(subsolver_block.upper_optimizer), 
-                                                     subsolver_block.ext_typ )
-    gopt = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb)
-    return Optimizer{Incremental{Q},Incremental{S},T}(; subsolver_block = sb, _global_optimizer = gopt)
+                                                     Incremental(subsolver_block.upper_optimizer),  
+                                                     subsolver_block.ext_typ)
+    m = Optimizer{Incremental{Q},Incremental{S},T}(sb)
+    m._global_optimizer = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb)
+    return m
 end
-
-Optimizer(; kwargs...) = Optimizer(SubSolvers())

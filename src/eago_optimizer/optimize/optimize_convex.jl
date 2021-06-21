@@ -104,11 +104,13 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, opt::T) where T
     m._upper_termination_status = tstatus
     m._upper_result_status = pstatus
     if local_problem_status(tstatus, pstatus) == LRS_FEASIBLE
-        m._upper_feasibility = true
-        obj_val = MOI.get(opt, MOI.ObjectiveValue())
-        stored_adjusted_upper_bound!(m, obj_val)
-        m._best_upper_value = min(obj_val, m._best_upper_value)
-        m._upper_solution .= MOI.get(opt, MOI.VariablePrimal(), m._upper_variables)
+        if is_integer_feasible(m)
+            m._upper_feasibility = true
+            obj_val = MOI.get(opt, MOI.ObjectiveValue())
+            stored_adjusted_upper_bound!(m, obj_val)
+            m._best_upper_value = min(obj_val, m._best_upper_value)
+            m._upper_solution .= MOI.get(opt, MOI.VariablePrimal(), m._upper_variables)
+        end
     else
         m._upper_feasibility = false
         m._upper_objective_value = Inf
