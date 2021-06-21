@@ -389,15 +389,14 @@ end
 get_bnds(s::Union{LowerLevel1,LowerLevel2,LowerLevel3}, p::SIPProblem) = p.p_l, p.p_u, p.np
 get_bnds(s::Union{LowerProblem,UpperProblem, ResProblem}, p::SIPProblem) = p.x_l, p.x_u, p.nx
 
-function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
-                   r::MOI.ResultStatusCode)
-    valid_result, is_feasible = is_globally_optimal(t, r)
-    if !(valid_result && is_feasible) && !is_local
+function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
+    if t === MOI.OPTIMAL
+        return true
+    elseif !is_local
         error("Lower problem did not solve to global optimality.
                Termination status = $t. Primal status = $r")
-    elseif !(valid_result && is_feasible) && is_local &&
-           !((t == MOI.LOCALLY_SOLVED) || (t == MOI.ALMOST_LOCALLY_SOLVED))
+    elseif is_local && !((t == MOI.LOCALLY_SOLVED) || (t == MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
     end
-    return is_feasible
+    return false
 end

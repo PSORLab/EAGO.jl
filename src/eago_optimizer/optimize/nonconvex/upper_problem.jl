@@ -3,7 +3,7 @@ function is_integer_feasible(m::GlobalOptimizer)
     atol = _integer_abs_tol(m)
     rtol = _integer_rel_tol(m)
     for i = 1:_variable_num(BranchVar(), m)
-        if _is_integer(BranchVar(), m, i)
+        if is_integer(BranchVar(), m, i)
             xsol = _lower_solution(BranchVar(), m, i)
             if isapprox(floor(xsol), xsol; atol = atol, rtol = rtol)
                 continue
@@ -29,9 +29,13 @@ afterwards.
 function default_nlp_heurestic(m::GlobalOptimizer)
     bool = false
     ubd_limit = m._parameters.upper_bounding_depth
-    depth = m._current_node.depth
-    bool |= (depth <= ubd_limit)
-    bool |= (rand() < 0.5^(depth - ubd_limit))
+    n = _current_node(m)
+    if is_integer_feasible(m)
+        Δdepth = n.depth # - n.cont_depth
+        bool |= (Δdepth <= ubd_limit)
+        bool |= (rand() < 0.5^(Δdepth - ubd_limit))
+    end
+    return bool
 end
 
 """

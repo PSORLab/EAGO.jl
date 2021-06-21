@@ -10,8 +10,8 @@
 # solvers along with routines needed to adjust tolerances to mirror tolerance
 # adjustments in the global solve.
 #############################################################################
-function set_default_config_udf!(s::String, m::GlobalOptimizer)
-    if _verbosity(m) > 0
+function set_default_config_udf!(s::String, m::MOI.AbstractOptimizer, verbosity::Int)
+    if verbosity > 0
         println("EAGO lacks a specialized configuration routine for the subsolver ($(MOI.get(m, MOI.SolverName())))")
         println("you selected. As a result, EAGO cannot set the subsolver tolerances based on the")
         println("absolute_tolerance, relative tolerance, and absolute_constraint_feas_tolerance")
@@ -26,7 +26,7 @@ function set_default_config_udf!(s::String, m::GlobalOptimizer)
 end
 
 function set_default_config!(ext::ExtensionType, d::GlobalOptimizer, m::MOI.AbstractOptimizer, local_solver::Bool)
-    set_default_config_udf!(MOI.get(m, MOI.SolverName()), d)
+    set_default_config_udf!(MOI.get(m, MOI.SolverName()), m, _verbosity(d))
 end
 
 function set_default_subsolver_config!(ext::DefaultExt, d::GlobalOptimizer,  m::T, local_solver::Bool) where T

@@ -458,6 +458,7 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
     _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
     _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
+    _relaxed_variable_zo::Vector{Tuple{CI{SV, ZO}, Int}} = Tuple{CI{SV, ZO}, Int}[]
 
     _branch_variables::Vector{Bool} = Bool[]
 
@@ -517,6 +518,9 @@ function MOI.is_empty(m::GlobalOptimizer{R,S,Q}) where {R,S,Q}
                            
     return is_empty_flag
 end
+
+MOI.get(m::GlobalOptimizer, ::MOI.ObjectiveBound) = _is_input_min(m) ? m._global_lower_bound : -m._global_upper_bound
+MOI.get(m::GlobalOptimizer, ::MOI.ObjectiveValue) = _is_input_min(m) ? m._global_upper_bound : -m._global_lower_bound
 
 _relaxed_optimizer(m::GlobalOptimizer{R,S,Q}) where {R,S,Q} = m._subsolvers.relaxed_optimizer
 _upper_optimizer(m::GlobalOptimizer{R,S,Q})   where {R,S,Q} = m._subsolvers.upper_optimizer

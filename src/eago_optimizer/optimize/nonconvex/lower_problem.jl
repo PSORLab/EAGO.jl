@@ -185,17 +185,16 @@ Retrieves the lower and upper duals for variable bounds from the
 """
 function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
-    if MOI.get(d, MOI.DualStatus()) != MOI.NO_SOLUTION
-        if MOI.supports(d, MOI.ConstraintDual(), CI{SV,LT})
-            for (c, i) in m._relaxed_variable_lt
-                m._lower_uvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
-            end
+    if MOI.get(d, MOI.DualStatus()) === MOI.FEASIBLE_POINT
+        for (c, i) in m._relaxed_variable_lt
+            m._lower_uvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
         end
-        if MOI.supports(d, MOI.ConstraintDual(), CI{SV,GT})
-            for (c, i) in m._relaxed_variable_gt
-                m._lower_lvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
-            end
+        for (c, i) in m._relaxed_variable_gt
+            m._lower_lvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
         end
+    else
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
     end
     return
 end
@@ -339,7 +338,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     end
 
     # activate integrality conditions for MIP & solve MIP subproblem
-    if is_integer(_current_node(m))
+    if !continuous(_current_node(m))
         m._last_cut_objective = m._lower_objective_value
         for (c,i) in m._relaxed_variable_zo
             if _is_integer(BranchVar(), m, i)
