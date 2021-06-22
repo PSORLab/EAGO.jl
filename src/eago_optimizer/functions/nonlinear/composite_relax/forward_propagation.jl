@@ -381,15 +381,16 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{N,T}, k::Int) where
     return
 end
 function fprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-    f = _user_univariate_operator(g, _index(g, k))
+    f = _user_univariate_operator(g, _first_index(g, k))
     x = _set(b, _child(g, 1, k))
-    z = _cut(f(x), _set(b, k), b.v, zero(S), _sparsity(g, k), b.post, b.cut, b.cut_interval)
+    z = f(x)
+    z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g, k), b.post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
     (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
 function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
-    mv = _user_multivariate_operator(g, _index(g, k))
+    mv = _user_multivariate_operator(g, _first_index(g, k))
     n = _arity(g, k)
     set_input = _set_input(b, n)
     i = 1

@@ -52,7 +52,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 
     nlp_data = m._input_problem._nlp_data
-    MOI.initialize(evaluator, Symbol[:Grad, :Jac, :Hess, :HessVec, :ExprGraph])
+    MOI.initialize(evaluator, Symbol[:Grad, :Jac, :ExprGraph])
     user_operator_registry = OperatorRegistry(evaluator.m.nlp_data.user_operators)
 
     # set nlp data structure

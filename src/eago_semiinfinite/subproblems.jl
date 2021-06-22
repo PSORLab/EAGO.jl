@@ -93,13 +93,13 @@ get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel2, sr::SIPSubResult) 
 get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel3, sr::SIPSubResult) = sr.lbd.res
 
 function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
-    valid, feasible = is_globally_optimal(t, r)
+    flag = true
     if islocal && ((t != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
-    elseif !valid
+    elseif t !== MOI.OPTIMAL
         error("Error in lower level problem. Termination status = $t, primal status = $r.")
     end
-    return feasible
+    return flag
 end
 
 """
