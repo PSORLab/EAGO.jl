@@ -81,7 +81,7 @@ end
 @propagate_inbounds _lbd(b::RelaxCache{N,T}, i::Int) where {N,T<:RelaxTag} = _lbd(b.v, i)
 @propagate_inbounds _ubd(b::RelaxCache{N,T}, i::Int) where {N,T<:RelaxTag} = _ubd(b.v, i)
 
-_set_input(b::RelaxCache{N,T}, n::Int) where {N,T<:RelaxTag} = view(b.set_mv_buffer, 1:n)
+_set_input(b::RelaxCache{N,T}, n::Int) where {N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
 
 
 include(joinpath(@__DIR__, "forward_propagation.jl"))
