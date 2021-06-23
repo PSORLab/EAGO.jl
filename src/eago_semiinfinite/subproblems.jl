@@ -122,16 +122,15 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     g(p...) = cb.gSIP[i](xbar, p)
     register(m, :g, prob.np, g, autodiff=true)
     if isone(prob.np)
-        nl_obj = :(-g($(p[1])))
+        nl_obj = :(g($(p[1])))
     else
         nl_obj = Expr(:call)
         push!(nl_obj.args, :g)
         for i in 1:prob.np
             push!(nl_obj.args, p[i])
         end
-        nl_obj = :(-$nl_obj)
     end
-    set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
+    set_NL_objective(m, MOI.MAX_SENSE, nl_obj)
 
     # add uncertainty constraints
     add_uncertainty_constraint!(m, prob)
@@ -144,7 +143,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
 
     # fill buffer with subproblem result info
     psol = JuMP.value.(p)
-    load!(s, sr, feas, -JuMP.objective_value(m), -JuMP.objective_bound(m), psol)
+    load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), psol)
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing

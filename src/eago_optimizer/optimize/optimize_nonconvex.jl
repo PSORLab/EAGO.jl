@@ -336,13 +336,13 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     m._run_time = g._run_time
     m._node_count = g._maximum_node_id
 
-
     if g._input_problem._optimization_sense == MOI.MIN_SENSE
         m._objective_bound = g._global_lower_bound
         m._objective_value = g._global_upper_bound
+    else
+        m._objective_bound = -g._global_upper_bound
+        m._objective_value = -g._global_lower_bound
     end
-    m._objective_bound = -g._global_upper_bound
-    m._objective_value = -g._global_lower_bound
     return
 end
 

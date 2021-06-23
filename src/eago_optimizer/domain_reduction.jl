@@ -198,7 +198,7 @@ function set_reference_point!(m::GlobalOptimizer)
     wp = m._working_problem
     evaluator = wp._relaxed_evaluator
     evaluator_x = evaluator.variable_values.x
-    current_xref = m._current_xref
+    current_xref = m._lower_solution
 
     new_reference_point = false
     for node_i = 1:m._branch_variable_count

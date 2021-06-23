@@ -169,6 +169,8 @@ function relax_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
         wp._relaxed_evaluator.interval_intersect = false
         update_relaxed_problem_box!(m)
         set_first_relax_point!(m)
+    else
+        set_reference_point!(m)
     end
     relax_constraints!(m, m._cut_iterations)
     MOI.set(_relaxed_optimizer(m), MOI.ObjectiveSense(), MOI.MIN_SENSE)

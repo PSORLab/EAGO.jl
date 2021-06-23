@@ -85,7 +85,7 @@ Base.@kwdef mutable struct EAGOParameters
     iteration (default = 1)."
     verbosity::Int = 1
     "Display summary of iteration to console every `output_iterations` (default = 10)"
-    output_iterations::Int = 1000
+    output_iterations::Int = 1
     "Display header for summary to console every `output_iterations` (default = 100)"
     header_iterations::Int = 10000
 
@@ -191,7 +191,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
-    upper_bounding_depth::Int = 8
+    upper_bounding_depth::Int = 6
 
     # handling for domain violations
     "Amount about a domain violation to ignore when propagating bounds."
