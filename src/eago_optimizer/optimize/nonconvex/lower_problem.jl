@@ -363,7 +363,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         m._lower_objective_value = -Inf
         return
     elseif status == RRS_INVALID
-        return fallback_interval_lower_bound!(m, n)
+        return fallback_interval_lower_bound!(m, _current_node(m))
     end
 
     set_dual!(m)
@@ -374,6 +374,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     if status == RRS_DUAL_FEASIBLE
         m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
     end
+
     interval_objective_bound!(m)
     return
 end

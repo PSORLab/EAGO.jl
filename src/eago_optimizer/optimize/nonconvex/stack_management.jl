@@ -76,7 +76,12 @@ function _select_branch_variable_cost(m::GlobalOptimizer)
     return map_argmax(i -> score(m.branch_cost, i), 1:_variable_num(BranchVar(),m))
 end
 
-rel_diam(m::GlobalOptimizer, i::Int) = _diam(BranchVar(),m,i)/_diam(FullVar(),m,_bvi(m, i))
+function rel_diam(m::GlobalOptimizer, i::Int)
+    current_diam = _diam(BranchVar(), m, i)
+    full_var_index = _bvi(m, i)
+    starting_diam =  diam(_working_variable_info(m, full_var_index))
+    return current_diam/starting_diam
+end
 function _select_branch_variable_width(m::GlobalOptimizer)
     map_argmax(i -> rel_diam(m,i), 1:_variable_num(BranchVar(), m))
 end

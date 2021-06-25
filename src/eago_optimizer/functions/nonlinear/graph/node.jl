@@ -157,7 +157,6 @@ atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
         j = i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
         dop = op.univariate_operator_id[j]
         d = op.univariate_operator_to_id[dop]
-        @show dop, d
         $eago_uni_switch
         return Node(Val(true), Val(USER), j, v[c])
     end
