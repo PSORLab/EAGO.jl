@@ -85,17 +85,17 @@ Base.@kwdef mutable struct EAGOParameters
     iteration (default = 1)."
     verbosity::Int = 1
     "Display summary of iteration to console every `output_iterations` (default = 10)"
-    output_iterations::Int = 1
+    output_iterations::Int = 10
     "Display header for summary to console every `output_iterations` (default = 100)"
     header_iterations::Int = 10000
 
     # Node branching options
     "Convex coefficient used to select branch point. Branch point is given by
-    `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol` (default = 0.25)"
-    branch_cvx_factor::Float64 = 0.25
+    `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol` (default = 0.5)"
+    branch_cvx_factor::Float64 = 0.5
     "Minimum distance from bound to have branch point normalized by width of
-    dimension to branch on (default = 0.15)"
-    branch_offset::Float64 = 0.15
+    dimension to branch on (default = 0.2)"
+    branch_offset::Float64 = 0.2
     "Indicates that pseudocost branching should be used"
     branch_pseudocost_on::Bool = false
     "Variables to branch on (default is all nonlinear)."
@@ -191,7 +191,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
-    upper_bounding_depth::Int = 6
+    upper_bounding_depth::Int = 16
 
     # handling for domain violations
     "Amount about a domain violation to ignore when propagating bounds."

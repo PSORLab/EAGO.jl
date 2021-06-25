@@ -6,9 +6,9 @@ function set_default_config!(ext::ExtensionType, d::GlobalOptimizer, m::Incremen
     MOI.set(m, MOI.RawParameter("print_level"), 0)
     MOI.set(m, MOI.RawParameter("constr_viol_tol"), c_tol)
     if local_solver
-        MOI.set(m, MOI.RawParameter("max_iter"),3000)
+        MOI.set(m, MOI.RawParameter("max_iter"), 5000)
         MOI.set(m, MOI.RawParameter("acceptable_tol"), 1E30)
-        MOI.set(m, MOI.RawParameter("acceptable_iter"), 300)
+        MOI.set(m, MOI.RawParameter("acceptable_iter"), 1000)
         MOI.set(m, MOI.RawParameter("acceptable_compl_inf_tol"), c_tol)
         MOI.set(m, MOI.RawParameter("acceptable_dual_inf_tol"), 1.0)
         MOI.set(m, MOI.RawParameter("acceptable_constr_viol_tol"), c_tol)
