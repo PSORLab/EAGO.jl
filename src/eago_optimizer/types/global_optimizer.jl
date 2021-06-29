@@ -83,9 +83,9 @@ Base.@kwdef mutable struct EAGOParameters
     values range from 0 - 4: 0 is silent, 1 shows iteration summary statistics
     only, 2-4 show varying degrees of details about calculations within each
     iteration (default = 1)."
-    verbosity::Int = 1
+    verbosity::Int = 4
     "Display summary of iteration to console every `output_iterations` (default = 10)"
-    output_iterations::Int = 10
+    output_iterations::Int = 1
     "Display header for summary to console every `output_iterations` (default = 100)"
     header_iterations::Int = 10000
 
@@ -190,8 +190,8 @@ Base.@kwdef mutable struct EAGOParameters
     cut_safe_b::Float64 = 1E9
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`
-    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 6)"
-    upper_bounding_depth::Int = 16
+    and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 8)"
+    upper_bounding_depth::Int = 8
 
     # handling for domain violations
     "Amount about a domain violation to ignore when propagating bounds."

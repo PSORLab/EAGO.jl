@@ -237,169 +237,171 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     branch_to_sol_map = m._branch_to_sol_map
     d = _relaxed_optimizer(m)
 
-    relax_problem!(m)
-    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.optimize!(d)
+    valid_relaxation_generated = relax_problem!(m)
+    if valid_relaxation_generated
+        MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+        MOI.optimize!(d)
 
-    # Sets indices to attempt OBBT on
-    obbt_variable_count = m._obbt_variable_count
-    fill!(m._obbt_working_lower_index, true)
-    fill!(m._obbt_working_upper_index, true)
+        # Sets indices to attempt OBBT on
+        obbt_variable_count = m._obbt_variable_count
+        fill!(m._obbt_working_lower_index, true)
+        fill!(m._obbt_working_upper_index, true)
 
-    # Filters out any indicies with active bounds on variables
-    # determined by solving the feasibility problem
-    trivial_filtering!(m, n)
-
-    # Applies an aggressive filter to eliminate indices that
-    # cannot be tightened by obbt
-    if m._parameters.obbt_aggressive_on
-        feasibility = aggressive_filtering!(m, n)
-    end
-
-    # extracts info from relaxed problem (redundant if aggressive obbt is called)
-    m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
-    m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
-    m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
-    status = relaxed_problem_status(m._preprocess_termination_status,
-                                    m._preprocess_primal_status,
-                                    m._preprocess_dual_status)
-
-    if status == RRS_OPTIMAL
-        xLP = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
-    else
-        return false
-    end
-
-    # continue tightening bounds by optimization until all indices have been checked
-    # or the node is empty and the problem is thus proven infeasible
-    while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
-
-        # Get lower value
-        lower_indx = -1;     upper_indx = -1
-        lower_value = Inf;   upper_value = Inf
-
-        # min of xLP - yL on active
-        if any(m._obbt_working_lower_index)
-            for i = 1:obbt_variable_count
-                if @inbounds m._obbt_working_lower_index[i]
-                    temp_value = _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
-                    if temp_value <= lower_value   # Need less than or equal to handle unbounded cases
-                        lower_value = temp_value
-                        lower_indx = i
-                    end
-                end
-            end
-        end
-
-        # min of yU - xLP on active
-        if any(m._obbt_working_upper_index)
-            for i = 1:obbt_variable_count
-                if @inbounds m._obbt_working_upper_index[i]
-                    temp_value = _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
-                    if temp_value <= upper_value
-                        upper_value = temp_value
-                        upper_indx = i
-                    end
-                end
-            end
-        end
-
-        # default to upper bound if no lower bound is found, use maximum distance otherwise
-        if lower_value <= upper_value && lower_indx > 0
-
-            @inbounds m._obbt_working_lower_index[lower_indx] = false
-            var = SV(m._relaxed_variable_index[lower_indx])
-
-            MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-            MOI.set(d, MOI.ObjectiveFunction{SV}(), var)
-
-            MOI.optimize!(d)
-            m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
-            m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
-            m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
-            status = relaxed_problem_status(m._preprocess_termination_status,
-                                            m._preprocess_primal_status,
-                                            m._preprocess_dual_status)
-
-            if status == RRS_OPTIMAL
-                xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
-
-                node_index = branch_to_sol_map[lower_indx]
-                updated_value = xLP[node_index]
-                previous_value = n.lower_variable_bounds[lower_indx]
-
-                # if bound is improved update node and corresponding constraint update
-                # the node bounds and the single variable bound in the relaxation
-                # we assume branching does not occur on fixed variables and interval
-                # constraints are internally bridged by EAGO. So the only L <= x
-                # constraint in the model is a GreaterThan.
-                if updated_value > previous_value && (updated_value - previous_value) > 1E-6
-                    sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
-                    MOI.set(d, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
-                    @inbounds n.lower_variable_bounds[lower_indx] = updated_value
-                end
-
-                if isempty(n)
-                    feasibility = false
-                    break
-                end
-
-            elseif status == RRS_INFEASIBLE
-                feasibility = false
-                break
-
-            else
-                break
-            end
-
-        elseif upper_indx > 0
-
-            m._obbt_working_upper_index[upper_indx] = false
-            var = SV(m._relaxed_variable_index[upper_indx])
-            MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-            MOI.set(d, MOI.ObjectiveFunction{SV}(), var)
-            MOI.optimize!(d)
-            m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
-            m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
-            m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
-            status = relaxed_problem_status(m._preprocess_termination_status,
-                                            m._preprocess_primal_status,
-                                            m._preprocess_dual_status)
-
-            if status == RRS_OPTIMAL
-                xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
-                node_index = branch_to_sol_map[upper_indx]
-                updated_value = xLP[node_index]
-                previous_value = n.upper_variable_bounds[upper_indx]
-
-                # if bound is improved update node and corresponding constraint update
-                # the node bounds and the single variable bound in the relaxation
-                # we assume branching does not occur on fixed variables and interval
-                # constraints are internally bridged by EAGO. So the only U => x
-                # constraint in the model is a LessThan.
-                if updated_value < previous_value && (previous_value - updated_value) > 1E-6
-                    sv_leq_ci = m._node_to_sv_leq_ci[upper_indx]
-                    MOI.set(d, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
-                    @inbounds n.upper_variable_bounds[upper_indx] = updated_value
-                end
-
-                if isempty(n)
-                    feasibility = false
-                    break
-                end
-
-            elseif status == RRS_INFEASIBLE
-                feasibility = false
-                break
-
-            else
-                break
-            end
-
-        else
-            break
-        end
+        # Filters out any indicies with active bounds on variables
+        # determined by solving the feasibility problem
         trivial_filtering!(m, n)
+
+        # Applies an aggressive filter to eliminate indices that
+        # cannot be tightened by obbt
+        if m._parameters.obbt_aggressive_on
+            feasibility = aggressive_filtering!(m, n)
+        end
+
+        # extracts info from relaxed problem (redundant if aggressive obbt is called)
+        m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+        m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+        m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
+        status = relaxed_problem_status(m._preprocess_termination_status,
+                                        m._preprocess_primal_status,
+                                        m._preprocess_dual_status)
+
+        if status == RRS_OPTIMAL
+            xLP = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
+        else
+            return false
+        end
+
+        # continue tightening bounds by optimization until all indices have been checked
+        # or the node is empty and the problem is thus proven infeasible
+        while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
+
+            # Get lower value
+            lower_indx = -1;     upper_indx = -1
+            lower_value = Inf;   upper_value = Inf
+
+            # min of xLP - yL on active
+            if any(m._obbt_working_lower_index)
+                for i = 1:obbt_variable_count
+                    if @inbounds m._obbt_working_lower_index[i]
+                        temp_value = _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
+                        if temp_value <= lower_value   # Need less than or equal to handle unbounded cases
+                            lower_value = temp_value
+                            lower_indx = i
+                        end
+                    end
+                end
+            end
+
+            # min of yU - xLP on active
+            if any(m._obbt_working_upper_index)
+                for i = 1:obbt_variable_count
+                    if @inbounds m._obbt_working_upper_index[i]
+                        temp_value = _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
+                        if temp_value <= upper_value
+                            upper_value = temp_value
+                            upper_indx = i
+                        end
+                    end
+                end
+            end
+
+            # default to upper bound if no lower bound is found, use maximum distance otherwise
+            if lower_value <= upper_value && lower_indx > 0
+
+                @inbounds m._obbt_working_lower_index[lower_indx] = false
+                var = SV(m._relaxed_variable_index[lower_indx])
+
+                MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+                MOI.set(d, MOI.ObjectiveFunction{SV}(), var)
+
+                MOI.optimize!(d)
+                m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+                m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+                m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
+                status = relaxed_problem_status(m._preprocess_termination_status,
+                                                m._preprocess_primal_status,
+                                                m._preprocess_dual_status)
+
+                if status == RRS_OPTIMAL
+                    xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
+
+                    node_index = branch_to_sol_map[lower_indx]
+                    updated_value = xLP[node_index]
+                    previous_value = n.lower_variable_bounds[lower_indx]
+
+                    # if bound is improved update node and corresponding constraint update
+                    # the node bounds and the single variable bound in the relaxation
+                    # we assume branching does not occur on fixed variables and interval
+                    # constraints are internally bridged by EAGO. So the only L <= x
+                    # constraint in the model is a GreaterThan.
+                    if updated_value > previous_value && (updated_value - previous_value) > 1E-6
+                        sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
+                        MOI.set(d, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
+                        @inbounds n.lower_variable_bounds[lower_indx] = updated_value
+                    end
+
+                    if isempty(n)
+                        feasibility = false
+                        break
+                    end
+
+                elseif status == RRS_INFEASIBLE
+                    feasibility = false
+                    break
+
+                else
+                    break
+                end
+
+            elseif upper_indx > 0
+
+                m._obbt_working_upper_index[upper_indx] = false
+                var = SV(m._relaxed_variable_index[upper_indx])
+                MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
+                MOI.set(d, MOI.ObjectiveFunction{SV}(), var)
+                MOI.optimize!(d)
+                m._preprocess_termination_status = MOI.get(d, MOI.TerminationStatus())
+                m._preprocess_primal_status = MOI.get(d, MOI.PrimalStatus())
+                m._preprocess_dual_status = MOI.get(d, MOI.DualStatus())
+                status = relaxed_problem_status(m._preprocess_termination_status,
+                                                m._preprocess_primal_status,
+                                                m._preprocess_dual_status)
+
+                if status == RRS_OPTIMAL
+                    xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
+                    node_index = branch_to_sol_map[upper_indx]
+                    updated_value = xLP[node_index]
+                    previous_value = n.upper_variable_bounds[upper_indx]
+
+                    # if bound is improved update node and corresponding constraint update
+                    # the node bounds and the single variable bound in the relaxation
+                    # we assume branching does not occur on fixed variables and interval
+                    # constraints are internally bridged by EAGO. So the only U => x
+                    # constraint in the model is a LessThan.
+                    if updated_value < previous_value && (previous_value - updated_value) > 1E-6
+                        sv_leq_ci = m._node_to_sv_leq_ci[upper_indx]
+                        MOI.set(d, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
+                        @inbounds n.upper_variable_bounds[upper_indx] = updated_value
+                    end
+
+                    if isempty(n)
+                        feasibility = false
+                        break
+                    end
+
+                elseif status == RRS_INFEASIBLE
+                    feasibility = false
+                    break
+
+                else
+                    break
+                end
+
+            else
+                break
+            end
+            trivial_filtering!(m, n)
+        end
     end
 
     return feasibility

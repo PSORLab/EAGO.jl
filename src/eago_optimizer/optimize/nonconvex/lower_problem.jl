@@ -144,13 +144,19 @@ function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
     for eq in wp._sqf_eq
         relax!(m, eq, k, check_safe)
     end
-    for nl in wp._nonlinear_constr
-        relax!(m, nl, k, check_safe)
+    valid_relax_flag = true
+    if valid_relax_flag
+        for nl in wp._nonlinear_constr
+            valid_relax_flag &= relax!(m, nl, k, check_safe)
+            !valid_relax_flag && break
+        end
     end
-    relax!(m, wp._objective, k, check_safe)
+    if valid_relax_flag
+        valid_relax_flag &= relax!(m, wp._objective, k, check_safe)
+    end
     m._new_eval_constraint = false
     (k == 1) && objective_cut!(m, check_safe)
-    return
+    return valid_relax_flag
 end
 relax_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int) = relax_all_constraints!(t, m, k)
 relax_constraints!(m::GlobalOptimizer{R,S,Q}, k::Int) where {R,S,Q<:ExtensionType} = relax_constraints!(_ext_typ(m), m, k)
@@ -172,9 +178,9 @@ function relax_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     else
         set_reference_point!(m)
     end
-    relax_constraints!(m, m._cut_iterations)
+    valid_relax_flag = relax_constraints!(m, m._cut_iterations)
     MOI.set(_relaxed_optimizer(m), MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    return
+    return valid_relax_flag
 end
 
 

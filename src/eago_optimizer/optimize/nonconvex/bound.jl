@@ -22,7 +22,7 @@ function lower_interval_bound(m::GlobalOptimizer, f::AffineFunctionIneq)
     return fL
 end
 
-function interval_bound(m::GlobalOptimizer, f::AffineFunctionEq)
+function interval_bound(m::GlobalOptimizer, f::Union{AffineFunctionEq,AffineFunctionIneq})
     fL = fU = f.constant
     for (c, j) in f.terms
         xL = _lower_bound(FullVar(), m, j)
@@ -168,18 +168,18 @@ function is_feasible(m::GlobalOptimizer, f::Union{AffineFunctionIneq,BufferedQua
     lower_interval_bound(m, f, y) <= 0.0
 end
 function is_feasible(m::GlobalOptimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq}, y::NodeBB)
-    l, u = lower_interval_bound(m, f, y)
+    l, u = interval_bound(m, f, y)
     l <= 0.0 <= u
 end
 function is_feasible(m::GlobalOptimizer, f::BufferedNonlinearFunction{V}, y::NodeBB) where V
-    l, u = lower_interval_bound(m, f, y)
+    l, u = interval_bound(m, f, y)
     feasible_flag = (u < _lower_bound(f))
     feasible_flag && (l > _upper_bound(f))
 end
 
 bound_objective(m::GlobalOptimizer, f::BufferedNonlinearFunction, n::NodeBB) = interval_bound(m, f, n)
 bound_objective(m::GlobalOptimizer, f::AffineFunctionIneq, n::NodeBB) = interval_bound(m, f)
-bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq, n::NodeBB) = interval_bound(m, f)
+bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq, n::NodeBB) = interval_bound(m, f, n)
 function bound_objective(m::GlobalOptimizer, f::SV, n::NodeBB)
     l = _lower_bound(FullVar(), m, f.variable.value)
     u = _lower_bound(FullVar(), m, f.variable.value)

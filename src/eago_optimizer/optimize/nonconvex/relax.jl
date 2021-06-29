@@ -182,7 +182,7 @@ function affine_relax_nonlinear!(f::BufferedNonlinearFunction{N,T}, evaluator::E
         end
     else
         setvalue = _set(f)
-        finite_cut &= !(isempty(setvalue) || isnan(setvalue))
+        finite_cut &= !(isempty(setvalue) || isnan(setvalue)) && isfinite(setvalue)
         if finite_cut
             value = _set(f)
             f.saf.constant = use_cvx ? value.cv : -value.cc
@@ -206,15 +206,15 @@ $(TYPEDSIGNATURES)
 """
 function check_set_affine_nl!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{N,T}, finite_cut_generated::Bool, check_safe::Bool) where {R,S,N,T<:RelaxTag,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
-    if finite_cut_generated
-        if !check_safe || is_safe_cut!(m, f.saf)
-            lt = LT(-f.saf.constant + _constraint_tol(m))
-            f.saf.constant = 0.0
-            ci = MOI.add_constraint(d, f.saf, lt)
-            push!(m._affine_relax_ci, ci)
-        end
+    valid_cut_flag = finite_cut_generated 
+    valid_cut_flag &= !check_safe || is_safe_cut!(m, f.saf)
+    if valid_cut_flag
+        lt = LT(-f.saf.constant + _constraint_tol(m))
+        f.saf.constant = 0.0
+        ci = MOI.add_constraint(d, f.saf, lt)
+        push!(m._affine_relax_ci, ci)
     end
-    return
+    return valid_cut_flag
 end
 
 """
@@ -222,9 +222,9 @@ $(TYPEDSIGNATURES)
 """
 function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{N,T}, k::Int, check_safe::Bool) where {R,S,N,T<:RelaxTag,Q<:ExtensionType}
     d = m._working_problem._relaxed_evaluator
-    check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
-    check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
-    return
+    valid_cut_flag = check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
+    valid_cut_flag &= check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
+    return valid_cut_flag
 end
 
-relax!(m::GlobalOptimizer, f::Union{Nothing, SV, AffineFunctionIneq}, k::Int, b::Bool) = nothing
+relax!(m::GlobalOptimizer, f::Union{Nothing, SV, AffineFunctionIneq}, k::Int, b::Bool) = true
