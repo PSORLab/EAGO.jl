@@ -139,13 +139,14 @@ end
 
 mutable struct SubProblemInfo
     sol::Vector{Float64}
+    res::Vector{Float64}
     obj_val::Float64
     obj_bnd::Float64
     feas::Bool
     tol::Vector{Float64}
 end
 function SubProblemInfo(nd::Int, ng::Int, tol::Float64)
-    SubProblemInfo(zeros(nd), 0.0, 0.0, false, fill(tol, ng))
+    SubProblemInfo(zeros(nd), zeros(nd), 0.0, 0.0, false, fill(tol, ng))
 end
 
 """
