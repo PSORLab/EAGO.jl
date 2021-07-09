@@ -58,10 +58,10 @@ function MOI.add_variable(m::Optimizer)
 end
 
 ##### Supports function and add_constraint for single variable functions
-const INEQ_SETS = Union{LT, GT, ET}
-MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: INEQ_SETS} = true
+const VAR_SETS = Union{LT, GT, ET, ZO}
+MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: VAR_SETS} = true
 
-function MOI.add_constraint(m::Optimizer, v::SV, s::T) where T <: INEQ_SETS
+function MOI.add_constraint(m::Optimizer, v::SV, s::T) where T <: VAR_SETS
     v = v.variable
     check_inbounds!(m, v)
     vi = m._input_problem._variable_info[v.value]
@@ -70,6 +70,7 @@ function MOI.add_constraint(m::Optimizer, v::SV, s::T) where T <: INEQ_SETS
 end
 
 ##### Supports function and add_constraint for scalar affine functions
+const INEQ_SETS = Union{LT, GT, ET}
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{S}) where {S <: INEQ_SETS} = true
 
 macro define_addconstraint_linear(function_type, set_type, array_name)

@@ -31,7 +31,7 @@ function default_nlp_heurestic(m::GlobalOptimizer)
     ubd_limit = m._parameters.upper_bounding_depth
     n = _current_node(m)
     if is_integer_feasible(m)
-        Δdepth = n.depth # - n.cont_depth
+        Δdepth = n.depth - n.cont_depth
         bool |= (Δdepth <= ubd_limit)
         bool |= (rand() < 0.5^(Δdepth - ubd_limit))
     end

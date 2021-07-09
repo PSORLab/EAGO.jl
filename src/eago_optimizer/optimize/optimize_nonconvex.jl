@@ -50,23 +50,19 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
         is_branch_variable && (branch_variable_count += 1)
 
         if vinfo.is_integer
+            ci_sv_zo = MOI.add_constraint(relaxed_optimizer, relaxed_variable, IT(0.0, 1.0))
+            is_branch_variable && push!(m._relaxed_variable_zo, (ci_sv_zo, branch_variable_count))
         elseif vinfo.is_fixed
             ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
-            if is_branch_variable
-                push!(m._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
-            end
+            is_branch_variable && push!(m._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
         else
             if vinfo.has_lower_bound
                 ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
-                if is_branch_variable
-                    push!(m._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
-                end
+                is_branch_variable && push!(m._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
             end
             if vinfo.has_upper_bound
                 ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
-                if is_branch_variable
-                    push!(m._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
-                end
+                is_branch_variable && push!(m._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
             end
         end
     end
