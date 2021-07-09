@@ -11,8 +11,19 @@ using Base: Float64
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
-function affine_expand(x::Vector{Float64}, x0::Vector{Float64}, fx0::Union{Float64,Interval{Float64}}, ∇fx0::SVector{N,Float64}) where N
-    fx0 + ntuple(i -> ∇fx0[i]*(x[i] - x0[i]), Val(N))
+function affine_expand(x::Vector{Float64}, x0::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}) where N
+    v = fx0
+    for i=1:N
+        v += ∇fx0[i]*(x[i] - x0[i])
+    end
+    return v
+end
+function affine_expand(x::Vector{Interval{Float64}}, x0::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}) where N
+    v = Interval{Float64}(fx0)
+    for i=1:N
+        v += ∇fx0[i]*(x[i] - x0[i])
+    end
+    return v
 end
 
 f_init!(::Relax, g::DAT, b::RelaxCache) = nothing
@@ -405,7 +416,9 @@ function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{N,T}, k::Int) whe
         end
         i += 1
     end
+    #@show set_input
     z = MOI.eval_objective(mv, set_input)::MC{N,T}
+    #@show z
     z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
     if (b.first_eval && b.use_apriori_mul)
