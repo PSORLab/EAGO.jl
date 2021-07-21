@@ -137,8 +137,8 @@ function branch_node!(t::ExtensionType, m::GlobalOptimizer)
 
     flag = is_integer(BranchVar(), m, k)
     if flag
-        l_int[k] = floor(x) != n.lower_variable_bound[k]
-        u_int[k] = ceil(x)  != n.upper_variable_bound[k]
+        l_int[k] = floor(x) != n.lower_variable_bounds[k]
+        u_int[k] = ceil(x)  != n.upper_variable_bounds[k]
     end
     l_cont = flag ? !any(l_int) : true
     u_cont = flag ? !any(u_int) : true

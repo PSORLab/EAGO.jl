@@ -58,7 +58,7 @@ function MOI.add_variable(m::Optimizer)
 end
 
 ##### Supports function and add_constraint for single variable functions
-const VAR_SETS = Union{LT, GT, ET, ZO}
+const VAR_SETS = Union{LT, GT, ET, ZO, MOI.Integer}
 MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: VAR_SETS} = true
 
 function MOI.add_constraint(m::Optimizer, v::SV, s::T) where T <: VAR_SETS
@@ -77,9 +77,10 @@ macro define_addconstraint_linear(function_type, set_type, array_name)
     quote
         function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
             check_inbounds!(m, func)
-            push!(m._input_problem.$(array_name), (func, set))
             m._input_problem._last_constraint_index += 1
-            indx = CI{$function_type, $set_type}(m._input_problem._last_constraint_index)
+            civ = m._input_problem._last_constraint_index
+            push!(m._input_problem.$(array_name), (func, set, civ))
+            indx = CI{$function_type, $set_type}(civ)
             return indx
         end
     end
@@ -95,9 +96,10 @@ macro define_addconstraint_quadratic(function_type, set_type, array_name)
     quote
         function MOI.add_constraint(m::Optimizer, func::$function_type, set::$set_type)
             check_inbounds!(m, func)
-            push!(m._input_problem.$(array_name), (func, set))
             m._input_problem._last_constraint_index += 1
-            indx = CI{$function_type, $set_type}(m._input_problem._last_constraint_index)
+            civ = m._input_problem._last_constraint_index
+            push!(m._input_problem.$(array_name), (func, set, civ))
+            indx = CI{$function_type, $set_type}(civ)
             return indx
         end
     end
@@ -125,6 +127,15 @@ function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::SOC)
     return CI{VECOFVAR, SOC}(m._input_problem._last_constraint_index)
 end
 =#
+
+function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{SV,<:Any}) where {R,S,T}
+    return MOI.get(m, MOI.VariablePrimal(), MOI.VariableIndex(c.value))
+end
+
+function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::Union{CI{SAF,Q},CI{SQF,Q}}) where {R,S,T,Q}
+    return m._global_optimizer._constraint_primal[c.value]
+end
+
 function MOI.empty!(m::Optimizer{R,S,T}) where {R,S,T}
 
     MOI.empty!(m.subsolver_block)
@@ -179,11 +190,16 @@ end
 ##### Set & get attributes of model
 #####
 #####
+MOI.supports(::Optimizer, ::MOI.Silent) = true
 
 function MOI.set(m::Optimizer, ::MOI.Silent, value)
-     m._parameters.verbosity = 0
-     m._parameters.log_on = false
-     return
+    if value
+        m._parameters.verbosity = 0
+        m._parameters.log_on = false
+    else
+        m._parameters.verbosity = 1
+    end
+    return
 end
 
 function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Nothing)
@@ -195,6 +211,8 @@ function MOI.set(m::Optimizer, ::MOI.TimeLimitSec, value::Float64)
     m._parameters.time_limit = value
     return
 end
+
+MOI.get(m::Optimizer, ::MOI.Silent) = m._parameters.verbosity == 0
 
 function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
     return [MOI.VariableIndex(i) for i = 1:length(m._input_problem._variable_info)]
@@ -216,7 +234,7 @@ MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._node_count
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
-MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m.time_limit
+MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m._parameters.time_limit
 
 function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
@@ -241,6 +259,7 @@ function MOI.set(m::Optimizer, p::MOI.RawParameter, x)
     s in EAGO_PARAMETERS ? setfield!(m._parameters, s, x) : setfield!(m, s, x)
     return
 end
+
 
 #####
 #####

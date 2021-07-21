@@ -61,24 +61,26 @@ $(SIGNATURES)
 
 Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
 `xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
-optimizer.
+optimizer. Resets integral valued constraints to either `EqualTo` or `Interval` 
+constraints.
 """
 function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
-    for (c,i) in m._relaxed_variable_eq
-        MOI.set(d, MOI.ConstraintSet(), c, ET(_lower_bound(BranchVar(), m, i)))
-    end
-    for (c,i) in m._relaxed_variable_lt
-        MOI.set(d, MOI.ConstraintSet(), c, LT(_upper_bound(BranchVar(), m, i)))
-    end
-    for (c,i) in m._relaxed_variable_gt
-        MOI.set(d, MOI.ConstraintSet(), c, GT(_lower_bound(BranchVar(), m, i)))
-    end
-    for (c,i) in m._relaxed_variable_zo
-        if _is_integer(BranchVar(), m, i)
-            MOI.set(d, MOI.ConstraintSet(), c, ET(_upper_bound(BranchVar(), m, i)))
+    for i = 1:_variable_num(BranchVar(), m)
+        j = _bvi(m, i)
+        l = _lower_bound(BranchVar(), m, i)
+        u = _upper_bound(BranchVar(), m, i)
+        v = SV(VI(j))
+        if l == u
+            ci_sv_et = MOI.add_constraint(d, v, ET(l))
+            push!(m._relaxed_variable_et, ci_sv_et)
         else
-            MOI.set(d, MOI.ConstraintSet(), c, IT(0.0, 1.0))
+            ci_sv_lt = MOI.add_constraint(d, v, LT(u))
+            ci_sv_gt = MOI.add_constraint(d, v, GT(l))
+            m._node_to_sv_leq_ci[i] = ci_sv_lt
+            m._node_to_sv_geq_ci[i] = ci_sv_gt
+            push!(m._relaxed_variable_lt, (ci_sv_lt,j))
+            push!(m._relaxed_variable_gt, (ci_sv_gt,j))
         end
     end
     return
@@ -97,6 +99,16 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     # delete added affine constraints
     foreach(c -> MOI.delete(d, c), m._affine_relax_ci)
     empty!(m._affine_relax_ci)
+
+    # delete variable    
+    foreach(c -> MOI.delete(d, c), m._relaxed_variable_et)
+    foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_lt)
+    foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_gt)
+    foreach(c -> MOI.delete(d, c), m._relaxed_variable_integer)
+    empty!(m._relaxed_variable_et)
+    empty!(m._relaxed_variable_lt)
+    empty!(m._relaxed_variable_gt)
+    empty!(m._relaxed_variable_integer)
 
     # delete objective cut
     if m._affine_objective_cut_ci !== nothing
@@ -208,15 +220,17 @@ function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 end
 
 function interval_objective_bound!(m::GlobalOptimizer)
-    fL, fU = bound_objective(m)
-    fv = _is_input_min(m) ? fL : -fU
-    if fv > m._lower_objective_value
-        m._lower_objective_value = fL
-        fill!(m._lower_lvd, 0.0)
-        fill!(m._lower_uvd, 0.0)
-        m._cut_add_flag = false
+    if !isnothing(m._working_problem._objective)
+        fL, fU = bound_objective(m)
+        fv = _is_input_min(m) ? fL : -fU
+        if fv > m._lower_objective_value
+            m._lower_objective_value = fL
+            fill!(m._lower_lvd, 0.0)
+            fill!(m._lower_uvd, 0.0)
+            m._cut_add_flag = false
+        end
     end
-    return fL > m._lower_objective_value
+    return
 end
 
 """
@@ -231,11 +245,11 @@ function fallback_interval_lower_bound!(m::GlobalOptimizer, n::NodeBB)
     feas = true
     wp = m._working_problem
     if !cp_condition(m)
-        feas = feas && all(f -> is_feasible(m, f, n), wp._saf_leq)
-        feas = feas && all(f -> is_feasible(m, f, n), wp._saf_eq)
-        feas = feas && all(f -> is_feasible(m, f, n), wp._sqf_leq)
-        feas = feas && all(f -> is_feasible(m, f, n), wp._sqf_eq)
-        feas = feas && all(f -> is_feasible(m, f, n), wp._nonlinear_constr)
+        feas = feas && all(f -> is_feasible(m, f), wp._saf_leq)
+        feas = feas && all(f -> is_feasible(m, f), wp._saf_eq)
+        feas = feas && all(f -> is_feasible(m, f), wp._sqf_leq)
+        feas = feas && all(f -> is_feasible(m, f), wp._sqf_eq)
+        feas = feas && all(f -> is_feasible(m, f), wp._nonlinear_constr)
     end
     if feas
         interval_objective_bound!(m)
@@ -314,6 +328,7 @@ function cut_condition(t::ExtensionType, m::GlobalOptimizer)
 end
 cut_condition(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = cut_condition(_ext_typ(m), m)
 
+is_integer_subproblem(m) = !continuous(_current_node(m))
 """
 $(SIGNATURES)
 
@@ -346,16 +361,20 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     end
 
     # activate integrality conditions for MIP & solve MIP subproblem
-    if !continuous(_current_node(m))
+    if is_integer_subproblem(m)
         m._last_cut_objective = m._lower_objective_value
-        for (c,i) in m._relaxed_variable_zo
-            if _is_integer(BranchVar(), m, i)
-                MOI.set(d, MOI.ConstraintSet(), c, ZO())
+        for i = 1:_variable_num(BranchVar(), m)
+            l = _lower_bound(BranchVar(), m, i)
+            u = _upper_bound(BranchVar(), m, i)
+            if is_integer(BranchVar(), m, i) && (l != u)
+                c_integer = MOI.add_constraint(d, SV(VI(_bvi(m, i))), MOI.Integer())
+                push!(m._relaxed_variable_integer, c_integer)
             end
         end
         MOI.optimize!(d)
     end
 
+    m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
     t_status = MOI.get(d, MOI.TerminationStatus())
     p_status = MOI.get(d, MOI.PrimalStatus())
     d_status = MOI.get(d, MOI.DualStatus())

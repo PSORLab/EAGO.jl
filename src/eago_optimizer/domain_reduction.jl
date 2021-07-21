@@ -108,7 +108,7 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
 
     # Initial filtering vector (negative one direction per remark in Gleixner2017)
     d = _relaxed_optimizer(m)
-    variable_number = m._working_problem._variable_count
+    variable_number = _variable_num(FullVar(), m)
     v = -ones(variable_number)
 
     # Copy prior index set (ignores linear and binary terms)

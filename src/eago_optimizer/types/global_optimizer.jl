@@ -83,10 +83,10 @@ Base.@kwdef mutable struct EAGOParameters
     values range from 0 - 4: 0 is silent, 1 shows iteration summary statistics
     only, 2-4 show varying degrees of details about calculations within each
     iteration (default = 1)."
-    verbosity::Int = 4
-    "Display summary of iteration to console every `output_iterations` (default = 10)"
+    verbosity::Int = 1
+    "Display summary of iteration to console every `output_iterations` (default = 1000)"
     output_iterations::Int = 1
-    "Display header for summary to console every `output_iterations` (default = 100)"
+    "Display header for summary to console every `output_iterations` (default = 10000)"
     header_iterations::Int = 10000
 
     # Node branching options
@@ -113,13 +113,13 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum CPU time in seconds (default = 1000)"
     time_limit::Float64 = 1000.0
     "Maximum number of iterations (default 3E6)"
-    iteration_limit::Int = 3*10^6
+    iteration_limit::Int = 1000 #2*10^5
     "Absolute tolerance for termination (default = 1E-3)"
-    absolute_tolerance::Float64 = 1E-3
+    absolute_tolerance::Float64 = 1E-4
     "Relative tolerance for termination (default = 1E-3)"
-    relative_tolerance::Float64 = 1E-3
+    relative_tolerance::Float64 = 1E-4
     "Absolute constraint feasibility tolerance"
-    absolute_constraint_feas_tolerance::Float64 = 1E-6
+    absolute_constraint_feas_tolerance::Float64 = 1E-7
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
@@ -169,6 +169,7 @@ Base.@kwdef mutable struct EAGOParameters
     reverse_subgrad_tighten::Bool = false
     "Outer round computed subgradient bounds by this amount"
     subgrad_tol::Float64 = 1E-10
+    mul_relax_style::Int = 0
 
     # Tolerance to add cuts and max number of cuts
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
@@ -222,14 +223,24 @@ Base.@kwdef mutable struct InputProblem
     _last_constraint_index::Int = 0
 
     # linear constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
-    _linear_leq_constraints::Vector{Tuple{SAF, LT}} = Tuple{SAF, LT}[]
-    _linear_geq_constraints::Vector{Tuple{SAF, GT}} = Tuple{SAF, GT}[]
-    _linear_eq_constraints::Vector{Tuple{SAF, ET}} = Tuple{SAF, ET}[]
+    _linear_leq_constraints::Vector{Tuple{SAF, LT, Int}} = Tuple{SAF, LT, Int}[]
+    _linear_geq_constraints::Vector{Tuple{SAF, GT, Int}} = Tuple{SAF, GT, Int}[]
+    _linear_eq_constraints::Vector{Tuple{SAF, ET, Int}} = Tuple{SAF, ET, Int}[]
 
     # quadratic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
-    _quadratic_leq_constraints::Vector{Tuple{SQF, LT}} = Tuple{SQF, LT}[]
-    _quadratic_geq_constraints::Vector{Tuple{SQF, GT}} = Tuple{SQF, GT}[]
-    _quadratic_eq_constraints::Vector{Tuple{SQF, ET}} = Tuple{SQF, ET}[]
+    _quadratic_leq_constraints::Vector{Tuple{SQF, LT, Int}} = Tuple{SQF, LT, Int}[]
+    _quadratic_geq_constraints::Vector{Tuple{SQF, GT, Int}} = Tuple{SQF, GT, Int}[]
+    _quadratic_eq_constraints::Vector{Tuple{SQF, ET, Int}} = Tuple{SQF, ET, Int}[]
+
+    # dictionary mapping ci for input problem to local nlp problem
+    _linear_leq_ci_dict::Dict{Int,CI{SAF,LT}} = Dict{Int,CI{SAF,LT}}()
+    _linear_geq_ci_dict::Dict{Int,CI{SAF,GT}} = Dict{Int,CI{SAF,GT}}()
+    _linear_eq_ci_dict::Dict{Int,CI{SAF,ET}} = Dict{Int,CI{SAF,ET}}()
+    _quadratic_leq_ci_dict::Dict{Int,CI{SQF,LT}} = Dict{Int,CI{SQF,LT}}()
+    _quadratic_geq_ci_dict::Dict{Int,CI{SQF,GT}} = Dict{Int,CI{SQF,GT}}()
+    _quadratic_eq_ci_dict::Dict{Int,CI{SQF,ET}} = Dict{Int,CI{SQF,ET}}()
+
+    _constraint_primal::Dict{Int,Float64} = Dict{Int,Float64}()
 
     # conic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
     _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
@@ -372,6 +383,7 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _sol_to_branch_map::Vector{Int} = Int[]
 
     _continuous_solution::Vector{Float64} = Float64[]
+    _constraint_primal::Dict{Int,Float64} = Dict{Int,Float64}()
 
     _preprocess_feasibility::Bool = true
     _preprocess_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
@@ -455,18 +467,19 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
 
     _relaxed_variable_number::Int = 0
     _relaxed_variable_index::Vector{VI} = VI[]
-    _relaxed_variable_eq::Vector{Tuple{CI{SV, ET}, Int}} = Tuple{CI{SV, ET}, Int}[]
+    _relaxed_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
     _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
     _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
-    _relaxed_variable_zo::Vector{Tuple{CI{SV, ZO}, Int}} = Tuple{CI{SV, ZO}, Int}[]
+    _relaxed_variable_integer::Vector{CI{SV, MOI.Integer}} = CI{SV, MOI.Integer}[]
 
     _branch_variables::Vector{Bool} = Bool[]
+    _nonbranching_int::Bool = false
 
     _new_eval_constraint::Bool = false
     _new_eval_objective::Bool = false
 
-    _node_to_sv_leq_ci::Vector{CI{SV,LT}} = CI{SV,LT}[]
-    _node_to_sv_geq_ci::Vector{CI{SV,GT}} = CI{SV,GT}[]
+    _node_to_sv_leq_ci::Dict{Int,CI{SV,LT}} = Dict{Int,CI{SV,LT}}()
+    _node_to_sv_geq_ci::Dict{Int,CI{SV,GT}} = Dict{Int,CI{SV,GT}}()
     _nonlinear_evaluator_created::Bool = false
 
     _branch_cost::BranchCostStorage{Float64} = BranchCostStorage{Float64}()

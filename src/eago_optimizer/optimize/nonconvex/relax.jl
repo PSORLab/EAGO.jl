@@ -45,13 +45,14 @@ function is_safe_cut!(m::GlobalOptimizer, f::SAF)
 end
 
 function add_affine_relaxation!(m::GlobalOptimizer{R,S,Q}, f::SAF, check_safe::Bool) where {R,S,Q<:ExtensionType}
-    if !check_safe || is_safe_cut!(m, f)
+    valid_cut_flag = !check_safe || is_safe_cut!(m, f)
+    if valid_cut_flag
         s = LT(-f.constant + _constraint_tol(m))
         f.constant = 0.0
         ci = MOI.add_constraint(_relaxed_optimizer(m), f, s)::CI{SAF,LT}
         push!(m._affine_relax_ci, ci)
     end
-    return
+    return valid_cut_flag
 end
 
 """
@@ -147,8 +148,8 @@ $(TYPEDSIGNATURES)
 """
 function relax!(m::GlobalOptimizer, f::BufferedQuadraticIneq, k::Int, check_safe::Bool)
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
-    add_affine_relaxation!(m, f.saf, check_safe)
-    return
+    valid_cut_flag = add_affine_relaxation!(m, f.saf, check_safe)
+    return valid_cut_flag
 end
 
 """
@@ -157,18 +158,18 @@ $(TYPEDSIGNATURES)
 function relax!(m::GlobalOptimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
 
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
-    add_affine_relaxation!(m, f.saf, check_safe)
+    valid_cut_flag = add_affine_relaxation!(m, f.saf, check_safe)
 
     affine_relax_quadratic!(m, f.minus_func, f.buffer, f.saf)
-    add_affine_relaxation!(m, f.saf, check_safe)
-    return
+    valid_cut_flag &= add_affine_relaxation!(m, f.saf, check_safe)
+    return valid_cut_flag
 end
 
 """
 $(FUNCTIONNAME)
 """
-function affine_relax_nonlinear!(f::BufferedNonlinearFunction{N,T}, evaluator::Evaluator,
-                                 use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {N,T<:RelaxTag}
+function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V,N,T}, evaluator::Evaluator,
+                                 use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {V,N,T<:RelaxTag}
 
     new_pass && forward_pass!(evaluator, f)
     x = evaluator.variable_values.x
@@ -204,7 +205,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function check_set_affine_nl!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{N,T}, finite_cut_generated::Bool, check_safe::Bool) where {R,S,N,T<:RelaxTag,Q<:ExtensionType}
+function check_set_affine_nl!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, finite_cut_generated::Bool, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
     valid_cut_flag = finite_cut_generated 
     valid_cut_flag &= !check_safe || is_safe_cut!(m, f.saf)
@@ -220,7 +221,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{N,T}, k::Int, check_safe::Bool) where {R,S,N,T<:RelaxTag,Q<:ExtensionType}
+function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, k::Int, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
     d = m._working_problem._relaxed_evaluator
     valid_cut_flag = check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
     valid_cut_flag &= check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
