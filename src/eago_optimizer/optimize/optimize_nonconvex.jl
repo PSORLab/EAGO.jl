@@ -32,61 +32,50 @@ Loads variables, linear constraints, and empty storage for first nlp and
 quadratic cut.
 """
 function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    relaxed_optimizer = _relaxed_optimizer(m)
+    d = _relaxed_optimizer(m)
 
     # add variables and indices and constraints
     wp = m._working_problem
     branch_variable_count = 0
 
-    for i = 1:_variable_num(FullVar(), m)
-
-        relaxed_variable_indx = MOI.add_variable(relaxed_optimizer)
-        relaxed_variable = SV(relaxed_variable_indx)
-        push!(m._relaxed_variable_index, relaxed_variable_indx)
-
-        vinfo =  wp._variable_info[i]
+    full_var_num = _variable_num(FullVar(), m)
+    relaxed_index_new = length(m._relaxed_variable_index) != full_var_num
+    for i = 1:full_var_num
+        relaxed_variable_indx = MOI.add_variable(d)
+        v = SV(relaxed_variable_indx)
+        if relaxed_index_new
+            push!(m._relaxed_variable_index, relaxed_variable_indx)
+        else
+            m._relaxed_variable_index[i] = relaxed_variable_indx
+        end
 
         is_branch_variable =  m._branch_variables[i]
         is_branch_variable && (branch_variable_count += 1)
 
-        if vinfo.is_integer
-            ci_sv_zo = MOI.add_constraint(relaxed_optimizer, relaxed_variable, IT(0.0, 1.0))
-            is_branch_variable && push!(m._relaxed_variable_zo, (ci_sv_zo, branch_variable_count))
-        elseif vinfo.is_fixed
-            ci_sv_et = MOI.add_constraint(relaxed_optimizer, relaxed_variable, ET(vinfo.lower_bound))
-            is_branch_variable && push!(m._relaxed_variable_eq, (ci_sv_et, branch_variable_count))
-        else
-            if vinfo.has_lower_bound
-                ci_sv_gt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, GT(vinfo.lower_bound))
-                is_branch_variable && push!(m._relaxed_variable_gt, (ci_sv_gt, branch_variable_count))
-            end
-            if vinfo.has_upper_bound
-                ci_sv_lt = MOI.add_constraint(relaxed_optimizer, relaxed_variable, LT(vinfo.upper_bound))
-                is_branch_variable && push!(m._relaxed_variable_lt, (ci_sv_lt, branch_variable_count))
+        vi = wp._variable_info[i]
+        if !is_branch_variable
+            if is_fixed(vi)
+                MOI.add_constraint(d, v, ET(vi))
+            elseif is_interval(vi)
+                MOI.add_constraint(d, v, IT(vi))
+            elseif is_greater_than(vi)
+                MOI.add_constraint(d, v, GT(vi))
+            elseif is_less_than(vi)
+                MOI.add_constraint(d, v, LT(vi))
             end
         end
-    end
-
-    # set node index to single variable constraint index maps
-    m._node_to_sv_leq_ci = fill(CI{SV,LT}(-1), branch_variable_count)
-    m._node_to_sv_geq_ci = fill(CI{SV,GT}(-1), branch_variable_count)
-    for v in m._relaxed_variable_lt
-        m._node_to_sv_leq_ci[v[2]] = v[1]
-    end
-    for v in m._relaxed_variable_gt
-        m._node_to_sv_geq_ci[v[2]] = v[1]
     end
 
     # set number of variables to branch on
     m._branch_variable_count = branch_variable_count
 
     # add linear constraints
-    add_linear_constraints!(m, relaxed_optimizer)
+    add_linear_constraints!(m, d)
 
     # sets relaxed problem objective sense to Min as all problems
     # are internally converted in Min problems in EAGO
-    MOI.set(relaxed_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.set(relaxed_optimizer, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
+    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(d, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
 
     return
 end
@@ -241,6 +230,7 @@ function store_candidate_solution!(m::GlobalOptimizer)
         m._first_solution_node = m._maximum_node_id
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
+        copy!(m._constraint_primal, m._input_problem._constraint_primal)
     end
     return
 end
@@ -336,9 +326,10 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
         m._objective_bound = g._global_lower_bound
         m._objective_value = g._global_upper_bound
     else
-        m._objective_bound = -g._global_upper_bound
-        m._objective_value = -g._global_lower_bound
+        m._objective_bound = -g._global_lower_bound
+        m._objective_value = -g._global_upper_bound
     end
+
     return
 end
 
