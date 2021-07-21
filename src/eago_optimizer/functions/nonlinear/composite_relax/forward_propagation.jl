@@ -1,4 +1,3 @@
-using Base: Float64
 # Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
 # This code is licensed under MIT license (see LICENSE.md for full details)
 #############################################################################
@@ -28,12 +27,12 @@ end
 
 f_init!(::Relax, g::DAT, b::RelaxCache) = nothing
 
-function _var_set(::Type{MC{N,T}}, i::Int, x_cv::Float64, x_cc::Float64, l::Float64, u::Float64) where {N,T<:RelaxTag}
+function _var_set(::Type{MC{N,T}}, i::Int, x_cv::Float64, x_cc::Float64, l::Float64, u::Float64) where {V,N,T<:RelaxTag}
     v = seed_gradient(i, Val(N))
     return MC{N,T}(x_cv, x_cc, Interval{Float64}(l, u), v, v, false)
 end
 
-function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     i = _first_index(g, k)
     x = _val(b, i)
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
@@ -72,7 +71,7 @@ function expand_set(::Type{MC{N2,T}}, x::MC{N1,T}, fsparse::Vector{Int},
     return MC{N2,T}(x.cv, x.cc, x.Intv, cv_grad, cc_grad, x.cnst)
 end
 
-function fprop!(t::Relax, ex::Subexpression, g::DAT, c::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, ex::Subexpression, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     d = _subexpression_value(c, _first_index(g, k))
     z = expand_set(MC{N,T}, d.set[1], _sparsity(g, k), _sparsity(sub), c.cv_buffer, c.cc_buffer)
     _store_set!(c, z, k)
@@ -80,7 +79,7 @@ function fprop!(t::Relax, ex::Subexpression, g::DAT, c::RelaxCache{N,T}, k::Int)
     return
 end
 
-function set_value_post(z::MC{N,T}, v::VariableValues{Float64}, s::Vector{Int}, ϵ::Float64) where {N,T<:RelaxTag}
+function set_value_post(z::MC{N,T}, v::VariableValues{Float64}, s::Vector{Int}, ϵ::Float64) where {V,N,T<:RelaxTag}
     lower = z.cv
     upper = z.cc
     lower_refinement = true
@@ -167,7 +166,7 @@ Intersects the new set valued operator with the prior and performs affine bound 
    the prior values may correspond to different points of evaluation.
 """
 function _cut(x::MC{N,T}, lastx::MC{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int},
-              post::Bool, cut::Bool, cut_interval::Bool) where {N,T<:RelaxTag}
+              post::Bool, cut::Bool, cut_interval::Bool) where {V,N,T<:RelaxTag}
 
     if post && cut && cut_interval
         return set_value_post(x ∩ lastx.Intv, v, s, ϵ)
@@ -183,7 +182,7 @@ end
 
 for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MAX, :max), (:fprop!, DIV, :/))
     eval(quote
-        function ($f)(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+        function ($f)(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _child(g, 1, k)
             y = _child(g, 2, k)
             if !_is_num(b, x) && _is_num(b, y)
@@ -200,7 +199,7 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
         end
     end)
 end
-function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     x = _child(g, 1, k)
     x_is_num = _is_num(b, x)
     if _arity(g, k) == 2
@@ -223,7 +222,7 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{N,T}, k::Int) whe
 end
 
 
-function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = _is_num(b, x)
@@ -235,7 +234,6 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{N,T}, k::Int) wh
     else
         xv = _set(b, x)
         yv = _set(b, y)
-        #=
         if b.use_apriori_mul
             xr = _info(b, x)
             yr = _info(b, y)
@@ -249,10 +247,10 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{N,T}, k::Int) wh
                                     lo(affine_expand(P, p0, xr.cc, xr.cc_grad)),
                                     lo(affine_expand(P, p0, yr.cc, yr.cc_grad)),
                                     xr.cv_grad, yr.cv_grad, xr.cc_grad, yr.cc_grad)
-                                    =#
-        #else
-        z = xv*yv
-        #end
+                                    
+        else
+            z = xv*yv
+        end
     end
     z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
     _store_set!(b, z, k)
@@ -260,7 +258,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{N,T}, k::Int) wh
     return
 end
 
-function fprop_n!(t::Relax, v::Val{PLUS}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::Relax, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = zero(MC{N,T})
     znum = 0.0
     for i in _children(g, k)
@@ -279,7 +277,7 @@ function fprop_n!(t::Relax, v::Val{PLUS}, g::DAT, b::RelaxCache{N,T}, k::Int) wh
     return
 end
 
-function fprop_n!(t::Relax, v::Val{MIN}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::Relax, v::Val{MIN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = Inf*one(MC{N,T})
     znum = Inf
     for i in _children(g, k)
@@ -296,7 +294,7 @@ function fprop_n!(t::Relax, v::Val{MIN}, g::DAT, b::RelaxCache{N,T}, k::Int) whe
     return
 end
 
-function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = -Inf*one(MC{N,T})
     znum = -Inf
     for i in _children(g, k)
@@ -313,36 +311,13 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{N,T}, k::Int) whe
     return
 end
 
-function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = one(MC{N,T})
     znum = one(Float64)
     count = 0
     for i in _children(g, k)
         if _is_num(b, i)
             znum = znum*_num(b, i)
-    #        continue
-    #    end
-    #=
-        if b.use_apriori_mul
-            if count == 0
-                zaff = zaff*_info(b,i)::MC{N,T}
-                z = z*_set(b, i)::MC{N,T}
-            else
-                xi = _set(b, i)::MC{N,T}
-                xref = _info(b,i)::MC{N,T}
-                z = mult_apriori_kernel(z, xi, z.Intv*xi.Intv,
-                                        affine_expand(p, p0, zaff.cv, zaff.cv_grad),
-                                        affine_expand(p, p0, xref.cv, xref.cv_grad),
-                                        hi(affine_expand(P, p0, zaff.cv, zaff.cv_grad)),
-                                        hi(affine_expand(P, p0, xref.cv, xref.cv_grad)),
-                                        affine_expand(p, p0, zaff.cc, zaff.cc_grad),
-                                        affine_expand(p, p0, xref.cc, xref.cc_grad),
-                                        lo(affine_expand(P, p0, zaff.cc, zaff.cc_grad)),
-                                        lo(affine_expand(P, p0, xref.cc, xref.cc_grad)),
-                                        zaff.cv_grad, xref.cv_grad, zaff.cc_grad, xref.cc_grad)
-                zaff = zaff*xref
-            end
-            =#
         else
             z = z*_set(b, i)
         end
@@ -357,17 +332,17 @@ end
 
 for F in (PLUS, MULT, MIN, MAX)
     eval(quote
-            function fprop!(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+        function fprop!(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             n = _arity(g, k)
             if n == 2
                 return fprop_2!(Relax(), Val($F), g, b, k)
             end
             fprop_n!(Relax(), Val($F), g, b, k)
             return
-            end
+        end
     end)
 end
-function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = _is_num(b, x)
@@ -376,7 +351,7 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{N,T}, k::Int) where
         z = _set(b, x)
         _store_set!(b, z, k)
     elseif y_is_num && iszero(_num(b, y))
-        _store_set!(b, zero(V), k)
+        _store_set!(b, one(_set(b, x)), k)
     else
         if !x_is_num && y_is_num
             z = _set(b, x)^_num(b, y)
@@ -391,7 +366,7 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{N,T}, k::Int) where
     (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
-function fprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     f = _user_univariate_operator(g, _first_index(g, k))
     x = _set(b, _child(g, 1, k))
     z = f(x)
@@ -400,7 +375,7 @@ function fprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache{N,T}, k::Int) wher
     (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
 end
-function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     mv = _user_multivariate_operator(g, _first_index(g, k))
     n = _arity(g, k)
     set_input = _set_input(b, n)
@@ -416,9 +391,7 @@ function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{N,T}, k::Int) whe
         end
         i += 1
     end
-    #@show set_input
     z = MOI.eval_objective(mv, set_input)::MC{N,T}
-    #@show z
     z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
     _store_set!(b, z, k)
     if (b.first_eval && b.use_apriori_mul)
@@ -433,7 +406,7 @@ for ft in UNIVARIATE_ATOM_TYPES
         continue
     end
     eval(quote
-        function fprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+        function fprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _set(b, _child(g, 1, k))
             z = ($f)(x)
             z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
@@ -444,7 +417,7 @@ for ft in UNIVARIATE_ATOM_TYPES
     end)
 end
 
-function fprop!(t::Relax, v::Val{ARH}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{ARH}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = _is_num(b, x)
@@ -469,7 +442,7 @@ function fprop!(t::Relax, v::Val{ARH}, g::DAT, b::RelaxCache{N,T}, k::Int) where
     return
 end
 
-function fprop!(t::Relax, v::Val{LOWER_BND}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{LOWER_BND}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = _set(b, _child(g, 1, k))
     y = _child(g, 2, k)
     if _is_num(b, y)
@@ -481,7 +454,7 @@ function fprop!(t::Relax, v::Val{LOWER_BND}, g::DAT, b::RelaxCache{N,T}, k::Int)
     return
 end
 
-function fprop!(t::Relax, v::Val{UPPER_BND}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{UPPER_BND}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = _set(b, _child(g, 1, k))
     y = _child(g, 2, k)
     if _is_num(b, y)
@@ -493,7 +466,7 @@ function fprop!(t::Relax, v::Val{UPPER_BND}, g::DAT, b::RelaxCache{N,T}, k::Int)
     return
 end
 
-function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = _set(b, _child(g, 1, k))
     y = _child(g, 2, k)
     r = _child(g, 3, k)
