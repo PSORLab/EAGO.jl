@@ -353,7 +353,11 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
             break
         end
         m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
+        #@show m._lower_objective_value 
         if cut_condition(m)
+            for i = 1:m._working_problem._variable_count
+                m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+            end
             m._cut_iterations += 1
         else
             break
