@@ -128,13 +128,20 @@ function MOI.get(d::Incremental{S}, ::MOI.DualObjectiveValue) where S
     MOI.get(d.optimizer, MOI.DualObjectiveValue())::Float64
 end
 
-const SAF_CI_TYPES = Union{CI{SAF,LT},CI{SAF,GT},CI{SAF,ET}}
 function MOI.get(d::Incremental{S}, ::MOI.VariablePrimal, vi::VI) where S
     MOI.get(d.optimizer, MOI.VariablePrimal(), vi)::Float64
 end
+
+const SAF_CI_TYPES = Union{CI{SAF,LT},CI{SAF,GT},CI{SAF,ET}}
 function MOI.get(d::Incremental{S}, ::MOI.ConstraintPrimal, ci::SAF_CI_TYPES) where S
     MOI.get(d.optimizer, MOI.ConstraintPrimal(), ci)::Float64
 end
+
+const SQF_CI_TYPES = Union{CI{SQF,LT},CI{SQF,GT},CI{SQF,ET}}
+function MOI.get(d::Incremental{S}, ::MOI.ConstraintPrimal, ci::SQF_CI_TYPES) where S
+    MOI.get(d.optimizer, MOI.ConstraintPrimal(), ci)::Float64
+end
+
 function MOI.get(d::Incremental{S}, ::MOI.ConstraintDual, ci::Union{CI{SV,LT},CI{SV,GT}}) where S
     MOI.get(d.optimizer, MOI.ConstraintDual(), ci)::Float64
 end
