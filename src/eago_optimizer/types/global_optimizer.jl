@@ -113,7 +113,7 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum CPU time in seconds (default = 1000)"
     time_limit::Float64 = 1000.0
     "Maximum number of iterations (default 3E6)"
-    iteration_limit::Int = 1000 #2*10^5
+    iteration_limit::Int = 200 #2*10^5
     "Absolute tolerance for termination (default = 1E-3)"
     absolute_tolerance::Float64 = 1E-4
     "Relative tolerance for termination (default = 1E-3)"
@@ -123,9 +123,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
-    cp_depth::Int = 20
+    cp_depth::Int = 0
     "Number of times to repeat forward-reverse pass routine (default = 3)"
-    cp_repetitions::Int = 3
+    cp_repetitions::Int = 0
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
     this number (default = 0.99)"
     cp_tolerance::Float64 = 0.99
@@ -136,15 +136,15 @@ Base.@kwdef mutable struct EAGOParameters
     "Depth in B&B tree above which OBBT should be disabled (default = 6)"
     obbt_depth::Int = 4
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
-    obbt_repetitions::Int = 20
+    obbt_repetitions::Int = 10
     "Turn aggresive OBBT on (default = false)"
     obbt_aggressive_on::Bool = true
     "Maximum iteration to perform aggresive OBBT (default = 2)"
     obbt_aggressive_max_iteration::Int = 2
     "Minimum dimension to perform aggresive OBBT (default = 2)"
     obbt_aggressive_min_dimension::Int = 2
-    "Tolerance to consider bounds equal (default = 1E-9)"
-    obbt_tolerance::Float64 = 1E-9
+    "Tolerance to consider bounds equal (default = 1E-10)"
+    obbt_tolerance::Float64 = 1E-10
 
     # Options for linear bound tightening
     "Depth in B&B tree above which linear FBBT should be disabled (default = 1000)"
@@ -175,11 +175,11 @@ Base.@kwdef mutable struct EAGOParameters
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
     cut_min_iterations::Int = 1
     "Maximum number of cuts at each node to attempt"
-    cut_max_iterations::Int = 5
+    cut_max_iterations::Int = 8
     "Absolute tolerance checked for continuing cut"
-    cut_tolerance_abs::Float64 = 1E-3
+    cut_tolerance_abs::Float64 = 1E-6
     "Relative tolerance checked for continuing cut"
-    cut_tolerance_rel::Float64 = 1E-3
+    cut_tolerance_rel::Float64 = 1E-2
 
     "Use tolerances to determine safe cuts in a Khajavirad 2018 manner"
     cut_safe_on::Bool = true
@@ -561,6 +561,9 @@ _ext_typ(m::GlobalOptimizer{R,S,Q})           where {R,S,Q} = m._subsolvers.ext_
 
 @inline _obbt_depth(m::GlobalOptimizer) = m._parameters.obbt_depth
 @inline _obbt_repetitions(m::GlobalOptimizer) = m._parameters.obbt_repetitions
+@inline _obbt_tolerance(m::GlobalOptimizer) = m._parameters.obbt_repetitions
+@inline _obbt_aggressive_on(m::GlobalOptimizer) = m._parameters.obbt_aggressive_on
+@inline _obbt_aggressive_max_iteration(m::GlobalOptimizer) = m._parameters.obbt_aggressive_max_iteration
 
 @inline _user_solver_config(m::GlobalOptimizer) = m._parameters.user_solver_config
 @inline _verbosity(m::GlobalOptimizer) = m._parameters.verbosity

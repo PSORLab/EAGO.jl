@@ -140,20 +140,30 @@ end
 reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::Nothing) = nothing
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
     ip = m._input_problem
-
     vi = d._variable_info
     n = NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
     m._current_node = n
 
     l, u = interval_bound(m, f)
+    if !_is_input_min(m)
+        l, u = -u, -l
+    end
     ηi = add_η!(d, l, u)
+    @variable(ip._nlp_data.evaluator.m, l <= η <= u)
+    sqf_obj = MOI.get(ip._nlp_data.evaluator.m, MOI.ObjectiveFunction{SQF}())
+    if ip._optimization_sense == MOI.MAX_SENSE
+        MOIU.operate!(-, Float64, sqf_obj)
+    end
+    push!(sqf_obj.affine_terms, SAT(-1.0, VI(length(vi))))
+    MOI.add_constraint(backend(ip._nlp_data.evaluator.m), sqf_obj, LT(0.0))
+    @objective(ip._nlp_data.evaluator.m, Min, η)
     m._global_lower_bound = l
     m._global_upper_bound = u
     d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     f.buffer[ηi] = 0.0
     f.len += 1
-    if ip._optimization_sense == MOI.MAX_SENSE
+    if !_is_input_min(m)
         MOIU.operate!(-, Float64, f.func)
     end
     MOIU.operate!(-, Float64, f.func, SV(VI(ηi)))
