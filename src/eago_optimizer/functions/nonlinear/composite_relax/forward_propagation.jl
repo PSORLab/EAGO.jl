@@ -10,6 +10,8 @@
 # set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
 #############################################################################
 
+const DEBUG_CONSTANT = false
+
 function affine_expand(x::Vector{Float64}, x0::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}) where N
     v = fx0
     for i=1:N
@@ -36,6 +38,9 @@ function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) wh
     i = _first_index(g, k)
     x = _val(b, i)
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
+    DEBUG_CONSTANT && println(" ")
+    DEBUG_CONSTANT && println(" Variable at $k")
+    DEBUG_CONSTANT && @show z
     if !_first_eval(b)
         z = z ∩ _interval(b, k)
     end
@@ -185,6 +190,11 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
         function ($f)(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _child(g, 1, k)
             y = _child(g, 2, k)
+            println(" ")
+            Q = $F
+            DEBUG_CONSTANT && println(" $Q ($k) at $k")
+            DEBUG_CONSTANT && @show _set_or_num(b, x)
+            DEBUG_CONSTANT && @show _set_or_num(b, y)
             if !_is_num(b, x) && _is_num(b, y)
                 z = ($fc)(_set(b, x), _num(b, y))
             elseif _is_num(b, x) && !_is_num(b, y)
@@ -192,7 +202,9 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
             else
                 z = ($fc)(_set(b, x), _set(b, y))
             end
+            DEBUG_CONSTANT && @show z
             z = _cut(z, _set(b,k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+            DEBUG_CONSTANT && @show z
             _store_set!(b, z, k)
             (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
             return
@@ -200,10 +212,14 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
     end)
 end
 function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    DEBUG_CONSTANT && println(" ")
+    DEBUG_CONSTANT && println(" MINUS ($k) at $k")
     x = _child(g, 1, k)
+    DEBUG_CONSTANT && @show _set_or_num(b, x)
     x_is_num = _is_num(b, x)
     if _arity(g, k) == 2
         y = _child(g, 2, k)
+        DEBUG_CONSTANT && @show _set_or_num(b, y)
         y_is_num = _is_num(b, y)
         if !x_is_num && y_is_num
             z = _set(b, x) - _num(b, y)
@@ -215,7 +231,9 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
     else
         z = -_set(b, x)
     end
+    DEBUG_CONSTANT && @show z
     z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), false, b.cut, b.cut_interval)
+    DEBUG_CONSTANT && @show z
     _store_set!(b, z, k)
     (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
     return
@@ -347,11 +365,17 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
     y = _child(g, 2, k)
     x_is_num = _is_num(b, x)
     y_is_num = _is_num(b, y)
+    DEBUG_CONSTANT && println(" ")
+    DEBUG_CONSTANT && println(" POW at $k")
+    DEBUG_CONSTANT && @show _set_or_num(b, x)
+    DEBUG_CONSTANT && @show _set_or_num(b, y)
     if y_is_num && isone(_num(b, y))
         z = _set(b, x)
         _store_set!(b, z, k)
     elseif y_is_num && iszero(_num(b, y))
         _store_set!(b, one(_set(b, x)), k)
+    elseif x_is_num && y_is_num
+        _store_num!(b, _num(b, x)^_num(b, y), k)
     else
         if !x_is_num && y_is_num
             z = _set(b, x)^_num(b, y)
@@ -360,7 +384,9 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
         elseif !x_is_num && !y_is_num
             z = _set(b, x)^_set(b, y)
         end
+        DEBUG_CONSTANT && @show z
         z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
+        DEBUG_CONSTANT && @show z
         _store_set!(b, z, k)
     end
     (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
@@ -408,8 +434,14 @@ for ft in UNIVARIATE_ATOM_TYPES
     eval(quote
         function fprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _set(b, _child(g, 1, k))
+            DEBUG_CONSTANT &&  println(" ")
+            vt = $ft
+            DEBUG_CONSTANT && println(" $vt at $k")
+            DEBUG_CONSTANT && @show _set_or_num(b, _child(g, 1, k))
             z = ($f)(x)
+            DEBUG_CONSTANT && @show z
             z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.post, b.cut, b.cut_interval)
+            DEBUG_CONSTANT && @show z
             _store_set!(b, z, k)
             (b.first_eval && b.use_apriori_mul) && _store_info!(b, z, k)
             return

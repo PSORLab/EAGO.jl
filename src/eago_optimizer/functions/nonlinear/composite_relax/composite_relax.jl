@@ -64,18 +64,22 @@ _num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._num[i] #@inbound
 @propagate_inbounds _is_num(b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}         = b._is_num #@inbounds b._is_num[i]
 @propagate_inbounds _is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._is_num[i] #@inbounds b._is_num[i]
 
+_set_or_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !_is_num(b, i) ? _set(b,i) : _num(b,i) 
+
 @propagate_inbounds _interval(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = Interval{Float64}(_set(b, i))
 @propagate_inbounds _subexpression_value(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_value[i] # @inbounds b._subexpression_value[i]
 
 @propagate_inbounds _is_unlocked(b::RelaxCache, i::Int) = !_is_num(b,i)
 
+@propagate_inbounds function _store_num!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag}
+    b._num[i] = v
+    return
+end
 @propagate_inbounds function _store_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    #@inbounds b._set[i] = v
     b._set[i] = v
     return
 end
 @propagate_inbounds function _store_info!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    #@inbounds b._set[i] = v
     b._info[i] = v
     return
 end
