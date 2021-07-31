@@ -64,8 +64,8 @@ NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_
 # Copy utilities
 Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
                               copy(x.upper_variable_bounds),
-                              copy(x.is_integer), x.cont_depth, x.continuous,
-                              x.lower_bound, x.upper_bound, x.depth, x.id,
+                              copy(x.is_integer), x.continuous,
+                              x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
                               x.branch_direction, x.last_branch, x.branch_extent)
 
 # using alternative name as to not interfere with ordering...
