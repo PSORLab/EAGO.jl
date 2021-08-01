@@ -35,7 +35,7 @@ module EAGO
     using Printf
 
     import IntervalArithmetic: mid
-    import Base: isempty
+    import Base: isempty, zero, +, *, -, /, ^, log, log10, exp, exp10
 
     @reexport using McCormick
     @reexport using SpecialFunctions

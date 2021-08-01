@@ -190,7 +190,7 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
         function ($f)(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _child(g, 1, k)
             y = _child(g, 2, k)
-            println(" ")
+            DEBUG_CONSTANT && println(" ")
             Q = $F
             DEBUG_CONSTANT && println(" $Q ($k) at $k")
             DEBUG_CONSTANT && @show _set_or_num(b, x)

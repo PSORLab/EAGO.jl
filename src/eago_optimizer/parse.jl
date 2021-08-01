@@ -56,8 +56,9 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
     mul_relax = m._parameters.mul_relax_style
-    rtype = (mul_relax == 1) ? ((mul_relax_style == 2) ? RelaxAA() : RelaxMulEnum()) : Relax()
-    renum = (mul_relax == 1) ? ((mul_relax_style == 2) ? MC_AFF_RELAX : MC_ENUM_RELAX) : STD_RELAX
+    rtype = (mul_relax == 1) ? Relax() : (mul_relax == 2) ? RelaxAA() : RelaxMulEnum()
+    renum = (mul_relax == 1) ? STD_RELAX : (mul_relax == 2) ? MC_AFF_RELAX : MC_ENUM_RELAX
+
     # add subexpressions (assumes they are already ordered by JuMP)
     # creates a dictionary that lists the subexpression sparsity
     # by search each node for variables dict[2] = [2,3] indicates
@@ -364,7 +365,6 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
     # this is placed after adding nonlinear functions as this prior routine
     # copies the nlp_block from the input_problem to the working problem
     reform_epigraph_min!(m._global_optimizer)
-
     label_fixed_variables!(m._global_optimizer)
     label_branch_variables!(m._global_optimizer)
 

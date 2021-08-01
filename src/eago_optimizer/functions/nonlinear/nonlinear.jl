@@ -16,6 +16,7 @@ include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "graph.jl"))
 include(joinpath(@__DIR__, "constant", "constant.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
+include(joinpath(@__DIR__, "apriori_relax", "apriori_relax.jl"))
 
 @enum(RelaxType, STD_RELAX, MC_AFF_RELAX, MC_ENUM_RELAX)
 
@@ -33,13 +34,13 @@ mutable struct NonlinearExpression{V,N,T<:RelaxTag} <: AbstractEAGOConstraint
     last_reverse::Bool
     lower_bound::Float64
     upper_bound::Float64
+    grad_sparsity::Vector{Int}
 end
 function NonlinearExpression()
     g = DirectedTree()
     c = RelaxCache{MC{1,NS},1,NS}()
-    return NonlinearExpression{MC{1,NS},1,NS}(g, c, false, false, -Inf, Inf)
+    return NonlinearExpression{MC{1,NS},1,NS}(g, c, false, false, -Inf, Inf, Int[])
 end
-
 
 relax_info(s::Relax, n::Int, t::T) where T = MC{n,T}
 function NonlinearExpression!(rtype::S, sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
@@ -49,7 +50,7 @@ function NonlinearExpression!(rtype::S, sub::Union{JuMP._SubexpressionStorage,Ju
                               op::OperatorRegistry, parameter_values,
                               tag::T; is_sub::Bool = false) where {S,T}
     g = DirectedTree(sub, op, sub_sparsity, subexpr_linearity, parameter_values)
-    grad_sparsity = _sparsity(g,1)
+    grad_sparsity = _sparsity(g, 1)
     n = length(grad_sparsity)
     if is_sub
         sub_sparsity[subexpr_indx] = copy(grad_sparsity) # updates subexpression sparsity dictionary
@@ -57,7 +58,7 @@ function NonlinearExpression!(rtype::S, sub::Union{JuMP._SubexpressionStorage,Ju
     V = relax_info(rtype, n, tag)
     c = RelaxCache{V,n,T}()
     initialize!(c, g)
-    return NonlinearExpression{V,n,T}(g, c, false, false, b.lower, b.upper)
+    return NonlinearExpression{V,n,T}(g, c, false, false, b.lower, b.upper, grad_sparsity)
 end
 
 @inline _has_value(d::NonlinearExpression) = d.has_value
@@ -248,7 +249,8 @@ function forward_pass!(x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T
     #    !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])
     #end
     #_load_subexprs!(d.relax_cache, x.subexpressions)
-    fprop!(Relax(), d.g, d.relax_cache)
+    rtype = (x.relax_type == 1) ? Relax() : (x.relax_type == 2) ? RelaxAA() : RelaxMulEnum()
+    fprop!(rtype, d.g, d.relax_cache)
     return
 end
 
