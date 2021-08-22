@@ -97,6 +97,8 @@ function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::S
         buffer.eps_g ./= buffer.r_g
     end
 
+    @show "FINISHED ONE ITERATION..."
+
     # print iteration information and advance
     print_int!(verb, prob, result, buffer.r_g)
     result.iteration_number += 1

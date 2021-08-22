@@ -48,7 +48,7 @@ function NonlinearExpression!(rtype::S, sub::Union{JuMP._SubexpressionStorage,Ju
                               subexpr_indx::Int,
                               subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
                               op::OperatorRegistry, parameter_values,
-                              tag::T; is_sub::Bool = false) where {S,T}
+                              tag::T, use_apriori_flag::Bool; is_sub::Bool = false) where {S,T}
     g = DirectedTree(sub, op, sub_sparsity, subexpr_linearity, parameter_values)
     grad_sparsity = _sparsity(g, 1)
     n = length(grad_sparsity)
@@ -57,6 +57,7 @@ function NonlinearExpression!(rtype::S, sub::Union{JuMP._SubexpressionStorage,Ju
     end
     V = relax_info(rtype, n, tag)
     c = RelaxCache{V,n,T}()
+    c.use_apriori_mul = use_apriori_flag
     initialize!(c, g)
     return NonlinearExpression{V,n,T}(g, c, false, false, b.lower, b.upper, grad_sparsity)
 end
@@ -94,9 +95,9 @@ function BufferedNonlinearFunction(rtype::RELAX_ATTRIBUTE, f::JuMP._FunctionStor
                                    sub_sparsity::Dict{Int,Vector{Int}},
                                    subexpr_lin::Vector{JuMP._Derivatives.Linearity},
                                    op::OperatorRegistry, parameter_values,
-                                   tag::T) where T <: RelaxTag
+                                   tag::T, use_apriori_flag::Bool) where T <: RelaxTag
 
-    ex = NonlinearExpression!(rtype, f, b, sub_sparsity, -1, subexpr_lin, op, parameter_values, tag)
+    ex = NonlinearExpression!(rtype, f, b, sub_sparsity, -1, subexpr_lin, op, parameter_values, tag, use_apriori_flag)
     n = length(_sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     V = relax_info(rtype, n, tag)
@@ -243,15 +244,21 @@ function eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector
     eliminate_fixed_variables!(f.ex, v)
 end
 
+function f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool)
+    if flag
+        return f_init!(t, g, c)
+    end
+    return fprop!(t, g, c)
+end
 function forward_pass!(x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
     # Fix subexpression code...
     #for i = 1:_dep_subexpr_count(d)
     #    !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])
     #end
     #_load_subexprs!(d.relax_cache, x.subexpressions)
-    rtype = (x.relax_type == 1) ? Relax() : (x.relax_type == 2) ? RelaxAA() : RelaxMulEnum()
-    fprop!(rtype, d.g, d.relax_cache)
-    return
+    (x.relax_type == STD_RELAX)    && (return f_init_prop!(Relax(), d.g, d.relax_cache, x.is_first_eval))
+    (x.relax_type == MC_AFF_RELAX) && (return f_init_prop!(RelaxAA(d.grad_sparsity), d.g, d.relax_cache, x.is_first_eval))
+    return f_init_prop!(RelaxMulEnum(d.grad_sparsity), d.g, d.relax_cache, x.is_first_eval)
 end
 
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
@@ -261,9 +268,7 @@ function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where 
     return
 end
 
-function rprop!(::Relax, x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
-    return rprop!(Relax(), d.g, d.relax_cache)
-end
+rprop!(::Relax, x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = rprop!(Relax(), d.g, d.relax_cache)
 function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
     _set_last_reverse!(d, true)
     return rprop!(Relax(), x, d.ex)

@@ -157,6 +157,7 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
     else
         return false
     end
+    @show m._end_state
     return true
 end
 termination_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = termination_check(_ext_typ(m), m)
@@ -265,17 +266,22 @@ function global_solve!(m::GlobalOptimizer)
     while !termination_check(m)
 
         # Selects node, deletes it from stack, prints based on verbosity
+        fathom!(m)
         node_selection!(m)
         print_node!(m)
 
         # Performs prepocessing and times
         m._last_preprocess_time += @elapsed preprocess!(m)
 
+        #@show m._preprocess_feasibility
+
         if m._preprocess_feasibility
 
             # solves & times lower bounding problem
             m._last_lower_problem_time += @elapsed lower_problem!(m)
             print_results!(m, true)
+            #@show m._lower_feasibility
+           # @show convergence_check(m)
 
             # checks for infeasibility stores solution
             if m._lower_feasibility && !convergence_check(m)
@@ -293,7 +299,6 @@ function global_solve!(m::GlobalOptimizer)
                     repeat_check(m) ? single_storage!(m) : branch_node!(m)
                 end
             end
-            fathom!(m)
         else
             m._lower_objective_value = -Inf
             m._lower_feasibility = false
@@ -322,6 +327,11 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     m._run_time = g._run_time
     m._node_count = g._maximum_node_id
 
+    # evaluate objective (so there isn't a small difference in f(x) and objective_value)
+    # local solvers that solve to feasibility may result in a slightly lower than true solve...
+    # TODO
+    
+    # stores objective value and bound 
     if g._input_problem._optimization_sense == MOI.MIN_SENSE
         m._objective_bound = g._global_lower_bound
         m._objective_value = g._global_upper_bound

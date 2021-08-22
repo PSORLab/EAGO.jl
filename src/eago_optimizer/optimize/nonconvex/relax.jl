@@ -166,54 +166,14 @@ function relax!(m::GlobalOptimizer, f::BufferedQuadraticEq, indx::Int, check_saf
 end
 
 """
-$(FUNCTIONNAME)
-"""
-function affine_relax_nonlinear!(f::BufferedNonlinearFunction{V,N,T}, evaluator::Evaluator,
-                                 use_cvx::Bool, new_pass::Bool, is_constraint::Bool) where {V,N,T<:RelaxTag}
-
-    new_pass && forward_pass!(evaluator, f)
-    x = evaluator.variable_values.x
-    finite_cut = true
-
-    grad_sparsity = _sparsity(f)
-    if _is_num(f)
-        f.saf.constant = _num(f)
-        for i = 1:length(grad_sparsity)
-            f.saf.terms[i] = SAT(0.0, VI(grad_sparsity[i]))
-        end
-    else
-        setvalue = _set(f)
-        finite_cut &= !(isempty(setvalue) || isnan(setvalue)) && isfinite(setvalue)
-        if finite_cut
-            value = _set(f)
-            f.saf.constant = use_cvx ? value.cv : -value.cc
-            for (i, k) in enumerate(grad_sparsity)
-                c = use_cvx ? value.cv_grad[i] : -value.cc_grad[i]
-                f.saf.terms[i] = SAT(c, VI(k))
-                f.saf.constant -= c*x[k]
-            end
-            if is_constraint
-                bnd_used = use_cvx ? -_upper_bound(f) : _lower_bound(f)
-                f.saf.constant += bnd_used
-            end
-        end
-    end
-
-    return finite_cut
-end
-
-"""
 $(TYPEDSIGNATURES)
 """
-function check_set_affine_nl!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, finite_cut_generated::Bool, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
-    d = _relaxed_optimizer(m)
-    valid_cut_flag = finite_cut_generated 
-    valid_cut_flag &= !check_safe || is_safe_cut!(m, f.saf)
+function check_set_affine_nl!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, finite_cut::Bool, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
+    valid_cut_flag = finite_cut && (!check_safe || is_safe_cut!(m, f.saf))
     if valid_cut_flag
-        lt = LT(-f.saf.constant + _constraint_tol(m))
+        lt = LT(_constraint_tol(m) - f.saf.constant)
         f.saf.constant = 0.0
-        ci = MOI.add_constraint(d, f.saf, lt)
-        push!(m._affine_relax_ci, ci)
+        push!(m._affine_relax_ci, MOI.add_constraint(_relaxed_optimizer(m), f.saf, lt))
     end
     return valid_cut_flag
 end
@@ -223,8 +183,47 @@ $(TYPEDSIGNATURES)
 """
 function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, k::Int, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
     d = m._working_problem._relaxed_evaluator
-    valid_cut_flag = check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, true, true, true), check_safe)
-    valid_cut_flag &= check_set_affine_nl!(m, f, affine_relax_nonlinear!(f, d, false, false, true), check_safe)
+    forward_pass!(d, f)
+    x = d.variable_values.x
+    valid_cut_flag = true
+
+    grad_sparsity = _sparsity(f)
+    if _is_num(f)
+        f.saf.constant = _num(f)
+        for i = 1:length(grad_sparsity)
+            f.saf.terms[i] = SAT(0.0, VI(grad_sparsity[i]))
+        end
+    else
+        v = _set(f)
+        if !isempty(v)
+            # if has less than or equal to bound (<=)
+            if isfinite(_upper_bound(f))
+                lower_cut_valid = !isnan(v.cv) && isfinite(v.cv)
+                if lower_cut_valid
+                    f.saf.constant = v.cv - _upper_bound(f)
+                    for (i, k) in enumerate(grad_sparsity)
+                        c = v.cv_grad[i]
+                        f.saf.terms[i] = SAT(c, VI(k))
+                        f.saf.constant -= c*x[k]
+                    end
+                    valid_cut_flag = check_set_affine_nl!(m, f, lower_cut_valid, check_safe)
+                end
+            end
+            # if has greater than or equal to bound (>=)
+            if isfinite(_lower_bound(f))
+                upper_cut_valid = !isnan(v.cc) && isfinite(v.cc)
+                if upper_cut_valid
+                    f.saf.constant = -v.cc +  _lower_bound(f)
+                    for (i, k) in enumerate(grad_sparsity)
+                        c = -v.cc_grad[i]
+                        f.saf.terms[i] = SAT(c, VI(k))
+                        f.saf.constant -= c*x[k]
+                    end
+                    valid_cut_flag &= check_set_affine_nl!(m, f, upper_cut_valid, check_safe)
+                end
+            end
+        end
+    end
     return valid_cut_flag
 end
 

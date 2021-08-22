@@ -85,9 +85,9 @@ Base.@kwdef mutable struct EAGOParameters
     iteration (default = 1)."
     verbosity::Int = 1
     "Display summary of iteration to console every `output_iterations` (default = 1000)"
-    output_iterations::Int = 1
+    output_iterations::Int = 10000
     "Display header for summary to console every `output_iterations` (default = 10000)"
-    header_iterations::Int = 10000
+    header_iterations::Int = 100000
 
     # Node branching options
     "Convex coefficient used to select branch point. Branch point is given by
@@ -111,9 +111,9 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum number of nodes (default = 1E-7)"
     node_limit::Int = 1*10^7
     "Maximum CPU time in seconds (default = 1000)"
-    time_limit::Float64 = 1000.0
+    time_limit::Float64 = 3600.0
     "Maximum number of iterations (default 3E6)"
-    iteration_limit::Int = 200 #2*10^5
+    iteration_limit::Int = 1E9 #2*10^5
     "Absolute tolerance for termination (default = 1E-3)"
     absolute_tolerance::Float64 = 1E-4
     "Relative tolerance for termination (default = 1E-3)"
@@ -169,7 +169,7 @@ Base.@kwdef mutable struct EAGOParameters
     reverse_subgrad_tighten::Bool = false
     "Outer round computed subgradient bounds by this amount"
     subgrad_tol::Float64 = 1E-10
-    mul_relax_style::Int = 0
+    mul_relax_style::Int = 1
 
     # Tolerance to add cuts and max number of cuts
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"

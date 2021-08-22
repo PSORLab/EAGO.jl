@@ -107,7 +107,7 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
         if is_integer_feasible(m)
             m._upper_feasibility = true
             obj_val = MOI.get(d, MOI.ObjectiveValue())
-            m._upper_objective_value = obj_val
+            stored_adjusted_upper_bound!(m, obj_val)
             m._best_upper_value = min(obj_val, m._best_upper_value)
             m._upper_solution .= MOI.get(d, MOI.VariablePrimal(), m._upper_variables)
             
@@ -130,7 +130,6 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
             for (i, ci_sqf_eq) in ip._quadratic_eq_ci_dict
                 ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_eq)
             end
-
         end
     else
         m._upper_feasibility = false

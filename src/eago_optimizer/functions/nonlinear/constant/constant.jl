@@ -98,6 +98,12 @@ function fprop!(::ConstInfo, ::Val{POW}, g::DAT, b::ConstantCache, k::Int)
     else
         z = ConstData()
     end
+    println(" ")
+    println(" ")
+    println("---power---")
+    @show _is_num(b, x)
+    @show _is_num(b, y)
+    @show z._is_num
     store_data!(b, k, z)
 end
 

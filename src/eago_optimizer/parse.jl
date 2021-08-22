@@ -56,8 +56,23 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
     mul_relax = m._parameters.mul_relax_style
-    rtype = (mul_relax == 1) ? Relax() : (mul_relax == 2) ? RelaxAA() : RelaxMulEnum()
-    renum = (mul_relax == 1) ? STD_RELAX : (mul_relax == 2) ? MC_AFF_RELAX : MC_ENUM_RELAX
+    if mul_relax == 1
+        rtype = Relax()
+        renum = STD_RELAX
+        ruse_apriori = true
+    elseif mul_relax == 2
+        rtype = RelaxAA()
+        renum = MC_AFF_RELAX
+        ruse_apriori = true
+    elseif mul_relax == 3
+        rtype = RelaxMulEnum()
+        renum = MC_ENUM_RELAX
+        ruse_apriori = true
+    else
+        rtype = Relax()
+        renum = STD_RELAX
+        ruse_apriori = false
+    end
 
     # add subexpressions (assumes they are already ordered by JuMP)
     # creates a dictionary that lists the subexpression sparsity
@@ -76,7 +91,8 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
         for i = 1:length(evaluator.subexpressions)
             subexpr = evaluator.subexpressions[i]
             nlexpr = NonlinearExpression!(rtype, subexpr, dict_sparsity, i, evaluator.subexpression_linearity, 
-                                          user_operator_registry, m._parameters.relax_tag, evaluator.m.nlp_data.nlparamvalues)
+                                          user_operator_registry, m._parameters.relax_tag, 
+                                          evaluator.m.nlp_data.nlparamvalues, ruse_apriori)
             push!(relax_evaluator.subexpressions, nlexpr)
         end
     end
@@ -90,11 +106,14 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
+        #@show "ran has nonlinear"
+        #@show dict_sparsity
         m._working_problem._objective = BufferedNonlinearFunction(rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.subexpression_linearity,
                                                                  user_operator_registry,
                                                                  evaluator.m.nlp_data.nlparamvalues,
-                                                                 m._parameters.relax_tag)
+                                                                 m._parameters.relax_tag, ruse_apriori)
+        #@show typeof(m._working_problem._objective)
     end
 
     # add nonlinear constraints
@@ -106,7 +125,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
                                                                               evaluator.subexpression_linearity,
                                                                               user_operator_registry,
                                                                               evaluator.m.nlp_data.nlparamvalues,
-                                                                              m._parameters.relax_tag))
+                                                                              m._parameters.relax_tag, ruse_apriori))
     end
 
     relax_evaluator.subexpressions_eval = fill(false, length(relax_evaluator.subexpressions))
@@ -135,6 +154,7 @@ end
 function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     m._variable_count += 1
     push!(m._variable_info, VariableInfo(MOI.Interval{Float64}(l, u)))
+    @show m._variable_info[end]
     return m._variable_count
 end
 
@@ -189,16 +209,18 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q])
     wp._relaxed_evaluator.variable_values = v
-    _set_variable_storage!(f,v)
+    _set_variable_storage!(f, v)
 
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
-
     l, u = interval_bound(m, f)
     if !_is_input_min(m)
         l, u = -u, -l
     end
+    d._objective.ex.lower_bound = l
+    d._objective.ex.upper_bound = u
+    #@show typeof(d._objective.ex)
     ηi = add_η!(d, l, u)
     @variable(ip._nlp_data.evaluator.m, l <= η <= u)
     m._global_lower_bound = l
@@ -331,6 +353,7 @@ function label_branch_variables!(m::GlobalOptimizer)
     (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
     foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
     foreach(i -> _set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
+    @show m._branch_variables
     return
 end
 

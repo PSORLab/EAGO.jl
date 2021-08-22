@@ -13,17 +13,20 @@ function AffineEAGO(x::AffineEAGO{N}, p::Float64, q::Float64, δ::Float64) where
     Δ = p * x.Δ + δ
     AffineEAGO{N}(c, γ, δ)
 end
-AffineEAGO{N}(x::Float64, X::Interval{Float64}, i::Int) where N = AffineEAGO{N}(mid(X), seed_gradient(i, Val(N)), rad(X))
+AffineEAGO{N}(x::Float64, X::Interval{Float64}, i::Int) where N = AffineEAGO{N}(mid(X), radius(X)*seed_gradient(i, Val(N)), 0.0)
 
 const UNIT_INTERVAL = Interval{Float64}(-1,1)
 Interval(x::AffineEAGO{N}) where N = x.c + x.Δ*UNIT_INTERVAL + sum(y -> abs(y)*UNIT_INTERVAL, x.γ)
 function bounds(x::AffineEAGO{N}) where N
-    z = interval(x)
+    z = Interval(x)
     z.lo, z.hi
 end
 
 zero(::Type{AffineEAGO{N}}) where N = AffineEAGO{N}(0.0, zero(SVector{N,Float64}), 0.0)
 zero(x::AffineEAGO{N}) where N = AffineEAGO{N}(0.0, zero(SVector{N,Float64}), 0.0)
+
+one(::Type{AffineEAGO{N}}) where N = AffineEAGO{N}(1.0, zero(SVector{N,Float64}), 0.0)
+one(x::AffineEAGO{N}) where N = AffineEAGO{N}(1.0, zero(SVector{N,Float64}), 0.0)
 
 +(x::AffineEAGO{N}, y::AffineEAGO{N}) where N = AffineEAGO{N}(x.c + y.c, x.γ .+ y.γ, x.Δ + y.Δ)
 +(x::AffineEAGO{N}, α::Float64) where N = AffineEAGO{N}(α+x.c, x.γ, x.Δ)
@@ -99,7 +102,7 @@ function log10(x::AffineEAGO{N}) where N
     return AffineEAGO(x, p, q, Δ)
 end
 
-function pow_1d(x::AffineEAGO{N}, n::Int, p) where N
+function pow_1d(x::AffineEAGO{N}, n::Number, p) where N
     a, b = bounds(x)
     fa = a^n
     fb = b^n
@@ -164,8 +167,8 @@ function ^(x::AffineEAGO{N}, n::Int) where N
 end
 
 function ^(x::AffineEAGO{N}, n::Float64) where N
-    a, b = bounds(x)
-    (a <= 0.0) && error("Invalid domain...")
+    xL, xU = bounds(x)
+    (xL < 0.0) && error("Invalid domain...")
     if (n > 1.0) || (n < 0.0)
         return pow_1d(x, n, n*xU^(n-1))
     end
@@ -200,51 +203,279 @@ function inv(x::AffineEAGO{N}) where N
     return AffineEAGO(x, p, q, Δ)
 end
 
-struct MCAffPnt{Q,N,T}
+struct MCAffPnt{N,T}
     v::MC{N,T}
     box::AffineEAGO{N}
 end
+MC(x::MCAffPnt{N,T}) where {N,T<:RelaxTag} = x.v
+MC(x::MC{N,T}) where {N, T<:RelaxTag} = x
 
-zero(::Type{MCAffPnt{Q,N,T}}) where {Q,N,T} = MCAffPnt{Q,N,T}(zero(MC{N,T}), zero(AffineEAGO{N}))
-zero(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(zero(x.v), zero(x.box))
+zero(::Type{MCAffPnt{N,T}}) where {N,T} = MCAffPnt{N,T}(zero(MC{N,T}), zero(AffineEAGO{N}))
+zero(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(zero(x.v), zero(x.box))
 
-+(x::MCAffPnt{Q,N,T}, y::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(x.v + y.v, x.box + y.box)
-+(x::MCAffPnt{Q,N,T}, α::T) where {Q,N,T} = MCAffPnt{Q,N,T}(x.v + α, x.box + α)
-+(α::T, x::MCAffPnt{Q,N,T}) where {Q,N,T} = x + α
+one(::Type{MCAffPnt{N,T}}) where {N,T} = MCAffPnt{N,T}(one(MC{N,T}), one(AffineEAGO{N}))
+one(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(one(MC{N,T}), one(AffineEAGO{N}))
 
-*(x::MCAffPnt{Q,N,T}, y::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(x.v*y.v, x.box*y.box)
-*(x::MCAffPnt{Q,N,T}, α::T) where {Q,N,T} = MCAffPnt{Q,N,T}(x.v * α, x.box * α)
-*(α::T, x::MCAffPnt{Q,N,T}) where {Q,N,T} = x*α
++(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(x.v + y.v, x.box + y.box)
++(x::MCAffPnt{N,T}, α::Number) where {N,T} = MCAffPnt{N,T}(x.v + α, x.box + α)
++(α::Number, x::MCAffPnt{N,T}) where {N,T} = x + α
 
--(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(-x.v, -x.box)
--(x::MCAffPnt{Q,N,T}, α::T) where {Q,N,T} = x + (-α)
--(α::T, x::MCAffPnt{Q,N,T}) where {Q,N,T} = α + (-x)
+*(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(x.v*y.v, x.box*y.box)
+*(x::MCAffPnt{N,T}, α::Number) where {N,T} = MCAffPnt{N,T}(x.v * α, x.box * α)
+*(α::Number, x::MCAffPnt{N,T}) where {N,T} = x*α
 
-/(x::MCAffPnt{Q,N,T}, α::T) where {Q,N,T} = MCAffPnt{Q,N,T}(x.v/α, x.box/α)
-/(α::T, x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(α*inv(x.v), α*inv(x.box))
+-(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(x.v-y.v, x.box-y.box)
+-(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(-x.v, -x.box)
+-(x::MCAffPnt{N,T}, α::Number) where {N,T} = x + (-α)
+-(α::Number, x::MCAffPnt{N,T}) where {N,T} = α + (-x)
 
-^(x::MCAffPnt{Q,N,T}, n::Integer) where {Q,N,T} = MCAffPnt{Q,N,T}(x.v^n, x.box^n)
-inv(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(inv(x.v), inv(x.box))
+/(x::MCAffPnt{N,T}, α::T) where {N,T} = MCAffPnt{N,T}(x.v/α, x.box/α)
+/(α::T, x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(α*inv(x.v), α*inv(x.box))
 
-log(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(log(x.v), log(x.box))
-log10(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(log10(x.v), log10(x.box))
+^(x::MCAffPnt{N,T}, n::Integer) where {N,T} = MCAffPnt{N,T}(x.v^n, x.box^n)
+^(x::MCAffPnt{N,T}, n::Number) where {N,T} = MCAffPnt{N,T}(x.v^n, x.box^n)
+inv(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(inv(x.v), inv(x.box))
 
-exp(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(exp(x.v), exp(x.box))
-exp10(x::MCAffPnt{Q,N,T}) where {Q,N,T} = MCAffPnt{Q,N,T}(exp10(x.v), exp10(x.box))
+log(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(log(x.v), log(x.box))
+log10(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(log10(x.v), log10(x.box))
 
-function extract_apriori_info(t::RelaxAA, x::AffineEAGO{N}, y::MC{N,T}) where {Q,N,T}
-    p, P = t.p, t.P
-    padj = (t.p - mid(t.P))/diam(t.P)
-    z = sum(i -> x.γ[i]*padj[i], Val(N))
-    Z = x.c + sum(i -> x.γ[i]*UNIT_INTERVAL, Val(N))
+exp(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(exp(x.v), exp(x.box))
+exp10(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(exp10(x.v), exp10(x.box))
+
+function _cut_info(v::VariableValues{Float64}, z::MC{N,T}, x::MCAffPnt{N,T}) where {N,T} 
+    xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), v, x.box)
+    zaff = MC{N,T}(xcv, xcc, Interval(x.box), xcvg, xccg, false)
+    return zaff ∩ z
+end
+function _cut_info(v::VariableValues{Float64}, z::MCAffPnt{N,T}, x::MCAffPnt{N,T}) where {N,T} 
+    xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), v, x.box)
+    zaff = MC{N,T}(xcv, xcc, Interval(x.box), xcvg, xccg, false)
+    return zaff ∩ z.v
+end
+
+function _cut(t::RelaxAAInfo, b, k, x::MCAffPnt{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, c::Bool, p::Bool) where {N,T<:RelaxTag}
+    xt = p ? MCAffPnt{N,T}(set_value_post(x.v, v, s, ϵ), x.box) : x
+    xtmc = _cut_info(v, xt, xt)
+    xtaffp = MCAffPnt{N,T}(xtmc, xt.box)
+    b._info[k] = xtaffp
+    return
+end
+
+function _cut(t::RelaxAA, b, k, x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, c::Bool, p::Bool) where {N,T<:RelaxTag}
+    xMC = set_value_post(c ? x ∩ v.Intv ∩ Interval(z.box) : x, v, s, ϵ)
+    xt = p ? xMC : x
+    zt = _cut_info(v, xt, _info(b, k))
+    _store_set!(b, zt, k)
+    return
+end
+
+function extract_apriori_info(t::Union{RelaxAA,RelaxAAInfo}, v::VariableValues{Float64}, x::AffineEAGO{N}) where {N,T}
+    z = 0.0
+    for (k,i) in enumerate(t.v)
+        l = _lbd(v, i)
+        u = _ubd(v, i)
+        z += x.γ[k]*(_val(v, i) - 0.5*(l + u))/(u - l)
+    end
+    Z = x.c + sum(z -> z*UNIT_INTERVAL, x.γ)
     xcv  = x.c + z - x.Δ
     xcc  = x.c + z + x.Δ
     xcvU = Z.hi - x.Δ
     xccL = Z.lo + x.Δ
     xcvg = x.γ
     xccg = x.γ
-    return cv, cvU, cc, ccL, cv_grad, cc_grad
+    return xcv, xcvU, xcc, xccL, xcvg, xccg
 end
 
-relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{AffineEAGO{n},n,T}
-f_init!(::RelaxAA, g::DAT, b::RelaxCache) = nothing
+relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{n,T}
+function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
+    tinfo = RelaxAAInfo(t.v)
+    for k = _node_count(g):-1:1
+        if _is_unlocked(b, k)
+            c = _node_class(g, k)
+            if c == EXPRESSION
+                fprop!(tinfo, Expression(), g, b, k)
+            elseif c == VARIABLE
+                fprop!(tinfo, Variable(), g, b, k)
+            end
+        end
+        b._set[k] = _info(b, k).v
+    end
+end
+
+
+function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    i = _first_index(g, k)
+    x = _val(b, i)
+    l = _lbd(b, i)
+    u = _ubd(b, i)
+    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
+    zaff = AffineEAGO{N}(x, Interval(l,u), i)
+    zinfo = MCAffPnt{N,T}(z, zaff)
+    b._info[k] = zinfo
+    return 
+end
+function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    i = _first_index(g, k)
+    x = _val(b, i)
+    l = _lbd(b, i)
+    u = _ubd(b, i)
+    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
+    z = z ∩ _interval(b, k)
+    _store_set!(b, z, k)
+end
+
+_info_or_set(t::RelaxAAInfo, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = _info(b, k)
+_info_or_set(t::RelaxAA, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = _set(b, k)
+_store_out!(t::RelaxAAInfo, b::RelaxCache{V,N,T}, z, k) where {V,N,T<:RelaxTag} = (b._info[k] = z; nothing)
+_store_out!(t::RelaxAA, b::RelaxCache{V,N,T}, z, k) where {V,N,T<:RelaxTag} = _store_set!(b, z, k)
+
+for (LABEL,f) in ((EXP, :exp), (EXP10, :exp10), (LOG, :log))
+    @eval function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{$LABEL}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+        x = _info_or_set(t, b, _child(g, 1, k))
+        _cut(t, b, k, ($f)(x), _info(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
+    end
+end
+
+function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = _child(g, 1, k)
+    y = _child(g, 2, k)
+    x_is_num = _is_num(b, x)
+    y_is_num = _is_num(b, y)
+    if y_is_num && isone(_num(b, y))
+        z = _info_or_set(t, b, x)
+        _store_out!(t, b, z, k)
+    elseif y_is_num && iszero(_num(b, y))
+        _store_out!(t, b, zero(_info_or_set(t, b, x)), k)
+    else
+        if !x_is_num && y_is_num
+            z = _info_or_set(t, b, x)^_num(b, y)
+        elseif x_is_num && !y_is_num
+            z = _num(b, x)^_info_or_set(t, b, y)
+        elseif !x_is_num && !y_is_num
+            z = _info_or_set(t, b, x)^_info_or_set(t, b, y)
+        end
+    _cut(t, b, k, z, _info(b,k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
+    end
+end
+
+function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = _child(g, 1, k)
+    x_is_num = _is_num(b, x)
+    if _arity(g, k) == 2
+        y = _child(g, 2, k)
+        y_is_num = _is_num(b, y)
+        if !x_is_num && y_is_num
+            z = _info_or_set(t, b, x) - _num(b, y)
+        elseif x_is_num && !y_is_num
+            z = _num(b, x) - _info_or_set(t, b, y)
+        else
+            z = _info_or_set(t, b, x) - _info_or_set(t, b, y)
+        end
+    else
+        z = -_info_or_set(t, b, x)
+    end
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{DIV}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = _child(g, 1, k)
+    y = _child(g, 2, k)
+    if !_is_num(b, x) && _is_num(b, y)
+        z = _info_or_set(t, b, x)/_num(b, y)
+    elseif _is_num(b, x) && !_is_num(b, y)
+        z = _num(b, x)/_info_or_set(t, b, y)
+    else
+        z = _info_or_set(t, b, x)/_info_or_set(t, b, y)
+    end
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+function fprop_2!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = _child(g, 1, k)
+    y = _child(g, 2, k)
+    x_is_num = _is_num(b, x)
+    y_is_num = _is_num(b, y)
+    if !x_is_num && y_is_num
+        z = _info_or_set(t, b, x) + _num(b, y)
+    elseif x_is_num && !y_is_num
+        z = _num(b, x) + _info_or_set(t, b, y)
+    else
+        z = _info_or_set(t, b, x) + _info_or_set(t, b, y)
+    end
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+function fprop_n!(t::Union{RelaxAA,RelaxAAInfo}, ::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    z = one(MC{N,T})
+    znum = one(Float64)
+    count = 0
+    for i in _children(g, k)
+        if _is_num(b, i)
+            znum = znum*_num(b, i)
+        else
+            z = z*_info_or_set(t, b, i)
+        end
+        count += 1
+    end
+    z = z*znum
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+function fprop_2!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = _child(g, 1, k)
+    y = _child(g, 2, k)
+    x_is_num = _is_num(b, x)
+    y_is_num = _is_num(b, y)
+    if !x_is_num && y_is_num
+        z = *(_info_or_set(t, b, x), _num(b, y))
+    elseif x_is_num && !y_is_num
+        z = *(_num(b, x), _info_or_set(t, b, y))
+    else
+        xv = _info_or_set(t, b, x)
+        yv = _info_or_set(t, b, y)
+        xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(t, _info(b, x), xv)
+        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(t, _info(b, y), yv) 
+        z = mult_apriori_kernel(xv, yv, xv.Intv*yv.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)                                        
+    end
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+#TODO:
+function fprop_n!(t::RelaxAAInfo, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    z = one(V)
+    znum = one(Float64)
+    count = 0
+    for i in _children(g, k)
+        if _is_num(b, i)
+            znum = znum*_num(b, i)
+        else
+            z = z*_info(t, b, i)
+        end
+        count += 1
+    end
+    z = z*znum
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    z = one(MC{N,T})
+    znum = one(Float64)
+    count = 0
+    for i in _children(g, k)
+        if _is_num(b, i)
+            znum = znum*_num(b, i)
+        else
+            z = z*_set(t, b, i)
+        end
+        count += 1
+    end
+    z = z*znum
+    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+end
+
+function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    (_arity(g, k) == 2) ? fprop_2!(t, Val(PLUS), g, b, k) : fprop_n!(t, Val(PLUS), g, b, k)
+end
+function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    (_arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
+end

@@ -24,6 +24,10 @@ end
 @inline _val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
 @inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
 @inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
+_val(b::VariableValues{T}) where T = b.x
+_lbd(b::VariableValues{T}) where T = b.lower_variable_bounds
+_ubd(b::VariableValues{T}) where T = b.upper_variable_bounds
+
 function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where T<:Real
     @inbounds for i = 1:length(v.node_to_variable_map)
         out[i] = v.x[v.node_to_variable_map[i]]

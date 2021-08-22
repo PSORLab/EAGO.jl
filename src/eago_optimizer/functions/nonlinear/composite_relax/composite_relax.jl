@@ -1,8 +1,33 @@
-struct Relax <: AbstractCacheAttribute end
-struct RelaxAA <: AbstractCacheAttribute end
-struct RelaxMulEnum <: AbstractCacheAttribute end
+"""
+    Relax
 
-const RELAX_ATTRIBUTE = Union{Relax,RelaxAA,RelaxMulEnum}
+Used to dispatch relaxations to a standard 
+"""
+struct Relax <: AbstractCacheAttribute end
+
+"""
+    RelaxAA
+"""
+struct RelaxAA <: AbstractCacheAttribute
+    v::Vector{Int} 
+end
+RelaxAA() = RelaxAA(Int[])
+
+struct RelaxAAInfo <: AbstractCacheAttribute
+    v::Vector{Int} 
+end
+RelaxAAInfo() = RelaxAAInfo(Int[])
+
+
+"""
+    RelaxMulEnum
+"""
+struct RelaxMulEnum <: AbstractCacheAttribute
+    v::Vector{Int} 
+end
+RelaxMulEnum() = RelaxMulEnum(Int[])
+
+const RELAX_ATTRIBUTE = Union{Relax,RelaxAA,RelaxAAInfo,RelaxMulEnum}
 
 Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
     v::VariableValues{Float64}             = VariableValues{Float64}()
@@ -57,60 +82,43 @@ function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxT
     return
 end
 
+###
+###
+### Access functions for RelaxCache.
+###
+###
 _set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}  = b._set[i]
-_info(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._info[i]
-_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._num[i] #@inbounds b._num[i]
-
-@propagate_inbounds _is_num(b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}         = b._is_num #@inbounds b._is_num[i]
-@propagate_inbounds _is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._is_num[i] #@inbounds b._is_num[i]
-
+_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}  = b._num[i]
 _set_or_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !_is_num(b, i) ? _set(b,i) : _num(b,i) 
+_info(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._info[i]
+_is_num(b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}       = b._is_num
+_is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._is_num[i]
+_is_unlocked(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !_is_num(b,i)
+_interval(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = Interval{Float64}(_set(b, i))
+_subexpression_value(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_value[i]
+_store_num!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag} = (b._num[i] = v; return)
+_store_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag} = (b._set[i] = v; return)
+_store_info!(b::RelaxCache{V,N,T}, v::V, i::Int) where {V,N,T<:RelaxTag} = (b._info[i] = v; return)
+_store_subexpression!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag} = (b._subexpression_value[i] = v; return)
 
-@propagate_inbounds _interval(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = Interval{Float64}(_set(b, i))
-@propagate_inbounds _subexpression_value(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_value[i] # @inbounds b._subexpression_value[i]
-
-@propagate_inbounds _is_unlocked(b::RelaxCache, i::Int) = !_is_num(b,i)
-
-@propagate_inbounds function _store_num!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag}
-    b._num[i] = v
-    return
-end
-@propagate_inbounds function _store_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    b._set[i] = v
-    return
-end
-@propagate_inbounds function _store_info!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    b._info[i] = v
-    return
-end
-@propagate_inbounds function _store_subexpression!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    #@inbounds b._subexpression_value[i] = v
-    b._subexpression_value[i] = v
-    return
-end
-
-@inline _first_eval(b::RelaxCache) = b.first_eval
-@propagate_inbounds _val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _val(b.v, i)
-@propagate_inbounds _lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _lbd(b.v, i)
-@propagate_inbounds _ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _ubd(b.v, i)
-
+_first_eval(b::RelaxCache) = b.first_eval
+_val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _val(b.v, i)
+_lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _lbd(b.v, i)
+_ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _ubd(b.v, i)
 _set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
 
-
+include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "forward_propagation.jl"))
 include(joinpath(@__DIR__, "reverse_propagation.jl"))
 
 function fprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
-    f_init!(t, g, b)
     for k = _node_count(g):-1:1
         if _is_unlocked(b, k)
-            nt = _node_class(g, k)
-            if nt === EXPRESSION
+            c = _node_class(g, k)
+            if c == EXPRESSION
                 fprop!(t, Expression(), g, b, k)
-            elseif nt === VARIABLE
+            elseif c == VARIABLE
                 fprop!(t, Variable(), g, b, k)
-            #elseif nt === SUBEXPRESSION
-           #     fprop!(t, Subexpression(), g, b, k)
             end
         end
     end
