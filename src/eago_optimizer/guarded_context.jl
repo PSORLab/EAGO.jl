@@ -21,10 +21,10 @@ end
 const IntFltIntv = Union{Int16, Int32, Int64, Float16, Float32, Float64, Interval{Float64}}
 
 for f in (+, *, -, max, min)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag} = f(x, y)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::S) where {S <: IntFltIntv} =  f(x,y)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S<:IntFltIntv} = f(x,y)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S<:IntFltIntv} = f(x,y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag} = ($f)(x, y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::S) where {S <: IntFltIntv} =  ($f)(x,y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S<:IntFltIntv} = ($f)(x,y)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S<:IntFltIntv} = ($f)(x,y)
 end
 
 function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag}
@@ -53,9 +53,9 @@ function Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::Float64, y::MC{N,T}) wh
     return z
 end
 
-Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::S, y::S) where {S <: IntFltIntv} =  f(x,y)
-Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S <: IntFltIntv} =  f(x,y)
-Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S <: IntFltIntv} =  f(x,y)
+Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::S, y::S) where {S <: IntFltIntv} =  /(x,y)
+Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::S, y::MC{N,T}) where {N, T<:RelaxTag, S <: IntFltIntv} =  /(x,y)
+Cassette.overdub(ctx::GuardCtx, ::typeof(/), x::MC{N,T}, y::S) where {N, T<:RelaxTag, S <: IntFltIntv} =  /(x,y)
 
 function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::MC{N,T}) where {N, T<:RelaxTag}
 
@@ -83,7 +83,7 @@ function Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::MC{N,T}, y::Float64) wh
     return z
 end
 
-Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::S, y::S) where {S<:IntFltIntv} = f(x,y)
+Cassette.overdub(ctx::GuardCtx, ::typeof(^), x::S, y::S) where {S<:IntFltIntv} = ^(x,y)
 
 for f in (log, log2, log10, sqrt)
     @eval function Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}) where {N, T<:RelaxTag}
@@ -130,7 +130,7 @@ for f in (acos, asin, atanh)
 end
 
 for f in (log, log2, log10, sqrt, log1p, acosh, acos, asin, atanh, acosd, asind)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFltIntv} = f(x)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFltIntv} = ($f)(x)
 end
 
 for f in (abs, exp, exp2, exp10, sin, tan, cos, sec, csc,
@@ -138,6 +138,6 @@ for f in (abs, exp, exp2, exp10, sin, tan, cos, sec, csc,
           asinh, tanh, atan, cosh, sind, cosd, tand, secd, cscd, cotd,
           atand, asecd, acscd, acotd, isone, isnan, empty,
           convert, in, isempty, one, zero, real, eps, rad2deg, deg2rad)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFltIntv} = f(x)
-    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}) where {N,T<:RelaxTag} = f(x)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::S) where {S<:IntFltIntv} = ($f)(x)
+    @eval Cassette.overdub(ctx::GuardCtx, ::typeof($f), x::MC{N,T}) where {N,T<:RelaxTag} = ($f)(x)
 end
