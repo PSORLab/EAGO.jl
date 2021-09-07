@@ -344,16 +344,19 @@ function label_branch_variables!(m::GlobalOptimizer)
     # adds branch solution to branch map to evaluator
     vnum = wp._variable_count
     initialize!(m._branch_cost, length(m._branch_to_sol_map))
+    l = lower_bound.(m._working_problem._variable_info)
+    u = upper_bound.(m._working_problem._variable_info)
     v = VariableValues{Float64}(x = zeros(vnum),
-                                lower_variable_bounds = zeros(vnum),
-                                upper_variable_bounds = zeros(vnum),
+                                lower_variable_bounds = l,
+                                upper_variable_bounds = u,
                                 node_to_variable_map = m._branch_to_sol_map,
                                 variable_to_node_map = m._sol_to_branch_map)
+    println(" label branch XXX ")
+    @show v
     wp._relaxed_evaluator.variable_values = v
     (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
     foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
     foreach(i -> _set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
-    @show m._branch_variables
     return
 end
 

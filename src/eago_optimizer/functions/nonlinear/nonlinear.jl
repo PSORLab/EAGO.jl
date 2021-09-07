@@ -12,6 +12,8 @@
 # copy_subexpression_value!, eliminate_fixed_variables!
 #############################################################################
 
+const DEBUG_NL = false
+
 include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "graph.jl"))
 include(joinpath(@__DIR__, "constant", "constant.jl"))

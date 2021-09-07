@@ -86,6 +86,21 @@ function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
     return
 end
 
+function store_lower_solution!(m::GlobalOptimizer{R,S,Q}, d::T) where {R,S,Q<:ExtensionType,T}
+    for i = 1:_variable_num(FullVar(), m)
+        l = _lower_bound(FullVar(), m, i)
+        u = _upper_bound(FullVar(), m, i)
+        x = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+        if x < l
+            x = l
+        elseif x > u
+            x = u
+        end
+        m._lower_solution[i] = x
+    end
+    return 
+end
+
 function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
     m._cut_iterations = 1
@@ -128,10 +143,12 @@ function set_first_relax_point!(m::GlobalOptimizer)
         m._working_problem._relaxed_evaluator.is_first_eval = true
         m._new_eval_constraint = true
         m._new_eval_objective = true
-        for i = 1:_variable_num(BranchVar(), m)
-            x = _mid(BranchVar(), m, i)
-            _set_lower_solution!(BranchVar(), m, val_or_zero(x), i)
+        #@show _variable_num(FullVar(), m)
+        for i = 1:_variable_num(FullVar(), m)
+            x = _mid(FullVar(), m, i)
+            _set_lower_solution!(FullVar(), m, val_or_zero(x), i)
         end
+        #@show m._lower_solution
     end
     return
 end
@@ -163,14 +180,18 @@ function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
             !valid_relax_flag && break
         end
     end
-    #@show "relax objective objective"
-    if valid_relax_flag
-        valid_relax_flag &= relax!(m, wp._objective, k, check_safe)
-    end
+    #println(" finish relaxed all constraints")
+    #println(" ")
+    # TODO: What's up with this???
+    #if valid_relax_flag
+    #    valid_relax_flag &= relax!(m, wp._objective, k, check_safe)
+    #end
+   # println(" ")
+    #println(" start objective cut ")
     m._new_eval_constraint = false
-    #@show "relax objective cut"
     (k == 1) && objective_cut!(m, check_safe)
-   # @show "relax objective cut end"
+    #println(" finish objective cut ")
+    #println(" ")
     return valid_relax_flag
 end
 relax_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int) = relax_all_constraints!(t, m, k)
@@ -305,8 +326,10 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     end
     #println("CP feasibility = $feasible_flag")
 
+    #println("OBBT feasibility")
     if _obbt_depth(m) >= _iteration_count(m)
-        for _ = 1:_obbt_repetitions(m)
+        for k = 1:_obbt_repetitions(m)
+            #println("OBBT repetitions = $k")
             feasible_flag = feasible_flag && obbt!(m)
             m._obbt_performed_flag = true
             !feasible_flag && break
@@ -366,9 +389,8 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         end
         m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
         if cut_condition(m)
-            for i = 1:m._working_problem._variable_count
-                m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
-            end
+            store_lower_solution!(m, d)
+            #@show m._lower_solution
             m._cut_iterations += 1
         else
             break
@@ -407,20 +429,22 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     end
 
     # set dual values
+    #println("set dual")
     set_dual!(m)
     m._lower_feasibility = true
-    for i = 1:m._working_problem._variable_count
-         m._lower_solution[i] = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
-    end
+    store_lower_solution!(m, d)
     if status == RRS_DUAL_FEASIBLE
         m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
     end
-
+    #println("fallback lower bound")
     # use interval bound if it is better
     if status == RRS_INVALID || !all_constraints_relaxed
         return fallback_interval_lower_bound!(m, _current_node(m))
     end
+    #println("objective bound")
     interval_objective_bound!(m)
+    
+    #println("end of lower problem")
     return
 end
 lower_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = lower_problem!(_ext_typ(m), m)

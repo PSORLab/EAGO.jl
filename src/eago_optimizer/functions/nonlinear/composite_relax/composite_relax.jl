@@ -23,11 +23,45 @@ RelaxAAInfo() = RelaxAAInfo(Int[])
     RelaxMulEnum
 """
 struct RelaxMulEnum <: AbstractCacheAttribute
-    v::Vector{Int} 
+    v::Vector{Int}
+    use_info::Bool
 end
-RelaxMulEnum() = RelaxMulEnum(Int[])
+RelaxMulEnum() = RelaxMulEnum(Int[], false)
+RelaxMulEnum(x::Vector{Int64}) = RelaxMulEnum(x, false)
+RelaxMulEnum(x::Bool) = RelaxMulEnum(Int[], x)
 
-const RELAX_ATTRIBUTE = Union{Relax,RelaxAA,RelaxAAInfo,RelaxMulEnum}
+struct RelaxMulEnumInner <: AbstractCacheAttribute
+    v::Vector{Int}
+    use_info::Bool
+end
+RelaxMulEnumInner() = RelaxMulEnumInner(Int[], false)
+RelaxMulEnumInner(x::Vector{Int64}) = RelaxMulEnumInner(x, false)
+RelaxMulEnumInner(x::Bool) = RelaxMulEnumInner(Int[], x)
+
+
+const RELAX_ATTRIBUTE = Union{Relax,RelaxAA,RelaxAAInfo,RelaxMulEnum,RelaxMulEnumInner}
+
+mutable struct MCBoxPnt{Q,N,T}
+    v::MC{N,T}
+    box::Vector{MC{N,T}}
+end
+
+cv(x::MCBoxPnt{Q,N,T}) where {Q,N,T} = x.v.cv
+cc(x::MCBoxPnt{Q,N,T}) where {Q,N,T} = x.v.cc
+cv_grad(x::MCBoxPnt{Q,N,T}) where {Q,N,T} = x.v.cv_grad
+cc_grad(x::MCBoxPnt{Q,N,T}) where {Q,N,T} = x.v.cc_grad
+
+cv(x::MC{N,T}) where {N,T} = x.cv
+cc(x::MC{N,T}) where {N,T} = x.cc
+cv_grad(x::MC{N,T}) where {N,T} = x.cv_grad
+cc_grad(x::MC{N,T}) where {N,T} = x.cc_grad
+
+function zero(::Type{MCBoxPnt{Q,N,T}}) where {Q,N,T}
+    MCBoxPnt{Q,N,T}(zero(MC{N,T}), zeros(MC{N,T}, Q))
+end
+function setindex!(d::MCBoxPnt{Q,N,T}, x::MC{N,T}, i::Int) where {Q,N,T}
+    d.box[i] = x
+end
 
 Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
     v::VariableValues{Float64}             = VariableValues{Float64}()
@@ -41,6 +75,7 @@ Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
     _cc_grad_buffer::Vector{Float64}       = Float64[]
     _set_mv_buffer::Vector{MC{N,T}}        = MC{N,T}[]
     _info_mv_buffer::Vector{V}             = V[]
+    _mult_temp::V                          = zero(V)
     ϵ_sg::Float64                      = 1E-11
     post::Bool                         = false
     cut::Bool                          = false
@@ -72,13 +107,21 @@ function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxT
     c._num                 = copy(cnst._num)
     c._is_num              = copy(cnst._is_num)
     c._set                 = zeros(MC{N,T}, n)
-    c._info                = zeros(V, n)
     c._subexpression_set   = zeros(MC{N,T}, m)
-    c._subexpression_info  = zeros(V, m)
     c._cv_grad_buffer      = zeros(Float64, p)
     c._cc_grad_buffer      = zeros(Float64, p)
     c._set_mv_buffer       = zeros(MC{N,T}, p)
-    c._info_mv_buffer      = zeros(V, p)
+    c._mult_temp           = zero(V)
+
+    for i = 1:n
+        push!(c._info, zero(V))
+    end
+    for i = 1:m
+        push!(c._subexpression_info, zero(V))
+    end
+    for i = 1:p
+        push!(c._info_mv_buffer, zero(V))
+    end
     return
 end
 

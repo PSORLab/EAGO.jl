@@ -635,3 +635,7 @@ end
     m._lower_solution[_bvi(m, i)] = v
     return
 end
+@inline function _set_lower_solution!(::FullVar, m::GlobalOptimizer, v::Float64, i::Int)
+    m._lower_solution[i] = v
+    return
+end

@@ -59,26 +59,44 @@ $(FUNCTIONNAME)
 
 Excludes OBBT on variable indices that are tight for the solution of the relaxation.
 """
-function trivial_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType} 
+function trivial_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType}
+    
+    #println(" ")
+    #println("trivial")
+    #@show m._obbt_variable_count
     d = _relaxed_optimizer(m)
     obbt_tolerance = _obbt_tolerance(m)
     if set_preprocess_status(m,d) == RRS_OPTIMAL
         for j = 1:m._obbt_variable_count
-            vi = m._relaxed_variable_index[j]
+            vi = VI(_bvi(m, m._relaxed_variable_index[j].value))
+            #println(" ")
+            #@show vi, n.lower_variable_bounds[j], n.upper_variable_bounds[j], MOI.get(d, MOI.VariablePrimal(),vi)
+            #@show _bvi(m,vi)
             if m._obbt_working_lower_index[j]
-                z = MOI.get(d, MOI.VariablePrimal(), vi) - n.lower_variable_bounds[j]
+                z = MOI.get(d, MOI.VariablePrimal(),vi) - n.lower_variable_bounds[j]
+                #@show z
+                #@show abs(z)
+                #@show obbt_tolerance
+                #@show abs(z) <= obbt_tolerance
                 if abs(z) <= obbt_tolerance
                     m._obbt_working_lower_index[j] = false
                 end
             end
             if m._obbt_working_upper_index[j]
                 z = n.upper_variable_bounds[j] - MOI.get(d, MOI.VariablePrimal(), vi)
+                #@show z
+                #@show abs(z)
+                #@show obbt_tolerance
+                #@show abs(z) <= obbt_tolerance
+                #@show abs(z) <= obbt_tolerance
                 if abs(z) <= obbt_tolerance
                     m._obbt_working_upper_index[j] = false
                 end
             end
         end
     end
+    #@show m._obbt_working_lower_index
+    #@show m._obbt_working_upper_index
     return
 end
 
@@ -180,6 +198,15 @@ function set_reference_point!(m::GlobalOptimizer)
     current_xref = m._lower_solution
 
     new_reference_point = false
+    for i = 1:length(current_xref)
+        node_x = current_xref[i]
+        solution_x = evaluator_x[i]
+        if node_x !== solution_x
+            evaluator_x[i] = node_x
+            new_reference_point = true
+        end
+    end
+    #=
     for node_i = 1:m._branch_variable_count
         solution_i = m._branch_to_sol_map[node_i]
 
@@ -270,12 +297,16 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
             end
 
             # default to upper bound if no lower bound is found, use maximum distance otherwise
+            #@show lower_value, upper_value, lower_indx, upper_indx
             if lower_value <= upper_value && lower_indx > 0
-
+                #println(" ")
+                #println("start lower refinement")
                 m._obbt_working_lower_index[lower_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-                MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[lower_indx]))
+                #@show SV(m._relaxed_variable_index[_bvi(m, lower_indx)])
+                MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[_bvi(m, lower_indx)]))
                 MOI.optimize!(d)
+                #@show MOI.get(d, MOI.ObjectiveValue())
 
                 status = set_preprocess_status(m,d)
                 if status == RRS_OPTIMAL
@@ -309,17 +340,26 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                 end
 
             elseif upper_indx > 0
-  
+                
+                #println(" ")
+                #println("start upper refinement")
                 m._obbt_working_upper_index[upper_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-                MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[upper_indx]))
+                #@show SV(m._relaxed_variable_index[_bvi(m, upper_indx)])
+                MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[_bvi(m, upper_indx)]))
                 MOI.optimize!(d)
+                #@show MOI.get(d, MOI.ObjectiveValue())
 
                 status = set_preprocess_status(m,d)
                 if status == RRS_OPTIMAL
+                    #@show xLP
+                    #@show MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
                     xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
+                    #@show xLP
                     updated_value = xLP[_bvi(m, upper_indx)]
                     previous_value = n.upper_variable_bounds[upper_indx]
+                    #@show updated_value
+                    #@show previous_value
 
                     # if bound is improved update node and corresponding constraint update
                     # the node bounds and the single variable bound in the relaxation
