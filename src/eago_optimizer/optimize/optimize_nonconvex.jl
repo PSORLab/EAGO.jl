@@ -200,20 +200,20 @@ tolerances.
 """
 function convergence_check(t::ExtensionType, m::GlobalOptimizer)
 
-  L = m._lower_objective_value
-  U = m._global_upper_bound
-  t = (U - L) <= m._parameters.absolute_tolerance
-  if (U < Inf) && (L > Inf)
-      t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
-  end
+    L = m._lower_objective_value
+    U = m._global_upper_bound
+    t = (U - L) <= m._parameters.absolute_tolerance
+    if (U < Inf) && (L > Inf)
+        t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
+    end
+    t && @show "converged"
+    if t && m._min_converged_value < Inf
+         m._min_converged_value = min(m._min_converged_value, L)
+    else
+        m._min_converged_value = L
+    end
 
-  if t && m._min_converged_value < Inf
-      m._min_converged_value = min(m._min_converged_value, L)
-  else
-      m._min_converged_value = L
-  end
-
-  return t
+    return t
 end
 convergence_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = convergence_check(_ext_typ(m), m)
 

@@ -85,7 +85,7 @@ Base.@kwdef mutable struct EAGOParameters
     iteration (default = 1)."
     verbosity::Int = 1
     "Display summary of iteration to console every `output_iterations` (default = 1000)"
-    output_iterations::Int = 10000
+    output_iterations::Int = 1
     "Display header for summary to console every `output_iterations` (default = 10000)"
     header_iterations::Int = 100000
 
@@ -173,7 +173,7 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Tolerance to add cuts and max number of cuts
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
-    cut_min_iterations::Int = 1
+    cut_min_iterations::Int = 2
     "Maximum number of cuts at each node to attempt"
     cut_max_iterations::Int = 8
     "Absolute tolerance checked for continuing cut"
