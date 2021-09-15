@@ -154,7 +154,7 @@ end
 function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     m._variable_count += 1
     push!(m._variable_info, VariableInfo(MOI.Interval{Float64}(l, u)))
-    @show m._variable_info[end]
+    #@show m._variable_info[end]
     return m._variable_count
 end
 
@@ -208,6 +208,8 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 upper_variable_bounds = vi_hi,
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q])
+    #println(" epigraph YYY")
+    #@show v
     wp._relaxed_evaluator.variable_values = v
     _set_variable_storage!(f, v)
 
@@ -351,8 +353,8 @@ function label_branch_variables!(m::GlobalOptimizer)
                                 upper_variable_bounds = u,
                                 node_to_variable_map = m._branch_to_sol_map,
                                 variable_to_node_map = m._sol_to_branch_map)
-    println(" label branch XXX ")
-    @show v
+    #println(" label branch XXX ")
+    #@show v
     wp._relaxed_evaluator.variable_values = v
     (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
     foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)

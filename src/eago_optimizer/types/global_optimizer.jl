@@ -111,7 +111,7 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum number of nodes (default = 1E-7)"
     node_limit::Int = 1*10^7
     "Maximum CPU time in seconds (default = 1000)"
-    time_limit::Float64 = 3600.0
+    time_limit::Float64 = 100.0
     "Maximum number of iterations (default 3E6)"
     iteration_limit::Int = 1E9 #2*10^5
     "Absolute tolerance for termination (default = 1E-3)"

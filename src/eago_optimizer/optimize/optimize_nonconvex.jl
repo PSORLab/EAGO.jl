@@ -124,6 +124,8 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     wp._relaxed_evaluator.subgrad_tighten = m._parameters.subgrad_tighten
     wp._relaxed_evaluator.reverse_subgrad_tighten =  m._parameters.reverse_subgrad_tighten
 
+    #@show wp._relaxed_evaluator.variable_values
+
     m._presolve_time = time() - m._parse_time
     return
 end
@@ -157,7 +159,7 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
     else
         return false
     end
-    @show m._end_state
+    println("Termination state is $(m._end_state)")
     return true
 end
 termination_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = termination_check(_ext_typ(m), m)
@@ -206,7 +208,7 @@ function convergence_check(t::ExtensionType, m::GlobalOptimizer)
     if (U < Inf) && (L > Inf)
         t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
     end
-    t && @show "converged"
+    #t && @show "converged"
     if t && m._min_converged_value < Inf
          m._min_converged_value = min(m._min_converged_value, L)
     else
