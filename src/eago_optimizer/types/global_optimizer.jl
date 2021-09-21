@@ -85,7 +85,7 @@ Base.@kwdef mutable struct EAGOParameters
     iteration (default = 1)."
     verbosity::Int = 1
     "Display summary of iteration to console every `output_iterations` (default = 1000)"
-    output_iterations::Int = 1
+    output_iterations::Int = 1000
     "Display header for summary to console every `output_iterations` (default = 10000)"
     header_iterations::Int = 100000
 
@@ -169,7 +169,7 @@ Base.@kwdef mutable struct EAGOParameters
     reverse_subgrad_tighten::Bool = false
     "Outer round computed subgradient bounds by this amount"
     subgrad_tol::Float64 = 1E-10
-    mul_relax_style::Int = 1
+    mul_relax_style::Int = 0
 
     # Tolerance to add cuts and max number of cuts
     "Minimum number of cuts at each node to attempt (unsafe cuts not necessarily added)"
