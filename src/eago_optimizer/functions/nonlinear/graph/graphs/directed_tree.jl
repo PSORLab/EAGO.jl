@@ -13,6 +13,7 @@ Abstract supertype used for attributes stored in a cache.
 abstract type AbstractCacheAttribute end
 
 Base.@kwdef mutable struct VariableValues{T<:Real}
+    x0::Vector{T}                          = T[]
     x::Vector{T}                           = T[]
     lower_variable_bounds::Vector{T}       = T[]
     upper_variable_bounds::Vector{T}       = T[]
@@ -21,10 +22,15 @@ Base.@kwdef mutable struct VariableValues{T<:Real}
     variable_types::Vector{VariableType}   = VariableType[]
 end
 
-@inline _val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
+function _val(b::VariableValues{T}, i::Int) where T
+    @inbounds b.x[i]
+end
 @inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
 @inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
-_val(b::VariableValues{T}) where T = b.x
+function _val(b::VariableValues{T}) where T
+    @show b.x
+    b.x
+end
 _lbd(b::VariableValues{T}) where T = b.lower_variable_bounds
 _ubd(b::VariableValues{T}) where T = b.upper_variable_bounds
 

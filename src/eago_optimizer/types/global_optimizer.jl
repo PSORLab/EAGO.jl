@@ -119,7 +119,7 @@ Base.@kwdef mutable struct EAGOParameters
     "Relative tolerance for termination (default = 1E-3)"
     relative_tolerance::Float64 = 1E-4
     "Absolute constraint feasibility tolerance"
-    absolute_constraint_feas_tolerance::Float64 = 1E-7
+    absolute_constraint_feas_tolerance::Float64 = 1E-8
 
     # Options for constraint propagation
     "Depth in B&B tree above which constraint propagation should be disabled (default = 1000)"
@@ -184,9 +184,9 @@ Base.@kwdef mutable struct EAGOParameters
     "Use tolerances to determine safe cuts in a Khajavirad 2018 manner"
     cut_safe_on::Bool = true
     "Lower tolerance for safe-lp cut, Khajavirad 2018"
-    cut_safe_l::Float64 = 1E-8
+    cut_safe_l::Float64 = 1E-7
     "Upper tolerance for safe-lp cut, Khajavirad 2018"
-    cut_safe_u::Float64 = 1E8
+    cut_safe_u::Float64 = 1E7
     "Constant tolerance for safe-lp cut, Khajavirad 2018"
     cut_safe_b::Float64 = 1E9
 

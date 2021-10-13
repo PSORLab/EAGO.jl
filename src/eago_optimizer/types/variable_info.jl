@@ -63,8 +63,8 @@ function is_zero_one(x::VariableInfo{T}) where {T <: AbstractFloat}
     return flag
 end
 
-mid(x::VariableInfo{T}) where {T <: AbstractFloat} = 0.5*(upper_bound(x) - lower_bound(x))
-diam(x::VariableInfo{T}) where {T <: AbstractFloat} = 0.5*(upper_bound(x) - lower_bound(x))
+mid(x::VariableInfo{T}) where {T <: AbstractFloat} = 0.5*(upper_bound(x) + lower_bound(x))
+diam(x::VariableInfo{T}) where {T <: AbstractFloat} = upper_bound(x) - lower_bound(x)
 empty_variable_info(::Type{T}) where T = VariableInfo{T}(lower_bound = Inf,
                                                          upper_bound = -Inf)
 

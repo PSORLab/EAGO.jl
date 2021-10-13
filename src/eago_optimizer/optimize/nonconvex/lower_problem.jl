@@ -66,13 +66,11 @@ constraints.
 """
 function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
-    #@show _variable_num(BranchVar(), m)
     for i = 1:_variable_num(BranchVar(), m)
         j = _bvi(m, i)
         l = _lower_bound(BranchVar(), m, i)
         u = _upper_bound(BranchVar(), m, i)
         v = SV(VI(j))
-        #@show l, u, v
         if l == u
             ci_sv_et = MOI.add_constraint(d, v, ET(l))
             push!(m._relaxed_variable_et, ci_sv_et)
@@ -88,7 +86,7 @@ function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
     return
 end
 
-const SOLUTION_EPS = 0.01
+const SOLUTION_EPS = 0.05
 
 function store_lower_solution!(m::GlobalOptimizer{R,S,Q}, d::T) where {R,S,Q<:ExtensionType,T}
     for i = 1:_variable_num(FullVar(), m)
@@ -149,12 +147,10 @@ function set_first_relax_point!(m::GlobalOptimizer)
         m._working_problem._relaxed_evaluator.is_first_eval = true
         m._new_eval_constraint = true
         m._new_eval_objective = true
-        #@show _variable_num(FullVar(), m)
         for i = 1:_variable_num(FullVar(), m)
             x = _mid(FullVar(), m, i)
             _set_lower_solution!(FullVar(), m, val_or_zero(x), i)
         end
-        #@show m._lower_solution
     end
     return
 end
@@ -221,11 +217,8 @@ function relax_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
         set_first_relax_point!(m)
     else
         set_reference_point!(m)
-        #@show m._lower_solution
     end
-    #println("start relax constraints")
     valid_relax_flag = relax_constraints!(m, m._cut_iterations)
-    #println("finish relax constraints")
     MOI.set(_relaxed_optimizer(m), MOI.ObjectiveSense(), MOI.MIN_SENSE)
     return valid_relax_flag
 end
@@ -256,6 +249,7 @@ end
 
 function interval_objective_bound!(m::GlobalOptimizer)
     if !isnothing(m._working_problem._objective)
+        m._working_problem._relaxed_evaluator.is_first_eval = true
         fL, fU = bound_objective(m)
         fv = _is_input_min(m) ? fL : -fU
         if fv > m._lower_objective_value
@@ -379,8 +373,6 @@ Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    #println(" ")
-    #println("Lower Problem")
     d = _relaxed_optimizer(m)
     m._last_cut_objective = typemin(Float64)
     m._lower_objective_value = typemin(Float64)
@@ -388,10 +380,8 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     all_constraints_relaxed = true
     set_first_relax_point!(m)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
-    #@show m._working_problem._objective_saf
     
     while true
-        #println("m._cut_iterations = $(m._cut_iterations)")
         all_constraints_relaxed = relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
         MOI.optimize!(d)
@@ -405,7 +395,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
         if cut_condition(m)
             store_lower_solution!(m, d)
-            #@show m._lower_solution
             m._cut_iterations += 1
         else
             break
@@ -428,7 +417,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
 
     # check status -- if not feasible/infeasible then fallback to interval bounds
     m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
-    #@show m._lower_objective_value
     t_status = MOI.get(d, MOI.TerminationStatus())
     p_status = MOI.get(d, MOI.PrimalStatus())
     d_status = MOI.get(d, MOI.DualStatus())
@@ -436,7 +424,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
     status = relaxed_problem_status(t_status, p_status, d_status)
-    #@show t_status, p_status, d_status
 
     if status == RRS_INFEASIBLE
         m._lower_feasibility  = false

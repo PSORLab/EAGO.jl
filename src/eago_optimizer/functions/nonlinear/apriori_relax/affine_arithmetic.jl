@@ -300,9 +300,6 @@ end
 
 relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{n,T}
 function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
-    println(" ")
-    println("INIT BEGIN")
-    println(" ")
     tinfo = RelaxAAInfo(t.v)
     for k = _node_count(g):-1:1
         println(" ")
@@ -469,7 +466,6 @@ function fprop_n!(t::RelaxAA, ::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int)
 end
 
 function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    println(" RAN MULTIPLICATION")
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = _is_num(b, x)
@@ -481,8 +477,6 @@ function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k:
     else
         xv = _info(b, x)
         yv = _info(b, y)
-        #@show xv
-        #@show yv
         xv_box = xv.box
         yv_box = yv.box
         z_box = xv_box*yv_box
@@ -491,15 +485,10 @@ function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k:
         z = McCormick.mult_apriori_kernel(xv.v, yv.v, xv.v.Intv*yv.v.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)
         zaff = MCAffPnt{N,T}(z, z_box)                                        
     end
-    #@show z
-    #@show zaff
     _cut(t, b, k, zaff, _info(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    #@show _info(b, k)
 end
 
 function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    #println(" ")
-    #println(" ")
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     x_is_num = _is_num(b, x)
@@ -517,7 +506,6 @@ function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int
         ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv.box) 
         z = McCormick.mult_apriori_kernel(xs, ys, xs.Intv*ys.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)                                        
     end
-    #@show z
     _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
 end
 

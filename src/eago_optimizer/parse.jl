@@ -106,14 +106,11 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        #@show "ran has nonlinear"
-        #@show dict_sparsity
         m._working_problem._objective = BufferedNonlinearFunction(rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.subexpression_linearity,
                                                                  user_operator_registry,
                                                                  evaluator.m.nlp_data.nlparamvalues,
                                                                  m._parameters.relax_tag, ruse_apriori)
-        #@show typeof(m._working_problem._objective)
     end
 
     # add nonlinear constraints
@@ -154,7 +151,6 @@ end
 function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     m._variable_count += 1
     push!(m._variable_info, VariableInfo(MOI.Interval{Float64}(l, u)))
-    #@show m._variable_info[end]
     return m._variable_count
 end
 
@@ -204,25 +200,24 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
 
     q = _variable_num(FullVar(), m)
     v = VariableValues{Float64}(x = vi_mid,
+                                x0 = vi_mid,
                                 lower_variable_bounds = vi_lo,
                                 upper_variable_bounds = vi_hi,
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q])
-    #println(" epigraph YYY")
-    #@show v
     wp._relaxed_evaluator.variable_values = v
     _set_variable_storage!(f, v)
 
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
-    l, u = interval_bound(m, f)
+    out = interval_bound(m, f)
+    l, u = out
     if !_is_input_min(m)
         l, u = -u, -l
     end
     d._objective.ex.lower_bound = l
     d._objective.ex.upper_bound = u
-    #@show typeof(d._objective.ex)
     ηi = add_η!(d, l, u)
     @variable(ip._nlp_data.evaluator.m, l <= η <= u)
     m._global_lower_bound = l
@@ -349,6 +344,7 @@ function label_branch_variables!(m::GlobalOptimizer)
     l = lower_bound.(m._working_problem._variable_info)
     u = upper_bound.(m._working_problem._variable_info)
     v = VariableValues{Float64}(x = zeros(vnum),
+                                x0 = zeros(vnum),
                                 lower_variable_bounds = l,
                                 upper_variable_bounds = u,
                                 node_to_variable_map = m._branch_to_sol_map,

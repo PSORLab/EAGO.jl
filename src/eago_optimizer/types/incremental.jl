@@ -121,6 +121,10 @@ end
 function MOI.get(d::Incremental{S}, ::MOI.DualStatus) where S
     MOI.get(d.optimizer, MOI.DualStatus())::MOI.ResultStatusCode
 end
+
+function MOI.get(d::Incremental{S}, ::MOI.ObjectiveBound) where S
+    MOI.get(d.optimizer, MOI.ObjectiveBound())::Float64
+end
 function MOI.get(d::Incremental{S}, ::MOI.ObjectiveValue) where S
     MOI.get(d.optimizer, MOI.ObjectiveValue())::Float64
 end

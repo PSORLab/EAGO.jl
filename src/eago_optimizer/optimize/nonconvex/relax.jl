@@ -36,7 +36,9 @@ function is_safe_cut!(m::GlobalOptimizer, f::SAF)
             @inbounds for j = i:term_count     # violates safe_l <= abs(ai/aj) <= safe_u
                 aj = f.terms[j].coefficient
                 if aj !== 0.0
-                    !(safe_l <= abs(ai/aj) <= safe_u) && return false
+                    if !(safe_l <= abs(ai/aj) <= safe_u)
+                        return false
+                    end
                 end
             end
         end
@@ -195,7 +197,6 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
         end
     else
         v = _set(f)
-        #@show v, _lower_bound(f), _upper_bound(f)
         if !isempty(v)
             # if has less than or equal to bound (<=)
             if isfinite(_upper_bound(f))
@@ -214,7 +215,7 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
             if isfinite(_lower_bound(f))
                 upper_cut_valid = !isnan(v.cc) && isfinite(v.cc)
                 if upper_cut_valid
-                    f.saf.constant = -v.cc +  _lower_bound(f)
+                    f.saf.constant = -v.cc +  _lower_bound(f) 
                     for (i, k) in enumerate(grad_sparsity)
                         c = -v.cc_grad[i]
                         f.saf.terms[i] = SAT(c, VI(k))

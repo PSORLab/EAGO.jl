@@ -247,12 +247,17 @@ function eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector
 end
 
 function f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool)
+    #println("f_init_prop!")
+    #@show flag
     if flag
         return f_init!(t, g, c)
     end
     return fprop!(t, g, c)
 end
 function forward_pass!(x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
+    if x.is_first_eval
+        d.relax_cache.v.x0 .= d.relax_cache.v.x
+    end
     # Fix subexpression code...
     #for i = 1:_dep_subexpr_count(d)
     #    !prior_eval(x, i) && forward_pass!(x, x.subexpressions[i])

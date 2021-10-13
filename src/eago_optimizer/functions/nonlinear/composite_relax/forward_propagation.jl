@@ -80,37 +80,51 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
     else
         xv = _set(b, x)
         yv = _set(b, y)
-        #@show xv
-        #@show yv
         if b.use_apriori_mul
             xr = _info(b, x)
             yr = _info(b, y)
-            xr_cv = cv(xr)
-            xr_cc = cc(xr)
-            yr_cv = cv(yr)
-            yr_cc = cc(yr)
-            xr_cv_grad = cv_grad(xr)
-            xr_cc_grad = cc_grad(xr)
-            yr_cv_grad = cv_grad(yr)
-            yr_cc_grad = cc_grad(yr)
+
+            xr_cv = cv(xr)                   # GOOD
+            xr_cc = cc(xr)                   # GOOD
+            yr_cv = cv(yr)                   # GOOD
+            yr_cc = cc(yr)                   # GOOD
+            xr_cv_grad = cv_grad(xr)         # GOOD
+            xr_cc_grad = cc_grad(xr)         # GOOD
+            yr_cv_grad = cv_grad(yr)         # GOOD
+            yr_cc_grad = cc_grad(yr)         # GOOD
+
+            xrn = -xr
+            yrn = -yr
+
+            xrn_cv = cv(xrn)                   # GOOD
+            xrn_cc = cc(xrn)                   # GOOD
+            yrn_cv = cv(yrn)                   # GOOD
+            yrn_cc = cc(yrn)                   # GOOD
+            xrn_cv_grad = cv_grad(xrn)         # GOOD
+            xrn_cc_grad = cc_grad(xrn)         # GOOD
+            yrn_cv_grad = cv_grad(yrn)         # GOOD
+            yrn_cc_grad = cc_grad(yrn)         # GOOD
 
             s = _sparsity(g, 1)
             l = Float64[_lbd(b.v, i) for i in s]
             u = Float64[_ubd(b.v, i) for i in s]
             P = Interval.(l, u)
-            p0 = 0.5*(l + u)
+            p0 = b.v.x0[s]
             p = b.v.x[s]
+            wIntv = xv.Intv*yv.Intv
+
             t1 = affine_expand(p, p0, xr_cv, xr_cv_grad)
             t2 = affine_expand(p, p0, yr_cv, yr_cv_grad)
             t3 = hi(affine_expand(P, p0, xr_cv, xr_cv_grad))
             t4 = hi(affine_expand(P, p0, yr_cv, yr_cv_grad))
-            t5 = affine_expand(p, p0, xr_cc, xr_cc_grad)
-            t6 = affine_expand(p, p0, yr_cc, yr_cc_grad)
-            t7 = lo(affine_expand(P, p0, xr_cc, xr_cc_grad))
-            t8 = lo(affine_expand(P, p0, yr_cc, yr_cc_grad))
-            z = McCormick.mult_apriori_kernel(xv, yv, xv.Intv*yv.Intv,
-                                    t1, t2, t3, t4, t5, t6, t7, t8,
-                                    xr_cv_grad, yr_cv_grad, xr_cc_grad, yr_cc_grad)                            
+            za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
+
+            s1 = affine_expand(p, p0, -xr_cc, -xr_cc_grad)
+            s2 = affine_expand(p, p0, -yr_cc, -yr_cc_grad)
+            s3 = hi(affine_expand(P, p0, -xr_cc, -xr_cc_grad))
+            s4 = hi(affine_expand(P, p0, -yr_cc, -yr_cc_grad))
+            za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, -xr_cc_grad, -yr_cc_grad)
+            z = (xv*yv) ∩ za_l ∩ za_u
         else
             z = xv*yv
         end
@@ -252,16 +266,6 @@ for ft in UNIVARIATE_ATOM_TYPES
         function fprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _set(b, _child(g, 1, k))
             z = ($f)(x)
-            #=
-            if (k > 213) && ($f == log) && ((z.cc - z.cv) < 0.0)
-                fa = $ft
-                println("function[$k] = $fa")
-                println("x = $x")
-                println("z = $z")
-                println("Dx = $(x.cc - x.cv)")
-                println("Dz = $(z.cc - z.cv)")
-            end
-            =#
             z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
             _store_set!(b, z, k)
         end
