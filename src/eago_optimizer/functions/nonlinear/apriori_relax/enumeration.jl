@@ -1,7 +1,7 @@
 function extract_apriori_info(t::RelaxMulEnumInner, x::Vector{MC{N,T}}, Q::Int) where {N,T}
     cv = -Inf
     cc = Inf
-    DEBUG_NL && @show x.box
+    #DEBUG_NL && @show x.box
     for i = 1:Q
         z = x[i]
         cvt = z.cv 
@@ -89,10 +89,13 @@ function fprop!(t::RelaxMulEnumInner, vt::Variable, g::DAT, b::RelaxCache{V,N,T}
     x = _val(b, i)
     l = _lbd(b, i)
     u = _ubd(b, i)
+    #@show x, l, u
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
+    #@show z
     if !_first_eval(b)
         z = z ∩ _interval(b, k)
     end
+    #@show z
     _store_set!(b, z, k)
     return
 end
@@ -115,11 +118,14 @@ function fprop_2!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,
         yi = t.use_info ? yinfo.v : ys
         xcvU, xccL = extract_apriori_info(t, xinfo, xs)
         ycvU, yccL = extract_apriori_info(t, yinfo, ys)
-        xcv = xi.cv;  ycv = yi.cv
+        xcv = xi.cv; ycv = yi.cv
         xcc = xi.cc; ycc = yi.cc
         xcvg = xi.cv_grad; ycvg = yi.cv_grad
         xccg = xi.cc_grad; yccg = yi.cc_grad
-        z = McCormick.mult_apriori_kernel(xs, ys, xs.Intv*ys.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)                 
+        wIntv = xs.Intv*ys.Intv
+        za_l = McCormick.mult_apriori_kernel(xs, ys, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
+        za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
+        z = (xs*ys) ∩ za_l ∩ za_u
     end
     z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
     _store_set!(b, z, k)
@@ -143,15 +149,15 @@ function fprop_n!(t::RelaxMulEnumInner, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T
             xi = t.use_info ? xinfo.v : xs
             if !first_set
                 xcvU, xccL = extract_apriori_info(t, xinfo, xs)
-                @show xcvU, xccL, xs
                 ycvU, yccL = extract_apriori_info(t, b._mult_temp, ys)
-                @show ycvU, yccL, ys
                 xcv = xi.cv;       ycv = b._mult_temp.v.cv
                 xcc = xi.cc;       ycc = b._mult_temp.v.cc
                 xcvg = xi.cv_grad; ycvg = b._mult_temp.v.cv_grad
                 xccg = xi.cc_grad; yccg = b._mult_temp.v.cc_grad
-                ys = McCormick.mult_apriori_kernel(xs, ys, xs.Intv*ys.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)
-                @show ys
+                wIntv = xs.Intv*ys.Intv 
+                za_l = McCormick.mult_apriori_kernel(xs, ys, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
+                za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
+                ys = (xs*ys) ∩ za_l ∩ za_u
                 b._mult_temp.v *= ys
                 b._mult_temp.box .*= xinfo.box
             else 
@@ -159,9 +165,6 @@ function fprop_n!(t::RelaxMulEnumInner, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T
                 b._mult_temp.v = xi
                 b._mult_temp.box .= xinfo.box
                 ys = xs
-                @show b._mult_temp.v
-                @show xi
-                @show xs
             end
         end
         count += 1
@@ -174,7 +177,7 @@ end
 
 #TODO:
 function fprop!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    println(" ")
-    println("MULT[$(_arity(g, k))] at k = $k")
+    #println(" ")
+    #println("MULT[$(_arity(g, k))] at k = $k")
     (_arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
 end

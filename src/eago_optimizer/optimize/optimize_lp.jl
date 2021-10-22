@@ -115,4 +115,4 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
     return
 end
 
-optimize!(::MILP, m::GlobalOptimizer) = optimize!(LP(), m)
+optimize!(::MILP, m::Optimizer{Q,S,T}) where {Q,S,T} = optimize!(LP(), m)

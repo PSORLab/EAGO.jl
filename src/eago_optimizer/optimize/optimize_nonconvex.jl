@@ -334,7 +334,7 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     # TODO
     
     # stores objective value and bound 
-    if g._input_problem._optimization_sense == MOI.MIN_SENSE
+    if _is_input_min(g)
         m._objective_bound = g._global_lower_bound
         m._objective_value = g._global_upper_bound
     else

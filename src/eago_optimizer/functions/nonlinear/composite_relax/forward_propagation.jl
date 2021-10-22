@@ -69,8 +69,12 @@ end
 
 
 function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+
     x = _child(g, 1, k)
     y = _child(g, 2, k)
+    node_x = g.nodes[x]
+    node_y = g.nodes[y]
+
     x_is_num = _is_num(b, x)
     y_is_num = _is_num(b, y)
     if !x_is_num && y_is_num
@@ -182,11 +186,59 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
     z = one(MC{N,T})
     znum = one(Float64)
     count = 0
+    first_set = true
     for i in _children(g, k)
         if _is_num(b, i)
             znum = znum*_num(b, i)
         else
-            z = z*_set(b, i)
+            x = _set(b, i)
+            xi = _info(b, i)
+            if b.use_apriori_mul
+                if !first_set
+                    xr = xi
+                    yr = _info(b, i)
+
+                    xr_cv = cv(xr);            xr_cc = cc(xr)
+                    yr_cv = cv(yr);            yr_cc = cc(yr)
+                    xr_cv_grad = cv_grad(xr);  xr_cc_grad = cc_grad(xr)
+                    yr_cv_grad = cv_grad(yr);  yr_cc_grad = cc_grad(yr)
+
+                    xrn = -xr
+                    yrn = -yr
+
+                    xrn_cv = cv(xrn);            xrn_cc = cc(xrn)
+                    yrn_cv = cv(yrn);            yrn_cc = cc(yrn)
+                    xrn_cv_grad = cv_grad(xrn);  xrn_cc_grad = cc_grad(xrn)
+                    yrn_cv_grad = cv_grad(yrn);  yrn_cc_grad = cc_grad(yrn)
+
+                    s = _sparsity(g, 1)
+                    l = Float64[_lbd(b.v, i) for i in s]
+                    u = Float64[_ubd(b.v, i) for i in s]
+                    P = Interval.(l, u)
+                    p0 = b.v.x0[s]
+                    p = b.v.x[s]
+                    wIntv = z.Intv*x.Intv
+
+                    t1 = affine_expand(p, p0, xr_cv, xr_cv_grad)
+                    t2 = affine_expand(p, p0, yr_cv, yr_cv_grad)
+                    t3 = hi(affine_expand(P, p0, xr_cv, xr_cv_grad))
+                    t4 = hi(affine_expand(P, p0, yr_cv, yr_cv_grad))
+                    za_l = McCormick.mult_apriori_kernel(x, z, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
+
+                    s1 = affine_expand(p, p0, -xr_cc, -xr_cc_grad)
+                    s2 = affine_expand(p, p0, -yr_cc, -yr_cc_grad)
+                    s3 = hi(affine_expand(P, p0, -xr_cc, -xr_cc_grad))
+                    s4 = hi(affine_expand(P, p0, -yr_cc, -yr_cc_grad))
+                    za_u = McCormick.mult_apriori_kernel(-x, -z, wIntv, s1, s2, s3, s4, -xr_cc_grad, -yr_cc_grad)
+                    z = (x*z) ∩ za_l ∩ za_u
+                else
+                    first_set = false
+                    zi = xi
+                    z = x
+                end
+            else
+                z = z*x
+            end
         end
         count += 1
     end
@@ -338,4 +390,5 @@ function f_init!(t::Relax, g::DAT, b::RelaxCache)
         end
         b._info[k] = _set(b, k)
     end
+    return
 end

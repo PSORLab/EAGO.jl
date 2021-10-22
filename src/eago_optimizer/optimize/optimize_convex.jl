@@ -33,20 +33,23 @@ end
 function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     for i = 1:_variable_num(FullVar(), m)
         v = MOI.SingleVariable(m._upper_variables[i])
-        if !is_integer(FullVar(), m, i)
-            vi = _variable_info(m,i)
-            l  = _lower_bound(FullVar(), m, i)
-            u  = _upper_bound(FullVar(), m, i)
-            if is_fixed(vi)
-                MOI.add_constraint(d, v, ET(l))
-            elseif is_less_than(vi)
-                MOI.add_constraint(d, v, LT(u))
-            elseif is_greater_than(vi)
-                MOI.add_constraint(d, v, GT(l))
-            elseif is_real_interval(vi)
-                MOI.add_constraint(d, v, LT(u))
-                MOI.add_constraint(d, v, GT(l))
-            end
+        l  = _lower_bound(FullVar(), m, i)
+        u  = _upper_bound(FullVar(), m, i)
+        if is_integer(FullVar(), m, i)
+            l = ceil(l)
+            u = floor(u)
+        end
+        is_fixed_int = l == u
+        vi = _variable_info(m,i)
+        if is_fixed(vi) || is_fixed_int
+            MOI.add_constraint(d, v, ET(l))
+        elseif is_less_than(vi)
+            MOI.add_constraint(d, v, LT(u))
+        elseif is_greater_than(vi)
+            MOI.add_constraint(d, v, GT(l))
+        elseif is_real_interval(vi)
+            MOI.add_constraint(d, v, LT(u))
+            MOI.add_constraint(d, v, GT(l))
         end
     end
     return

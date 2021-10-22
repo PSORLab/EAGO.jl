@@ -132,6 +132,7 @@ add_nonlinear!(m::GlobalOptimizer, nldata) = add_nonlinear!(m, nldata.evaluator)
 add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_data)
 
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::SV)
+    #println("sv epigraph min")
     flag = m._input_problem._optimization_sense == MOI.MAX_SENSE
     d._objective = AffineFunctionIneq(f, is_max = flag)
     d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
@@ -157,27 +158,46 @@ end
 reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::Nothing) = nothing
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
     ip = m._input_problem
-    vi = d._variable_info
-    n = NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
-    m._current_node = n
+    wp = m._working_problem
 
-    l, u = interval_bound(m, f)
+    vi = ip._variable_info
+    vi_mid = mid.(vi)
+    vi_lo = lower_bound.(vi)
+    vi_hi = upper_bound.(vi)
+
+    q = _variable_num(FullVar(), m)
+    v = VariableValues{Float64}(x = vi_mid,
+                                x0 = vi_mid,
+                                lower_variable_bounds = vi_lo,
+                                upper_variable_bounds = vi_hi,
+                                node_to_variable_map = [i for i in 1:q],
+                                variable_to_node_map = [i for i in 1:q])
+    wp._relaxed_evaluator.variable_values = v
+    # _set_variable_storage!(f, v)
+    n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
+    m._current_node = n
+    set_node!(wp._relaxed_evaluator, n)
+
+    out = interval_bound(m, f)
+    l, u = out
     if !_is_input_min(m)
         l, u = -u, -l
     end
+    #d._objective.ex.lower_bound = l
+    #d._objective.ex.upper_bound = u
     ηi = add_η!(d, l, u)
     @variable(ip._nlp_data.evaluator.m, l <= η <= u)
-    sqf_obj = MOI.get(ip._nlp_data.evaluator.m, MOI.ObjectiveFunction{SQF}())
-    if ip._optimization_sense == MOI.MAX_SENSE
+    m._global_lower_bound = l
+    m._global_upper_bound = u
+    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
+
+    sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.m, MOI.ObjectiveFunction{SQF}()))
+    if !_is_input_min(m)
         MOIU.operate!(-, Float64, sqf_obj)
     end
     push!(sqf_obj.affine_terms, SAT(-1.0, VI(length(vi))))
     MOI.add_constraint(backend(ip._nlp_data.evaluator.m), sqf_obj, LT(0.0))
     @objective(ip._nlp_data.evaluator.m, Min, η)
-    m._global_lower_bound = l
-    m._global_upper_bound = u
-    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
-
     f.buffer[ηi] = 0.0
     f.len += 1
     if !_is_input_min(m)
@@ -185,7 +205,9 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     end
     MOIU.operate!(-, Float64, f.func, SV(VI(ηi)))
     push!(f.saf.terms, SAT(0.0, VI(ηi)))
+    push!(wp._sqf_leq, deepcopy(f))
     m._obj_var_slack_added = true
+    #println("end SQF epiparse = $(ip._optimization_sense)")
 
     return
 end
@@ -207,10 +229,10 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 variable_to_node_map = [i for i in 1:q])
     wp._relaxed_evaluator.variable_values = v
     _set_variable_storage!(f, v)
-
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
+
     out = interval_bound(m, f)
     l, u = out
     if !_is_input_min(m)
@@ -264,8 +286,10 @@ Performs an epigraph reformulation assuming the working_problem is a minimizatio
 """
 function reform_epigraph_min!(m::GlobalOptimizer)
     ip = m._input_problem
+    #println("epigraph outer = $(ip._optimization_sense)")
     m._branch_variables = fill(false, m._working_problem._variable_count)
     m._obj_mult = (ip._optimization_sense == MOI.MAX_SENSE) ? -1.0 : 1.0
+    #@show typeof(m._working_problem._objective)
     reform_epigraph_min!(m, m._working_problem, m._working_problem._objective)
 end
 
@@ -349,6 +373,8 @@ function label_branch_variables!(m::GlobalOptimizer)
                                 upper_variable_bounds = u,
                                 node_to_variable_map = m._branch_to_sol_map,
                                 variable_to_node_map = m._sol_to_branch_map)
+    #@show m._branch_to_sol_map
+    #@show m._sol_to_branch_map
     #println(" label branch XXX ")
     #@show v
     wp._relaxed_evaluator.variable_values = v
@@ -384,13 +410,17 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
 
     add_objective!(wp, ip._objective)    # set objective function
     add_nonlinear!(m._global_optimizer)         # add nonlinear constraints, evaluator, subexpressions
+    #println("add nonlinear = $(m._input_problem._optimization_sense)")
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     # this is placed after adding nonlinear functions as this prior routine
     # copies the nlp_block from the input_problem to the working problem
     reform_epigraph_min!(m._global_optimizer)
+    #println("reform epigraph = $(m._input_problem._optimization_sense)")
     label_fixed_variables!(m._global_optimizer)
+    #println("label fixed variable = $(m._input_problem._optimization_sense)")
     label_branch_variables!(m._global_optimizer)
+    #println("label branch variable = $(m._input_problem._optimization_sense)")
 
     # updates run and parse times
     new_time = time() - m._global_optimizer._start_time
@@ -426,12 +456,16 @@ function parse_classify_problem!(m::GlobalOptimizer)
     if (ip._objective !== nothing)
         has_objective = true
     end
+    has_int_var = any(is_integer, ip._variable_info)
+
     lin_or_sv_obj = (ip._objective isa SV || ip._objective isa SAF || !has_objective)
     relaxed_supports_soc = false
 
-    if (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj
+    if (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var
         m._working_problem._problem_type = LP()
-    elseif (quad_constr_num == 0) && relaxed_supports_soc && (nl_expr_num == 0) && lin_or_sv_obj
+    elseif (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj
+        m._working_problem._problem_type = MILP()
+    elseif (quad_constr_num == 0) && relaxed_supports_soc && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var
         m._working_problem._problem_type = SOCP()
     else
         m._working_problem._problem_type = MINCVX()

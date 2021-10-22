@@ -539,7 +539,10 @@ _relaxed_optimizer(m::GlobalOptimizer{R,S,Q}) where {R,S,Q} = m._subsolvers.rela
 _upper_optimizer(m::GlobalOptimizer{R,S,Q})   where {R,S,Q} = m._subsolvers.upper_optimizer
 _ext_typ(m::GlobalOptimizer{R,S,Q})           where {R,S,Q} = m._subsolvers.ext_typ
 
-@inline _is_input_min(m::GlobalOptimizer) = m._input_problem._optimization_sense == MOI.MIN_SENSE
+@inline function _is_input_min(m::GlobalOptimizer)
+    #println("input min sense = $(m._input_problem._optimization_sense)")
+    return m._obj_mult == 1.0
+end
 @inline _branch_cost(m::GlobalOptimizer) = m._branch_cost.cost
 @inline _cost_offset_β(m::GlobalOptimizer) = m._branch_cost.β
 @inline _branch_cvx_α(m::GlobalOptimizer) =  m._parameters.branch_cvx_factor

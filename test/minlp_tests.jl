@@ -4,16 +4,7 @@ solver = JuMP.optimizer_with_attributes(EAGO.Optimizer, "relative_tolerance" => 
  
 const minlp_nlp_exclude = String[
     "001_010", # Unbounded box, check solution bad if not gradient-based....
-    "002_010", # Unbounded box
-
-    #"003_010", # NL objective, constraint, sin/sqrt/exp, Max
-    #"003_011",
-    #"003_012",
-    #"003_013",
-    #"003_014", # TODO: FIX ME
-    #"003_015",
-    #"003_016",
-    
+    "002_010", # Unbounded box   
     "004_010", # Unbounded box
     "004_011", # Unbounded box
     "005_010", # Unbounded box
@@ -32,9 +23,7 @@ MINLPTests.test_nlp(solver, exclude = minlp_nlp_exclude,
 
 const minlp_nlp_cvx_exclude = String[
 
-    #"001_010", # unbounded linear problem
     "001_011", # convex quadratic objective... (linear unbounded...)
-    #"002_010", # unbounded linear problem
     "002_011", # unbounded linear problem & convex quadratic objective
     "101_010", # convex quadratic nl constraints...
     "101_011", 
@@ -54,8 +43,8 @@ const minlp_nlp_cvx_exclude = String[
     "105_011",
     "105_012",
     "105_013",
-    #"106_010", # simple bounded domain
-    #"106_011",
+    "106_010", # simple bounded domain
+    "106_011", #
     "107_010",
     "107_011",
     "107_012",
@@ -94,16 +83,16 @@ MINLPTests.test_nlp_cvx(solver, exclude = minlp_nlp_cvx_exclude,
                                 primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
 
 const minlp_nlp_mi_exclude = String[
-    "001_010",
+    "001_010",  # no box constraints
     "002_010",
 
-    "003_010",   # TODO: Fix 003_010 - 003_016
-    "003_011",
-    "003_012",
-    "003_013",
-    "003_014",    # TODO: Fix 003_010 - 003_016
-    "003_015",
-    "003_016",
+    #"003_010",   # TODO: Fix 003_010 - 003_016
+    #"003_011",
+    #"003_012",
+    #"003_013",
+    #"003_014",    # TODO: Fix 003_010 - 003_016
+    #"003_015",
+    #"003_016",
 
     "004_010",
     "004_011",
@@ -112,6 +101,6 @@ const minlp_nlp_mi_exclude = String[
     "005_011",   # \ operator not in JuMP
     "006_010",
     "007_010",
-    "007_020" 
+    #"007_020" 
 ]
 MINLPTests.test_nlp_mi(solver, exclude = minlp_nlp_mi_exclude)

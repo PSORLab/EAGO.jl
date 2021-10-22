@@ -24,8 +24,8 @@ function is_safe_cut!(m::GlobalOptimizer, f::SAF)
     safe_l = m._parameters.cut_safe_l
     safe_u = m._parameters.cut_safe_u
     safe_b = m._parameters.cut_safe_b
-    (abs(f.constant) > safe_b) && return false # violates |b| <= safe_b
 
+    (abs(f.constant) > safe_b) && return false # violates |b| <= safe_b
     term_count = length(f.terms)
     @inbounds for i = 1:term_count
         ai = f.terms[i].coefficient
@@ -197,6 +197,7 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
         end
     else
         v = _set(f)
+        #@show v
         if !isempty(v)
             # if has less than or equal to bound (<=)
             if isfinite(_upper_bound(f))

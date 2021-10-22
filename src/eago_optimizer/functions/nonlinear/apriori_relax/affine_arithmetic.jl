@@ -76,6 +76,8 @@ function log(x::AffineEAGO{N}) where N
         p = 1/b
         q = 0.5*(fa + fb - p*(a + b))
         Δ = abs(0.5*(fb - fa - p*(b - a)))
+        #@show a, b, fa, fb
+        #@show x, p, q, Δ
         return AffineEAGO(x, p, q, Δ)
     end
     p = (fb - fa)/(b - a)
@@ -324,6 +326,8 @@ function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::I
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
     zaff = AffineEAGO{N}(x, Interval(l,u), i)
     zinfo = MCAffPnt{N,T}(z, zaff)
+    #println("variable...")
+    #@show i, zinfo
     b._info[k] = zinfo
     return 
 end
@@ -481,8 +485,11 @@ function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k:
         yv_box = yv.box
         z_box = xv_box*yv_box
         xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), b.v, xv_box)
-        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv_box) 
-        z = McCormick.mult_apriori_kernel(xv.v, yv.v, xv.v.Intv*yv.v.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)
+        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv_box)
+        wIntv = xv.v.Intv*yv.v.Intv
+        za_l = McCormick.mult_apriori_kernel(xv.v, yv.v, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
+        za_u = McCormick.mult_apriori_kernel(-xv.v, -yv.v, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
+        z = xv.v*yv.v 
         zaff = MCAffPnt{N,T}(z, z_box)                                        
     end
     _cut(t, b, k, zaff, _info(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
@@ -500,11 +507,16 @@ function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int
     else
         xs = _set(b, x)
         ys = _set(b, y)
-        xv = _info(b, x)
-        yv = _info(b, y)
+        xinfo = _info(b, x)
+        yinfo = _info(b, y)
+        xv = xinfo
+        yv = yinfo
         xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), b.v, xv.box)
-        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv.box) 
-        z = McCormick.mult_apriori_kernel(xs, ys, xs.Intv*ys.Intv, xcv, ycv, xcvU, ycvU, xcc, ycc, xccL, yccL, xcvg, ycvg, xccg, yccg)                                        
+        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv.box)
+        wIntv = xv.v.Intv*yv.v.Intv 
+        za_l = McCormick.mult_apriori_kernel(xs, ys, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
+        za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
+        z = (xs*ys) ∩ za_l ∩ za_u                                        
     end
     _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
 end
@@ -527,18 +539,40 @@ function fprop_n!(t::RelaxAAInfo, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::
 end
 
 function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    z = one(MC{N,T})
+    ys = one(MC{N,T})
     znum = one(Float64)
+    b._mult_temp = one(MCAffPnt{N,T})
     count = 0
+    first_set = true
     for i in _children(g, k)
         if _is_num(b, i)
             znum = znum*_num(b, i)
         else
-            z = z*_set(t, b, i)
+            xs = _set(b, i)
+            xinfo = _info(b, i)
+            xi = xinfo.v
+            if !first_set
+                ys = b._mult_temp.v
+                xcvU, xccL = extract_apriori_info(t, b.v, xinfo.box)
+                ycvU, yccL = extract_apriori_info(t, b.v, b._mult_temp.box)
+                xcv = xi.cv;       ycv = b._mult_temp.v.cv
+                xcc = xi.cc;       ycc = b._mult_temp.v.cc
+                xcvg = xi.cv_grad; ycvg = b._mult_temp.v.cv_grad
+                xccg = xi.cc_grad; yccg = b._mult_temp.v.cc_grad
+                wIntv = xs.Intv*ys.Intv ∩ Interval(xinfo.box*b._mult_temp.box)
+                za_l = McCormick.mult_apriori_kernel(xs, ys, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
+                za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
+                ys = (xs*ys) ∩ za_l ∩ za_u
+                b._mult_temp = MCAffPnt{N,T}(ys, b._mult_temp.box*xinfo.box)
+            else
+                first_set = false
+                b._mult_temp = MCAffPnt{N,T}(xi, xinfo.box)
+                ys = xs
+            end
         end
         count += 1
     end
-    z = z*znum
+    z = ys*znum
     _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
 end
 
