@@ -101,6 +101,9 @@ const minlp_nlp_mi_exclude = String[
     "005_011",   # \ operator not in JuMP
     "006_010",
     "007_010",
-    #"007_020" 
+    #"007_020"    # no way of specifying 
 ]
-MINLPTests.test_nlp_mi(solver, exclude = minlp_nlp_mi_exclude)
+MINLPTests.test_nlp_mi(solver, exclude = minlp_nlp_mi_exclude, 
+objective_tol = 1E-3,
+termination_target = MINLPTests.TERMINATION_TARGET_GLOBAL,
+primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)

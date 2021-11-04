@@ -98,8 +98,6 @@ $(FUNCTIONNAME)
 Excludes OBBT on variable indices after a search in a filtering direction.
 """
 function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType}
-    #println(" ")
-    #println("agressive filtering")
     if _obbt_aggressive_on(m)
         # Initial filtering vector (negative one direction per remark in Gleixner2017)
         d = _relaxed_optimizer(m)
@@ -222,8 +220,6 @@ https://doi.org/10.1007/s10898-016-0450-4
 """
 function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
-    #println("show obbt")
-
     feasibility = true
     n = m._current_node
     d = _relaxed_optimizer(m)
@@ -319,8 +315,6 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
             elseif upper_indx > 0
                 
-                #println(" ")
-                #println("start upper refinement")
                 m._obbt_working_upper_index[upper_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
                 MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[_bvi(m, upper_indx)]))
@@ -360,7 +354,6 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
             trivial_filtering!(m, n)
         end
     end
-    #println("finished obbt")
     return feasibility
 end
 

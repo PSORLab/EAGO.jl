@@ -197,7 +197,6 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
         end
     else
         v = _set(f)
-        #@show v
         if !isempty(v)
             # if has less than or equal to bound (<=)
             if isfinite(_upper_bound(f))

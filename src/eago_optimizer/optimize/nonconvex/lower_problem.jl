@@ -169,37 +169,23 @@ function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
     check_safe = (k == 1) ? false : m._parameters.cut_safe_on
     wp = m._working_problem
     wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    #println(" ")
-    #println(" start relaxed all constraints")
-    #@show wp._sqf_leq
     for leq in wp._sqf_leq
-        #@show leq
         relax!(m, leq, k, check_safe)
     end
-    #@show wp._sqf_eq
     for eq in wp._sqf_eq
-        #@show eq
         relax!(m, eq, k, check_safe)
     end
     valid_relax_flag = true
     if valid_relax_flag
+        count = 1
         for nl in wp._nonlinear_constr
             valid_relax_flag &= relax!(m, nl, k, check_safe)
             !valid_relax_flag && break
+            count += 1
         end
     end
-    #println(" finish relaxed all constraints")
-    #println(" ")
-    # TODO: What's up with this???
-    #if valid_relax_flag
-    #    valid_relax_flag &= relax!(m, wp._objective, k, check_safe)
-    #end
-   # println(" ")
-    #println(" start objective cut ")
     m._new_eval_constraint = false
     (k == 1) && objective_cut!(m, check_safe)
-    #println(" finish objective cut ")
-    #println(" ")
     return valid_relax_flag
 end
 relax_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int) = relax_all_constraints!(t, m, k)
@@ -251,24 +237,30 @@ function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     return
 end
 
-function interval_objective_bound!(m::GlobalOptimizer)
-    if !isnothing(m._working_problem._objective)
-        m._working_problem._relaxed_evaluator.is_first_eval = true
-        fL, fU = bound_objective(m)
-        #@show _is_input_min(m)
-        #@show fL, fU
-        fv = _is_input_min(m) ? fL : -fU
-        #@show fv
-        #@show m._lower_objective_value
-        if fv > m._lower_objective_value
-            m._lower_objective_value = fv
-            fill!(m._lower_lvd, 0.0)
-            fill!(m._lower_uvd, 0.0)
-            m._cut_add_flag = false
-        end
+interval_objective_bound!(m::GlobalOptimizer, f::Nothing) = nothing
+function interval_objective_bound!(m::GlobalOptimizer, f::AffineFunctionIneq)
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    fL, fU = bound_objective(m)
+    if fL > m._lower_objective_value
+        m._lower_objective_value = fL
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
+        m._cut_add_flag = false
+    end
+end
+function interval_objective_bound!(m::GlobalOptimizer, f)
+    m._working_problem._relaxed_evaluator.is_first_eval = true
+    fL, fU = bound_objective(m)
+    fv = _is_input_min(m) ? fL : -fU
+    if fv > m._lower_objective_value
+        m._lower_objective_value = fv
+        fill!(m._lower_lvd, 0.0)
+        fill!(m._lower_uvd, 0.0)
+        m._cut_add_flag = false
     end
     return
 end
+interval_objective_bound!(m::GlobalOptimizer) = interval_objective_bound!(m, m._working_problem._objective)
 
 """
 $(SIGNATURES)
@@ -312,7 +304,6 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
 
     feasible_flag = true
     reset_relaxation!(m)
-    #println("FBBT feasibility")
     if _fbbt_lp_depth(m) >= _iteration_count(m)
         load_fbbt_buffer!(m)
         for _ = 1:_fbbt_lp_repetitions(m)
@@ -327,10 +318,8 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
         end
         unpack_fbbt_buffer!(m)
     end
-    #println("FBBT feasibility = $feasible_flag")
 
     # done after cp to prevent using cp specific flags in cut generation
-    #println("CP feasibility")
     set_first_relax_point!(m)
     if _cp_depth(m) >= _iteration_count(m)
         for _ = 1:_cp_repetitions(m)
@@ -338,18 +327,14 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
             !feasible_flag && break
         end
     end
-    #println("CP feasibility = $feasible_flag")
 
-    #println("OBBT feasibility")
     if _obbt_depth(m) >= _iteration_count(m)
         for k = 1:_obbt_repetitions(m)
-            #println("OBBT repetitions = $k")
             feasible_flag = feasible_flag && obbt!(m)
             m._obbt_performed_flag = true
             !feasible_flag && break
         end
     end
-    #println("OBBT feasibility = $feasible_flag")
     m._preprocess_feasibility = feasible_flag
     return
 end
@@ -409,6 +394,10 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         end
     end
 
+    t_status = MOI.get(d, MOI.TerminationStatus())
+    p_status = MOI.get(d, MOI.PrimalStatus())
+    d_status = MOI.get(d, MOI.DualStatus())
+
     # activate integrality conditions for MIP & solve MIP subproblem
     if is_integer_subproblem(m)
         m._last_cut_objective = m._lower_objective_value
@@ -425,11 +414,11 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
 
     # check status -- if not feasible/infeasible then fallback to interval bounds
     if status == RRS_OPTIMAL
+        t_status = MOI.get(d, MOI.TerminationStatus())
+        p_status = MOI.get(d, MOI.PrimalStatus())
+        d_status = MOI.get(d, MOI.DualStatus())
         m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
     end
-    t_status = MOI.get(d, MOI.TerminationStatus())
-    p_status = MOI.get(d, MOI.PrimalStatus())
-    d_status = MOI.get(d, MOI.DualStatus())
     m._lower_termination_status = t_status
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status

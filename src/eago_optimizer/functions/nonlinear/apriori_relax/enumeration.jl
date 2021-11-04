@@ -177,7 +177,5 @@ end
 
 #TODO:
 function fprop!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    #println(" ")
-    #println("MULT[$(_arity(g, k))] at k = $k")
     (_arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
 end

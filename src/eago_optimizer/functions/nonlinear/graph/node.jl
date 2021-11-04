@@ -46,7 +46,8 @@ end
 
 for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
                   (Parameter, PARAMETER, PARAM_ATOM),
-                  (Constant, CONSTANT, CONST_ATOM),)
+                  (Constant, CONSTANT, CONST_ATOM),
+                  (Subexpression, SUBEXPRESSION, SUBEXPR),)
     @eval function Node(::$t, i::Int)
         return Node($s, $a, i, 0, 0, Int[])
     end

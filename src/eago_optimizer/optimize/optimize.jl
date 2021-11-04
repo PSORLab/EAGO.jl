@@ -23,17 +23,14 @@ function MOI.optimize!(m::Optimizer{Q,S,T}) where {Q,S,T}
 
     # Runs the branch and bound routine
     if !m.enable_optimize_hook
-        #println("input min sense 1 = $(m._input_problem._optimization_sense)")
 
         # Need to eliminate fixed variables prior to checking
         # for convex quadratic constraints
         initial_parse!(m)
-        #println("input min sense initial parse = $(m._input_problem._optimization_sense)")
 
         # Determines if the problem is an LP, MILP, SOCP, MISCOP,
         # CONVEX, OF MINCVX PROBLEM TYPE
         parse_classify_problem!(m._global_optimizer)
-        #println("input min sense post classify = $(m._input_problem._optimization_sense)")
 
         m._global_optimizer._parse_time = m._global_optimizer._start_time - time()
 

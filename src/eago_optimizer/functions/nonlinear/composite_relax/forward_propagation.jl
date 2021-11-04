@@ -25,8 +25,7 @@ function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) wh
 end
 
 function fprop!(t::Relax, ex::Subexpression, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    d = _subexpression_value(c, _first_index(g, k))
-    z = expand_set(MC{N,T}, d.set[1], _sparsity(g, k), _sparsity(sub), c.cv_buffer, c.cc_buffer)
+    z = _subexpression_set(c, _first_index(g, k))
     _store_set!(c, z, k)
 end
 
@@ -85,6 +84,10 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
         xv = _set(b, x)
         yv = _set(b, y)
         if b.use_apriori_mul
+            dp = b.dp
+            dP = b.dP
+            s = _sparsity(g, 1)
+
             xr = _info(b, x)
             yr = _info(b, y)
 
@@ -97,38 +100,30 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
             yr_cv_grad = cv_grad(yr)         # GOOD
             yr_cc_grad = cc_grad(yr)         # GOOD
 
-            xrn = -xr
-            yrn = -yr
+            xrn_cc = -xr_cc
+            yrn_cc = -yr_cc
+            xrn_cc_grad = -xr_cc_grad
+            yrn_cc_grad = -yr_cc_grad
 
-            xrn_cv = cv(xrn)                   # GOOD
-            xrn_cc = cc(xrn)                   # GOOD
-            yrn_cv = cv(yrn)                   # GOOD
-            yrn_cc = cc(yrn)                   # GOOD
-            xrn_cv_grad = cv_grad(xrn)         # GOOD
-            xrn_cc_grad = cc_grad(xrn)         # GOOD
-            yrn_cv_grad = cv_grad(yrn)         # GOOD
-            yrn_cc_grad = cc_grad(yrn)         # GOOD
+            t3 = affine_expand_del(dP, xr_cv, xr_cv_grad, s)
+            t4 = affine_expand_del(dP, yr_cv, yr_cv_grad, s)
+            s3 = affine_expand_del(dP, xrn_cc, xrn_cc_grad, s)
+            s4 = affine_expand_del(dP, yrn_cc, yrn_cc_grad, s)
 
-            s = _sparsity(g, 1)
-            l = Float64[_lbd(b.v, i) for i in s]
-            u = Float64[_ubd(b.v, i) for i in s]
-            P = Interval.(l, u)
-            p0 = b.v.x0[s]
-            p = b.v.x[s]
-            wIntv = xv.Intv*yv.Intv
-
-            t1 = affine_expand(p, p0, xr_cv, xr_cv_grad)
-            t2 = affine_expand(p, p0, yr_cv, yr_cv_grad)
-            t3 = hi(affine_expand(P, p0, xr_cv, xr_cv_grad))
-            t4 = hi(affine_expand(P, p0, yr_cv, yr_cv_grad))
-            za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
-
-            s1 = affine_expand(p, p0, -xr_cc, -xr_cc_grad)
-            s2 = affine_expand(p, p0, -yr_cc, -yr_cc_grad)
-            s3 = hi(affine_expand(P, p0, -xr_cc, -xr_cc_grad))
-            s4 = hi(affine_expand(P, p0, -yr_cc, -yr_cc_grad))
-            za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, -xr_cc_grad, -yr_cc_grad)
-            z = (xv*yv) ∩ za_l ∩ za_u
+            z = xv*yv
+            wIntv = z.Intv
+            if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
+                t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
+                t2 = affine_expand_del(dp, yr_cv, yr_cv_grad, s)
+                za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
+                z = z ∩ za_l
+            end
+            if (s3 < -x.Intv.lo) || (s4 < -z.Intv.lo)
+                s1 = affine_expand_del(dp, xrn_cc, xrn_cc_grad, s)
+                s2 = affine_expand_del(dp, yrn_cc, yrn_cc_grad, s)
+                za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, xrn_cc_grad, yrn_cc_grad)
+                z = z ∩ za_u
+            end
         else
             z = xv*yv
         end
@@ -183,9 +178,18 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
 end
 
 function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    #println("MULT N")
+    dp = b.dp
+    dP = b.dP
+    s = _sparsity(g, 1)
+    #l = b.#Float64[_lbd(b.v, i) for i in s]
+    #u = #Float64[_ubd(b.v, i) for i in s]
+    #P = Interval.(l, u)
+    #p0 = b.v.x0[s]
+    #p = b.v.x[s]
     z = one(MC{N,T})
+    zi = one(MC{N,T}) 
     znum = one(Float64)
-    count = 0
     first_set = true
     for i in _children(g, k)
         if _is_num(b, i)
@@ -196,41 +200,38 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
             if b.use_apriori_mul
                 if !first_set
                     xr = xi
-                    yr = _info(b, i)
+                    zr = zi
 
-                    xr_cv = cv(xr);            xr_cc = cc(xr)
-                    yr_cv = cv(yr);            yr_cc = cc(yr)
-                    xr_cv_grad = cv_grad(xr);  xr_cc_grad = cc_grad(xr)
-                    yr_cv_grad = cv_grad(yr);  yr_cc_grad = cc_grad(yr)
+                    xr_cv = cv(xr)
+                    zr_cv = cv(zr)
+                    xr_cv_grad = cv_grad(xr)
+                    zr_cv_grad = cv_grad(zr)
+                    
+                    xrn_cc = -cc(xr)
+                    zrn_cc = -cc(zr)
+                    xrn_cc_grad = -cc_grad(xr)
+                    zrn_cc_grad = -cc_grad(zr)
 
-                    xrn = -xr
-                    yrn = -yr
+                    t3 = affine_expand_del(dP, xr_cv, xr_cv_grad, s)
+                    t4 = affine_expand_del(dP, zr_cv, zr_cv_grad, s)
+                    s3 = affine_expand_del(dP, xrn_cc, xrn_cc_grad, s)
+                    s4 = affine_expand_del(dP, zrn_cc, zrn_cc_grad, s)
 
-                    xrn_cv = cv(xrn);            xrn_cc = cc(xrn)
-                    yrn_cv = cv(yrn);            yrn_cc = cc(yrn)
-                    xrn_cv_grad = cv_grad(xrn);  xrn_cc_grad = cc_grad(xrn)
-                    yrn_cv_grad = cv_grad(yrn);  yrn_cc_grad = cc_grad(yrn)
-
-                    s = _sparsity(g, 1)
-                    l = Float64[_lbd(b.v, i) for i in s]
-                    u = Float64[_ubd(b.v, i) for i in s]
-                    P = Interval.(l, u)
-                    p0 = b.v.x0[s]
-                    p = b.v.x[s]
-                    wIntv = z.Intv*x.Intv
-
-                    t1 = affine_expand(p, p0, xr_cv, xr_cv_grad)
-                    t2 = affine_expand(p, p0, yr_cv, yr_cv_grad)
-                    t3 = hi(affine_expand(P, p0, xr_cv, xr_cv_grad))
-                    t4 = hi(affine_expand(P, p0, yr_cv, yr_cv_grad))
-                    za_l = McCormick.mult_apriori_kernel(x, z, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
-
-                    s1 = affine_expand(p, p0, -xr_cc, -xr_cc_grad)
-                    s2 = affine_expand(p, p0, -yr_cc, -yr_cc_grad)
-                    s3 = hi(affine_expand(P, p0, -xr_cc, -xr_cc_grad))
-                    s4 = hi(affine_expand(P, p0, -yr_cc, -yr_cc_grad))
-                    za_u = McCormick.mult_apriori_kernel(-x, -z, wIntv, s1, s2, s3, s4, -xr_cc_grad, -yr_cc_grad)
-                    z = (x*z) ∩ za_l ∩ za_u
+                    z = x*z
+                    wIntv = z.Intv
+                    if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
+                        t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
+                        t2 = affine_expand_del(dp, zr_cv, zr_cv_grad, s)
+                        za_l = McCormick.mult_apriori_kernel(x, z, wIntv, t1, t2, t3, t4, xr_cv_grad, zr_cv_grad)
+                        z = z ∩ za_l
+                    end
+                    if (s3 < -x.Intv.lo) || (s4 < -z.Intv.lo)
+                        s1 = affine_expand_del(dp, xrn_cc, xrn_cc_grad, s)
+                        s2 = affine_expand_del(dp, zrn_cc, zrn_cc_grad, s)
+                        za_u = McCormick.mult_apriori_kernel(-x, -z, wIntv, s1, s2, s3, s4, xrn_cc_grad, zrn_cc_grad)
+                        z = z ∩ za_u
+                    end
+                    zi = xi*zi
                 else
                     first_set = false
                     zi = xi
@@ -240,7 +241,6 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                 z = z*x
             end
         end
-        count += 1
     end
     z = z*znum
     z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
@@ -379,6 +379,16 @@ function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
 end
 
 function f_init!(t::Relax, g::DAT, b::RelaxCache)
+    if b.use_apriori_mul
+        s = _sparsity(g, 1)
+        v = b.v
+        x = v.x
+        x0 = v.x0
+        for j in s
+            b.dp[j] = x[j] - x0[j]
+            b.dP[j] = Interval(_lbd(b, j), _ubd(b, j)) - x0[j]
+        end
+    end
     for k = _node_count(g):-1:1
         if _is_unlocked(b, k)
             c = _node_class(g, k)
@@ -386,6 +396,8 @@ function f_init!(t::Relax, g::DAT, b::RelaxCache)
                 fprop!(t, Expression(), g, b, k)
             elseif c == VARIABLE
                 fprop!(t, Variable(), g, b, k)
+            elseif c == SUBEXPRESSION
+                fprop!(t, Subexpression(), g, b, k)
             end
         end
         b._info[k] = _set(b, k)

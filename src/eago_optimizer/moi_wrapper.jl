@@ -253,10 +253,11 @@ function MOI.get(m::Optimizer, p::MOI.RawParameter)
 end
 function MOI.set(m::Optimizer, p::MOI.RawParameter, x)
     s = _to_sym(p.name)
-    if (s == :relaxed_optimizer || s == :upper_optimizer)
+    if (s == :relaxed_optimizer) || (s == :upper_optimizer)
         setfield!(m, s, Incremental(x))
+    else
+        s in EAGO_PARAMETERS ? setfield!(m._parameters, s, x) : setfield!(m, s, x)
     end
-    s in EAGO_PARAMETERS ? setfield!(m._parameters, s, x) : setfield!(m, s, x)
     return
 end
 

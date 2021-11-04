@@ -19,6 +19,7 @@ module EAGO
     using FastRounding, SpecialFunctions
 
     using JuMP
+    import JuMP
     import JuMP._Derivatives: operators, NodeData
     using JuMP._Derivatives: univariate_operators,
                              univariate_operator_to_id
@@ -88,7 +89,9 @@ module EAGO
     # Add storage types for EAGO optimizers
     export NodeBB, get_history, get_lower_bound, get_upper_bound, get_lower_time,
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
-           get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap, SubSolvers
+           get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap, SubSolvers, 
+           EAGOModel, AuxiliaryVariableRef
+    export auxillary_variable, @auxillary_variable, add_mimo_expression, @add_mimo_expression 
 
     export register_eago_operators!
 

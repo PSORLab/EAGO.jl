@@ -304,7 +304,6 @@ relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{n,T}
 function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
     tinfo = RelaxAAInfo(t.v)
     for k = _node_count(g):-1:1
-        println(" ")
         if _is_unlocked(b, k)
             c = _node_class(g, k)
             if c == EXPRESSION
@@ -326,8 +325,6 @@ function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::I
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
     zaff = AffineEAGO{N}(x, Interval(l,u), i)
     zinfo = MCAffPnt{N,T}(z, zaff)
-    #println("variable...")
-    #@show i, zinfo
     b._info[k] = zinfo
     return 
 end

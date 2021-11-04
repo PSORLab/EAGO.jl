@@ -89,10 +89,14 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     dict_sparsity = Dict{Int,Vector{Int}}()
     if length(evaluator.m.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
         for i = 1:length(evaluator.subexpressions)
+            #println(" ")
+            #@show "subexpression $i"
             subexpr = evaluator.subexpressions[i]
-            nlexpr = NonlinearExpression!(rtype, subexpr, dict_sparsity, i, evaluator.subexpression_linearity, 
-                                          user_operator_registry, m._parameters.relax_tag, 
-                                          evaluator.m.nlp_data.nlparamvalues, ruse_apriori)
+            nlexpr = NonlinearExpression!(m._auxillary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
+                                          dict_sparsity, i, evaluator.subexpression_linearity, 
+                                          user_operator_registry, evaluator.m.nlp_data.nlparamvalues,
+                                          m._parameters.relax_tag, ruse_apriori; is_sub = true)
+            #@show dict_sparsity
             push!(relax_evaluator.subexpressions, nlexpr)
         end
     end
@@ -106,11 +110,14 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        m._working_problem._objective = BufferedNonlinearFunction(rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
+        #println(" ")
+        #@show "objective"
+        m._working_problem._objective = BufferedNonlinearFunction(m._auxillary_variable_info, rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.subexpression_linearity,
                                                                  user_operator_registry,
                                                                  evaluator.m.nlp_data.nlparamvalues,
                                                                  m._parameters.relax_tag, ruse_apriori)
+        #@show dict_sparsity
     end
 
     # add nonlinear constraints
@@ -118,7 +125,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     for i = 1:length(evaluator.constraints)
         constraint = evaluator.constraints[i]
         bnds = constraint_bounds[i]
-        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(rtype, constraint, bnds, dict_sparsity,
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(m._auxillary_variable_info, rtype, constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
                                                                               user_operator_registry,
                                                                               evaluator.m.nlp_data.nlparamvalues,
@@ -132,7 +139,6 @@ add_nonlinear!(m::GlobalOptimizer, nldata) = add_nonlinear!(m, nldata.evaluator)
 add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_data)
 
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::SV)
-    #println("sv epigraph min")
     flag = m._input_problem._optimization_sense == MOI.MAX_SENSE
     d._objective = AffineFunctionIneq(f, is_max = flag)
     d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
@@ -173,7 +179,6 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q])
     wp._relaxed_evaluator.variable_values = v
-    # _set_variable_storage!(f, v)
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
@@ -183,8 +188,6 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     if !_is_input_min(m)
         l, u = -u, -l
     end
-    #d._objective.ex.lower_bound = l
-    #d._objective.ex.upper_bound = u
     ηi = add_η!(d, l, u)
     @variable(ip._nlp_data.evaluator.m, l <= η <= u)
     m._global_lower_bound = l
@@ -207,8 +210,6 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     push!(f.saf.terms, SAT(0.0, VI(ηi)))
     push!(wp._sqf_leq, deepcopy(f))
     m._obj_var_slack_added = true
-    #println("end SQF epiparse = $(ip._optimization_sense)")
-
     return
 end
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedNonlinearFunction)
@@ -286,10 +287,8 @@ Performs an epigraph reformulation assuming the working_problem is a minimizatio
 """
 function reform_epigraph_min!(m::GlobalOptimizer)
     ip = m._input_problem
-    #println("epigraph outer = $(ip._optimization_sense)")
     m._branch_variables = fill(false, m._working_problem._variable_count)
     m._obj_mult = (ip._optimization_sense == MOI.MAX_SENSE) ? -1.0 : 1.0
-    #@show typeof(m._working_problem._objective)
     reform_epigraph_min!(m, m._working_problem, m._working_problem._objective)
 end
 
@@ -373,10 +372,7 @@ function label_branch_variables!(m::GlobalOptimizer)
                                 upper_variable_bounds = u,
                                 node_to_variable_map = m._branch_to_sol_map,
                                 variable_to_node_map = m._sol_to_branch_map)
-    #@show m._branch_to_sol_map
-    #@show m._sol_to_branch_map
-    #println(" label branch XXX ")
-    #@show v
+
     wp._relaxed_evaluator.variable_values = v
     (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
     foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
@@ -409,18 +405,14 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
     wp._sqf_eq  = [BufferedQuadraticEq(c[1], c[2]) for c in ip._quadratic_eq_constraints]
 
     add_objective!(wp, ip._objective)    # set objective function
-    add_nonlinear!(m._global_optimizer)         # add nonlinear constraints, evaluator, subexpressions
-    #println("add nonlinear = $(m._input_problem._optimization_sense)")
+    add_nonlinear!(m._global_optimizer)  # add nonlinear constraints, evaluator, subexpressions
 
     # converts a maximum problem to a minimum problem (internally) if necessary
     # this is placed after adding nonlinear functions as this prior routine
     # copies the nlp_block from the input_problem to the working problem
     reform_epigraph_min!(m._global_optimizer)
-    #println("reform epigraph = $(m._input_problem._optimization_sense)")
     label_fixed_variables!(m._global_optimizer)
-    #println("label fixed variable = $(m._input_problem._optimization_sense)")
     label_branch_variables!(m._global_optimizer)
-    #println("label branch variable = $(m._input_problem._optimization_sense)")
 
     # updates run and parse times
     new_time = time() - m._global_optimizer._start_time

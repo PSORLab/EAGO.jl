@@ -33,6 +33,7 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     enable_optimize_hook::Bool
     ext::Dict{Symbol, Any}
   
+    _auxillary_variable_info::Union{Nothing,_AuxVarData}
     _global_optimizer::GlobalOptimizer{Q,S,T}
     _input_problem::InputProblem
     _working_problem::ParsedProblem
@@ -53,7 +54,7 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     _node_count::Int
 end
 function Optimizer{Q,S,T}(sb::SubSolvers{Q,S,T}) where {Q,S,T}
-    return Optimizer{Q,S,T}(sb, false, Dict{Symbol,Any}(), GlobalOptimizer{Q,S,T}( _subsolvers = sb),
+    return Optimizer{Q,S,T}(sb, false, Dict{Symbol,Any}(), nothing, GlobalOptimizer{Q,S,T}( _subsolvers = sb),
                      InputProblem(), ParsedProblem(), EAGOParameters(),
                      MOI.OPTIMIZE_NOT_CALLED, MOI.OTHER_RESULT_STATUS,
                      0.0, -Inf, Inf, Inf, 0, 0)

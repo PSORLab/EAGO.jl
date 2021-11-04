@@ -22,7 +22,7 @@ function binary_switch(ids; is_forward = true)
     end
 end
 
-function Node(d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::OperatorRegistry)
+function Node(aux_info, d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::OperatorRegistry)
     nt = d.nodetype
     i = d.index
     if nt == JuMP._Derivatives.CALL
@@ -30,7 +30,11 @@ function Node(d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::O
     elseif nt == JuMP._Derivatives.CALLUNIVAR
         return _create_call_node_uni(i, child_vec, c, op)
     elseif nt == JuMP._Derivatives.VARIABLE
-        return Node(Variable(), i)
+        if !is_auxilliary_variable(aux_info, i)
+            return Node(Variable(), i)
+         else
+            return Node(Select(), i)
+        end
     elseif nt == JuMP._Derivatives.VALUE
         return Node(Constant(), i)
     elseif nt == JuMP._Derivatives.PARAMETER
@@ -45,12 +49,12 @@ function Node(d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::O
     error("Node type = $nt not expected from JuMP.")
 end
 
-function _convert_node_list(x::Vector{JuMP._Derivatives.NodeData}, op)
+function _convert_node_list(aux_info, x::Vector{JuMP._Derivatives.NodeData}, op)
     y = Vector{Node}(undef, length(x))
     adj = JuMP._Derivatives.adjmat(x)
     child_vec = rowvals(adj)
     for i in eachindex(x)
-        y[i] = Node(x[i], child_vec, nzrange(adj, i), op)
+        y[i] = Node(aux_info, x[i], child_vec, nzrange(adj, i), op)
     end
     return y
 end
@@ -60,33 +64,63 @@ _sparsity(d::JuMP._FunctionStorage) = d.grad_sparsity
 _sparsity(d::JuMP._SubexpressionStorage) = d.sparsity
 
 # Compute gradient sparsity from JuMP storage.
-function _compute_sparsity(d::JuMP._FunctionStorage, sparse_dist::Dict{Int,Vector{Int}})
-    sparsity = copy(_sparsity(d))
-    for nd in d.nd
-        if nd.nodetype === JuMP._Derivatives.SUBEXPRESSION
-            append!(sparsity, sparse_dist[nd.index])
-        end
-    end
-    unique!(sparsity)
-    sort!(sparsity)
-    sparsity, Int[]
-end
-function _compute_sparsity(d::JuMP._SubexpressionStorage, sparse_dist::Dict{Int,Vector{Int}})
+function _compute_sparsity(d::JuMP._FunctionStorage, sparse_dict::Dict{Int,Vector{Int}}, is_sub, subexpr_indx)
+    #println(" ")
+    #println("compute_sparsity")
+    #@show sparse_dict
     dep_subexpression = Int[]
     variable_dict = Dict{Int,Bool}()
     for n in d.nd
-        if node.nodetype == JuMP._Derivatives.VARIABLE
+        if n.nodetype == JuMP._Derivatives.VARIABLE
             if !haskey(variable_dict, n.index)
                 variable_dict[n.index] = true
             end
         end
-        if node.nodetype == JuMP._Derivatives.SUBEXPRESSION
+        if n.nodetype == JuMP._Derivatives.SUBEXPRESSION
             push!(dep_subexpression, n.index)
         end
     end
     sparsity = collect(keys(variable_dict))
-    unique!(dep_subexpressionession)
+    unique!(dep_subexpression)
     sort!(dep_subexpression)
+    #@show dep_subexpression
+    for s in dep_subexpression
+        append!(sparsity, sparse_dict[s])
+    end
+    unique!(sparsity)
+    sort!(sparsity)
+    #@show is_sub, subexpr_indx
+    if is_sub
+        sparse_dict[subexpr_indx] = sparsity
+    end
+    sparsity, dep_subexpression
+end
+function _compute_sparsity(d::JuMP._SubexpressionStorage, sparse_dict::Dict{Int,Vector{Int}}, is_sub, subexpr_indx)
+    dep_subexpression = Int[]
+    variable_dict = Dict{Int,Bool}()
+    for n in d.nd
+        if n.nodetype == JuMP._Derivatives.VARIABLE
+            if !haskey(variable_dict, n.index)
+                variable_dict[n.index] = true
+            end
+        end
+        if n.nodetype == JuMP._Derivatives.SUBEXPRESSION
+            push!(dep_subexpression, n.index)
+        end
+    end
+    sparsity = collect(keys(variable_dict))
+    unique!(dep_subexpression)
+    sort!(dep_subexpression)
+    for s in dep_subexpression
+        append!(sparsity, sparse_dict[s])
+    end
+    unique!(sparsity)
+    sort!(sparsity)
+    #@show is_sub, subexpr_indx
+    if is_sub
+        sparse_dict[subexpr_indx] = sparsity
+    end
+    #@show sparse_dict
     sparsity, dep_subexpression
 end
 

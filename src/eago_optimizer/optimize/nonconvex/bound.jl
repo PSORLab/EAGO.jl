@@ -181,8 +181,10 @@ bound_objective(m::GlobalOptimizer, f::AffineFunctionIneq) = interval_bound(m, f
 bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq) = interval_bound(m, f)
 function bound_objective(m::GlobalOptimizer, f::SV)
     vval = f.variable.value
+    @show vval
     l = _lower_bound(FullVar(), m, vval)
-    u = _lower_bound(FullVar(), m, vval)
+    u = _upper_bound(FullVar(), m, vval)
+    @show l, u
     return l, u
 end
 function bound_objective(t::ExtensionType, m::GlobalOptimizer)

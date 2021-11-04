@@ -28,7 +28,6 @@ end
 @inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
 @inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
 function _val(b::VariableValues{T}) where T
-    @show b.x
     b.x
 end
 _lbd(b::VariableValues{T}) where T = b.lower_variable_bounds
@@ -104,7 +103,7 @@ _node_count(g::DAT)     = g.node_count
 _variable_count(g::DAT) = g.variable_count
 _constant_count(g::DAT) = g.constant_count
 
-_dep_subexpr_count(g::DAT)            = g.dep_subexpr_count
+_dep_subexpr_count(g::DAT)            = length(g.dependent_subexpressions)
 _sparsity(g::DAT, i)                  = g.sparsity
 _rev_sparsity(g::DAT, i::Int, k::Int) = g.rev_sparsity[i]
 
@@ -112,19 +111,19 @@ _user_univariate_operator(g::DAT, i) = g.user_operators.univariate_operator_f[i]
 _user_multivariate_operator(g::DAT, i) = g.user_operators.multivariate_operator_evaluator[i]
 
 
-function DirectedTree(d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values)
+function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
 
     nd = copy(d.nd)
     adj = copy(d.adj)
     const_values = copy(d.const_values)
 
-    sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity)
+    sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity, is_sub, subexpr_indx)
     rev_sparsity = Dict{Int,Int}()
     for (i,s) in enumerate(sparsity)
         rev_sparsity[s] = i
     end
 
-    nodes = _convert_node_list(d.nd, op)
+    nodes = _convert_node_list(aux_info, d.nd, op)
     lin = linearity(nd, adj, subexpr_linearity)
     DirectedTree(nodes = nodes,
                     variables = rev_sparsity,

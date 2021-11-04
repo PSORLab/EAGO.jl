@@ -181,7 +181,7 @@ end
 
 const GLOBALEND_PSTATUS = Dict{GlobalEndState, MOI.ResultStatusCode}(
         GS_OPTIMAL => MOI.FEASIBLE_POINT,
-        GS_INFEASIBLE => MOI.INFEASIBILITY_CERTIFICATE,
+        GS_INFEASIBLE => MOI.NO_SOLUTION,                 # Proof of infeasibility implies not solution found
         GS_NODE_LIMIT => MOI.UNKNOWN_RESULT_STATUS,
         GS_ITERATION_LIMIT => MOI.UNKNOWN_RESULT_STATUS,
         GS_RELATIVE_TOL => MOI.FEASIBLE_POINT,

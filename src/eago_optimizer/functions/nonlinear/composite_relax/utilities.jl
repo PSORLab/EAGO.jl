@@ -1,3 +1,21 @@
+
+function affine_expand_del(dx::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}, s::Vector{Int}) where N
+    v = fx0
+    for i=1:N
+        v += ∇fx0[i]*dx[s[i]]
+    end
+    return v
+end
+function affine_expand_del(dx::Vector{Interval{Float64}}, fx0::Float64, ∇fx0::SVector{N,Float64}, s::Vector{Int}) where N
+    v = fx0
+    for i = 1:N
+        t = ∇fx0[i]
+        tdx = dx[s[i]]
+        v += t > 0.0 ? t*tdx.hi : t*tdx.lo
+    end
+    return v
+end
+
 function affine_expand(x::Vector{Float64}, x0::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}) where N
     v = fx0
     for i=1:N
