@@ -230,11 +230,13 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 variable_to_node_map = [i for i in 1:q])
     wp._relaxed_evaluator.variable_values = v
     f.ex.g.v = v
+    f.ex.relax_cache.v = v
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
+    @show wp._relaxed_evaluator.variable_values.lower_variable_bounds
+    @show wp._relaxed_evaluator.variable_values.upper_variable_bounds
     forward_pass!(wp._relaxed_evaluator, f)
-    @show f
     out = interval_bound(m, f)
     l, u = out
     @show l, u

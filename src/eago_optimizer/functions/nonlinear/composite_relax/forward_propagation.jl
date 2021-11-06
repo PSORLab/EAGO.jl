@@ -18,6 +18,7 @@ function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) wh
     i = _first_index(g, k)
     x = _val(b, i)
     z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
+    println("Variable i = $i, z = $z")
     if !_first_eval(b)
         z = z ∩ _interval(b, k)
     end
@@ -318,6 +319,7 @@ for ft in UNIVARIATE_ATOM_TYPES
         function fprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
             x = _set(b, _child(g, 1, k))
             z = ($f)(x)
+            println("Expr, x = $x, z = $z")
             z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
             _store_set!(b, z, k)
         end
