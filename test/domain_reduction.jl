@@ -4,8 +4,8 @@
     yupper = Float64[4.0, 4.0, 4.0, 4.0]
     ymult_lo = Float64[50.0, 0.0, 1.0, 0.0]
     ymult_hi = Float64[0.0, 0.0, 0.8, 3.0]
-
-    n = EAGO.NodeBB(ylower, yupper, -Inf, Inf, 3, 2)
+    isint = Bool[false, false]
+    n = EAGO.NodeBB(ylower, yupper, isint, true, -Inf, Inf, 2, 1, 1, EAGO.BD_NONE, 1, 0.1)
     @inferred EAGO.variable_dbbt!(n, ymult_lo, ymult_hi, 1.0, 3.0, 4)
     lvb = n.lower_variable_bounds
     uvb = n.upper_variable_bounds

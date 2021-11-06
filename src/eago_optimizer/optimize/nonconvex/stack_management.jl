@@ -176,8 +176,8 @@ function single_storage!(t::ExtensionType, m::GlobalOptimizer)
     m._node_count += 1
     lower_bound = max(y.lower_bound, m._lower_objective_value)
     upper_bound = min(y.upper_bound, m._upper_objective_value)
-    push!(m._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds,
-                           lower_bound, upper_bound, y.depth, y.id))
+    push!(m._stack, NodeBB(y.lower_variable_bounds, y.upper_variable_bounds, y.is_integer, y.continuous,
+                           lower_bound, upper_bound, y.depth, y.cont_depth, y.id, y.branch_direction, y.last_branch, y.branch_extent))
     return
 end
 single_storage!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = single_storage!(_ext_typ(m), m)

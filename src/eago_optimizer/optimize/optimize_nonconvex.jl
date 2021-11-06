@@ -159,7 +159,6 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
     else
         return false
     end
-    println("Termination state is $(m._end_state)")
     return true
 end
 termination_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = termination_check(_ext_typ(m), m)

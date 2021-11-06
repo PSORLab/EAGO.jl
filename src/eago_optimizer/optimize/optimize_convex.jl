@@ -84,8 +84,7 @@ Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `t
 if this corresponds to a solution that is proven to be feasible.
 Returns `false` otherwise.
 """
-function local_problem_status(t::MOI.TerminationStatusCode,
-                              r::MOI.ResultStatusCode)
+function local_problem_status(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
 
     if (t == MOI.OPTIMAL) && (r == MOI.FEASIBLE_POINT)
         return LRS_FEASIBLE

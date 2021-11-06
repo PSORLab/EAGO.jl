@@ -10,7 +10,7 @@ end
     m = EAGO.Optimizer()
     @test MOI.get(m, MOI.SolverName()) === "EAGO: Easy Advanced Global Optimization"
 
-    m._maximum_node_id = 55
+    m._node_count = 55
     @test MOI.get(m, MOI.NodeCount()) === 55
 
     m._result_status_code = MOI.FEASIBLE_POINT
@@ -19,18 +19,9 @@ end
     m._result_status_code = MOI.OTHER_RESULT_STATUS
     @test MOI.get(m, MOI.ResultCount()) === 0
 
-    m._global_lower_bound = 4.0
-    m._global_upper_bound = 6.0
-    m._input_problem._optimization_sense = MOI.MIN_SENSE
-    @test isapprox(MOI.get(m, MOI.RelativeGap()), 0.33333333, atol=1E-5)
-
-    m._input_problem._optimization_sense = MOI.MAX_SENSE
-    @test MOI.get(m, MOI.RelativeGap()) === 0.5
-    @test MOI.get(m, MOI.ObjectiveBound()) === -4.0
-
     m._parameters.verbosity = 2
     m._parameters.log_on = true
-    MOI.set(m, MOI.Silent(), 1)
+    MOI.set(m, MOI.Silent(), true)
     @test m._parameters.verbosity === 0
     @test m._parameters.log_on === false
 
@@ -116,27 +107,21 @@ end
     @test model._input_problem._variable_info[3].has_upper_bound == true
     @test model._input_problem._variable_info[3].is_fixed == true
 
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(NaN))
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.LessThan(NaN))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(NaN))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.LessThan(NaN))
 
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-3.5))
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.EqualTo(-3.5))
-    #@test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.ZeroOne())
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.EqualTo(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.ZeroOne())
 
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-3.5))
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.EqualTo(-3.5))
-    #@test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.ZeroOne())
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.EqualTo(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.ZeroOne())
 
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.GreaterThan(-3.5))
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.LessThan(-3.5))
-    @test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(-3.5))
-    #@test_throws ErrorException MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.ZeroOne())
-
-    #MOI.add_constraint(model, MOI.SingleVariable(z), MOI.ZeroOne())
-    #@test is_integer(model, 4)
-
-    @test EAGO.lower_bound(EAGO.VariableInfo(false,2.0,false,6.0,false,false,EAGO.BRANCH)) == 2.0
-    @test EAGO.upper_bound(EAGO.VariableInfo(false,2.0,false,6.0,false,false,EAGO.BRANCH)) == 6.0
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.GreaterThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.LessThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(-3.5))
+    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.ZeroOne())
 end
 
 @testset "Add Linear Constraint " begin
@@ -250,26 +235,24 @@ end
     x = MOI.add_variables(model,3)
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.SingleVariable}(), MOI.SingleVariable(MOI.VariableIndex(2)))
-    @test model._input_problem._objective_type == EAGO.SINGLE_VARIABLE
-    @test model._input_problem._objective_sv == MOI.SingleVariable(MOI.VariableIndex(2))
+    @test model._input_problem._objective == MOI.SingleVariable(MOI.VariableIndex(2))
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[5.0,-2.3],[x[1],x[2]]),2.0))
-    @test model._input_problem._objective_type == EAGO.SCALAR_AFFINE
-    @test model._input_problem._objective_saf.constant == 2.0
+    @test model._input_problem._objective.constant == 2.0
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
                                          MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(5.0,x[1])],
                                         [MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],3.0))
-    @test model._input_problem._objective_type == EAGO.SCALAR_QUADRATIC
-    @test model._input_problem._objective_sqf.constant == 3.0
+    @test model._input_problem._objective.constant == 3.0
 end
 
 @testset "Empty/Isempty, EAGO Model, Single Storage, Optimize Hook " begin
-    model = EAGO.Optimizer()
-    @test @inferred MOI.is_empty(model)
+    x = EAGO.Optimizer()
+    model = x._global_optimizer
+    @test @inferred MOI.is_empty(x)
 
     t = EAGO.DefaultExt()
-    model._current_node = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], -4.0, 1.0, 2, 1)
+    model._current_node = EAGO.NodeBB(Float64[1.0,5.0], Float64[2.0,6.0], Bool[false, false], true, -4.0, 1.0, 2, 1, 1, EAGO.BD_NONE, 1, 0.1)
     model._lower_objective_value = -3.0
     model._upper_objective_value = 0.0
     @test_nowarn EAGO.single_storage!(t, model)
@@ -280,7 +263,7 @@ end
     @test_nowarn EAGO.single_storage!(model)
 
     @test_nowarn EAGO.optimize_hook!(EAGO.DefaultExt(), model)
-    @test_nowarn EAGO.throw_optimize_hook!(model)
+    @test_nowarn EAGO.throw_optimize_hook!(x)
 end
 #=
 @testset "Fallback Interval Bounds" begin
@@ -438,9 +421,8 @@ end
     @test isapprox(JuMP.value(y), 0.0, atol=1E-4)
     @test isapprox(JuMP.value(z), 0.0, atol=1E-4)
     @test isapprox(JuMP.value(q), 0.0, atol=1E-4)
-    @test isapprox(JuMP.objective_value(m), Inf, atol=1E-4)
     @test JuMP.termination_status(m) == MOI.INFEASIBLE
-    @test JuMP.primal_status(m) == MOI.INFEASIBILITY_CERTIFICATE
+    @test JuMP.primal_status(m) == MathOptInterface.NO_SOLUTION
 
     m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 0,
                                         "presolve_scrubber_flag" => false,
@@ -551,7 +533,7 @@ end
     JuMP.optimize!(m)
     @test isapprox(JuMP.objective_value(m), 0.000, atol=1E-3)
     =#
-
+#=
 @testset "NLP Problem #3" begin
     m = Model(EAGO.Optimizer)
     set_optimizer_attributes(m, "verbosity" => 0,
@@ -577,7 +559,7 @@ end
     JuMP.optimize!(m)
     @test isapprox(objective_value(m), 54.0, atol=1E-0)
 end
-
+=#
 @testset "NLP Problem #4" begin
 
     m = Model(EAGO.Optimizer)

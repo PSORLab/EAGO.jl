@@ -229,13 +229,15 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q])
     wp._relaxed_evaluator.variable_values = v
-    _set_variable_storage!(f, v)
+    f.ex.g.v = v
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
-
+    forward_pass!(wp._relaxed_evaluator, f)
+    @show f
     out = interval_bound(m, f)
     l, u = out
+    @show l, u
     if !_is_input_min(m)
         l, u = -u, -l
     end

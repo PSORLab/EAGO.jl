@@ -348,7 +348,7 @@ end
 
 Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.AbstractOptimizer
     
-    _subsolvers::SubSolvers{R,Q,S}
+    _subsolvers::SubSolvers{R,Q,S} = SubSolvers{R,Q,S}()
     _parameters::EAGOParameters = EAGOParameters()
     _input_problem::InputProblem = InputProblem()
     _working_problem::ParsedProblem = ParsedProblem()

@@ -1,7 +1,7 @@
 name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
 authors = ["Matthew Wilhelm <matthew.wilhelm@uconn.edu>"]
-version = "0.6.1"
+version = "0.7.0"
 
 [deps]
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
@@ -38,7 +38,7 @@ Ipopt = "~0.7"
 JuMP = "0.21.2, 0.21.3, 0.21.4, 0.21.5, 0.21.6"
 MINLPTests = "0.5.2"
 MathOptInterface = "0.9.13, 0.9.14, 0.9.15, 0.9.16, 0.9.17, 0.9.18, 0.9.19"
-McCormick = "0.11.1"
+McCormick = "0.11.2"
 NaNMath = "~0.3"
 Reexport = "~0.2"
 Requires = "~1"
