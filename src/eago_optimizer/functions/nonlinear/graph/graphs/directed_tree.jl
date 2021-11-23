@@ -22,14 +22,10 @@ Base.@kwdef mutable struct VariableValues{T<:Real}
     variable_types::Vector{VariableType}   = VariableType[]
 end
 
-function _val(b::VariableValues{T}, i::Int) where T
-    @inbounds b.x[i]
-end
+@inline _val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
 @inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
 @inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
-function _val(b::VariableValues{T}) where T
-    b.x
-end
+_val(b::VariableValues{T}) where T = b.x
 _lbd(b::VariableValues{T}) where T = b.lower_variable_bounds
 _ubd(b::VariableValues{T}) where T = b.upper_variable_bounds
 
@@ -40,6 +36,17 @@ function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where 
     return nothing
 end
 
+function _initialize_or_copy!(y::VariableValues{T}, x::VariableValues{T}, s::Symbol) where {T<:Real}
+    isempty(getfield(y, s)) ? setfield!(y, s, copy(getfield(x, s))) : copy!(getfield(y, s), getfield(x, s))
+end
+function update_box_and_pnt!(y::VariableValues{T}, x::VariableValues{T}, update_box::Bool) where {T<:Real}
+    if update_box
+        _initialize_or_copy!(y, x, :x0)
+        _initialize_or_copy!(y, x, :lower_variable_bounds)
+        _initialize_or_copy!(y, x, :upper_variable_bounds)
+    end
+    _initialize_or_copy!(y, x, :x)
+end
 
 """
     DirectedTree
@@ -148,7 +155,7 @@ f_switch = binary_switch(forward_uni, is_forward = true)
 @eval function fprop!(t::T, ex::Expression, g::DAT, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
     $f_switch
-    #error("fprop! for ex_type = $id not defined.")
+    error("fprop! for ex_type = $id not defined.")
     return
 end
 
@@ -158,6 +165,6 @@ r_switch = binary_switch(reverse_uni, is_forward = false)
 @eval function rprop!(t::T, ex::Expression, g::DAT, c::AbstractCache, k::Int) where T<:AbstractCacheAttribute
     id = _ex_type(g, k)
     $r_switch
-    #error("rprop! for ex_type = $id not defined.")
+    error("rprop! for ex_type = $id not defined.")
     return
 end

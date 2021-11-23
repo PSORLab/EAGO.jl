@@ -17,17 +17,26 @@ end
 function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     i = _first_index(g, k)
     x = _val(b, i)
-    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, _lbd(b, i), _ubd(b, i))
-    println("Variable i = $i, z = $z")
-    if !_first_eval(b)
-        z = z ∩ _interval(b, k)
+    l = _lbd(b, i)
+    u = _ubd(b, i)
+    if l == u
+        _store_num!(b, x, k)
+    else
+        z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
+        if !_first_eval(b)
+            z = z ∩ _interval(b, k)
+        end
+        _store_set!(b, z, k)
     end
-    _store_set!(b, z, k)
 end
 
 function fprop!(t::Relax, ex::Subexpression, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    z = _subexpression_set(c, _first_index(g, k))
-    _store_set!(c, z, k)
+    x =  _first_index(g, k)
+    if _subexpression_is_num(c, x)
+        _store_num!(c, _subexpression_num(c, x), k)
+    else
+        _store_set!(c, _subexpression_set(c, x), k)
+    end
 end
 
 for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MAX, :max), (:fprop!, DIV, :/))
@@ -39,6 +48,8 @@ for (f, F, fc) in ((:fprop_2!, PLUS, :+), (:fprop_2!, MIN, :min), (:fprop_2!, MA
                 z = ($fc)(_set(b, x), _num(b, y))
             elseif _is_num(b, x) && !_is_num(b, y)
                 z = ($fc)(_num(b, x), _set(b, y))
+            elseif _is_num(b, x) && _is_num(b, y)
+                return _store_num!(b, ($fc)(_num(b, x), _num(b, y)), k)
             else
                 z = ($fc)(_set(b, x), _set(b, y))
             end
@@ -57,11 +68,17 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
             z = _set(b, x) - _num(b, y)
         elseif x_is_num && !y_is_num
             z = _num(b, x) - _set(b, y)
+        elseif x_is_num && y_is_num
+           return  _store_num!(b, _num(b, x) - _num(b, y), k)
         else
             z = _set(b, x) - _set(b, y)
         end
     else
-        z = -_set(b, x)
+        if x_is_num
+            return _store_num!(b, -_num(b, x), k)
+        else
+            z = -_set(b, x)
+        end
     end
     z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
     _store_set!(b, z, k)
@@ -70,6 +87,7 @@ end
 
 function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
 
+    println("BINARY MULTIPLICATION")
     x = _child(g, 1, k)
     y = _child(g, 2, k)
     node_x = g.nodes[x]
@@ -81,6 +99,8 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
         z = *(_set(b, x), _num(b, y))
     elseif x_is_num && !y_is_num
         z = *(_num(b, x), _set(b, y))
+    elseif x_is_num && y_is_num
+        return _store_num!(b, *(_num(b, x), _num(b, y)), k)
     else
         xv = _set(b, x)
         yv = _set(b, y)
@@ -136,66 +156,79 @@ end
 function fprop_n!(t::Relax, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = zero(MC{N,T})
     znum = 0.0
+    numval = true
     for i in _children(g, k)
         if _is_num(b, i)
             znum += _num(b, i)
         else
+            numval = false
             z += _set(b, i)
         end
     end
-    z += znum
-    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    _store_set!(b, z, k)
+    if numval
+        _store_num!(b, znum, k)
+    else
+        z += znum
+        z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+        _store_set!(b, z, k)
+    end
 end
 
 function fprop_n!(t::Relax, v::Val{MIN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = Inf*one(MC{N,T})
     znum = Inf
+    numval = true
     for i in _children(g, k)
         if _is_num(b, i)
             znum = min(znum, _num(b, i))
         else
+            numval = false
             z = min(z, _set(b, i))
         end
     end
-    z = min(z, znum)
-    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    _store_set!(b, z, k)
+    if numval
+        _store_num!(b, znum, k)
+    else
+        z = min(z, znum)
+        z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+        _store_set!(b, z, k)
+    end
 end
 
 function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = -Inf*one(MC{N,T})
     znum = -Inf
+    numval = true
     for i in _children(g, k)
         if _is_num(b, i)
             znum = max(znum, _num(b, i))
         else
+            numval = false
             z = max(z, _set(b, i))
         end
     end
-    z = max(z, znum)
-    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    _store_set!(b, z, k)
+    if numval
+        _store_num!(b, znum, k)
+    else
+        z = max(z, znum)
+        z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+        _store_set!(b, z, k)
+    end
 end
-
 function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    #println("MULT N")
     dp = b.dp
     dP = b.dP
     s = _sparsity(g, 1)
-    #l = b.#Float64[_lbd(b.v, i) for i in s]
-    #u = #Float64[_ubd(b.v, i) for i in s]
-    #P = Interval.(l, u)
-    #p0 = b.v.x0[s]
-    #p = b.v.x[s]
     z = one(MC{N,T})
     zi = one(MC{N,T}) 
     znum = one(Float64)
     first_set = true
+    numval = true
     for i in _children(g, k)
         if _is_num(b, i)
             znum = znum*_num(b, i)
         else
+            numval = false
             x = _set(b, i)
             xi = _info(b, i)
             if b.use_apriori_mul
@@ -243,9 +276,13 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
             end
         end
     end
-    z = z*znum
-    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    _store_set!(b, z, k)
+    if numval
+        _store_num!(b, znum, k)
+    else
+        z = z*znum
+        z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+        _store_set!(b, z, k)
+    end
 end
 
 for F in (PLUS, MULT, MIN, MAX)
@@ -284,30 +321,42 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
 end
 function fprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     f = _user_univariate_operator(g, _first_index(g, k))
-    x = _set(b, _child(g, 1, k))
-    z = f(x)
-    z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g, k), b.cut, b.post)
-    _store_set!(b, z, k)
+    x = _child(g, 1, k)
+    if _is_num(b, x)
+        _store_num!(b, f(_num(b, x)), k)
+    else
+        z = f(_set(b, x))
+        z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g, k), b.cut, b.post)
+        _store_set!(b, z, k)
+    end
 end
 function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     mv = _user_multivariate_operator(g, _first_index(g, k))
     n = _arity(g, k)
     set_input = _set_input(b, n)
+    num_input = _num_input(b, n)
+    any_sets = false
     i = 1
     for c in _children(g, k)
         if _is_num(b, c)
             x = _num(b, c)
             if !isinf(x)
                 set_input[i] = MC{N,T}(x)
+                num_input[i] = x
             end
         else
             set_input[i] = _set(b, c)
+            any_sets = true
         end
         i += 1
     end
-    z = MOI.eval_objective(mv, set_input)::MC{N,T}
-    z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
-    _store_set!(b, z, k)
+    if any_sets
+        z = MOI.eval_objective(mv, set_input)::MC{N,T}
+        z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
+        _store_set!(b, z, k)
+    else
+        _store_num!(b, MOI.eval_objective(mv, num_input), k)
+    end
 end
 
 for ft in UNIVARIATE_ATOM_TYPES
@@ -317,11 +366,14 @@ for ft in UNIVARIATE_ATOM_TYPES
     end
     eval(quote
         function fprop!(t::Relax, v::Val{$ft}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-            x = _set(b, _child(g, 1, k))
-            z = ($f)(x)
-            println("Expr, x = $x, z = $z")
-            z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
-            _store_set!(b, z, k)
+            x = _child(g, 1, k)
+            if _is_num(b, x)
+                _store_num!(b, ($f)(_num(b, x)), k)
+            else
+                 z = ($f)(_set(b, x))
+                z = _cut(z, _set(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
+                _store_set!(b, z, k)
+            end
         end
     end)
 end
@@ -336,6 +388,8 @@ function fprop!(t::Relax, v::Val{ARH}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
         _store_set!(b, z, k)
     elseif y_is_num && iszero(_num(b, y))
         _store_set!(b, zero(V), k)
+    elseif x_is_num && y_is_num
+        _store_num!(b, arh(_num(b, x), _num(b, y)), k)
     else
         if !x_is_num && y_is_num
             z = arh(_set(b, x), _num(b, y))
@@ -381,26 +435,12 @@ function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
 end
 
 function f_init!(t::Relax, g::DAT, b::RelaxCache)
-    if b.use_apriori_mul
-        s = _sparsity(g, 1)
-        v = b.v
-        x = v.x
-        x0 = v.x0
-        for j in s
-            b.dp[j] = x[j] - x0[j]
-            b.dP[j] = Interval(_lbd(b, j), _ubd(b, j)) - x0[j]
-        end
-    end
     for k = _node_count(g):-1:1
         if _is_unlocked(b, k)
             c = _node_class(g, k)
-            if c == EXPRESSION
-                fprop!(t, Expression(), g, b, k)
-            elseif c == VARIABLE
-                fprop!(t, Variable(), g, b, k)
-            elseif c == SUBEXPRESSION
-                fprop!(t, Subexpression(), g, b, k)
-            end
+            (c == EXPRESSION)    && (fprop!(t, Expression(), g, b, k);    continue)
+            (c == VARIABLE)      && (fprop!(t, Variable(), g, b, k);      continue)
+            (c == SUBEXPRESSION) && (fprop!(t, Subexpression(), g, b, k); continue)
         end
         b._info[k] = _set(b, k)
     end

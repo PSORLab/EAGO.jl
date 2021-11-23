@@ -65,17 +65,20 @@ end
 
 Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
     v::VariableValues{Float64}             = VariableValues{Float64}()
-    dp::Vector{Float64}                    = zeros(Float64, N)
-    dP::Vector{Interval{Float64}}          = zeros(Interval{Float64}, N)
+    dp::Vector{Float64}                    = Float64[]
+    dP::Vector{Interval{Float64}}          = Interval{Float64}[]
     _set::Vector{MC{N,T}}                  = MC{N,T}[]
     _num::Vector{Float64}                  = Float64[]
     _is_num::Vector{Bool}                  = Bool[]
     _info::Vector{V}                       = V[]
     _subexpression_set::Dict{Int,MC{N,T}}  = Dict{Int,MC{N,T}}()
+    _subexpression_num::Dict{Int,Float64}  = Dict{Int,Float64}()
+    _subexpression_is_num::Dict{Int,Bool}  = Dict{Int,Bool}()
     _subexpression_info::Dict{Int,MC{N,T}} = Dict{Int,MC{N,T}}()
     _cv_grad_buffer::Vector{Float64}       = Float64[]
     _cc_grad_buffer::Vector{Float64}       = Float64[]
     _set_mv_buffer::Vector{MC{N,T}}        = MC{N,T}[]
+    _num_mv_buffer::Vector{Float64}        = Float64[]
     _info_mv_buffer::Vector{V}             = V[]
     _mult_temp::V                          = zero(V)
     ϵ_sg::Float64                          = 1E-11
@@ -93,7 +96,8 @@ function RelaxCache{N,T}(::Relax, n::Int, m::Int, p::Int) where {N,T<:RelaxTag}
                     _cv_grad_buffer      = zeros(Float64, p),
                     _cc_grad_buffer      = zeros(Float64, p),
                     _set_mv_buffer       = zeros(MC{N,T}, p),
-                    _info_mv_buffer      = zeros(MC{N,T}, p)
+                    _num_mv_buffer       = zeros(p),
+                    _info_mv_buffer      = zeros(MC{N,T}, p),
                     )
 end
 function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxTag}
@@ -107,9 +111,10 @@ function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxT
     c._num                 = copy(cnst._num)
     c._is_num              = copy(cnst._is_num)
     c._set                 = zeros(MC{N,T}, n)
-    c._cv_grad_buffer      = zeros(Float64, p)
-    c._cc_grad_buffer      = zeros(Float64, p)
+    c._cv_grad_buffer      = zeros(p)
+    c._cc_grad_buffer      = zeros(p)
     c._set_mv_buffer       = zeros(MC{N,T}, p)
+    c._num_mv_buffer       = zeros(p)
     c._mult_temp           = zero(V)
 
     for i = 1:n
@@ -134,45 +139,50 @@ _is_num(b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}       = b._is_num
 _is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._is_num[i]
 _is_unlocked(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !_is_num(b,i)
 _interval(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = Interval{Float64}(_set(b, i))
-function _subexpression_set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}
-    return b._subexpression_set[i]
+_subexpression_set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_set[i]
+_subexpression_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_num[i]
+_subexpression_is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_is_num[i]
+function _store_num!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag}
+    b._is_num[i] = true
+    b._num[i] = v
+    return
 end
-_store_num!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag} = (b._num[i] = v; return)
-_store_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag} = (b._set[i] = v; return)
+function _store_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+    b._is_num[i] = false
+    b._set[i] = v
+    return
+end
 _store_info!(b::RelaxCache{V,N,T}, v::V, i::Int) where {V,N,T<:RelaxTag} = (b._info[i] = v; return)
-_store_subexpression!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag} = (b._subexpression_value[i] = v; return)
+
+function _store_subexpression_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+    b._subexpression_is_num[i] = false
+    b._subexpression_set[i] = v
+    return
+end
+function _store_subexpression_num!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+    b._subexpression_is_num[i] = true
+    b._subexpression_num[i] = v
+    return
+end
 
 _first_eval(b::RelaxCache) = b.first_eval
 _val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _val(b.v, i)
 _lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _lbd(b.v, i)
 _ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _ubd(b.v, i)
 _set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
+_num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
 
 include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "forward_propagation.jl"))
 include(joinpath(@__DIR__, "reverse_propagation.jl"))
 
 function fprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
-    if b.use_apriori_mul
-        s = _sparsity(g, 1)
-        v = b.v
-        x = v.x
-        x0 = v.x0
-        for j in s
-            b.dp[j] = x[j] - x0[j]
-            b.dP[j] = Interval(_lbd(b, j), _ubd(b, j)) - x0[j]
-        end
-    end
     for k = _node_count(g):-1:1
         if _is_unlocked(b, k)
             c = _node_class(g, k)
-            if c == EXPRESSION
-                fprop!(t, Expression(), g, b, k)
-            elseif c == VARIABLE
-                fprop!(t, Variable(), g, b, k)
-            elseif c == SUBEXPRESSION
-                fprop!(t, Subexpression(), g, b, k)
-            end
+            (c == EXPRESSION)    && (fprop!(t, Expression(), g, b, k);    continue)
+            (c == VARIABLE)      && (fprop!(t, Variable(), g, b, k);      continue)
+            (c == SUBEXPRESSION) && (fprop!(t, Subexpression(), g, b, k); continue)
         end
     end
     return

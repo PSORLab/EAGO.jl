@@ -300,8 +300,6 @@ constraint programming walk up to tolerances specified in
 """
 function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
-    start_node = copy(m._current_node)
-
     feasible_flag = true
     reset_relaxation!(m)
     if _fbbt_lp_depth(m) >= _iteration_count(m)
@@ -366,6 +364,7 @@ Constructs and solves the relaxation using the default EAGO relaxation scheme
 and optimizer on node `y`.
 """
 function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+
     d = _relaxed_optimizer(m)
     m._last_cut_objective = typemin(Float64)
     m._lower_objective_value = typemin(Float64)
@@ -373,7 +372,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     all_constraints_relaxed = true
     set_first_relax_point!(m)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
-    
     while true
         all_constraints_relaxed = relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
@@ -423,7 +421,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
     status = relaxed_problem_status(t_status, p_status, d_status)
-
     if status == RRS_INFEASIBLE
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf

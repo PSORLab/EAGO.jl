@@ -220,6 +220,8 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     vi_mid = mid.(vi)
     vi_lo = lower_bound.(vi)
     vi_hi = upper_bound.(vi)
+    #@show vi_lo
+    #@show vi_hi
 
     q = _variable_num(FullVar(), m)
     v = VariableValues{Float64}(x = vi_mid,
@@ -234,9 +236,12 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
-    @show wp._relaxed_evaluator.variable_values.lower_variable_bounds
-    @show wp._relaxed_evaluator.variable_values.upper_variable_bounds
+    #@show wp._relaxed_evaluator.variable_values.lower_variable_bounds
+    #@show wp._relaxed_evaluator.variable_values.upper_variable_bounds
     forward_pass!(wp._relaxed_evaluator, f)
+    #for i = 1:length(f.ex.relax_cache._set)
+    #    @show f.ex.relax_cache._is_num[i], f.ex.relax_cache._num[i], f.ex.relax_cache._set[i]
+    #end
     out = interval_bound(m, f)
     l, u = out
     @show l, u

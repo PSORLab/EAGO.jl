@@ -271,23 +271,29 @@ end
 
 eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T<:RelaxTag} = eliminate_fixed_variables!(f.ex, v)
 f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool) = flag ? f_init!(t, g, c) : fprop!(t, g, c)
-function forward_pass!(x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
-    if x.is_first_eval
-        @show d.relax_cache.v.x0
-        @show x.variable_values.x0
-        @show d.relax_cache.v.x
-        @show x.variable_values.x
-        d.relax_cache.v.x0 .= x.variable_values.x0
-        d.relax_cache.v.x .= x.variable_values.x
+function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
+    b = d.relax_cache
+    update_box_and_pnt!(b.v, z.variable_values, z.is_first_eval)
+    if b.use_apriori_mul
+        s = _sparsity(d)
+        v = b.v
+        x = v.x
+        x0 = v.x0
+        isempty(b.dp) && (b.dp = zeros(length(x));)
+        isempty(b.dP) && (b.dP = zeros(Interval{Float64}, length(x));)
+        for j in s
+            b.dp[j] = x[j] - x0[j]
+            b.dP[j] = Interval(_lbd(b, j), _ubd(b, j)) - x0[j]
+        end
     end
     for i = 1:_dep_subexpr_count(d)
         j = d.g.dependent_subexpressions[i]
-        forward_pass!(x, x.subexpressions[j])
+        forward_pass!(z, z.subexpressions[j])
     end
-    _load_subexprs!(d.relax_cache, d.g, x.subexpressions, d.g.dependent_subexpressions)
-    (x.relax_type == STD_RELAX)    && (return f_init_prop!(Relax(), d.g, d.relax_cache, x.is_first_eval))
-    (x.relax_type == MC_AFF_RELAX) && (return f_init_prop!(RelaxAA(d.grad_sparsity), d.g, d.relax_cache, x.is_first_eval))
-    return f_init_prop!(RelaxMulEnum(d.grad_sparsity), d.g, d.relax_cache, x.is_first_eval)
+    _load_subexprs!(d.relax_cache, d.g, z.subexpressions, d.g.dependent_subexpressions)
+    (z.relax_type == STD_RELAX)    && (return f_init_prop!(Relax(), d.g, d.relax_cache, z.is_first_eval))
+    (z.relax_type == MC_AFF_RELAX) && (return f_init_prop!(RelaxAA(d.grad_sparsity), d.g, d.relax_cache, z.is_first_eval))
+    return f_init_prop!(RelaxMulEnum(d.grad_sparsity), d.g, d.relax_cache, z.is_first_eval)
 end
 
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}

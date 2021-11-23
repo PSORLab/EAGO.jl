@@ -11,6 +11,10 @@ const AbstractDAG = AbstractDirectedAcyclicGraph
 @enum Linearity LIN_CONSTANT LIN_LINEAR LIN_PIECEWISE_LINEAR LIN_NONLINEAR
 @enum VariableType VT_BIN VT_INT VT_CONT
 
+function _variable_count(g::AbstractDG)::Int
+    error("Variable count not defined for graph type = $(typeof(g))")
+end
+
 # added id field from JuMP UserOperatorRegistry, expect more extensive changes in future.
 struct OperatorRegistry
     multivariate_id::Vector{Symbol}

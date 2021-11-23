@@ -81,7 +81,9 @@ function fprop!(t::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:Rel
 end
 
 for F in (EXP, EXP10, LOG, LOG10, POW, MINUS, DIV, PLUS)
-    @eval fprop!(t::RelaxMulEnumInner, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+    @eval function fprop!(t::RelaxMulEnumInner, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+        fprop!(Relax(), v, g, b, k)
+    end
 end
 
 function fprop!(t::RelaxMulEnumInner, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}

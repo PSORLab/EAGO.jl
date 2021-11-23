@@ -63,6 +63,7 @@ function MOI.set(d::Incremental, ::MOI.VariablePrimalStart, v::VI, x)
     return
 end
 
+MOI.set(d::Incremental, ::MOI.NLPBlock, ::Nothing) = nothing
 function MOI.set(d::Incremental, ::MOI.NLPBlock, s)
     MOI.set(_get_storage(d), MOI.NLPBlock(), s)
     return
@@ -120,6 +121,9 @@ function MOI.get(d::Incremental{S}, ::MOI.PrimalStatus) where S
 end
 function MOI.get(d::Incremental{S}, ::MOI.DualStatus) where S
     MOI.get(d.optimizer, MOI.DualStatus())::MOI.ResultStatusCode
+end
+function MOI.get(d::Incremental{S}, ::MOI.RawStatusString) where S
+    MOI.get(d.optimizer, MOI.RawStatusString())::MOI.String
 end
 
 function MOI.get(d::Incremental{S}, ::MOI.ObjectiveBound) where S

@@ -406,140 +406,98 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
     # compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
-
     terms = f.terms
     temp_sum = -f.constant
-
     for k = 1:f.len
-
-        aik, indx_k = @inbounds terms[k]
-        if aik !== 0.0
-            aik_xL = aik*(@inbounds lower_bounds[indx_k])
-            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+        aik, i = @inbounds terms[k]
+        if !iszero(aik)
+            aik_xL = aik*(@inbounds lower_bounds[i])
+            aik_xU = aik*(@inbounds upper_bounds[i])
             temp_sum -= min(aik_xL, aik_xU)
         end
     end
 
     # subtract extra term, check to see if implied bound is better, if so update the node and
     # the working sum if the node is now empty then break
-
     for k = 1:f.len
-
-        aik, indx_k = @inbounds terms[k]
-        if aik !== 0.0
-
-            xL = @inbounds lower_bounds[indx_k]
-            xU = @inbounds upper_bounds[indx_k]
-
+        aik, i = @inbounds terms[k]
+        if !iszero(aik)
+            xL = @inbounds lower_bounds[i]
+            xU = @inbounds upper_bounds[i]
             aik_xL = aik*xL
             aik_xU = aik*xU
-
             temp_sum += min(aik_xL, aik_xU)
             xh = temp_sum/aik
-
             if aik > 0.0
                 (xh < xL) && return false
-                if xh > xL
-                    @inbounds upper_bounds[indx_k] = xh
-                end
-
+                (xh > xL) && (@inbounds upper_bounds[i] = min(xh, xU))
             elseif aik < 0.0
                 (xh > xU) && return false
-                if xh < xU
-                    @inbounds lower_bounds[indx_k] = xh
-                end
-
+                (xh < xU) && (@inbounds lower_bounds[i] = max(xh, xL))
             else
                 temp_sum -= min(aik_xL, aik_xU)
                 continue
-
             end
-
-            aik_xL = aik*(@inbounds lower_bounds[indx_k])
-            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+            aik_xL = aik*(@inbounds lower_bounds[i])
+            aik_xU = aik*(@inbounds upper_bounds[i])
             temp_sum -= min(aik_xL, aik_xU)
-
         end
     end
-
     return true
 end
 
 function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
-
     # compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
-
     terms = f.terms
     temp_sum_leq = -f.constant
     temp_sum_geq = -f.constant
 
     for k = 1:f.len
-        aik, indx_k = @inbounds terms[k]
-
-        if aik !== 0.0
-            aik_xL = aik*(@inbounds lower_bounds[indx_k])
-            aik_xU = aik*(@inbounds upper_bounds[indx_k])
+        aik, i = @inbounds terms[k]
+        if !iszero(aik)
+            aik_xL = aik*(@inbounds lower_bounds[i])
+            aik_xU = aik*(@inbounds upper_bounds[i])
             temp_sum_leq -= min(aik_xL, aik_xU)
             temp_sum_geq -= max(aik_xL, aik_xU)
-
         end
     end
 
     # subtract extra term, check to see if implied bound is better, if so update the node and
     # the working sum if the node is now empty then break
     for k = 1:f.len
-
-        aik, indx_k = @inbounds terms[k]
-        if aik !== 0.0
-
-            xL = @inbounds lower_bounds[indx_k]
-            xU = @inbounds upper_bounds[indx_k]
-
+        aik, i = @inbounds terms[k]
+        if !iszero(aik)
+            xL = @inbounds lower_bounds[i]
+            xU = @inbounds upper_bounds[i]
             aik_xL = aik*xL
             aik_xU = aik*xU
-
             temp_sum_leq += min(aik_xL, aik_xU)
             temp_sum_geq += max(aik_xL, aik_xU)
-
             xh_leq = temp_sum_leq/aik
             xh_geq = temp_sum_geq/aik
-
             if aik > 0.0
                 (xh_leq < xL) && return false
-                if xh_leq > xL
-                    @inbounds upper_bounds[indx_k] = xh_leq
-                end
+                (xh_leq > xL) && (@inbounds upper_bounds[i] = min(xh_leq, xU))
                 (xh_geq > xU) && return false
-                if (xh_geq < xU)
-                    @inbounds lower_bounds[indx_k] = xh_geq
-                end
-
+                (xh_geq < xU) && (@inbounds lower_bounds[i] = max(xh_geq, xL))
             elseif aik < 0.0
                 (xh_leq > xU) && return false
-                if xh_leq < xU
-                    @inbounds lower_bounds[indx_k] = xh_leq
-                end
+                (xh_leq < xU) && (@inbounds lower_bounds[i] = max(xh_leq, xL))
                 (xh_geq < xL) && return false
-                if (xh_geq > xL)
-                    @inbounds upper_bounds[indx_k] = xh_geq
-                end
-
+                (xh_geq > xL) && (@inbounds upper_bounds[i] = min(xh_geq, xU))
             else
                 temp_sum_leq -= min(aik_xL, aik_xU)
                 temp_sum_geq -= max(aik_xL, aik_xU)
                 continue
-
             end
-            aik_xL = aik*(@inbounds lower_bounds[indx_k])
-            aik_xU = aik*(@inbounds upper_bounds[indx_k])
-
+            aik_xL = aik*(@inbounds lower_bounds[i])
+            aik_xU = aik*(@inbounds upper_bounds[i])
             temp_sum_leq -= min(aik_xL, aik_xU)
             temp_sum_geq -= max(aik_xL, aik_xU)
         end
     end
-
     return true
 end
 

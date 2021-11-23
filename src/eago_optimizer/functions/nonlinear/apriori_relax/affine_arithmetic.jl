@@ -171,6 +171,9 @@ function ^(x::AffineEAGO{N}, n::Int) where N
 end
 
 function ^(x::AffineEAGO{N}, n::Float64) where N
+    if isinteger(n)
+        return x^Int(n)
+    end
     xL, xU = bounds(x)
     (xL < 0.0) && error("Invalid domain...")
     if (n > 1.0) || (n < 0.0)
