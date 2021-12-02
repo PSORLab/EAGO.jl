@@ -35,9 +35,6 @@ module EAGO
     using Base: @propagate_inbounds
     using Printf
 
-    import IntervalArithmetic: mid
-    import Base: isempty, zero, one, +, *, -, /, ^, log, log10, exp, exp10, zeros, setindex!, inv
-
     @reexport using McCormick
     @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
