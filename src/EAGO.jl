@@ -15,8 +15,8 @@ module EAGO
 
     import MathOptInterface
 
-    using Reexport, Requires, Cassette, IntervalArithmetic, DocStringExtensions
-    using FastRounding, SpecialFunctions
+    using Reexport, Requires, Cassette, IntervalArithmetic, DocStringExtensions,
+          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf
 
     using JuMP
     import JuMP
@@ -27,19 +27,15 @@ module EAGO
     import JuMP._Derivatives: NodeType, UserOperatorRegistry
     const JuMPOpReg = JuMP._Derivatives.UserOperatorRegistry
 
-    using Ipopt, GLPK
-
     using DataStructures: OrderedDict, BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse, findnz
     using LinearAlgebra: eigmin, norm
     using Base: @propagate_inbounds
-    using Printf
+    import Base: setindex!, + , *, -, ^, /, zero, one, inv, log, log10, exp, exp10, isempty
 
     @reexport using McCormick
     @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
-    #using McCormick: erf, erfc, erfcinv, erfinv, xlogx, arh, positive
-
 
     #using IntervalContractors
     using IntervalContractors
@@ -106,12 +102,12 @@ module EAGO
     include(joinpath(@__DIR__, "eago_optimizer", "types", "subsolver_block.jl"))
 
     # load internal storage functions
-    include("eago_optimizer/functions/functions.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "functions", "functions.jl"))
 
     include(joinpath(@__DIR__, "eago_optimizer", "types", "global_optimizer.jl"))
 
     # defines the optimizer structures
-    include("eago_optimizer/optimizer.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "optimizer.jl"))
 
     # defines routines to add variable, saf, sqf, and nlp block constraints
     include(joinpath(@__DIR__, "eago_optimizer", "moi_wrapper.jl"))
@@ -121,16 +117,16 @@ module EAGO
     include(joinpath(@__DIR__, "eago_optimizer", "optimize", "nonconvex", "bound.jl"))
 
     #
-    include("eago_optimizer/domain_reduction.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "domain_reduction.jl"))
 
     #
-    include("eago_optimizer/parse.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "parse.jl"))
 
     #
-    include("eago_optimizer/optimize/optimize.jl")
+    include(joinpath(@__DIR__, "eago_optimizer", "optimize", "optimize.jl"))
 
     # import the script solving utilities
-    include("eago_script/script.jl")
+    include(joinpath(@__DIR__, "eago_script", "script.jl"))
 
     # routines for solving SIPs
     export SIPResult, SIPProblem, SIPCallback, SIPSubResult,
@@ -139,7 +135,7 @@ module EAGO
            sip_llp!, sip_bnd!, sip_res!, get_sip_optimizer, check_convergence,
            LowerLevel1, LowerLevel2, LowerLevel3, LowerProblem, UpperProblem,
            ResProblem, AbstractSIPAlgo, AbstractSubproblemType
-    include("eago_semiinfinite/semiinfinite.jl")
+    include(joinpath(@__DIR__, "eago_semiinfinite", "semiinfinite.jl"))
 
     include(joinpath(@__DIR__, "subsolvers", "glpk.jl"))
     include(joinpath(@__DIR__, "subsolvers", "ipopt.jl"))
@@ -154,8 +150,6 @@ module EAGO
         @require Xpress="9e70acf3-d6c9-5be6-b5bd-4e2c73e3e054"     include(joinpath(@__DIR__, "subsolvers", "xpress.jl"))
     end
 
-    if Base.VERSION >= v"1.6.0"
-        include("precompile.jl")
-        _precompile_()
-    end
+    include("precompile.jl")
+    _precompile_()
 end

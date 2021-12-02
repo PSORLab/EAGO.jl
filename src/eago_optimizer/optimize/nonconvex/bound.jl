@@ -46,7 +46,7 @@ function lower_interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
-        j = aff_term.variable_index.value
+        j = t.variable_index.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
         fval += c > 0.0 ? c*xL : c*xU
