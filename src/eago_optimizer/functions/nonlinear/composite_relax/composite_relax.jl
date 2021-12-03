@@ -18,7 +18,6 @@ struct RelaxAAInfo <: AbstractCacheAttribute
 end
 RelaxAAInfo() = RelaxAAInfo(Int[])
 
-
 """
     RelaxMulEnum
 """
@@ -39,7 +38,8 @@ RelaxMulEnumInner(x::Vector{Int64}) = RelaxMulEnumInner(x, false)
 RelaxMulEnumInner(x::Bool) = RelaxMulEnumInner(Int[], x)
 
 
-const RELAX_ATTRIBUTE = Union{Relax,RelaxAA,RelaxAAInfo,RelaxMulEnum,RelaxMulEnumInner}
+const RELAX_ATTRIBUTE = Union{Relax,RelaxAA,RelaxAAInfo,RelaxMulEnum,RelaxMulEnumInner,RelaxInterval}
+const RELAX_ONLY_ATTRIBUTE = Union{Relax,RelaxAA,RelaxAAInfo,RelaxMulEnum,RelaxMulEnumInner}
 
 mutable struct MCBoxPnt{Q,N,T}
     v::MC{N,T}
@@ -64,7 +64,7 @@ function setindex!(d::MCBoxPnt{Q,N,T}, x::MC{N,T}, i::Int) where {Q,N,T}
 end
 
 Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
-    v::VariableValues{Float64}             = VariableValues{Float64}()
+    ic::IntervalCache                      = IntervalCache{Float64}()
     dp::Vector{Float64}                    = Float64[]
     dP::Vector{Interval{Float64}}          = Interval{Float64}[]
     _set::Vector{MC{N,T}}                  = MC{N,T}[]
@@ -162,7 +162,8 @@ function store_subexpression_num!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) wher
     nothing
 end
 
-first_eval(b::RelaxCache) = b.first_eval
+first_eval(t::RELAX_ONLY_ATTRIBUTE, b::RelaxCache) = b.first_eval
+first_eval(t::RelaxInterval, b::RelaxCache) = b.first_eval
 val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = val(b.v, i)
 lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = lbd(b.v, i)
 ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = ubd(b.v, i)
