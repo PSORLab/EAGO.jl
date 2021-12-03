@@ -148,7 +148,7 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::GlobalOptimizer, f::BufferedQuadraticIneq, k::Int, check_safe::Bool)
+function relax!(m::GlobalOptimizer, f::BQI, k::Int, check_safe::Bool)
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
     valid_cut_flag = add_affine_relaxation!(m, f.saf, check_safe)
     return valid_cut_flag
@@ -157,11 +157,9 @@ end
 """
 $(TYPEDSIGNATURES)
 """
-function relax!(m::GlobalOptimizer, f::BufferedQuadraticEq, indx::Int, check_safe::Bool)
-
+function relax!(m::GlobalOptimizer, f::BQE, i::Int, check_safe::Bool)
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
     valid_cut_flag = add_affine_relaxation!(m, f.saf, check_safe)
-
     affine_relax_quadratic!(m, f.minus_func, f.buffer, f.saf)
     valid_cut_flag &= add_affine_relaxation!(m, f.saf, check_safe)
     return valid_cut_flag
@@ -229,4 +227,4 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
     return valid_cut_flag
 end
 
-relax!(m::GlobalOptimizer, f::Union{Nothing, VI, AffineFunctionIneq}, k::Int, b::Bool) = true
+relax!(m::GlobalOptimizer, f::Union{Nothing, VI, AFI}, k::Int, b::Bool) = true

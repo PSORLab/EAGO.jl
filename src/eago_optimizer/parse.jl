@@ -339,7 +339,7 @@ function label_branch_variables!(m::GlobalOptimizer)
             m._branch_variables[t.variable_index_1.value] = true
             m._branch_variables[t.variable_index_2.value] = true
         end
-        for f in wp._nonlinear_constr, i in _sparsity(f)
+        for f in wp._nonlinear_constr, i in sparsity(f)
             m._branch_variables[i] = true
         end
         if wp._objective isa BufferedQuadraticIneq
@@ -348,7 +348,7 @@ function label_branch_variables!(m::GlobalOptimizer)
                 m._branch_variables[t.variable_index_2.value] = true
             end
         elseif wp._objective isa BufferedNonlinearFunction
-            for i in _sparsity(wp._objective)
+            for i in sparsity(wp._objective)
                 m._branch_variables[i] = true
             end
         end

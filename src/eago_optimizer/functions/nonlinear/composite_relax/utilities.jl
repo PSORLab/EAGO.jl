@@ -141,7 +141,7 @@ Intersects the new set valued operator with the prior and performs affine bound 
   `interval_intersect` flag should be `true` as predetermined interval bounds are valid but
    the prior values may correspond to different points of evaluation.
 """
-function _cut(x::MC{N,T}, z::MC{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
+function cut(x::MC{N,T}, z::MC{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
     (pflag & cflag)  && (return set_value_post(x ∩ z.Intv, v, s, ϵ))
     (pflag & !cflag) && (return set_value_post(x, v, s, ϵ))
     (pflag & cflag)  && (return x ∩ z.Intv)

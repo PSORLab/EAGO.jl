@@ -102,14 +102,12 @@ function RelaxCache{N,T}(::Relax, n::Int, m::Int, p::Int) where {N,T<:RelaxTag}
 end
 function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxTag}
 
-    n = _node_count(g)
-    m = _dep_subexpr_count(g)
-    p = length(_sparsity(g, 1))
+    n = node_count(g)
+    m = dep_subexpr_count(g)
+    p = length(sparsity(g, 1))
 
-    cnst = ConstantCache(n)
-    initialize!(cnst, g)
-    c._num                 = copy(cnst._num)
-    c._is_num              = copy(cnst._is_num)
+    c._num                 = zeros(n)
+    c._is_num              = zeros(Bool, n)
     c._set                 = zeros(MC{N,T}, n)
     c._cv_grad_buffer      = zeros(p)
     c._cc_grad_buffer      = zeros(p)
@@ -131,75 +129,70 @@ end
 ### Access functions for RelaxCache.
 ###
 ###
-_set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}  = b._set[i]
-_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}  = b._num[i]
-_set_or_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !_is_num(b, i) ? _set(b,i) : _num(b,i) 
-_info(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._info[i]
-_is_num(b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}       = b._is_num
-_is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._is_num[i]
-_is_unlocked(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !_is_num(b,i)
-_interval(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = Interval{Float64}(_set(b, i))
-_subexpression_set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_set[i]
-_subexpression_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_num[i]
-_subexpression_is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_is_num[i]
-function _store_num!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag}
+set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}  = b._set[i]
+num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag}  = b._num[i]
+set_or_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = !is_num(b, i) ? set(b,i) : num(b,i) 
+info(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._info[i]
+is_num(b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}       = b._is_num
+is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._is_num[i]
+interval(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = Interval{Float64}(set(b, i))
+subexpression_set(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_set[i]
+subexpression_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_num[i]
+subexpression_is_num(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = b._subexpression_is_num[i]
+function Base.setindex!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:RelaxTag}
     b._is_num[i] = true
     b._num[i] = v
-    return
+    nothing
 end
-function _store_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    b._is_num[i] = false
+function Base.setindex!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+    b._is_num[i] = true
     b._set[i] = v
-    return
+    nothing
 end
-_store_info!(b::RelaxCache{V,N,T}, v::V, i::Int) where {V,N,T<:RelaxTag} = (b._info[i] = v; return)
+store_info!(b::RelaxCache{V,N,T}, v::V, i::Int) where {V,N,T<:RelaxTag} = (b._info[i] = v; nothing)
 
-function _store_subexpression_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+function store_subexpression_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
     b._subexpression_is_num[i] = false
     b._subexpression_set[i] = v
-    return
+    nothing
 end
-function _store_subexpression_num!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+function store_subexpression_num!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
     b._subexpression_is_num[i] = true
     b._subexpression_num[i] = v
-    return
+    nothing
 end
 
-_first_eval(b::RelaxCache) = b.first_eval
-_val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _val(b.v, i)
-_lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _lbd(b.v, i)
-_ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = _ubd(b.v, i)
-_set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
-_num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
+first_eval(b::RelaxCache) = b.first_eval
+val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = val(b.v, i)
+lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = lbd(b.v, i)
+ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = ubd(b.v, i)
+set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
+num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
 
 include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "forward_propagation.jl"))
 include(joinpath(@__DIR__, "reverse_propagation.jl"))
 
 function fprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
-    for k = _node_count(g):-1:1
-        if _is_unlocked(b, k)
-            c = _node_class(g, k)
-            (c == EXPRESSION)    && (fprop!(t, Expression(), g, b, k);    continue)
-            (c == VARIABLE)      && (fprop!(t, Variable(), g, b, k);      continue)
-            (c == SUBEXPRESSION) && (fprop!(t, Subexpression(), g, b, k); continue)
-        end
+    for k = node_count(g):-1:1
+        c = node_class(g, k)
+        (c == EXPRESSION)    && (fprop!(t, Expression(), g, b, k);    continue)
+        (c == VARIABLE)      && (fprop!(t, Variable(), g, b, k);      continue)
+        (c == SUBEXPRESSION) && (fprop!(t, Subexpression(), g, b, k); continue)
     end
-    return
+    nothing
 end
 
 function rprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
     flag = r_init!(t, g, b)
-    for k = 1:_node_count(g)
-        if _is_unlocked(b, k)
-            nt = _node_class(g, k)
-            if nt === EXPRESSION
-                flag = rprop!(t, Expression(), g, b, k)
-            elseif nt === VARIABLE
-                flag = rprop!(t, Variable(), g, b, k)
-            elseif nt === SUBEXPRESSION
-                flag = rprop!(t, Subexpression(), g, b, k)
-            end
+    for k = 1:node_count(g)
+        nt = node_class(g, k)
+        if nt === EXPRESSION
+            flag = rprop!(t, Expression(), g, b, k)
+        elseif nt === VARIABLE
+            flag = rprop!(t, Variable(), g, b, k)
+        elseif nt === SUBEXPRESSION
+            flag = rprop!(t, Subexpression(), g, b, k)
         end
     end
     return flag

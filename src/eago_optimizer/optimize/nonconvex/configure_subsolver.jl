@@ -10,7 +10,8 @@
 # solvers along with routines needed to adjust tolerances to mirror tolerance
 # adjustments in the global solve.
 #############################################################################
-function set_default_config_udf!(s::String, m::MOI.AbstractOptimizer, verbosity::Int)
+
+function set_default_config_udf!(s, m::MOI.AbstractOptimizer, verbosity::Int)
     if verbosity > 0
         println("EAGO lacks a specialized configuration routine for the subsolver ($(MOI.get(m, MOI.SolverName())))")
         println("you selected. As a result, EAGO cannot set the subsolver tolerances based on the")
@@ -25,16 +26,14 @@ function set_default_config_udf!(s::String, m::MOI.AbstractOptimizer, verbosity:
     return
 end
 
-function set_default_config!(ext::ExtensionType, d::GlobalOptimizer, m::MOI.AbstractOptimizer, local_solver::Bool)
+function set_default_config!(ext, d::GlobalOptimizer, m::MOI.AbstractOptimizer, local_solver)
     set_default_config_udf!(MOI.get(m, MOI.SolverName()), m, _verbosity(d))
 end
 
 function set_default_subsolver_config!(ext::DefaultExt, d::GlobalOptimizer,  m::T, local_solver::Bool) where T
-    if !_user_solver_config(d)
-        set_default_config!(ext, d, m, local_solver)
-    end
+    !_user_solver_config(d) && set_default_config!(ext, d, m, local_solver)
     MOI.set(m, MOI.Silent(), true)
-    return
+    nothing
 end
 
 function set_default_config!(ext::DefaultExt, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} 
@@ -49,9 +48,5 @@ Configures subsolver tolerances based on tolerance parameters provided to
 EAGO (provided that a specialized subsolver configuration routine has been
 provided and `m.user_solver_config = false`).
 """
-function set_default_config!(ext::ExtensionType, m::GlobalOptimizer)
-    set_default_config!(DefaultExt(), m)
-end
-function set_default_config!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} 
-    set_default_config!(_ext_typ(m), m)
-end
+set_default_config!(ext::ExtensionType, m::GlobalOptimizer) = set_default_config!(DefaultExt(), m)
+set_default_config!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = set_default_config!(_ext_typ(m), m)

@@ -41,8 +41,8 @@ function _convert_node_list(aux_info, x::Vector{JuMP._Derivatives.NodeData}, op)
 end
 
 # Access gradient sparsity of JuMP storage.
-_sparsity(d::JuMP._FunctionStorage) = d.grad_sparsity
-_sparsity(d::JuMP._SubexpressionStorage) = d.sparsity
+sparsity(d::JuMP._FunctionStorage) = d.grad_sparsity
+sparsity(d::JuMP._SubexpressionStorage) = d.sparsity
 
 # Compute gradient sparsity from JuMP storage.
 function _compute_sparsity(d::JuMP._FunctionStorage, sparse_dict::Dict{Int,Vector{Int}}, is_sub, subexpr_indx)

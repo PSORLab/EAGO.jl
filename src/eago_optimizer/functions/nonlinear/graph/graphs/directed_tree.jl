@@ -22,12 +22,12 @@ Base.@kwdef mutable struct VariableValues{T<:Real}
     variable_types::Vector{VariableType}   = VariableType[]
 end
 
-@inline _val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
-@inline _lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
-@inline _ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
-_val(b::VariableValues{T}) where T = b.x
-_lbd(b::VariableValues{T}) where T = b.lower_variable_bounds
-_ubd(b::VariableValues{T}) where T = b.upper_variable_bounds
+@inline val(b::VariableValues{T}, i::Int) where T = @inbounds b.x[i]
+@inline lbd(b::VariableValues{T}, i::Int) where T = @inbounds b.lower_variable_bounds[i]
+@inline ubd(b::VariableValues{T}, i::Int) where T = @inbounds b.upper_variable_bounds[i]
+val(b::VariableValues{T}) where T = b.x
+lbd(b::VariableValues{T}) where T = b.lower_variable_bounds
+ubd(b::VariableValues{T}) where T = b.upper_variable_bounds
 
 function _get_x!(::Type{BranchVar}, out::Vector{T}, v::VariableValues{T}) where T<:Real
     @inbounds for i = 1:length(v.node_to_variable_map)
@@ -87,35 +87,37 @@ end
 const DAT = DirectedTree
 
 # node property access functions that can be defined at abstract type
-_node(g::DAT, i)            = g.nodes[i]
-_nodes(g::DAT)              = g.nodes
+node(g::DAT, i)            = g.nodes[i]
+nodes(g::DAT)              = g.nodes
 
-_variable(g::DAT, i)        = g.variables[i]
-_variables(g::DAT)          = g.variables
+variable(g::DAT, i)        = g.variables[i]
+variables(g::DAT)          = g.variables
 
-_constant_value(g::DAT, i)  = g.constant_values[i]
-_constant_values(g::DAT)    = g.constant_values
-_parameter_value(g::DAT, i) = g.parameter_values[i]
-_parameter_values(g::DAT)   = g.parameter_values
+constant_value(g::DAT, i)  = g.constant_values[i]
+constant_values(g::DAT)    = g.constant_values
+parameter_value(g::DAT, i) = g.parameter_values[i]
+parameter_values(g::DAT)   = g.parameter_values
 
-_node_class(g::DAT, i)      = _node_class(_node(g, i))
-_ex_type(g::DAT, i)         = _ex_type(_node(g, i))
-_first_index(g::DAT, i)     = _first_index(_node(g, i))
-_secondary_index(g::DAT, i) = _secondary_index(_node(g, i))
-_arity(g::DAT, i)           = _arity(_node(g, i))
-_children(g::DAT, i)        = _children(_node(g, i))
-_child(g::DAT, i, j)        = _child(_node(g, j), i)
+node_class(g::DAT, i)      = node_class(node(g, i))
+ex_type(g::DAT, i)         = ex_type(node(g, i))
+first_index(g::DAT, i)     = first_index(node(g, i))
+secondary_index(g::DAT, i) = secondary_index(node(g, i))
+arity(g::DAT, i)           = arity(node(g, i))
+children(g::DAT, i)        = children(node(g, i))
+child(g::DAT, i, j)        = child(node(g, j), i)
 
-_node_count(g::DAT)     = g.node_count
-_variable_count(g::DAT) = g.variable_count
-_constant_count(g::DAT) = g.constant_count
+is_binary(g::DAT, i) = arity(g, i) == 2
 
-_dep_subexpr_count(g::DAT)            = length(g.dependent_subexpressions)
-_sparsity(g::DAT, i)                  = g.sparsity
-_rev_sparsity(g::DAT, i::Int, k::Int) = g.rev_sparsity[i]
+node_count(g::DAT)     = g.node_count
+variable_count(g::DAT) = g.variable_count
+constant_count(g::DAT) = g.constant_count
 
-_user_univariate_operator(g::DAT, i) = g.user_operators.univariate_operator_f[i]
-_user_multivariate_operator(g::DAT, i) = g.user_operators.multivariate_operator_evaluator[i]
+dep_subexpr_count(g::DAT)            = length(g.dependent_subexpressions)
+sparsity(g::DAT, i)                  = g.sparsity
+rev_sparsity(g::DAT, i::Int, k::Int) = g.rev_sparsity[i]
+
+user_univariate_operator(g::DAT, i) = g.user_operators.univariate_operator_f[i]
+user_multivariate_operator(g::DAT, i) = g.user_operators.multivariate_operator_evaluator[i]
 
 
 function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
@@ -153,7 +155,7 @@ forward_uni = [i for i in instances(AtomType)]
 setdiff!(forward_uni, [VAR_ATOM; PARAM_ATOM; CONST_ATOM; SELECT_ATOM; SUBEXPR])
 f_switch = binary_switch(forward_uni, is_forward = true)
 @eval function fprop!(t::T, ex::Expression, g::DAT, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
-    id = _ex_type(g, k)
+    id = ex_type(g, k)
     $f_switch
     error("fprop! for ex_type = $id not defined.")
     return
@@ -163,7 +165,7 @@ reverse_uni = [i for i in instances(AtomType)]
 setdiff!(reverse_uni, [VAR_ATOM; PARAM_ATOM; CONST_ATOM; SELECT_ATOM; SUBEXPR])
 r_switch = binary_switch(reverse_uni, is_forward = false)
 @eval function rprop!(t::T, ex::Expression, g::DAT, c::AbstractCache, k::Int) where T<:AbstractCacheAttribute
-    id = _ex_type(g, k)
+    id = ex_type(g, k)
     $r_switch
     error("rprop! for ex_type = $id not defined.")
     return

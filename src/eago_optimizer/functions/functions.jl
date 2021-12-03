@@ -56,6 +56,7 @@ mutable struct AffineFunctionIneq <: AbstractEAGOConstraint
     constant::Float64
     len::Int
 end
+const AFI = AffineFunctionIneq
 
 AffineFunctionIneq() = AffineFunctionIneq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionIneq(f::SAF, s::LT)
@@ -73,6 +74,7 @@ function AffineFunctionIneq(f::VI; is_max = false)
     AffineFunctionIneq(Tuple{Float64,Int}[(1.0, f.variable.value)], 0.0, 1)
 end
 
+
 """
 $(TYPEDEF)
 
@@ -84,6 +86,7 @@ mutable struct AffineFunctionEq <: AbstractEAGOConstraint
     constant::Float64
     len::Int
 end
+const AFE = AffineFunctionEq
 
 AffineFunctionEq() = AffineFunctionEq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionEq(func::SAF, set::ET)
@@ -132,6 +135,7 @@ mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
     saf::SAF
     len::Int
 end
+const BQI = BufferedQuadraticIneq
 
 """
 $(TYPEDEF)
@@ -145,6 +149,7 @@ mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     saf::SAF
     len::Int
 end
+const BQE = BufferedQuadraticEq
 
 #=
 mutable struct BufferedConvexQuadratic <: AbstractEAGOConstraint

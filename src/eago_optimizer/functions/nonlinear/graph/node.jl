@@ -48,38 +48,25 @@ for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
                   (Parameter, PARAMETER, PARAM_ATOM),
                   (Constant, CONSTANT, CONST_ATOM),
                   (Subexpression, SUBEXPRESSION, SUBEXPR),)
-    @eval function Node(::$t, i::Int)
-        return Node($s, $a, i, 0, 0, Int[])
-    end
+    @eval Node(::$t, i::Int) = Node($s, $a, i, 0, 0, Int[])
 end
 
 for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
-    eval(quote
-        function Node(::Val{true}, ::Val{$v}, c::Vector{Int})
-            return Node(EXPRESSION, $v, 0, 0, length(c), c)
-        end
-    end)
+    @eval Node(::Val{true}, ::Val{$v}, c::Vector{Int}) = Node(EXPRESSION, $v, 0, 0, length(c), c)
 end
-function Node(::Val{true}, ::Val{USER}, i::Int, c::Vector{Int})
-    return Node(EXPRESSION, USER, i, 0, 1, c)
-end
-function Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int})
-    return Node(EXPRESSION, USERN, i, 0, length(c), c)
-end
-
 for d in ALL_ATOM_TYPES
-    @eval function Node(::Val{false}, ::Val{$d}, c::Vector{Int})
-        return Node(EXPRESSION, $d, 0, 0, 1, c)
-    end
+    @eval Node(::Val{false}, ::Val{$d}, c::Vector{Int}) = Node(EXPRESSION, $d, 0, 0, 1, c)
 end
+Node(::Val{true}, ::Val{USER}, i::Int, c::Vector{Int}) = Node(EXPRESSION, USER, i, 0, 1, c)
+Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int}) = Node(EXPRESSION, USERN, i, 0, length(c), c)
 
-_node_class(n::Node)   = n.node_class
-_ex_type(n::Node)      = n.ex_type
-_first_index(n::Node)  = n.first_index
-_second_index(n::Node) = n.node_second_index
-_arity(n::Node)        = n.arity
-_children(n::Node)     = n.children
-_child(n::Node, i)     = @inbounds getindex(n.children, i)
+node_class(n::Node)   = n.node_class
+ex_type(n::Node)      = n.ex_type
+first_index(n::Node)  = n.first_index
+second_index(n::Node) = n.node_second_index
+arity(n::Node)        = n.arity
+children(n::Node)     = n.children
+child(n::Node, i)     = @inbounds getindex(n.children, i)
 
 mv_eago_not_jump = setdiff(JuMP._Derivatives.operators,
                            union(Symbol[k for k in keys(REV_BIVARIATE_ATOM_DICT)],

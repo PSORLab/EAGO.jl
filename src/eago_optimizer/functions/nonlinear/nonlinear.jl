@@ -16,7 +16,6 @@ const DEBUG_NL = false
 
 include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "graph.jl"))
-include(joinpath(@__DIR__, "constant", "constant.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 include(joinpath(@__DIR__, "apriori_relax", "apriori_relax.jl"))
 
@@ -52,7 +51,7 @@ function NonlinearExpression!(aux_info, rtype::S, sub::Union{JuMP._Subexpression
                               op::OperatorRegistry, parameter_values,
                               tag::T, use_apriori_flag::Bool; is_sub::Bool = false) where {S,T}
     g = DirectedTree(aux_info, sub, op, sub_sparsity, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
-    grad_sparsity = _sparsity(g, 1)
+    grad_sparsity = sparsity(g, 1)
     n = length(grad_sparsity)
     V = relax_info(rtype, n, tag)
     c = RelaxCache{V,n,T}()
@@ -62,18 +61,18 @@ function NonlinearExpression!(aux_info, rtype::S, sub::Union{JuMP._Subexpression
 end
 
 @inline _has_value(d::NonlinearExpression) = d.has_value
-@inline _dep_subexpr_count(d::NonlinearExpression) = _dep_subexpr_count(d.g)
+@inline dep_subexpr_count(d::NonlinearExpression) = dep_subexpr_count(d.g)
 @inline _set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
 @inline _set_last_reverse!(d::NonlinearExpression, v::Bool) = (d.last_reverse = v; return )
 @inline function _set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
     d.relax_cache.v = v
     return
 end
-@inbounds _sparsity(d::NonlinearExpression) = _sparsity(d.g, 1)
-@inbounds _set(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = _set(d.relax_cache, 1)
-@inbounds _num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = _num(d.relax_cache, 1)
-@inbounds _is_num(d::NonlinearExpression) = _is_num(d.relax_cache, 1)
-_var_num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = N
+@inbounds sparsity(d::NonlinearExpression) = sparsity(d.g, 1)
+@inbounds set(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = set(d.relax_cache, 1)
+@inbounds num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = num(d.relax_cache, 1)
+@inbounds is_num(d::NonlinearExpression) = is_num(d.relax_cache, 1)
+var_num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = N
 
 """
 $(TYPEDEF)
@@ -98,7 +97,7 @@ function BufferedNonlinearFunction(aux_info, rtype::RELAX_ATTRIBUTE, f::JuMP._Fu
                                    tag::T, use_apriori_flag::Bool) where T <: RelaxTag
 
     ex = NonlinearExpression!(aux_info, rtype, f, b, sub_sparsity, -1, subexpr_lin, op, parameter_values, tag, use_apriori_flag)
-    n = length(_sparsity(ex.g, 1))
+    n = length(sparsity(ex.g, 1))
     saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
     V = relax_info(rtype, n, tag)
     return BufferedNonlinearFunction{V,n,T}(ex, saf)
@@ -119,17 +118,21 @@ function expand_sv!(out::Vector{Float64}, n::Int, m::Int, vs::Vector{Int}, gs::V
     nothing
 end
 function _load_subexprs!(d::RelaxCache{V,N,T}, g, subexpressions, dep_subexprs) where {V,N,T<:RelaxTag}
-    gs = _sparsity(g, 1)
+    gs = sparsity(g, 1)
     for (i,ds) in enumerate(dep_subexprs)
         s = subexpressions[ds]
-        vs = _sparsity(s)
-        v = _set(s)
-        m = _var_num(s)
-        expand_sv!(d._cv_grad_buffer, N, m, vs, gs, v.cv_grad)
-        expand_sv!(d._cc_grad_buffer, N, m, vs, gs, v.cc_grad)
-        d._subexpression_set[ds] = MC{N,T}(v.cv, v.cc, v.Intv, 
-                                           SVector{N,Float64}(d._cv_grad_buffer), 
-                                           SVector{N,Float64}(d._cc_grad_buffer), false)
+        if is_num(s)
+            store_subexpression_num!(d, num(s), i)
+        else
+            vs = sparsity(s)
+            v = set(s)
+            m = var_num(s)
+            expand_sv!(d._cv_grad_buffer, N, m, vs, gs, v.cv_grad)
+            expand_sv!(d._cc_grad_buffer, N, m, vs, gs, v.cc_grad)
+            cvg = SVector{N,Float64}(d._cv_grad_buffer)
+            ccg = SVector{N,Float64}(d._cc_grad_buffer)
+            store_subexpression_set!(d, MC{N,T}(v.cv, v.cc, v.Intv, cvg, ccg, false), i)
+        end
     end
     return
 end
@@ -140,16 +143,16 @@ function _set_variable_storage!(d::BufferedNonlinearFunction{V,N,T}, v::Variable
 end
 
 _has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
-_dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
+dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
 _set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
-_sparsity(d::BufferedNonlinearFunction) = _sparsity(d.ex)
-_set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = _set(d.ex)
-_num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = _num(d.ex)
-_lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
-_upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
+sparsity(d::BufferedNonlinearFunction) = sparsity(d.ex)
+set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = set(d.ex)
+num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)
+lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
+upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
 # returns the interval bounds associated with the set
-_interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(_set(d))
-_is_num(d::BufferedNonlinearFunction) = _is_num(d.ex)
+interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
+is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
 
 
 """
@@ -286,7 +289,7 @@ function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T
             b.dP[j] = Interval(_lbd(b, j), _ubd(b, j)) - x0[j]
         end
     end
-    for i = 1:_dep_subexpr_count(d)
+    for i = 1:dep_subexpr_count(d)
         j = d.g.dependent_subexpressions[i]
         forward_pass!(z, z.subexpressions[j])
     end

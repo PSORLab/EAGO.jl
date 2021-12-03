@@ -155,37 +155,37 @@ end
 ###
 function lower_interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
     !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
-    _is_num(d) ? _num(d) : _interval(d).lo
+    is_num(d) ? num(d) : interval(d).lo
 end
 function interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
     !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
-    v = _is_num(d) ? Interval{Float64}(_num(d)) : _interval(d)
+    v = is_num(d) ? Interval{Float64}(num(d)) : interval(d)
     return v.lo, v.hi
 end
 
-function is_feasible(m::GlobalOptimizer, f::Union{AffineFunctionIneq,BufferedQuadraticIneq})
-    lower_interval_bound(m, f) <= 0.0
-end
-function is_feasible(m::GlobalOptimizer, f::Union{AffineFunctionEq,BufferedQuadraticEq})
+is_feasible(m::GlobalOptimizer, f::Union{AFI,BQI}) = lower_interval_bound(m, f) <= 0.0
+function is_feasible(m::GlobalOptimizer, f::Union{AFE,BQE})
     l, u = interval_bound(m, f)
     l <= 0.0 <= u
 end
 function is_feasible(m::GlobalOptimizer, f::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
     l, u = interval_bound(m, f)
-    feasible_flag = (u >= _lower_bound(f))
-    feasible_flag && (l <= _upper_bound(f))
+    @show lower_interval_bound(m, f)
+    @show lower_bound(f)
+    @show upper_bound(f)
+    feasible_flag = (u >= lower_bound(f))
+    feasible_flag && (l <= upper_bound(f))
 end
 
 bound_objective(m::GlobalOptimizer, f::BufferedNonlinearFunction) = interval_bound(m, f)
 bound_objective(m::GlobalOptimizer, f::AffineFunctionIneq) = interval_bound(m, f)
 bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq) = interval_bound(m, f)
 function bound_objective(m::GlobalOptimizer, f::VI)
-    vval = f.variable.value
-    l = _lower_bound(FullVar(), m, vval)
-    u = _upper_bound(FullVar(), m, vval)
+    vval = f.value
+    l = lower_bound(FullVar(), m, vval)
+    u = upper_bound(FullVar(), m, vval)
     return l, u
 end
-function bound_objective(t::ExtensionType, m::GlobalOptimizer)
-    bound_objective(m, m._working_problem._objective)
-end
+
+bound_objective(t::ExtensionType, m::GlobalOptimizer) = bound_objective(m, m._working_problem._objective)
 bound_objective(m::GlobalOptimizer{R,Q,S}) where {R,Q,S<:ExtensionType} = bound_objective(_ext_typ(m), m)
