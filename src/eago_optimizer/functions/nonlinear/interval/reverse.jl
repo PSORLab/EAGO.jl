@@ -46,8 +46,8 @@ end
 function hukuhara_div(x::Interval{T}, y::Interval{T}) where T<:Real
     isempty(x) && return x
     isempty(y) && return y
-    if y.lo => zero(T)
-        if x.lo => zero(T)
+    if y.lo >= zero(T)
+        if x.lo >= zero(T)
             l = div_round(x.lo, y.lo, RoundDown)
             u = div_round(x.hi, y.hi, RoundUp)
         elseif x.hi <= zero(T)

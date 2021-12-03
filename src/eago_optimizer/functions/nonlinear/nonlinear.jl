@@ -16,6 +16,7 @@ const DEBUG_NL = false
 
 include(joinpath(@__DIR__, "register_special.jl"))
 include(joinpath(@__DIR__, "graph", "graph.jl"))
+include(joinpath(@__DIR__, "interval", "interval.jl"))
 include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
 include(joinpath(@__DIR__, "apriori_relax", "apriori_relax.jl"))
 
@@ -60,10 +61,10 @@ function NonlinearExpression!(aux_info, rtype::S, sub::Union{JuMP._Subexpression
     return NonlinearExpression{V,n,T}(g, c, false, false, b.lower, b.upper, grad_sparsity)
 end
 
-@inline _has_value(d::NonlinearExpression) = d.has_value
+@inline has_value(d::NonlinearExpression) = d.has_value
 @inline dep_subexpr_count(d::NonlinearExpression) = dep_subexpr_count(d.g)
-@inline _set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
-@inline _set_last_reverse!(d::NonlinearExpression, v::Bool) = (d.last_reverse = v; return )
+@inline set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
+@inline set_last_reverse!(d::NonlinearExpression, v::Bool) = (d.last_reverse = v; return )
 @inline function _set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
     d.relax_cache.v = v
     return
@@ -142,9 +143,9 @@ function _set_variable_storage!(d::BufferedNonlinearFunction{V,N,T}, v::Variable
     _set_variable_storage!(d.ex, v)
 end
 
-_has_value(d::BufferedNonlinearFunction) = _has_value(d.ex)
-dep_subexpr_count(d::BufferedNonlinearFunction) = _dep_subexpr_count(d.ex)
-_set_has_value!(d::BufferedNonlinearFunction, v::Bool) = _set_has_value!(d.ex, v)
+has_value(d::BufferedNonlinearFunction) = has_value(d.ex)
+dep_subexpr_count(d::BufferedNonlinearFunction) = dep_subexpr_count(d.ex)
+set_has_value!(d::BufferedNonlinearFunction, v::Bool) = set_has_value!(d.ex, v)
 sparsity(d::BufferedNonlinearFunction) = sparsity(d.ex)
 set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = set(d.ex)
 num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)

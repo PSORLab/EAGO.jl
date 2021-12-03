@@ -164,9 +164,9 @@ end
 
 first_eval(t::RELAX_ONLY_ATTRIBUTE, b::RelaxCache) = b.first_eval
 first_eval(t::RelaxInterval, b::RelaxCache) = b.first_eval
-val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = val(b.v, i)
-lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = lbd(b.v, i)
-ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = ubd(b.v, i)
+val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = val(b.ic, i)
+lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = lbd(b.ic, i)
+ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = ubd(b.ic, i)
 set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
 num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
 
