@@ -142,6 +142,7 @@ module EAGO
         @require Cbc="9961bab8-2fa3-5c5a-9d89-47fab24efd76"        include(joinpath(@__DIR__, "subsolvers", "cbc.jl"))
         @require Clp="e2554f3b-3117-50c0-817c-e040a3ddf72d"        include(joinpath(@__DIR__, "subsolvers", "clp.jl"))
         @require CPLEX="a076750e-1247-5638-91d2-ce28b192dca0"      include(joinpath(@__DIR__, "subsolvers", "cplex.jl"))
+        #@require GLPK="60bf3e95-4087-53dc-ae20-288a0d20c6a6"       include(joinpath(@__DIR__, "subsolvers", "glpk.jl"))
         @require Gurobi="2e9cd046-0924-5485-92f1-d5272153d98b"     include(joinpath(@__DIR__, "subsolvers", "gurobi.jl"))
         @require Hypatia="b99e6be6-89ff-11e8-14f8-45c827f4f8f2"    include(joinpath(@__DIR__, "subsolvers", "hypatia.jl"))
         @require KNITRO="67920dd8-b58e-52a8-8622-53c4cffbe346"     include(joinpath(@__DIR__, "subsolvers", "knitro.jl"))
@@ -149,6 +150,6 @@ module EAGO
         @require Xpress="9e70acf3-d6c9-5be6-b5bd-4e2c73e3e054"     include(joinpath(@__DIR__, "subsolvers", "xpress.jl"))
     end
 
-    include("precompile.jl")
-    _precompile_()
+    #include("precompile.jl")
+    #_precompile_()
 end

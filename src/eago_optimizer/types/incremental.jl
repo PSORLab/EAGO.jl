@@ -71,7 +71,7 @@ function MOI.set(d::Incremental, ::MOI.NLPBlock, s)
     return
 end
 
-function MOI.set(d::Incremental, p::MOI.RawOptimizerAttribute, s::String)
+function MOI.set(d::Incremental, p::MOI.RawOptimizerAttribute, s)
     MOI.set(_get_storage(d), p, s)
     return
 end

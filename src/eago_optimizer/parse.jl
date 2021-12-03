@@ -32,7 +32,7 @@ add_nonlinear_evaluator!(m::GlobalOptimizer, evaluator::Nothing) = nothing
 function add_nonlinear_evaluator!(m::GlobalOptimizer, d::JuMP.NLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
     relax_eval = m._working_problem._relaxed_evaluator
-    relax_eval.user_operators = OperatorRegistry(d.m.nlp_data.user_operators)
+    relax_eval.user_operators = OperatorRegistry(d.model.nlp_data.user_operators)
     relax_eval.subgrad_tol    = m._parameters.subgrad_tol
     m._nonlinear_evaluator_created = true
     return
@@ -51,7 +51,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     nlp_data = m._input_problem._nlp_data
     MOI.initialize(evaluator, Symbol[:Grad, :Jac, :ExprGraph])
-    user_operator_registry = OperatorRegistry(evaluator.m.nlp_data.user_operators)
+    user_operator_registry = OperatorRegistry(evaluator.model.nlp_data.user_operators)
 
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
@@ -87,14 +87,14 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator = m._working_problem._relaxed_evaluator
     relax_evaluator.relax_type = renum
     dict_sparsity = Dict{Int,Vector{Int}}()
-    if length(evaluator.m.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
+    if length(evaluator.model.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
         for i = 1:length(evaluator.subexpressions)
             #println(" ")
             #@show "subexpression $i"
             subexpr = evaluator.subexpressions[i]
             nlexpr = NonlinearExpression!(m._auxillary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
                                           dict_sparsity, i, evaluator.subexpression_linearity, 
-                                          user_operator_registry, evaluator.m.nlp_data.nlparamvalues,
+                                          user_operator_registry, evaluator.model.nlp_data.nlparamvalues,
                                           m._parameters.relax_tag, ruse_apriori; is_sub = true)
             #@show dict_sparsity
             push!(relax_evaluator.subexpressions, nlexpr)
@@ -115,7 +115,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
         m._working_problem._objective = BufferedNonlinearFunction(m._auxillary_variable_info, rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.subexpression_linearity,
                                                                  user_operator_registry,
-                                                                 evaluator.m.nlp_data.nlparamvalues,
+                                                                 evaluator.model.nlp_data.nlparamvalues,
                                                                  m._parameters.relax_tag, ruse_apriori)
         #@show dict_sparsity
     end
@@ -128,7 +128,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
         push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(m._auxillary_variable_info, rtype, constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
                                                                               user_operator_registry,
-                                                                              evaluator.m.nlp_data.nlparamvalues,
+                                                                              evaluator.model.nlp_data.nlparamvalues,
                                                                               m._parameters.relax_tag, ruse_apriori))
     end
 
@@ -189,18 +189,18 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
         l, u = -u, -l
     end
     ηi = add_η!(d, l, u)
-    @variable(ip._nlp_data.evaluator.m, l <= η <= u)
+    @variable(ip._nlp_data.evaluator.model, l <= η <= u)
     m._global_lower_bound = l
     m._global_upper_bound = u
     d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
-    sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.m, MOI.ObjectiveFunction{SQF}()))
+    sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
     if !_is_input_min(m)
         MOIU.operate!(-, Float64, sqf_obj)
     end
     push!(sqf_obj.affine_terms, SAT(-1.0, VI(length(vi))))
-    MOI.add_constraint(backend(ip._nlp_data.evaluator.m), sqf_obj, LT(0.0))
-    @objective(ip._nlp_data.evaluator.m, Min, η)
+    MOI.add_constraint(backend(ip._nlp_data.evaluator.model), sqf_obj, LT(0.0))
+    @objective(ip._nlp_data.evaluator.model, Min, η)
     f.buffer[ηi] = 0.0
     f.len += 1
     if !_is_input_min(m)
@@ -251,12 +251,12 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     d._objective.ex.lower_bound = l
     d._objective.ex.upper_bound = u
     ηi = add_η!(d, l, u)
-    @variable(ip._nlp_data.evaluator.m, l <= η <= u)
+    @variable(ip._nlp_data.evaluator.model, l <= η <= u)
     m._global_lower_bound = l
     m._global_upper_bound = u
     wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
-    nd = ip._nlp_data.evaluator.m.nlp_data.nlobj.nd
+    nd = ip._nlp_data.evaluator.model.nlp_data.nlobj.nd
     if !_is_input_min(m)
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
         pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
@@ -272,13 +272,13 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
         end
     end
     push!(nd, NodeData(JuMP._Derivatives.VARIABLE, ηi, 1))
-    nlobj = ip._nlp_data.evaluator.m.nlp_data.nlobj
+    nlobj = ip._nlp_data.evaluator.model.nlp_data.nlobj
     nlexpr = JuMP._NonlinearExprData(copy(nlobj.nd), copy(nlobj.const_values))
     nlcons = JuMP._NonlinearConstraint(nlexpr, -Inf, 0.0)
 
-    ip._nlp_data.evaluator.m.nlp_data.nlobj = nothing
+    ip._nlp_data.evaluator.model.nlp_data.nlobj = nothing
     ip._nlp_data.evaluator.has_nlobj = false
-    push!(ip._nlp_data.evaluator.m.nlp_data.nlconstr, nlcons)
+    push!(ip._nlp_data.evaluator.model.nlp_data.nlconstr, nlcons)
     constraint_bounds = ip._nlp_data.constraint_bounds
     push!(constraint_bounds, MOI.NLPBoundsPair(-Inf, 0.0))
     ip._nlp_data = MOI.NLPBlockData(constraint_bounds, ip._nlp_data.evaluator, false)

@@ -60,7 +60,6 @@ const VAR_SETS = Union{LT, GT, ET, ZO, MOI.Integer}
 MOI.supports_constraint(::Optimizer, ::Type{VI}, ::Type{S}) where {S <: VAR_SETS} = true
 
 function MOI.add_constraint(m::Optimizer, v::VI, s::T) where T <: VAR_SETS
-    v = v.variable
     check_inbounds!(m, v)
     vi = m._input_problem._variable_info[v.value]
     m._input_problem._variable_info[v.value] = VariableInfo(vi, s)
@@ -179,6 +178,7 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     return flag
 end
 
+MOI.supports_incremental_interface(m::Optimizer) = true
 MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, src)
 
 #####

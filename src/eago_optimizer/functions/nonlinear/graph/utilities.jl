@@ -16,7 +16,7 @@ function binary_switch(ids; is_forward = true)
     end
 end
 
-function Node(aux_info, d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op::OperatorRegistry)
+function Node(aux_info, d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{Int}, op)
     nt = d.nodetype
     i = d.index
     (nt == JuMP._Derivatives.CALL)          && return _create_call_node(i, child_vec, c, op)
