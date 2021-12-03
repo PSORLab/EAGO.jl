@@ -17,22 +17,20 @@ function check_inbounds!(m::Optimizer, vi::VI)
     return
 end
 
-check_inbounds!(m::Optimizer, var::SV) = check_inbounds!(m, var.variable)
-
 function check_inbounds!(m::Optimizer, aff::SAF)
     for term in aff.terms
-        check_inbounds!(m, term.variable_index)
+        check_inbounds!(m, term.variable)
     end
     return
 end
 
 function check_inbounds!(m::Optimizer, quad::SQF)
     for term in quad.affine_terms
-        check_inbounds!(m, term.variable_index)
+        check_inbounds!(m, term.variable)
     end
     for term in quad.quadratic_terms
-        check_inbounds!(m, term.variable_index_1)
-        check_inbounds!(m, term.variable_index_2)
+        check_inbounds!(m, term.variable_1)
+        check_inbounds!(m, term.variable_2)
     end
     return
 end
@@ -59,14 +57,14 @@ end
 
 ##### Supports function and add_constraint for single variable functions
 const VAR_SETS = Union{LT, GT, ET, ZO, MOI.Integer}
-MOI.supports_constraint(::Optimizer, ::Type{SV}, ::Type{S}) where {S <: VAR_SETS} = true
+MOI.supports_constraint(::Optimizer, ::Type{VI}, ::Type{S}) where {S <: VAR_SETS} = true
 
-function MOI.add_constraint(m::Optimizer, v::SV, s::T) where T <: VAR_SETS
+function MOI.add_constraint(m::Optimizer, v::VI, s::T) where T <: VAR_SETS
     v = v.variable
     check_inbounds!(m, v)
     vi = m._input_problem._variable_info[v.value]
     m._input_problem._variable_info[v.value] = VariableInfo(vi, s)
-    return CI{SV, T}(v.value)
+    return CI{VI, T}(v.value)
 end
 
 ##### Supports function and add_constraint for scalar affine functions
@@ -128,7 +126,7 @@ function MOI.add_constraint(m::Optimizer, func::VECOFVAR, set::SOC)
 end
 =#
 
-function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{SV,<:Any}) where {R,S,T}
+function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{VI,<:Any}) where {R,S,T}
     return MOI.get(m, MOI.VariablePrimal(), MOI.VariableIndex(c.value))
 end
 
@@ -181,9 +179,7 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     return flag
 end
 
-function MOI.copy_to(model::Optimizer, src::MOI.ModelLike; copy_names = false)
-    return MOI.Utilities.default_copy_to(model, src, copy_names)
-end
+MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, src)
 
 #####
 #####
@@ -231,7 +227,7 @@ end
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
-MOI.get(m::Optimizer, ::MOI.SolveTime) = m._run_time
+MOI.get(m::Optimizer, ::MOI.SolveTimeSec) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._node_count
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
 MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m._parameters.time_limit
@@ -247,11 +243,11 @@ _to_sym(d) = error("EAGO only supports raw parameters with Symbol or String name
 _to_sym(d::String) = Symbol(d)
 _to_sym(d::Symbol) = d
 
-function MOI.get(m::Optimizer, p::MOI.RawParameter)
+function MOI.get(m::Optimizer, p::MOI.RawOptimizerAttribute )
     s = _to_sym(p.name)
     s in EAGO_PARAMETERS ? getfield(m._parameters, s) : getfield(m, s)
 end
-function MOI.set(m::Optimizer, p::MOI.RawParameter, x)
+function MOI.set(m::Optimizer, p::MOI.RawOptimizerAttribute , x)
     s = _to_sym(p.name)
     if (s == :relaxed_optimizer) || (s == :upper_optimizer)
         setfield!(m, s, Incremental(x))
@@ -269,7 +265,7 @@ end
 #####
 MOI.supports(::Optimizer, ::MOI.TimeLimitSec) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{SV, SAF, SQF}} = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{VI, SAF, SQF}} = true
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     if nlp_data.has_objective
@@ -279,7 +275,7 @@ function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     return
 end
 
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Union{SV,SAF,SQF}
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Union{VI,SAF,SQF}
     check_inbounds!(m, f)
     m._input_problem._objective = f
     return

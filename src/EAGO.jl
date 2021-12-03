@@ -56,7 +56,6 @@ module EAGO
     const MOIU = MOI.Utilities
     const MOIB = MOI.Bridges
 
-    const SV = MOI.SingleVariable
     const SAF = MOI.ScalarAffineFunction{Float64}
     const SQF = MOI.ScalarQuadraticFunction{Float64}
     const VECOFVAR = MOI.VectorOfVariables

@@ -16,19 +16,18 @@ function add_variables(m::GlobalOptimizer, d)
     z = fill(VI(1), n)
     for i = 1:n
         z[i] = MOI.add_variable(d)
-        sv = SV(z[i])
         vi = m._working_problem._variable_info[i]
         if is_fixed(vi)
-            MOI.add_constraint(d, sv, ET(vi))
+            MOI.add_constraint(d, z[i], ET(vi))
         elseif is_interval(vi)
-            MOI.add_constraint(d, sv, IT(vi))
+            MOI.add_constraint(d, z[i], IT(vi))
         elseif is_greater_than(vi)
-            MOI.add_constraint(d, sv, GT(vi))
+            MOI.add_constraint(d, z[i], GT(vi))
         elseif is_less_than(vi)
-            MOI.add_constraint(d, sv, LT(vi))
+            MOI.add_constraint(d, z[i], LT(vi))
         end
         if is_integer(vi)
-            MOI.add_constraint(d, sv, MOI.Integer())
+            MOI.add_constraint(d, z[i], MOI.Integer())
         end
     end
     return z
@@ -50,8 +49,8 @@ function add_linear_constraints!(m::GlobalOptimizer, d::T) where T
 end
 
 lp_obj!(m::GlobalOptimizer, d, f::Nothing) = false
-function lp_obj!(m::GlobalOptimizer, d, f::SV)
-    MOI.set(d, MOI.ObjectiveFunction{SV}(), f)
+function lp_obj!(m::GlobalOptimizer, d, f::VI)
+    MOI.set(d, MOI.ObjectiveFunction{VI}(), f)
     MOI.set(d, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
     return false
 end

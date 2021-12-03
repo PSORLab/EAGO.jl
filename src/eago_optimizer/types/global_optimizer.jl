@@ -246,7 +246,7 @@ Base.@kwdef mutable struct InputProblem
     _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
 
     # nonlinear constraint storage
-    _objective::Union{SV,SAF,SQF,Nothing} = nothing
+    _objective::Union{VI,SAF,SQF,Nothing} = nothing
 
     # nlp constraints (set by MOI.set(m, ::NLPBlockData...) in optimizer.jl)
     _nlp_data::Union{MOI.NLPBlockData,Nothing} = nothing
@@ -294,7 +294,7 @@ Base.@kwdef mutable struct ParsedProblem
 
     "_objective_saf stores the objective and is used for constructing linear affine cuts"
     _objective_saf::SAF = SAF(SAT[], 0.0)
-    _objective::Union{SV,AffineFunctionIneq,BufferedQuadraticIneq,BufferedNonlinearFunction,Nothing} = nothing
+    _objective::Union{VI,AffineFunctionIneq,BufferedQuadraticIneq,BufferedNonlinearFunction,Nothing} = nothing
 
     # objective sense information (set by convert_to_min in parse.jl)
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
@@ -464,14 +464,14 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _log::Log = Log()
 
     _affine_relax_ci::Vector{CI{SAF,LT}} = CI{SAF,LT}[]
-    _affine_objective_cut_ci::Union{CI{SV,LT},CI{SAF,LT},Nothing} = nothing
+    _affine_objective_cut_ci::Union{CI{VI,LT},CI{SAF,LT},Nothing} = nothing
 
     _relaxed_variable_number::Int = 0
     _relaxed_variable_index::Vector{VI} = VI[]
-    _relaxed_variable_et::Vector{CI{SV, ET}} = CI{SV, ET}[]
-    _relaxed_variable_lt::Vector{Tuple{CI{SV, LT}, Int}} = Tuple{CI{SV, LT}, Int}[]
-    _relaxed_variable_gt::Vector{Tuple{CI{SV, GT}, Int}} = Tuple{CI{SV, GT}, Int}[]
-    _relaxed_variable_integer::Vector{CI{SV, MOI.Integer}} = CI{SV, MOI.Integer}[]
+    _relaxed_variable_et::Vector{CI{VI, ET}} = CI{VI, ET}[]
+    _relaxed_variable_lt::Vector{Tuple{CI{VI, LT}, Int}} = Tuple{CI{VI, LT}, Int}[]
+    _relaxed_variable_gt::Vector{Tuple{CI{VI, GT}, Int}} = Tuple{CI{VI, GT}, Int}[]
+    _relaxed_variable_integer::Vector{CI{VI, MOI.Integer}} = CI{VI, MOI.Integer}[]
 
     _branch_variables::Vector{Bool} = Bool[]
     _nonbranching_int::Bool = false
@@ -479,8 +479,8 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _new_eval_constraint::Bool = false
     _new_eval_objective::Bool = false
 
-    _node_to_sv_leq_ci::Dict{Int,CI{SV,LT}} = Dict{Int,CI{SV,LT}}()
-    _node_to_sv_geq_ci::Dict{Int,CI{SV,GT}} = Dict{Int,CI{SV,GT}}()
+    _node_to_sv_leq_ci::Dict{Int,CI{VI,LT}} = Dict{Int,CI{VI,LT}}()
+    _node_to_sv_geq_ci::Dict{Int,CI{VI,GT}} = Dict{Int,CI{VI,GT}}()
     _nonlinear_evaluator_created::Bool = false
 
     _branch_cost::BranchCostStorage{Float64} = BranchCostStorage{Float64}()

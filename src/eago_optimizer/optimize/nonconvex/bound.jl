@@ -46,15 +46,15 @@ function lower_interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
-        j = t.variable_index.value
+        j = t.variable.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
         fval += c > 0.0 ? c*xL : c*xU
     end
     for t in f.func.quadratic_terms
         c = t.coefficient
-        i = t.variable_index_1.value
-        j = t.variable_index_2.value
+        i = t.variable_1.value
+        j = t.variable_2.value
         xL = _lower_bound(FullVar(), m, i)
         xU = _upper_bound(FullVar(), m, i)
         if i == j
@@ -76,15 +76,15 @@ function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
-        j = t.variable_index.value
+        j = t.variable.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
         fval += c*Interval(xL, xU)
     end
     for t in f.func.quadratic_terms
         c = t.coefficient
-        i = t.variable_index_1.value
-        j = t.variable_index_2.value
+        i = t.variable_1.value
+        j = t.variable_2.value
         xL = _lower_bound(FullVar(), m, i)
         xU = _upper_bound(FullVar(), m, i)
         if i == j
@@ -103,15 +103,15 @@ function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticEq)
     fval = Interval{Float64}(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
-        j = t.variable_index.value
+        j = t.variable.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
         fval += c*Interval(xL, xU)
     end
     for t in f.func.quadratic_terms
         c = t.coefficient
-        i = t.variable_index_1.value
-        j = t.variable_index_2.value
+        i = t.variable_1.value
+        j = t.variable_2.value
         xL = _lower_bound(FullVar(), m, i)
         xU = _upper_bound(FullVar(), m, i)
         if i == j
@@ -179,7 +179,7 @@ end
 bound_objective(m::GlobalOptimizer, f::BufferedNonlinearFunction) = interval_bound(m, f)
 bound_objective(m::GlobalOptimizer, f::AffineFunctionIneq) = interval_bound(m, f)
 bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq) = interval_bound(m, f)
-function bound_objective(m::GlobalOptimizer, f::SV)
+function bound_objective(m::GlobalOptimizer, f::VI)
     vval = f.variable.value
     l = _lower_bound(FullVar(), m, vval)
     u = _upper_bound(FullVar(), m, vval)

@@ -82,8 +82,8 @@ function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int
     # the node.
     for term in func.quadratic_terms
         a = term.coefficient
-        i = term.variable_index_1.value
-        j = term.variable_index_2.value
+        i = term.variable_1.value
+        j = term.variable_2.value
         x0 = _lower_solution(FullVar(), m, i)
         xL = _lower_bound(FullVar(), m, i)
         xU = _upper_bound(FullVar(), m, i)
@@ -133,7 +133,7 @@ function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int
     end
 
     for t in func.affine_terms
-        buffer[t.variable_index.value] += t.coefficient
+        buffer[t.variable.value] += t.coefficient
     end
     count = 1
     for (key, value) in buffer
@@ -229,4 +229,4 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
     return valid_cut_flag
 end
 
-relax!(m::GlobalOptimizer, f::Union{Nothing, SV, AffineFunctionIneq}, k::Int, b::Bool) = true
+relax!(m::GlobalOptimizer, f::Union{Nothing, VI, AffineFunctionIneq}, k::Int, b::Bool) = true

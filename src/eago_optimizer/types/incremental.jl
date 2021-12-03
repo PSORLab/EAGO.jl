@@ -27,24 +27,26 @@ supports incremental loading. For `Q = Val{false}`, the subsolver does not.
 """
 mutable struct Incremental{S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
     optimizer::MOIB.LazyBridgeOptimizer{S}
-    cache::MOIB.LazyBridgeOptimizer{MOIU.CachingOptimizer{S,MOIU.GenericModel{Float64,MOIU.ModelFunctionConstraints{Float64}}}}
+    cache::MOIB.LazyBridgeOptimizer{MOIU.CachingOptimizer{S,MOIU.Model{Float64}}}
 end
-function Incremental(m::S) where S <: MOI.AbstractOptimizer
+function Incremental(m::S) where {S <: MOI.AbstractOptimizer}
     b = MOIB.full_bridge_optimizer(m, Float64)
     cache = MOIB.full_bridge_optimizer(MOIU.CachingOptimizer(MOIU.Model{Float64}(), m), Float64)
     return Incremental{S}(b, cache)
+end
+
+function MOI.copy_to(model::Incremental{S}, src::MOI.ModelLike) where S <: MOI.AbstractOptimizer
+    return MOI.Utilities.default_copy_to(model, src, copy_names)
 end
 
 _is_incremental(x) = false
 _get_storage(d::Incremental{S}) where S = _is_incremental(S) ? d.optimizer : d.cache
 
 # Set attributes
-for F in (SV, SAF, SQF)
-    @eval function MOI.set(d::Incremental, ::MOI.ObjectiveFunction{$F}, f::$F)
-        MOI.set(_get_storage(d), MOI.ObjectiveFunction{$F}(), f)
-        return
-    end
-end
+MOI.set(d::Incremental, ::MOI.ObjectiveFunction{VI}, f::VI)   = (MOI.set(_get_storage(d), MOI.ObjectiveFunction{VI}(), f); nothing)
+MOI.set(d::Incremental, ::MOI.ObjectiveFunction{SAF}, f::SAF) = (MOI.set(_get_storage(d), MOI.ObjectiveFunction{SAF}(), f); nothing)
+MOI.set(d::Incremental, ::MOI.ObjectiveFunction{SQF}, f::SQF) = (MOI.set(_get_storage(d), MOI.ObjectiveFunction{SQF}(), f); nothing)
+
 function MOI.set(d::Incremental, ::MOI.ObjectiveSense, s)
     MOI.set(_get_storage(d), MOI.ObjectiveSense(), s)
     return
@@ -69,7 +71,7 @@ function MOI.set(d::Incremental, ::MOI.NLPBlock, s)
     return
 end
 
-function MOI.set(d::Incremental, p::MOI.RawParameter, s)
+function MOI.set(d::Incremental, p::MOI.RawOptimizerAttribute, s::String)
     MOI.set(_get_storage(d), p, s)
     return
 end
@@ -79,12 +81,12 @@ function MOI.add_variable(d::Incremental)
     MOI.add_variable(_get_storage(d))::VI
 end
 
-MOI.add_constraint(d::Incremental, f::SV, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,LT}
-MOI.add_constraint(d::Incremental, f::SV, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,GT}
-MOI.add_constraint(d::Incremental, f::SV, s::ET) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,ET}
-MOI.add_constraint(d::Incremental, f::SV, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,IT}
-MOI.add_constraint(d::Incremental, f::SV, s::ZO) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,ZO}
-MOI.add_constraint(d::Incremental, f::SV, s::MOI.Integer) = MOI.add_constraint(_get_storage(d), f, s)::CI{SV,MOI.Integer}
+MOI.add_constraint(d::Incremental, f::VI, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,LT}
+MOI.add_constraint(d::Incremental, f::VI, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,GT}
+MOI.add_constraint(d::Incremental, f::VI, s::ET) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,ET}
+MOI.add_constraint(d::Incremental, f::VI, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,IT}
+MOI.add_constraint(d::Incremental, f::VI, s::ZO) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,ZO}
+MOI.add_constraint(d::Incremental, f::VI, s::MOI.Integer) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,MOI.Integer}
 
 MOI.add_constraint(d::Incremental, f::SAF, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,LT}
 MOI.add_constraint(d::Incremental, f::SAF, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,GT}
@@ -97,7 +99,7 @@ MOI.add_constraint(d::Incremental, f::SQF, s::ET) = MOI.add_constraint(_get_stor
 MOI.add_constraint(d::Incremental, f::SQF, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SQF,IT}
 
 # Delete
-function MOI.delete(d::Incremental, ci::CI{SV,T}) where T <: Union{LT,GT,ET,IT,MOI.Integer}
+function MOI.delete(d::Incremental, ci::CI{VI,T}) where T <: Union{LT,GT,ET,IT,MOI.Integer}
     MOI.delete(_get_storage(d), ci)
     return
 end
@@ -107,7 +109,7 @@ function MOI.delete(d::Incremental, ci::CI{SAF,LT})
 end
 
 # Set modifications
-function MOI.set(d::Incremental, ::MOI.ConstraintSet, ci::CI{SV,T}, s::T) where T <: Union{LT,GT,ET,IT}
+function MOI.set(d::Incremental, ::MOI.ConstraintSet, ci::CI{VI,T}, s::T) where T <: Union{LT,GT,ET,IT}
      MOI.set(_get_storage(d), MOI.ConstraintSet(), ci, s)
      return
 end
@@ -150,7 +152,7 @@ function MOI.get(d::Incremental{S}, ::MOI.ConstraintPrimal, ci::SQF_CI_TYPES) wh
     MOI.get(d.optimizer, MOI.ConstraintPrimal(), ci)::Float64
 end
 
-function MOI.get(d::Incremental{S}, ::MOI.ConstraintDual, ci::Union{CI{SV,LT},CI{SV,GT}}) where S
+function MOI.get(d::Incremental{S}, ::MOI.ConstraintDual, ci::Union{CI{VI,LT},CI{VI,GT}}) where S
     MOI.get(d.optimizer, MOI.ConstraintDual(), ci)::Float64
 end
 function MOI.get(d::Incremental{S}, ::MOI.ResultCount) where S

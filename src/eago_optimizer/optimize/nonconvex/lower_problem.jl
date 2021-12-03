@@ -70,7 +70,7 @@ function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
         j = _bvi(m, i)
         l = _lower_bound(BranchVar(), m, i)
         u = _upper_bound(BranchVar(), m, i)
-        v = SV(VI(j))
+        v = VI(j)
         if l == u
             ci_sv_et = MOI.add_constraint(d, v, ET(l))
             push!(m._relaxed_variable_et, ci_sv_et)

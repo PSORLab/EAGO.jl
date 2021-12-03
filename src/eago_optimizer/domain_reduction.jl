@@ -281,7 +281,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
             if lower_value <= upper_value && lower_indx > 0
                 m._obbt_working_lower_index[lower_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-                MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[_bvi(m, lower_indx)]))
+                MOI.set(d, MOI.ObjectiveFunction{VI}(), m._relaxed_variable_index[_bvi(m, lower_indx)])
                 MOI.optimize!(d)
 
                 status = set_preprocess_status(m,d)
@@ -317,7 +317,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                 
                 m._obbt_working_upper_index[upper_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
-                MOI.set(d, MOI.ObjectiveFunction{SV}(), SV(m._relaxed_variable_index[_bvi(m, upper_indx)]))
+                MOI.set(d, MOI.ObjectiveFunction{VI}(), m._relaxed_variable_index[_bvi(m, upper_indx)])
                 MOI.optimize!(d)
 
                 status = set_preprocess_status(m,d)

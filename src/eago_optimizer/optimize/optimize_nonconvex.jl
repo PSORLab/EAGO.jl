@@ -41,12 +41,11 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
     full_var_num = _variable_num(FullVar(), m)
     relaxed_index_new = length(m._relaxed_variable_index) != full_var_num
     for i = 1:full_var_num
-        relaxed_variable_indx = MOI.add_variable(d)
-        v = SV(relaxed_variable_indx)
+        v = MOI.add_variable(d)
         if relaxed_index_new
-            push!(m._relaxed_variable_index, relaxed_variable_indx)
+            push!(m._relaxed_variable_index, v)
         else
-            m._relaxed_variable_index[i] = relaxed_variable_indx
+            m._relaxed_variable_index[i] = v
         end
 
         is_branch_variable =  m._branch_variables[i]

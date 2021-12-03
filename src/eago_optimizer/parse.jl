@@ -15,7 +15,7 @@
 Adds objective function (if any) to the parsed problem.
 """
 add_objective!(m::ParsedProblem, f) = nothing
-add_objective!(m::ParsedProblem, f::SV) = (m._objective = f; return )
+add_objective!(m::ParsedProblem, f::VI) = (m._objective = f; return )
 function add_objective!(m::ParsedProblem, f::SAF)
     m._objective = AffineFunctionIneq(f, LT_ZERO)
     return
@@ -138,7 +138,7 @@ end
 add_nonlinear!(m::GlobalOptimizer, nldata) = add_nonlinear!(m, nldata.evaluator)
 add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_data)
 
-function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::SV)
+function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::VI)
     flag = m._input_problem._optimization_sense == MOI.MAX_SENSE
     d._objective = AffineFunctionIneq(f, is_max = flag)
     d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
@@ -206,7 +206,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     if !_is_input_min(m)
         MOIU.operate!(-, Float64, f.func)
     end
-    MOIU.operate!(-, Float64, f.func, SV(VI(ηi)))
+    MOIU.operate!(-, Float64, f.func, VI(ηi))
     push!(f.saf.terms, SAT(0.0, VI(ηi)))
     push!(wp._sqf_leq, deepcopy(f))
     m._obj_var_slack_added = true
@@ -459,7 +459,7 @@ function parse_classify_problem!(m::GlobalOptimizer)
     end
     has_int_var = any(is_integer, ip._variable_info)
 
-    lin_or_sv_obj = (ip._objective isa SV || ip._objective isa SAF || !has_objective)
+    lin_or_sv_obj = (ip._objective isa VI || ip._objective isa SAF || !has_objective)
     relaxed_supports_soc = false
 
     if (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var

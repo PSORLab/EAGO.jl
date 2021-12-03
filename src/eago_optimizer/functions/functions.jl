@@ -66,7 +66,7 @@ function AffineFunctionIneq(f::SAF, s::GT)
     terms = map(x -> (-x.coefficient, x.variable_index.value), f.terms)
     AffineFunctionIneq(terms, s.lower - f.constant, length(f.terms))
 end
-function AffineFunctionIneq(f::SV; is_max = false)
+function AffineFunctionIneq(f::VI; is_max = false)
     if is_max
         return AffineFunctionIneq(Tuple{Float64,Int}[(-1.0, f.variable.value)], 0.0, 1)
     end
