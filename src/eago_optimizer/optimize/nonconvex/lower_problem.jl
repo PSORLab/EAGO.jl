@@ -159,18 +159,12 @@ function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
     check_safe = (k == 1) ? false : m._parameters.cut_safe_on
     wp = m._working_problem
     wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
-    for leq in wp._sqf_leq
-        relax!(m, leq, k, check_safe)
-    end
-    for eq in wp._sqf_eq
-        relax!(m, eq, k, check_safe)
-    end
+    foreach(f -> relax!(m, f, k, check_safe), wp._sqf_leq)
+    foreach(f -> relax!(m, f, k, check_safe), wp._sqf_eq)
     valid_relax_flag = true
     if valid_relax_flag
-        count = 1
         for nl in wp._nonlinear_constr
             valid_relax_flag &= relax!(m, nl, k, check_safe)
-            count += 1
         end
     end
     m._new_eval_constraint = false
@@ -271,7 +265,6 @@ function fallback_interval_lower_bound!(m::GlobalOptimizer, n::NodeBB)
         feas &= all(f -> is_feasible(m, f), wp._nonlinear_constr)
         println("feas nl after = $feas")
     end
-    @show feas
     if feas
         interval_objective_bound!(m)
         m._current_xref .= mid(n)
@@ -377,9 +370,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         p_status = MOI.get(d, MOI.PrimalStatus())
         d_status = MOI.get(d, MOI.DualStatus())
         status = relaxed_problem_status(t_status, p_status, d_status)
-        println("linear, status = $status")
-        @show MOI.get(d, MOI.ObjectiveValue())
-        @show all_constraints_relaxed_once
         if status != RRS_OPTIMAL
             break
         end
@@ -408,8 +398,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         p_status = MOI.get(d, MOI.PrimalStatus())
         d_status = MOI.get(d, MOI.DualStatus())
         status = relaxed_problem_status(t_status, p_status, d_status)
-        println("last, status = $status")
-        @show MOI.get(d, MOI.ObjectiveValue())
     end
 
     # check status -- if not feasible/infeasible then fallback to interval bounds
@@ -421,7 +409,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     m._lower_primal_status = p_status
     m._lower_dual_status = d_status
     status = relaxed_problem_status(t_status, p_status, d_status)
-    println("last, status = $status")
     if status == RRS_INFEASIBLE
         m._lower_feasibility  = false
         m._lower_objective_value = -Inf
@@ -432,16 +419,11 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     set_dual!(m)
     m._lower_feasibility = true
     store_lower_solution!(m, d)
-    @show MOI.get(d, MOI.ObjectiveValue())
     if status == RRS_DUAL_FEASIBLE
-        println("dual fallback")
         m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
     end
     # use interval bound if it is better
-    @show status
-    @show all_constraints_relaxed_once
     if status == RRS_INVALID || all_constraints_relaxed_once
-        println("run interval")
         return fallback_interval_lower_bound!(m, _current_node(m))
     end
     interval_objective_bound!(m)

@@ -170,9 +170,6 @@ function is_feasible(m::GlobalOptimizer, f::Union{AFE,BQE})
 end
 function is_feasible(m::GlobalOptimizer, f::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
     l, u = interval_bound(m, f)
-    @show lower_interval_bound(m, f)
-    @show lower_bound(f)
-    @show upper_bound(f)
     feasible_flag = (u >= lower_bound(f))
     feasible_flag && (l <= upper_bound(f))
 end

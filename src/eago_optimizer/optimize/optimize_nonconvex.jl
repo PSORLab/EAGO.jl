@@ -151,7 +151,7 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
         m._end_state = GS_ITERATION_LIMIT
     elseif !relative_tolerance(L, U, m._parameters.relative_tolerance)
         m._end_state = GS_RELATIVE_TOL
-    elseif (U - L) < m._parameters.absolute_tolerance
+    elseif abs(U - L) < m._parameters.absolute_tolerance
         m._end_state = GS_ABSOLUTE_TOL
     elseif m._run_time > m._parameters.time_limit
         m._end_state = GS_TIME_LIMIT

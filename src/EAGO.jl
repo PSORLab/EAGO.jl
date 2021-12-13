@@ -16,7 +16,7 @@ module EAGO
     import MathOptInterface
 
     using Reexport, Requires, Cassette, IntervalArithmetic, DocStringExtensions,
-          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf
+          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf, PrettyTables
 
     using JuMP
     import JuMP

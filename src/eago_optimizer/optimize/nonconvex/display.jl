@@ -200,7 +200,7 @@ function print_preamble!(m::GlobalOptimizer)
         if !_is_input_min(m) && m._iteration_count === 1
             println(" ")
             println("For maximization problems a max(f) = -min(-f) transformation is applied.")
-            println("Objectives values for each subproblem as a negative value of the objective")
+            println("Objectives values for each subproblem are the negative value of the objective")
             println("in the original problem and reconciled after branch and bound terminates.")
             println(" ")
         end

@@ -146,9 +146,9 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::AffineFun
     return
 end
 
-function add_η!(m::ParsedProblem, l::Float64, u::Float64)
+function add_η!(m::ParsedProblem)
     m._variable_count += 1
-    push!(m._variable_info, VariableInfo(MOI.Interval{Float64}(l, u)))
+    push!(m._variable_info, VariableInfo{Float64}())
     return m._variable_count
 end
 
@@ -171,15 +171,8 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
 
-    out = interval_bound(m, f)
-    l, u = out
-    if !_is_input_min(m)
-        l, u = -u, -l
-    end
-    ηi = add_η!(d, l, u)
-    @variable(ip._nlp_data.evaluator.model, l <= η <= u)
-    m._global_lower_bound = l
-    m._global_upper_bound = u
+    ηi = add_η!(d)
+    @variable(ip._nlp_data.evaluator.model, η)
     d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
@@ -211,29 +204,9 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 upper_variable_bounds = upper_bound.(vi),
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q]) 
-    set_variable_values!(wp, v)
-
    
-    n = NodeBB(lower_bound.(vi),upper_bound.(vi), is_integer.(vi))
-    m._current_node = n
-    set_node!(wp._relaxed_evaluator, n)
-    forward_pass!(wp._relaxed_evaluator, f)
-    #for i = 1:length(f.ex.relax_cache._set)
-    #    @show f.ex.relax_cache._is_num[i], f.ex.relax_cache._num[i], f.ex.relax_cache._set[i]
-    #end
-    out = interval_bound(m, f)
-    l, u = out
-    println("these are bad interval bounds")
-    @show l, u
-    if !_is_input_min(m)
-        l, u = -u, -l
-    end
-    d._objective.ex.lower_bound = l
-    d._objective.ex.upper_bound = u
-    ηi = add_η!(d, l, u)
-    @variable(ip._nlp_data.evaluator.model, l <= η <= u)
-    m._global_lower_bound = l
-    m._global_upper_bound = u
+    ηi = add_η!(d)
+    @variable(ip._nlp_data.evaluator.model, η)
     wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
     nd = ip._nlp_data.evaluator.model.nlp_data.nlobj.nd

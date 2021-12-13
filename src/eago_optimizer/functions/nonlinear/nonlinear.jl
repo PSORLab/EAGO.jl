@@ -69,7 +69,7 @@ function _set_last_reverse!(d::NonlinearExpression{V, N, T}, v::Bool) where {V,N
     return
 end
 function set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
-    d.relax_cache.v = v
+    d.relax_cache.ic.v = v
     return
 end
 @inbounds sparsity(d::NonlinearExpression) = sparsity(d.g, 1)

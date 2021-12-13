@@ -115,6 +115,15 @@ function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxT
     c._num_mv_buffer       = zeros(p)
     c._mult_temp           = zero(V)
 
+
+    for i = 1:n
+        ni = node(g, i)
+        if node_class(ni) == CONSTANT
+            c._is_num[i] = true
+            c._num[i] = g.constant_values[first_index(ni)]
+        end
+    end
+
     for i = 1:n
         push!(c._info, zero(V))
     end
@@ -145,7 +154,7 @@ function Base.setindex!(b::RelaxCache{V,N,T}, v::Float64, i::Int) where {V,N,T<:
     nothing
 end
 function Base.setindex!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
-    b._is_num[i] = true
+    b._is_num[i] = false
     b._set[i] = v
     nothing
 end
@@ -197,4 +206,30 @@ function rprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:
         end
     end
     return flag
+end
+
+
+function display_expr(g, i)
+    n = node(g, i)
+    nc = node_class(n)
+    if nc == VARIABLE
+        return "x[$(first_index(n))]"
+    elseif nc == PARAMETER
+        return "p[$(first_index(n))]"
+    elseif nc == EXPRESSION
+        ex_typ = ex_type(n)
+        ex_sym = ALL_ATOM_DICT[ex_typ]
+        ctup = tuple(children(n)...)
+        return "$(ex_sym)$(ctup)"
+    elseif nc == CONSTANT
+        return "c[$(first_index(n))]"
+    end
+end
+
+function display_table!(g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
+    nc = node_count(g)
+    val = [b._is_num[i] ? b._num[i] : b._set[i] for i in 1:nc]
+    exr = [display_expr(g, i)  for i in 1:nc]
+    data = hcat(exr, b._is_num, val)
+    show(pretty_table(data, header = ["Expr", "Is Num", "Val"]; show_row_number = true))
 end

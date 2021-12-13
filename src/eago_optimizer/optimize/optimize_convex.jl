@@ -31,7 +31,7 @@ end
 
 function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     for i = 1:_variable_num(FullVar(), m)
-        v = MOI.SingleVariable(m._upper_variables[i])
+        v = m._upper_variables[i]
         l  = _lower_bound(FullVar(), m, i)
         u  = _upper_bound(FullVar(), m, i)
         if is_integer(FullVar(), m, i)
@@ -39,7 +39,7 @@ function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
             u = floor(u)
         end
         is_fixed_int = l == u
-        vi = _variable_info(m,i)
+        vi = _working_variable_info(m,i)
         if is_fixed(vi) || is_fixed_int
             MOI.add_constraint(d, v, ET(l))
         elseif is_less_than(vi)
