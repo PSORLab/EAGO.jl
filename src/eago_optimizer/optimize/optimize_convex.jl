@@ -26,7 +26,6 @@ function stored_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
     else
         d._upper_objective_value = v*(1.0 - adj_rtol) + adj_atol
     end
-
     return nothing
 end
 

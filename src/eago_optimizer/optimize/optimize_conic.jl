@@ -1,10 +1,8 @@
 ### LP and MILP routines
 function add_soc_constraints!(m::GlobalOptimizer, opt::T) where T
-
     for (func, set) in m._input_problem._conic_second_order
          MOI.add_constraint(opt, func, set)
     end
-
     return nothing
 end
 

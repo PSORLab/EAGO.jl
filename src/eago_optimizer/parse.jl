@@ -11,22 +11,19 @@
 #############################################################################
 
 """
+    add_objective!
 
 Adds objective function (if any) to the parsed problem.
 """
 add_objective!(m::ParsedProblem, f) = nothing
-add_objective!(m::ParsedProblem, f::VI) = (m._objective = f; return )
-function add_objective!(m::ParsedProblem, f::SAF)
-    m._objective = AffineFunctionIneq(f, LT_ZERO)
-    return
-end
-function add_objective!(m::ParsedProblem, f::SQF)
-    m._objective = BufferedQuadraticIneq(f, LT_ZERO)
-end
+add_objective!(m::ParsedProblem, f::VI) = (m._objective = f; nothing)
+add_objective!(m::ParsedProblem, f::SAF) = (m._objective = AffineFunctionIneq(f, LT_ZERO); nothing)
+add_objective!(m::ParsedProblem, f::SQF) = (m._objective = BufferedQuadraticIneq(f, LT_ZERO); nothing)
 
 """
+    add_nonlinear_evaluator!
 
-Adds a Evaluator structure if nonlinear terms are attached.
+    Adds a Evaluator structure if nonlinear terms are attached.
 """
 add_nonlinear_evaluator!(m::GlobalOptimizer, evaluator::Nothing) = nothing
 function add_nonlinear_evaluator!(m::GlobalOptimizer, d::JuMP.NLPEvaluator)
@@ -89,14 +86,11 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     dict_sparsity = Dict{Int,Vector{Int}}()
     if length(evaluator.model.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
         for i = 1:length(evaluator.subexpressions)
-            #println(" ")
-            #@show "subexpression $i"
             subexpr = evaluator.subexpressions[i]
             nlexpr = NonlinearExpression!(m._auxillary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
                                           dict_sparsity, i, evaluator.subexpression_linearity, 
                                           user_operator_registry, evaluator.model.nlp_data.nlparamvalues,
                                           m._parameters.relax_tag, ruse_apriori; is_sub = true)
-            #@show dict_sparsity
             push!(relax_evaluator.subexpressions, nlexpr)
         end
     end
@@ -110,14 +104,11 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        #println(" ")
-        #@show "objective"
         m._working_problem._objective = BufferedNonlinearFunction(m._auxillary_variable_info, rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.subexpression_linearity,
                                                                  user_operator_registry,
                                                                  evaluator.model.nlp_data.nlparamvalues,
                                                                  m._parameters.relax_tag, ruse_apriori)
-        #@show dict_sparsity
     end
 
     # add nonlinear constraints
@@ -161,25 +152,22 @@ function add_η!(m::ParsedProblem, l::Float64, u::Float64)
     return m._variable_count
 end
 
+set_variable_values!(wp, v) = set_variable_values!(wp._relaxed_evaluator, v)
 reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::Nothing) = nothing
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQuadraticIneq)
     ip = m._input_problem
     wp = m._working_problem
 
     vi = ip._variable_info
-    vi_mid = mid.(vi)
-    vi_lo = lower_bound.(vi)
-    vi_hi = upper_bound.(vi)
-
     q = _variable_num(FullVar(), m)
-    v = VariableValues{Float64}(x = vi_mid,
-                                x0 = vi_mid,
-                                lower_variable_bounds = vi_lo,
-                                upper_variable_bounds = vi_hi,
+    v = VariableValues{Float64}(x = mid.(vi), x0 = mid.(vi),
+                                lower_variable_bounds = lower_bound.(vi),
+                                upper_variable_bounds = upper_bound.(vi),
                                 node_to_variable_map = [i for i in 1:q],
                                 variable_to_node_map = [i for i in 1:q])
-    wp._relaxed_evaluator.variable_values = v
-    n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
+    set_variable_values!(wp, v)
+    
+    n = NodeBB(lower_bound.(vi), upper_bound.(vi), is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
 
@@ -217,33 +205,25 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     wp = m._working_problem
 
     vi = ip._variable_info
-    vi_mid = mid.(vi)
-    vi_lo = lower_bound.(vi)
-    vi_hi = upper_bound.(vi)
-    #@show vi_lo
-    #@show vi_hi
-
     q = _variable_num(FullVar(), m)
-    v = VariableValues{Float64}(x = vi_mid,
-                                x0 = vi_mid,
-                                lower_variable_bounds = vi_lo,
-                                upper_variable_bounds = vi_hi,
+    v = VariableValues{Float64}(x = mid.(vi), x0 = mid.(vi),
+                                lower_variable_bounds = lower_bound.(vi),
+                                upper_variable_bounds = upper_bound.(vi),
                                 node_to_variable_map = [i for i in 1:q],
-                                variable_to_node_map = [i for i in 1:q])
-    wp._relaxed_evaluator.variable_values = v
-    f.ex.g.v = v
-    f.ex.relax_cache.v = v
-    n = NodeBB(vi_lo, vi_hi, is_integer.(vi))
+                                variable_to_node_map = [i for i in 1:q]) 
+    set_variable_values!(wp, v)
+
+   
+    n = NodeBB(lower_bound.(vi),upper_bound.(vi), is_integer.(vi))
     m._current_node = n
     set_node!(wp._relaxed_evaluator, n)
-    #@show wp._relaxed_evaluator.variable_values.lower_variable_bounds
-    #@show wp._relaxed_evaluator.variable_values.upper_variable_bounds
     forward_pass!(wp._relaxed_evaluator, f)
     #for i = 1:length(f.ex.relax_cache._set)
     #    @show f.ex.relax_cache._is_num[i], f.ex.relax_cache._num[i], f.ex.relax_cache._set[i]
     #end
     out = interval_bound(m, f)
     l, u = out
+    println("these are bad interval bounds")
     @show l, u
     if !_is_input_min(m)
         l, u = -u, -l
@@ -313,9 +293,7 @@ $(TYPEDSIGNATURES)
 Detects any variables set to a fixed value by equality or inequality constraints
 and populates the `_fixed_variable` storage array.
 """
-function label_fixed_variables!(m::GlobalOptimizer)
-    map!(x -> check_set_is_fixed(x), m._fixed_variable, m._working_problem._variable_info)
-end
+label_fixed_variables!(m::GlobalOptimizer) = map!(x -> check_set_is_fixed(x), m._fixed_variable, m._working_problem._variable_info)
 
 """
 $(TYPEDSIGNATURES)
@@ -383,9 +361,9 @@ function label_branch_variables!(m::GlobalOptimizer)
                                 variable_to_node_map = m._sol_to_branch_map)
 
     wp._relaxed_evaluator.variable_values = v
-    (wp._objective isa BufferedNonlinearFunction) && _set_variable_storage!(wp._objective, v)
-    foreach(i -> _set_variable_storage!(i, v), wp._nonlinear_constr)
-    foreach(i -> _set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
+    (wp._objective isa BufferedNonlinearFunction) && set_variable_storage!(wp._objective, v)
+    foreach(i -> set_variable_storage!(i, v), wp._nonlinear_constr)
+    foreach(i -> set_variable_storage!(i, v), wp._relaxed_evaluator.subexpressions)
     return
 end
 
@@ -438,14 +416,14 @@ function parse_classify_problem!(m::GlobalOptimizer)
     ip = m._input_problem
 
     nl_expr_num = 0
-    if (ip._objective === nothing) && (ip._nlp_data !== nothing)
+    if isnothing(ip._objective) && !isnothing(ip._nlp_data)
         if ip._nlp_data.has_objective
             nl_expr_num += 1
             has_objective = true
         else
             has_objective = false
         end
-    elseif (ip._objective === nothing) && (ip._nlp_data === nothing)
+    elseif isnothing(ip._objective) && isnothing(ip._nlp_data)
         has_objective = false
     end
     nl_expr_num += length(m._working_problem._nonlinear_constr)

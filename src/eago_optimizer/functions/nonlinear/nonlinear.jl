@@ -64,8 +64,11 @@ end
 @inline has_value(d::NonlinearExpression) = d.has_value
 @inline dep_subexpr_count(d::NonlinearExpression) = dep_subexpr_count(d.g)
 @inline set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
-@inline set_last_reverse!(d::NonlinearExpression, v::Bool) = (d.last_reverse = v; return )
-@inline function _set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
+function _set_last_reverse!(d::NonlinearExpression{V, N, T}, v::Bool) where {V,N,T<:RelaxTag}
+    d.last_reverse = v; 
+    return
+end
+function set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
     d.relax_cache.v = v
     return
 end
@@ -139,8 +142,8 @@ function _load_subexprs!(d::RelaxCache{V,N,T}, g, subexpressions, dep_subexprs) 
 end
 
 @inline _set_last_reverse!(d::BufferedNonlinearFunction{V,N,T}, v::Bool) where {V,N,T<:RelaxTag} = _set_last_reverse!(d.ex, v)
-function _set_variable_storage!(d::BufferedNonlinearFunction{V,N,T}, v::VariableValues{Float64}) where {V,N,T<:RelaxTag}
-    _set_variable_storage!(d.ex, v)
+function set_variable_storage!(d::BufferedNonlinearFunction{V,N,T}, v::VariableValues{Float64}) where {V,N,T<:RelaxTag}
+    set_variable_storage!(d.ex, v)
 end
 
 has_value(d::BufferedNonlinearFunction) = has_value(d.ex)
@@ -183,6 +186,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     subgrad_tol::Float64 = 1E-10
     relax_type::RelaxType                       = STD_RELAX
 end
+set_variable_values!(d::Evaluator, v) = d.variable_values = v
 
 """
 $(FUNCTIONNAME)
@@ -277,7 +281,7 @@ eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{Variable
 f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool) = flag ? f_init!(t, g, c) : fprop!(t, g, c)
 function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
     b = d.relax_cache
-    update_box_and_pnt!(b.v, z.variable_values, z.is_first_eval)
+    update_box_and_pnt!(b.ic.v, z.variable_values, z.is_first_eval)
     if b.use_apriori_mul
         s = _sparsity(d)
         v = b.v

@@ -167,8 +167,8 @@ first_eval(t::RelaxInterval, b::RelaxCache) = b.first_eval
 val(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = val(b.ic, i)
 lbd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = lbd(b.ic, i)
 ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = ubd(b.ic, i)
-set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
-num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
+_set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
+_num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
 
 include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "forward_propagation.jl"))

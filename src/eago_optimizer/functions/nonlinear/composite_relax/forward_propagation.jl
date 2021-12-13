@@ -29,7 +29,7 @@ function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k) where {
         b[k] = x
     else
         z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
-        if !first_eval(b)
+        if !first_eval(t, b)
             z = z ∩ interval(b, k)
         end
         b[k] = z
@@ -335,8 +335,8 @@ end
 function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     mv = user_multivariate_operator(g, first_index(g, k))
     n = arity(g, k)
-    set_input = set_input(b, n)
-    num_input = num_input(b, n)
+    set_input = _set_input(b, n)
+    num_input = _num_input(b, n)
     anysets = false
     i = 1
     for c in children(g, k)

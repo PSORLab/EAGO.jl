@@ -60,6 +60,9 @@ end
 Node(::Val{true}, ::Val{USER}, i::Int, c::Vector{Int}) = Node(EXPRESSION, USER, i, 0, 1, c)
 Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int}) = Node(EXPRESSION, USERN, i, 0, length(c), c)
 
+
+Node(::Val{:first_index}, n::Node, i::Int) = Node(node_class(n), ex_type(n), i, second_index(n), arity(n), children(n))
+
 node_class(n::Node)   = n.node_class
 ex_type(n::Node)      = n.ex_type
 first_index(n::Node)  = n.first_index
@@ -67,6 +70,10 @@ second_index(n::Node) = n.node_second_index
 arity(n::Node)        = n.arity
 children(n::Node)     = n.children
 child(n::Node, i)     = @inbounds getindex(n.children, i)
+
+node_is_class(::Variable, n::Node) = node_class(n) == VARIABLE
+node_is_class(::Parameter, n::Node) = node_class(n) == PARAMETER
+node_is_class(::Constant, n::Node) = node_class(n) == CONSTANT
 
 mv_eago_not_jump = setdiff(JuMP._Derivatives.operators,
                            union(Symbol[k for k in keys(REV_BIVARIATE_ATOM_DICT)],

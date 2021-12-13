@@ -4,16 +4,14 @@ $(FUNCTIONNAME)
 Adds linear objective cut constraint to the `x.relaxed_optimizer`.
 """
 function objective_cut!(m::GlobalOptimizer, check_safe::Bool)
-    wp = m._working_problem
-    f = wp._objective_saf
+    f = m._working_problem._objective_saf
     u = m._global_upper_bound
     if  u < Inf
         b = f.constant
         f.constant = 0.0
         if check_safe && is_safe_cut!(m, f)
             s = LT(u - b + _constraint_tol(m))
-            c = MOI.add_constraint(_relaxed_optimizer(m), f, s)
-            m._affine_objective_cut_ci = c
+            m._affine_objective_cut_ci = MOI.add_constraint(_relaxed_optimizer(m), f, s)
         end
         f.constant = b
         m._new_eval_objective = false
@@ -24,7 +22,7 @@ end
 """
     RelaxResultStatus
 
-Status code used internally to determine how to interpret theresults from the
+Status code used internally to determine how to interpret the results from the
 solution of a relaxed problem.
 """
 @enum(RelaxResultStatus, RRS_OPTIMAL, RRS_DUAL_FEASIBLE, RRS_INFEASIBLE, RRS_INVALID)
@@ -67,27 +65,25 @@ constraints.
 function update_relaxed_problem_box!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
     for i = 1:_variable_num(BranchVar(), m)
-        j = _bvi(m, i)
         l = _lower_bound(BranchVar(), m, i)
         u = _upper_bound(BranchVar(), m, i)
-        v = VI(j)
+        v = VI(_bvi(m, i))
         if l == u
-            ci_sv_et = MOI.add_constraint(d, v, ET(l))
-            push!(m._relaxed_variable_et, ci_sv_et)
+            ci_vi_et = MOI.add_constraint(d, v, ET(l))
+            push!(m._relaxed_variable_et, (ci_vi_et,i))
         else
-            ci_sv_lt = MOI.add_constraint(d, v, LT(u))
-            ci_sv_gt = MOI.add_constraint(d, v, GT(l))
-            m._node_to_sv_leq_ci[i] = ci_sv_lt
-            m._node_to_sv_geq_ci[i] = ci_sv_gt
-            push!(m._relaxed_variable_lt, (ci_sv_lt,i))
-            push!(m._relaxed_variable_gt, (ci_sv_gt,i))
+            ci_vi_lt = MOI.add_constraint(d, v, LT(u))
+            ci_vi_gt = MOI.add_constraint(d, v, GT(l))
+            m._node_to_sv_leq_ci[i] = ci_vi_lt
+            m._node_to_sv_geq_ci[i] = ci_vi_gt
+            push!(m._relaxed_variable_lt, (ci_vi_lt,i))
+            push!(m._relaxed_variable_gt, (ci_vi_gt,i))
         end
     end
     return
 end
 
 const SOLUTION_EPS = 0.05
-
 function store_lower_solution!(m::GlobalOptimizer{R,S,Q}, d::T) where {R,S,Q<:ExtensionType,T}
     for i = 1:_variable_num(FullVar(), m)
         l = _lower_bound(FullVar(), m, i)
@@ -95,11 +91,8 @@ function store_lower_solution!(m::GlobalOptimizer{R,S,Q}, d::T) where {R,S,Q<:Ex
         ladj = l + SOLUTION_EPS*(u - l)
         uadj = u - SOLUTION_EPS*(u - l)
         x = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
-        if x < ladj
-            x = ladj
-        elseif x > uadj
-            x = uadj
-        end
+        (x < ladj) && (x = ladj)
+        (x > uadj) && (x = uadj)
         m._lower_solution[i] = x
     end
     return 
@@ -130,10 +123,7 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     empty!(m._relaxed_variable_integer)
 
     # delete objective cut
-    if m._affine_objective_cut_ci !== nothing
-        MOI.delete(d, m._affine_objective_cut_ci)
-    end
-
+    !isnothing(m._affine_objective_cut_ci) && MOI.delete(d, m._affine_objective_cut_ci)
     return
 end
 

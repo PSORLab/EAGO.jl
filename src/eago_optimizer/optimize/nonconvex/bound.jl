@@ -154,11 +154,11 @@ end
 ### NONLINEAR FUNCTIONS
 ###
 function lower_interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
-    !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
+    !has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     is_num(d) ? num(d) : interval(d).lo
 end
 function interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
-    !_has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
+    !has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
     v = is_num(d) ? Interval{Float64}(num(d)) : interval(d)
     return v.lo, v.hi
 end
