@@ -248,37 +248,6 @@ interval_objective_bound!(m::GlobalOptimizer) = interval_objective_bound!(m, m._
 """
 $(SIGNATURES)
 
-A fallback lower bounding problem that consists of an natural interval extension
-calculation. This is called when the optimizer used to compute the lower bound
-does not return a termination and primal status code indicating that it
-successfully solved the relaxation to a globally optimal point.
-"""
-function fallback_interval_lower_bound!(m::GlobalOptimizer, n::NodeBB)
-    feas = true
-    wp = m._working_problem
-    if !cp_condition(m)
-        feas &= all(f -> is_feasible(m, f), wp._saf_leq)
-        feas &= all(f -> is_feasible(m, f), wp._saf_eq)
-        feas &= all(f -> is_feasible(m, f), wp._sqf_leq)
-        feas &= all(f -> is_feasible(m, f), wp._sqf_eq)
-        println("feas nl = $feas")
-        feas &= all(f -> is_feasible(m, f), wp._nonlinear_constr)
-        println("feas nl after = $feas")
-    end
-    if feas
-        interval_objective_bound!(m)
-        m._current_xref .= mid(n)
-        unsafe_check_fill!(isnan, m._current_xref, 0.0, length(m._current_xref))
-    else
-        m._lower_objective_value = typemin(Float64)
-    end
-    m._lower_feasibility = feas
-    return
-end
-
-"""
-$(SIGNATURES)
-
 Runs interval, linear, quadratic contractor methods followed by obbt and a
 constraint programming walk up to tolerances specified in
 `EAGO.Optimizer` object.
@@ -304,11 +273,12 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
 
     # done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
-    if _cp_depth(m) >= _iteration_count(m)
-        for _ = 1:_cp_repetitions(m)
-            feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
-            !feasible_flag && break
-        end
+    # nonlinear CP can detect infeasibility and bound objective even if
+    # the relaxation is ill-posed, so one is always used to mitigate numerical issues 
+    cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 1
+    for _ = 1:_cp_repetitions(m)
+        feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
+        !feasible_flag && break
     end
 
     if _obbt_depth(m) >= _iteration_count(m)
@@ -359,11 +329,10 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     d_status = MOI.OTHER_RESULT_STATUS
     status = RRS_INVALID
 
-    all_constraints_relaxed_once = false
     set_first_relax_point!(m)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
     while true
-        all_constraints_relaxed_once |= relax_problem!(m)
+        relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
         MOI.optimize!(d)
         t_status = MOI.get(d, MOI.TerminationStatus())
@@ -421,10 +390,6 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     store_lower_solution!(m, d)
     if status == RRS_DUAL_FEASIBLE
         m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
-    end
-    # use interval bound if it is better
-    if status == RRS_INVALID || all_constraints_relaxed_once
-        return fallback_interval_lower_bound!(m, _current_node(m))
     end
     interval_objective_bound!(m)
     return

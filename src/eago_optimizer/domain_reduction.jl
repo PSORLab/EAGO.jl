@@ -501,8 +501,6 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
     return true
 end
 
-cp_condition(m::GlobalOptimizer) = false
-
 _propagate_constraint!(d, f) = true
 function _propagate_constraint!(d, f::BufferedNonlinearFunction)
     forward_pass!(d, f)
@@ -545,6 +543,8 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
         m._new_eval_objective = false
         _get_x!(BranchVar, m._current_xref, evaluator)
         m._current_node = retrieve_node(evaluator)
+
+        interval_objective_bound!(m)
     end
 
     return feasible_flag
