@@ -7,8 +7,8 @@ mutable struct SubSolvers{Q<:MOI.AbstractOptimizer, S<:MOI.AbstractOptimizer, T<
     upper_optimizer::S
     ext_typ::T
 end
-SubSolvers{Q,S,T}(; r::Q = GLPK.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r, u, t)
-SubSolvers(; r::Q = GLPK.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r,u,t)
+SubSolvers{Q,S,T}(; r::Q = Cbc.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r, u, t)
+SubSolvers(; r::Q = Cbc.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r,u,t)
 
 function _relaxed_optimizer(d::SubSolvers{Q,S,T}) where {Q <: MOI.AbstractOptimizer, 
                                                          S <: MOI.AbstractOptimizer, 

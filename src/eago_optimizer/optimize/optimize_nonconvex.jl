@@ -65,6 +65,14 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
         end
     end
 
+    # TODO: Remove when upstream Cbc issue https://github.com/jump-dev/Cbc.jl/issues/168 is fixed
+    # Add extra binary variable `issue_var` fixed to zero to prevent Cbc from displaying even though 
+    # silent is set to off. Sets `issue_var` to zero. 
+    issue_var = MOI.add_variable(d)
+    MOI.add_constraint(d, issue_var, ZO())
+    MOI.add_constraint(d, issue_var, ET(0.0))
+
+
     # set number of variables to branch on
     m._branch_variable_count = branch_variable_count
 
