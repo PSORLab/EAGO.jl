@@ -184,7 +184,18 @@ function set_reference_point!(m::GlobalOptimizer)
         node_x = current_xref[i]
         solution_x = evaluator_x[i]
         if node_x !== solution_x
-            evaluator_x[i] = node_x
+            l = _lower_bound(FullVar(), m, i)
+            u = _upper_bound(FullVar(), m, i)
+            if isfinite(l) && isfinite(u)
+                x = node_x
+            elseif isfinite(l)
+                x = min(0.0, u)
+            elseif isfinite(u)
+                x = max(0.0, l)
+            else
+                x = 0.0
+            end
+            evaluator_x[i] = x
             new_reference_point = true
         end
     end
@@ -210,6 +221,30 @@ function set_reference_point!(m::GlobalOptimizer)
 
     return nothing
 end
+
+# TODO replace with argmin statement post Julia 1.7 LTS version
+function active_argmin(f, b, n)
+    vi = -1; v = Inf
+    if any(b)
+        for i = 1:n
+            if b[i] && (f(i) <= v)
+                vi = i
+                v = f(i)
+            end
+        end
+    end
+    vi, v
+end
+Δxl(m, i) = _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
+Δux(m, i) = _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
+
+function reset_objective!(m::GlobalOptimizer{R,S,Q}, d) where {R,S,Q<:ExtensionType}
+    MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(d, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
+    MOI.optimize!(d)
+    nothing
+end
+
 
 """
 $(FUNCTIONNAME)
@@ -247,35 +282,9 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
         # or the node is empty and the problem is thus proven infeasible
         while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
 
-            # Get lower value
-            lower_indx = -1;     upper_indx = -1
-            lower_value = Inf;   upper_value = Inf
-
-            # min of xLP - yL on active
-            if any(m._obbt_working_lower_index)
-                for i = 1:obbt_variable_count
-                    if m._obbt_working_lower_index[i]
-                        temp_value = _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
-                        if temp_value <= lower_value   # Need less than or equal to handle unbounded cases
-                            lower_value = temp_value
-                            lower_indx = i
-                        end
-                    end
-                end
-            end
-
-            # min of yU - xLP on active
-            if any(m._obbt_working_upper_index)
-                for i = 1:obbt_variable_count
-                    if m._obbt_working_upper_index[i]
-                        temp_value = _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
-                        if temp_value <= upper_value
-                            upper_value = temp_value
-                            upper_indx = i
-                        end
-                    end
-                end
-            end
+              # min of xLP - yL and xU - xLP for potential directions
+            lower_indx, lower_value = active_argmin(i -> Δxl(m, i), m._obbt_working_lower_index, obbt_variable_count)
+            upper_indx, upper_value = active_argmin(i -> Δux(m, i), m._obbt_working_lower_index, obbt_variable_count)
 
             # default to upper bound if no lower bound is found, use maximum distance otherwise
             if lower_value <= upper_value && lower_indx > 0
@@ -283,7 +292,6 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
                 MOI.set(d, MOI.ObjectiveFunction{VI}(), m._relaxed_variable_index[_bvi(m, lower_indx)])
                 MOI.optimize!(d)
-
                 status = set_preprocess_status(m,d)
                 if status == RRS_OPTIMAL
                     xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
@@ -354,6 +362,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
             trivial_filtering!(m, n)
         end
     end
+    reset_objective!(m, d)
     return feasibility
 end
 

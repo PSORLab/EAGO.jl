@@ -131,8 +131,6 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     wp._relaxed_evaluator.subgrad_tighten = m._parameters.subgrad_tighten
     wp._relaxed_evaluator.reverse_subgrad_tighten =  m._parameters.reverse_subgrad_tighten
 
-    #@show wp._relaxed_evaluator.variable_values
-
     m._presolve_time = time() - m._parse_time
     return
 end
@@ -214,7 +212,6 @@ function convergence_check(t::ExtensionType, m::GlobalOptimizer)
     if (U < Inf) && (L > Inf)
         t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
     end
-    #t && @show "converged"
     if t && m._min_converged_value < Inf
          m._min_converged_value = min(m._min_converged_value, L)
     else
@@ -281,15 +278,11 @@ function global_solve!(m::GlobalOptimizer)
         # Performs prepocessing and times
         m._last_preprocess_time += @elapsed preprocess!(m)
 
-        #@show m._preprocess_feasibility
-
         if m._preprocess_feasibility
 
             # solves & times lower bounding problem
             m._last_lower_problem_time += @elapsed lower_problem!(m)
             print_results!(m, true)
-            #@show m._lower_feasibility
-           # @show convergence_check(m)
 
             # checks for infeasibility stores solution
             if m._lower_feasibility && !convergence_check(m)

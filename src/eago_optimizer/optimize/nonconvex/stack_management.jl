@@ -157,8 +157,6 @@ function branch_node!(t::ExtensionType, m::GlobalOptimizer)
 
     n1 = NodeBB(l_lbd, l_ubd, l_int, l_cont, l_bound, u_bound, n.depth + 1, l_idepth, n.id + 1, BD_NEG, k, l_ext)
     n2 = NodeBB(u_lbd, u_ubd, u_int, u_cont, l_bound, u_bound, n.depth + 1, u_idepth, n.id + 2, BD_POS, k, u_ext)
-    @show n1
-    @show n2
     push!(m._stack, n1)
     push!(m._stack, n2)
 

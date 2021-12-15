@@ -127,7 +127,6 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     return
 end
 
-val_or_zero(x) = isnan(x) ? 0.0 : x
 """
 $(FUNCTIONNAME)
 
@@ -138,8 +137,18 @@ function set_first_relax_point!(m::GlobalOptimizer)
         m._new_eval_constraint = true
         m._new_eval_objective = true
         for i = 1:_variable_num(FullVar(), m)
-            x = _mid(FullVar(), m, i)
-            _set_lower_solution!(FullVar(), m, val_or_zero(x), i)
+            l = _lower_bound(FullVar(), m, i)
+            u = _upper_bound(FullVar(), m, i)
+            if isfinite(l) && isfinite(u)
+                x = 0.5*(l + u)
+            elseif isfinite(l)
+                x = min(0.0, u)
+            elseif isfinite(u)
+                x = max(0.0, l)
+            else
+                x = 0.0
+            end
+            _set_lower_solution!(FullVar(), m, x, i)
         end
     end
     return
@@ -259,6 +268,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     if _fbbt_lp_depth(m) >= _iteration_count(m)
         load_fbbt_buffer!(m)
         for _ = 1:_fbbt_lp_repetitions(m)
+            ns = NodeBB(_current_node(m))
             for f in m._working_problem._saf_leq
                 !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
             end
@@ -266,7 +276,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
             for f in m._working_problem._saf_eq
                 !(feasible_flag = feasible_flag && fbbt!(m, f)) && break
             end
-            !feasible_flag && break
+            (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break
         end
         unpack_fbbt_buffer!(m)
     end
@@ -277,15 +287,17 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     # the relaxation is ill-posed, so one is always used to mitigate numerical issues 
     cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 1
     for _ = 1:_cp_repetitions(m)
+        ns = NodeBB(_current_node(m))
         feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
-        !feasible_flag && break
+        (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break
     end
 
     if _obbt_depth(m) >= _iteration_count(m)
         for k = 1:_obbt_repetitions(m)
+            ns = NodeBB(_current_node(m))
             feasible_flag = feasible_flag && obbt!(m)
             m._obbt_performed_flag = true
-            !feasible_flag && break
+            (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break
         end
     end
     m._preprocess_feasibility = feasible_flag
