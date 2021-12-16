@@ -113,7 +113,7 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     empty!(m._affine_relax_ci)
 
     # delete variable    
-    foreach(c -> MOI.delete(d, c), m._relaxed_variable_et)
+    foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_et)
     foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_lt)
     foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_gt)
     foreach(c -> MOI.delete(d, c), m._relaxed_variable_integer)
@@ -280,6 +280,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
         end
         unpack_fbbt_buffer!(m)
     end
+    #@show "FBBT Feasibility", feasible_flag
 
     # done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
@@ -291,6 +292,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
         feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
         (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break
     end
+    #@show "CP Feasibility", feasible_flag
 
     if _obbt_depth(m) >= _iteration_count(m)
         for k = 1:_obbt_repetitions(m)
@@ -300,6 +302,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
             (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break
         end
     end
+    #@show "OBBT Feasibility", feasible_flag
     m._preprocess_feasibility = feasible_flag
     return
 end

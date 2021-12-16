@@ -308,6 +308,7 @@ function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where 
     forward_pass!(x, d.ex)
     _set_has_value!(d, true)
     _set_last_reverse!(d, false)
+    #@show set(d)
     return
 end
 
