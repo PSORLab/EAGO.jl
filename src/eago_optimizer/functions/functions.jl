@@ -69,9 +69,9 @@ function AffineFunctionIneq(f::SAF, s::GT)
 end
 function AffineFunctionIneq(f::VI; is_max = false)
     if is_max
-        return AffineFunctionIneq(Tuple{Float64,Int}[(-1.0, f.variable.value)], 0.0, 1)
+        return AffineFunctionIneq(Tuple{Float64,Int}[(-1.0, f.value)], 0.0, 1)
     end
-    AffineFunctionIneq(Tuple{Float64,Int}[(1.0, f.variable.value)], 0.0, 1)
+    AffineFunctionIneq(Tuple{Float64,Int}[(1.0, f.value)], 0.0, 1)
 end
 
 

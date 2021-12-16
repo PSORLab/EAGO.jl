@@ -132,7 +132,7 @@ add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_dat
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::VI)
     flag = m._input_problem._optimization_sense == MOI.MAX_SENSE
     d._objective = AffineFunctionIneq(f, is_max = flag)
-    d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.variable.value))], 0.0)
+    d._objective_saf = SAF([SAT(flag ? -1.0 : 1.0, VI(f.value))], 0.0)
     return
 end
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::AffineFunctionIneq)
