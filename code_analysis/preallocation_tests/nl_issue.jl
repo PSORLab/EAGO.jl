@@ -1,17 +1,12 @@
 
-using JuMP
-
-println(" ")
-println("EAGO using ")
-@time (using Ipopt)
-@time (using Ipopt)
-
+using JuMP, EAGO, Cbc
 
 function make_model()
-    m = Model(Ipopt.Optimizer)
-    #set_optimizer_attribute(m, "output_iterations", 1)
-    #set_optimizer_attribute(m, "iteration_limit", 5)
-    #set_optimizer_attribute(m, "verbosity", 0)
+    sb = SubSolvers(;relaxed_optimizer= Cbc.Optimizer())
+    m = Model(() -> EAGO.Optimizer(subsolver_block = sb))
+    set_optimizer_attribute(m, "output_iterations", 1)
+    set_optimizer_attribute(m, "iteration_limit", 5)
+    set_optimizer_attribute(m, "verbosity", 0)
 
     # Define bounded variables
     xL = [10.0; 0.0; 0.0; 0.0; 0.0; 85.0; 90.0; 3.0; 1.2; 145.0]
@@ -25,8 +20,8 @@ function f(m)
     JuMP.optimize!(m)
 end
 
-m =  make_model()
-m1 =  make_model()
+m = make_model()
+m1 = make_model()
 
 println("EAGO first call ")
 @time f(m)
