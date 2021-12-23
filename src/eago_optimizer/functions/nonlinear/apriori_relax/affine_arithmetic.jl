@@ -13,6 +13,7 @@ function AffineEAGO(x::AffineEAGO{N}, p::Float64, q::Float64, δ::Float64) where
     Δ = p * x.Δ + δ
     AffineEAGO{N}(c, γ, δ)
 end
+mid(x::Interval{Float64}) = 0.5*(x.lo + x.hi)
 AffineEAGO{N}(x::Float64, X::Interval{Float64}, i::Int) where N = AffineEAGO{N}(mid(X), radius(X)*seed_gradient(i, Val(N)), 0.0)
 
 const UNIT_INTERVAL = Interval{Float64}(-1,1)
@@ -254,8 +255,8 @@ exp10(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(exp10(x.v), exp10(x.box))
 function extract_apriori_info(t::Union{RelaxAA,RelaxAAInfo}, v::VariableValues{Float64}, x::AffineEAGO{N}) where {N,T}
     z = 0.0
     for (k,i) in enumerate(t.v)
-        l = _lbd(v, i)
-        u = _ubd(v, i)
+        l = _bd(v, i)
+        u = ubd(v, i)
         z += x.γ[k]*(_val(v, i) - 0.5*(l + u))/(u - l)
     end
     Z = x.c + sum(z -> z*UNIT_INTERVAL, x.γ)
@@ -297,7 +298,7 @@ function _cut(t::RelaxAA, b, k, x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues,
     xt = p ? xMC : x
     #@show xt
     #@show _info(b, k)
-    zt = _cut_info(v, xt, _info(b, k))
+    zt = _cut_info(v, xt, info(b, k))
     #@show zt
     _store_set!(b, zt, k)
     return
@@ -306,181 +307,185 @@ end
 relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{n,T}
 function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
     tinfo = RelaxAAInfo(t.v)
-    for k = _node_count(g):-1:1
-        if _is_unlocked(b, k)
-            c = _node_class(g, k)
-            if c == EXPRESSION
-                fprop!(tinfo, Expression(), g, b, k)
-            elseif c == VARIABLE
-                fprop!(tinfo, Variable(), g, b, k)
-            end
+    for k = node_count(g):-1:1
+        c = node_class(g, k)
+        if c == EXPRESSION
+            fprop!(tinfo, Expression(), g, b, k)
+        elseif c == VARIABLE
+            fprop!(tinfo, Variable(), g, b, k)
         end
-        b._set[k] = _info(b, k).v
+        b._set[k] = info(b, k).v
     end
 end
 
 
 function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    i = _first_index(g, k)
-    x = _val(b, i)
-    l = _lbd(b, i)
-    u = _ubd(b, i)
-    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
+    i = first_index(g, k)
+    x = val(b, i)
+    l = lbd(b, i)
+    u = ubd(b, i)
+    z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
     zaff = AffineEAGO{N}(x, Interval(l,u), i)
     zinfo = MCAffPnt{N,T}(z, zaff)
     b._info[k] = zinfo
     return 
 end
 function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    i = _first_index(g, k)
-    x = _val(b, i)
-    l = _lbd(b, i)
-    u = _ubd(b, i)
-    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
+    i = first_index(g, k)
+    x = val(b, i)
+    l = lbd(b, i)
+    u = ubd(b, i)
+    z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
     z = z ∩ _interval(b, k)
     _store_set!(b, z, k)
 end
 
-_info_or_set(t::RelaxAAInfo, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = _info(b, k)
-_info_or_set(t::RelaxAA, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = _set(b, k)
+info_or_set(t::RelaxAAInfo, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = info(b, k)
+info_or_set(t::RelaxAA, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = set(b, k)
 _store_out!(t::RelaxAAInfo, b::RelaxCache{V,N,T}, z, k) where {V,N,T<:RelaxTag} = (b._info[k] = z; nothing)
 _store_out!(t::RelaxAA, b::RelaxCache{V,N,T}, z, k) where {V,N,T<:RelaxTag} = _store_set!(b, z, k)
 
-for (LABEL,f) in ((EXP, :exp), (EXP10, :exp10), (LOG, :log))
-    @eval function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{$LABEL}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-        x = _info_or_set(t, b, _child(g, 1, k))
-        _cut(t, b, k, ($f)(x), _info(b, k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
-    end
+function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{EXP}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = info_or_set(t, b, child(g, 1, k))
+    _cut(t, b, k, exp(x), info(b, k), b.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+end
+function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{EXP10}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = info_or_set(t, b, child(g, 1, k))
+    _cut(t, b, k, exp10(x), info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+end
+function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{LOG}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    x = info_or_set(t, b, child(g, 1, k))
+    _cut(t, b, k, log(x), info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
 end
 
 function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    x_is_num = _is_num(b, x)
-    y_is_num = _is_num(b, y)
-    if y_is_num && isone(_num(b, y))
-        z = _info_or_set(t, b, x)
-        _store_out!(t, b, z, k)
-    elseif y_is_num && iszero(_num(b, y))
-        _store_out!(t, b, zero(_info_or_set(t, b, x)), k)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    x_is_num = is_num(b, x)
+    y_is_num = is_num(b, y)
+    if y_is_num && isone(num(b, y))
+        z = info_or_set(t, b, x)
+        store_out!(t, b, z, k)
+    elseif y_is_num && iszero(num(b, y))
+        store_out!(t, b, zero(info_or_set(t, b, x)), k)
     else
         if !x_is_num && y_is_num
-            z = _info_or_set(t, b, x)^_num(b, y)
+            z = info_or_set(t, b, x)^num(b, y)
         elseif x_is_num && !y_is_num
-            z = _num(b, x)^_info_or_set(t, b, y)
+            z = num(b, x)^info_or_set(t, b, y)
         elseif !x_is_num && !y_is_num
-            z = _info_or_set(t, b, x)^_info_or_set(t, b, y)
+            z = info_or_set(t, b, x)^info_or_set(t, b, y)
         end
-    _cut(t, b, k, z, _info(b,k), b.v, zero(Float64), _sparsity(g,k), b.cut, b.post)
+    _cut(t, b, k, z, info(b,k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
     end
 end
 
 function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    x_is_num = _is_num(b, x)
-    if _arity(g, k) == 2
-        y = _child(g, 2, k)
-        y_is_num = _is_num(b, y)
+    x = child(g, 1, k)
+    x_is_num = is_num(b, x)
+    if arity(g, k) == 2
+        y = child(g, 2, k)
+        y_is_num = is_num(b, y)
         if !x_is_num && y_is_num
-            z = _info_or_set(t, b, x) - _num(b, y)
+            z = info_or_set(t, b, x) - num(b, y)
         elseif x_is_num && !y_is_num
-            z = _num(b, x) - _info_or_set(t, b, y)
+            z = num(b, x) - info_or_set(t, b, y)
         else
-            z = _info_or_set(t, b, x) - _info_or_set(t, b, y)
+            z = info_or_set(t, b, x) - info_or_set(t, b, y)
         end
     else
-        z = -_info_or_set(t, b, x)
+        z = -info_or_set(t, b, x)
     end
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{DIV}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    if !_is_num(b, x) && _is_num(b, y)
-        z = _info_or_set(t, b, x)/_num(b, y)
-    elseif _is_num(b, x) && !_is_num(b, y)
-        z = _num(b, x)/_info_or_set(t, b, y)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    if !is_num(b, x) && is_num(b, y)
+        z = info_or_set(t, b, x)/num(b, y)
+    elseif is_num(b, x) && !is_num(b, y)
+        z = num(b, x)/info_or_set(t, b, y)
     else
-        z = _info_or_set(t, b, x)/_info_or_set(t, b, y)
+        z = info_or_set(t, b, x)/info_or_set(t, b, y)
     end
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_2!(t::RelaxAAInfo, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    x_is_num = _is_num(b, x)
-    y_is_num = _is_num(b, y)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    x_is_num = is_num(b, x)
+    y_is_num = is_num(b, y)
     if !x_is_num && y_is_num
-        z = _info(b, x) + _num(b, y)
+        z = info(b, x) + num(b, y)
     elseif x_is_num && !y_is_num
-        z = _num(b, x) + _info(b, y)
+        z = num(b, x) + info(b, y)
     else
-        z = _info(b, x) + _info(b, y)
+        z = info(b, x) + info(b, y)
     end
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_2!(t::RelaxAA, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    x_is_num = _is_num(b, x)
-    y_is_num = _is_num(b, y)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    x_is_num = is_num(b, x)
+    y_is_num = is_num(b, y)
     if !x_is_num && y_is_num
-        z = _set(b, x) + _num(b, y)
+        z = set(b, x) + num(b, y)
     elseif x_is_num && !y_is_num
-        z = _num(b, x) + _set(b, y)
+        z = num(b, x) + set(b, y)
     else
-        z = _set(b, x) + _set(b, y)
+        z = set(b, x) + set(b, y)
     end
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_n!(t::RelaxAAInfo, ::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = one(V)
     znum = one(Float64)
     count = 0
-    for i in _children(g, k)
-        if _is_num(b, i)
-            znum = znum*_num(b, i)
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = znum*num(b, i)
         else
-            z = z*_info(b, i)
+            z = z*info(b, i)
         end
         count += 1
     end
     z = z*znum
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_n!(t::RelaxAA, ::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = one(MC{N,T})
     znum = one(Float64)
     count = 0
-    for i in _children(g, k)
-        if _is_num(b, i)
-            znum = znum*_num(b, i)
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = znum*num(b, i)
         else
-            z = z*_set(t, b, i)
+            z = z*set(t, b, i)
         end
         count += 1
     end
     z = z*znum
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    x_is_num = _is_num(b, x)
-    y_is_num = _is_num(b, y)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    x_is_num = is_num(b, x)
+    y_is_num = is_num(b, y)
     if !x_is_num && y_is_num
-        zaff = *(_info(b, x), _num(b, y))
+        zaff = *(info(b, x), num(b, y))
     elseif x_is_num && !y_is_num
-        zaff = *(_num(b, x), _info(b, y))
+        zaff = *(num(b, x), info(b, y))
     else
-        xv = _info(b, x)
-        yv = _info(b, y)
+        xv = info(b, x)
+        yv = info(b, y)
         xv_box = xv.box
         yv_box = yv.box
         z_box = xv_box*yv_box
@@ -492,23 +497,23 @@ function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k:
         z = xv.v*yv.v 
         zaff = MCAffPnt{N,T}(z, z_box)                                        
     end
-    _cut(t, b, k, zaff, _info(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, zaff, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    x_is_num = _is_num(b, x)
-    y_is_num = _is_num(b, y)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    x_is_num = is_num(b, x)
+    y_is_num = is_num(b, y)
     if !x_is_num && y_is_num
-        z = *(_set(b, x), _num(b, y))
+        z = *(set(b, x), num(b, y))
     elseif x_is_num && !y_is_num
-        z = *(_num(b, x), _set(b, y))
+        z = *(num(b, x), set(b, y))
     else
         xs = _set(b, x)
         ys = _set(b, y)
-        xinfo = _info(b, x)
-        yinfo = _info(b, y)
+        xinfo = info(b, x)
+        yinfo = info(b, y)
         xv = xinfo
         yv = yinfo
         xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), b.v, xv.box)
@@ -518,7 +523,7 @@ function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int
         za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
         z = (xs*ys) ∩ za_l ∩ za_u                                        
     end
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 #TODO:
@@ -526,16 +531,16 @@ function fprop_n!(t::RelaxAAInfo, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::
     z = one(V)
     znum = one(Float64)
     count = 0
-    for i in _children(g, k)
-        if _is_num(b, i)
-            znum = znum*_num(b, i)
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = znum*num(b, i)
         else
-            z = z*_info(b, i)
+            z = z*info(b, i)
         end
         count += 1
     end
     z = z*znum
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
@@ -544,12 +549,12 @@ function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int)
     b._mult_temp = one(MCAffPnt{N,T})
     count = 0
     first_set = true
-    for i in _children(g, k)
-        if _is_num(b, i)
-            znum = znum*_num(b, i)
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = znum*num(b, i)
         else
             xs = _set(b, i)
-            xinfo = _info(b, i)
+            xinfo = info(b, i)
             xi = xinfo.v
             if !first_set
                 ys = b._mult_temp.v
@@ -573,12 +578,12 @@ function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int)
         count += 1
     end
     z = ys*znum
-    _cut(t, b, k, z, _info(b,k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
+    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
 end
 
 function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    (_arity(g, k) == 2) ? fprop_2!(t, Val(PLUS), g, b, k) : fprop_n!(t, Val(PLUS), g, b, k)
+    (arity(g, k) == 2) ? fprop_2!(t, Val(PLUS), g, b, k) : fprop_n!(t, Val(PLUS), g, b, k)
 end
 function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    (_arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
+    (arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
 end

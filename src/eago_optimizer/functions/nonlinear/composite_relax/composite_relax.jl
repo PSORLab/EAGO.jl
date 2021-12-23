@@ -81,7 +81,7 @@ Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
     _num_mv_buffer::Vector{Float64}        = Float64[]
     _info_mv_buffer::Vector{V}             = V[]
     _mult_temp::V                          = zero(V)
-    ϵ_sg::Float64                          = 1E-11
+    ϵ_sg::Float64                          = 1E-6
     post::Bool                             = false
     cut::Bool                              = false
     cut_interval::Bool                     = false
@@ -197,11 +197,11 @@ function rprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:
     flag = r_init!(t, g, b)
     for k = 1:node_count(g)
         nt = node_class(g, k)
-        if nt === EXPRESSION
+        if nt == EXPRESSION
             flag = rprop!(t, Expression(), g, b, k)
-        elseif nt === VARIABLE
+        elseif nt == VARIABLE
             flag = rprop!(t, Variable(), g, b, k)
-        elseif nt === SUBEXPRESSION
+        elseif nt == SUBEXPRESSION
             flag = rprop!(t, Subexpression(), g, b, k)
         end
     end

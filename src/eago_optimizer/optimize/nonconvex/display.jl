@@ -111,8 +111,8 @@ function print_iteration!(m::GlobalOptimizer)
                 lower = m._global_lower_bound
                 upper = m._global_upper_bound
             else
-                lower = -m._global_upper_bound
-                upper = -m._global_lower_bound
+                lower = m._global_lower_bound
+                upper = m._global_upper_bound
             end
             #temp_str = string(round(lower, sigdigits = 5))
             #temp_str = string(lower, sigdigits = 3))
@@ -197,7 +197,7 @@ every `header_interval`, the iteration info is displayed every `iteration_interv
 """
 function print_preamble!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
-        if !_is_input_min(m) && m._iteration_count === 1
+        if !_is_input_min(m) && isone(m._iteration_count)
             println(" ")
             println("For maximization problems a max(f) = -min(-f) transformation is applied.")
             println("Objectives values for each subproblem are the negative value of the objective")

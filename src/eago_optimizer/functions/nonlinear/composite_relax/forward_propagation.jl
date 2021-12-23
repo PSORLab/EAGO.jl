@@ -398,10 +398,23 @@ end
 function f_init!(t::Relax, g::DAT, b::RelaxCache)
     for k = node_count(g):-1:1
         c = node_class(g, k)
-        (c == EXPRESSION)    && (fprop!(t, Expression(), g, b, k);    continue)
-        (c == VARIABLE)      && (fprop!(t, Variable(), g, b, k);      continue)
-        (c == SUBEXPRESSION) && (fprop!(t, Subexpression(), g, b, k); continue)
+        (c == EXPRESSION)    && fprop!(t, Expression(), g, b, k)
+        (c == VARIABLE)      && fprop!(t, Variable(), g, b, k)
+        (c == SUBEXPRESSION) && fprop!(t, Subexpression(), g, b, k)
         b._info[k] = set(b, k)
     end
+    println(" ")
+    println(" INITIALIZE ")
+    for k = node_count(g):-1:1
+        if is_binary(g, k)
+            println("binary minus")
+            x = child(g, k, 1)
+            y = child(g, k, 2)
+            @show set(b,x)
+            @show set(b,y)
+        end
+        @show k, ex_type(g, k), b._info[k]
+    end
+    println(" ")
     nothing
 end

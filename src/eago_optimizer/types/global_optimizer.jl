@@ -115,9 +115,9 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum number of iterations (default 3E6)"
     iteration_limit::Int = 1E9 #2*10^5
     "Absolute tolerance for termination (default = 1E-3)"
-    absolute_tolerance::Float64 = 1E-4
+    absolute_tolerance::Float64 = 1E-3
     "Relative tolerance for termination (default = 1E-3)"
-    relative_tolerance::Float64 = 1E-4
+    relative_tolerance::Float64 = 1E-3
     "Absolute constraint feasibility tolerance"
     absolute_constraint_feas_tolerance::Float64 = 1E-8
 
@@ -134,9 +134,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # obbt options
     "Depth in B&B tree above which OBBT should be disabled (default = 6)"
-    obbt_depth::Int = 4
+    obbt_depth::Int = 0
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
-    obbt_repetitions::Int = 10
+    obbt_repetitions::Int = 1
     "Turn aggresive OBBT on (default = false)"
     obbt_aggressive_on::Bool = true
     "Maximum iteration to perform aggresive OBBT (default = 2)"
@@ -468,7 +468,7 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
 
     _relaxed_variable_number::Int = 0
     _relaxed_variable_index::Vector{VI} = VI[]
-    _relaxed_variable_et::Vector{CI{VI, ET}} = CI{VI, ET}[]
+    _relaxed_variable_et::Vector{Tuple{CI{VI, ET}, Int}} = Tuple{CI{VI, ET}, Int}[]
     _relaxed_variable_lt::Vector{Tuple{CI{VI, LT}, Int}} = Tuple{CI{VI, LT}, Int}[]
     _relaxed_variable_gt::Vector{Tuple{CI{VI, GT}, Int}} = Tuple{CI{VI, GT}, Int}[]
     _relaxed_variable_integer::Vector{CI{VI, MOI.Integer}} = CI{VI, MOI.Integer}[]

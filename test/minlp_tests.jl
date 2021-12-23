@@ -2,7 +2,7 @@ using MINLPTests
 
 solver = JuMP.optimizer_with_attributes(EAGO.Optimizer, "relative_tolerance" => 1E-9)
  
-const minlp_nlp_exclude = String[
+minlp_nlp_exclude = String[
     "001_010", # Unbounded box, check solution bad if not gradient-based....
     "002_010", # Unbounded box   
     "004_010", # Unbounded box
@@ -21,7 +21,7 @@ MINLPTests.test_nlp(solver, exclude = minlp_nlp_exclude,
                             termination_target = MINLPTests.TERMINATION_TARGET_GLOBAL,
                             primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
 
-const minlp_nlp_cvx_exclude = String[
+minlp_nlp_cvx_exclude = String[
 
     "001_011", # convex quadratic objective... (linear unbounded...)
     "002_011", # unbounded linear problem & convex quadratic objective
@@ -82,17 +82,17 @@ MINLPTests.test_nlp_cvx(solver, exclude = minlp_nlp_cvx_exclude,
                                 termination_target = MINLPTests.TERMINATION_TARGET_GLOBAL,
                                 primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
 
-const minlp_nlp_mi_exclude = String[
+minlp_nlp_mi_exclude = String[
     "001_010",  # no box constraints
     "002_010",
 
     #"003_010",   # TODO: Fix 003_010 - 003_016
-    #"003_011",
-    #"003_012",
-    #"003_013",
-    #"003_014",    # TODO: Fix 003_010 - 003_016
-    #"003_015",
-    #"003_016",
+    "003_011",  # FAIL
+    "003_012",  # FAIL
+    "003_013",  # FAIL
+    "003_014",  # FAIL Never converges...
+    "003_015",  #FAIL
+    "003_016",
 
     "004_010",
     "004_011",

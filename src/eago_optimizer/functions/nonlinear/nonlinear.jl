@@ -74,6 +74,7 @@ function set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) whe
 end
 @inbounds sparsity(d::NonlinearExpression) = sparsity(d.g, 1)
 @inbounds set(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = set(d.relax_cache, 1)
+@inbounds info(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = info(d.relax_cache, 1)
 @inbounds num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = num(d.relax_cache, 1)
 @inbounds is_num(d::NonlinearExpression) = is_num(d.relax_cache, 1)
 var_num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = N
@@ -283,15 +284,15 @@ function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T
     b = d.relax_cache
     update_box_and_pnt!(b.ic.v, z.variable_values, z.is_first_eval)
     if b.use_apriori_mul
-        s = _sparsity(d)
-        v = b.v
+        s = sparsity(d)
+        v = b.ic.v
         x = v.x
         x0 = v.x0
         isempty(b.dp) && (b.dp = zeros(length(x));)
         isempty(b.dP) && (b.dP = zeros(Interval{Float64}, length(x));)
         for j in s
             b.dp[j] = x[j] - x0[j]
-            b.dP[j] = Interval(_lbd(b, j), _ubd(b, j)) - x0[j]
+            b.dP[j] = Interval(lbd(b, j), ubd(b, j)) - x0[j]
         end
     end
     for i = 1:dep_subexpr_count(d)
@@ -306,6 +307,8 @@ end
 
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
     forward_pass!(x, d.ex)
+    @show info(d.ex)
+    @show set(d.ex)
     _set_has_value!(d, true)
     _set_last_reverse!(d, false)
     #@show set(d)

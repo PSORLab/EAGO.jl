@@ -80,11 +80,14 @@ function fprop!(t::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:Rel
     return
 end
 
-for F in (EXP, EXP10, LOG, LOG10, POW, MINUS, DIV, PLUS)
-    @eval function fprop!(t::RelaxMulEnumInner, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-        fprop!(Relax(), v, g, b, k)
-    end
-end
+fprop!(t::RelaxMulEnumInner, v::Val{EXP}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{EXP10}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{LOG}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{LOG10}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{DIV}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
+fprop!(t::RelaxMulEnumInner, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
 
 function fprop!(t::RelaxMulEnumInner, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     i = _first_index(g, k)
