@@ -98,7 +98,6 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
 
     if !xy_num(b, x, y)
         if xyset(b, x, y)
-            #println("BINARY MULTIPLICATION")
             xv = set(b, x)
             yv = set(b, y)
             if b.use_apriori_mul
@@ -129,7 +128,6 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                 s4 = affine_expand_del(dP, yrn_cc, yrn_cc_grad, s)
 
                 z = xv*yv
-                #println("start z = $(z)")
                 wIntv = z.Intv
                 if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
                     t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
@@ -143,7 +141,6 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, xrn_cc_grad, yrn_cc_grad)
                     z = z ∩ za_u
                 end
-                #println("finish z = $(z)")
             else
                 z = xv*yv
             end
@@ -219,8 +216,6 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
 end
 
 function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    #println(" ")
-    #println("MUL NARY")
     dp = b.dp
     dP = b.dP
     s = sparsity(g, 1)
@@ -292,6 +287,9 @@ for F in (PLUS, MULT, MIN, MAX)
     @eval function fprop!(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
         is_binary(g, k) ? fprop_2!(Relax(), Val($F), g, b, k) : fprop_n!(Relax(), Val($F), g, b, k)
     end
+end
+function fprop!(t::Relax, v::Val{DIV}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
+    fprop_2!(Relax(), v, g, b, k)
 end
 
 function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
