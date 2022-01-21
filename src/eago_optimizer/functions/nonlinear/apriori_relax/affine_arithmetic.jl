@@ -77,8 +77,6 @@ function log(x::AffineEAGO{N}) where N
         p = 1/b
         q = 0.5*(fa + fb - p*(a + b))
         Δ = abs(0.5*(fb - fa - p*(b - a)))
-        #@show a, b, fa, fb
-        #@show x, p, q, Δ
         return AffineEAGO(x, p, q, Δ)
     end
     p = (fb - fa)/(b - a)
@@ -289,17 +287,9 @@ function _cut(t::RelaxAAInfo, b, k, x::MCAffPnt{N,T}, z::MCAffPnt{N,T}, v::Varia
 end
 
 function _cut(t::RelaxAA, b, k, x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, c::Bool, p::Bool) where {N,T<:RelaxTag}
-   #@show c
-   #@show x.Intv
-    #@show Interval(z.box)
     xMC = set_value_post(c ? x ∩ x.Intv ∩ Interval(z.box) : x, v, s, ϵ)
-    #@show p
-    #@show xMC
     xt = p ? xMC : x
-    #@show xt
-    #@show _info(b, k)
     zt = _cut_info(v, xt, info(b, k))
-    #@show zt
     _store_set!(b, zt, k)
     return
 end

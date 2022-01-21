@@ -98,7 +98,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
 
     if !xy_num(b, x, y)
         if xyset(b, x, y)
-            println("BINARY MULTIPLICATION")
+            #println("BINARY MULTIPLICATION")
             xv = set(b, x)
             yv = set(b, y)
             if b.use_apriori_mul
@@ -129,7 +129,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                 s4 = affine_expand_del(dP, yrn_cc, yrn_cc_grad, s)
 
                 z = xv*yv
-                println("start z = $(z)")
+                #println("start z = $(z)")
                 wIntv = z.Intv
                 if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
                     t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
@@ -143,7 +143,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, xrn_cc_grad, yrn_cc_grad)
                     z = z ∩ za_u
                 end
-                println("finish z = $(z)")
+                #println("finish z = $(z)")
             else
                 z = xv*yv
             end
@@ -219,8 +219,8 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
 end
 
 function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    println(" ")
-    println("MUL NARY")
+    #println(" ")
+    #println("MUL NARY")
     dp = b.dp
     dP = b.dP
     s = sparsity(g, 1)
@@ -231,7 +231,6 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
     firstset = true
     numval = true
     for i in children(g, k)
-        @show i
         if is_num(b, i)
             znum = znum*num(b, i)
         else
@@ -276,11 +275,6 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                     z = x
                     zok = x
                 end
-                @show numval
-                @show z
-                @show zok
-                @show znum
-                println(" ")
             else
                 z = z*x
             end
@@ -403,18 +397,11 @@ function f_init!(t::Relax, g::DAT, b::RelaxCache)
         (c == SUBEXPRESSION) && fprop!(t, Subexpression(), g, b, k)
         b._info[k] = set(b, k)
     end
-    println(" ")
-    println(" INITIALIZE ")
     for k = node_count(g):-1:1
         if is_binary(g, k)
-            println("binary minus")
-            x = child(g, k, 1)
-            y = child(g, k, 2)
-            @show set(b,x)
-            @show set(b,y)
+            x = child(g, 1, k)
+            y = child(g, 2, k)
         end
-        @show k, ex_type(g, k), b._info[k]
     end
-    println(" ")
     nothing
 end

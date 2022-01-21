@@ -307,11 +307,8 @@ end
 
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
     forward_pass!(x, d.ex)
-    @show info(d.ex)
-    @show set(d.ex)
     _set_has_value!(d, true)
     _set_last_reverse!(d, false)
-    #@show set(d)
     return
 end
 

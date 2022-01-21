@@ -89,7 +89,7 @@ for i in (abs, sin, cos, tan, sec, csc, cot, asin, acos, atan, asec, acsc,
 end
 
 # defines primitives for bivariate CALL operators (NEED TO ADD ^)
-for i in (+, -, *, ^, /, max, min)
+for i in (+, -, *, ^, /) # TODO ADD :max, :min
     id = operator_to_id[Symbol(i)]
     @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
                add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [val(x), val(y)]))

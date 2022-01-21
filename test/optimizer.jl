@@ -75,16 +75,16 @@ end
 @testset "Variable Bounds" begin
     model = EAGO.Optimizer()
 
-    @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.LessThan{Float64})
-    @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.GreaterThan{Float64})
-    @test MOI.supports_constraint(model, MOI.SingleVariable, MOI.EqualTo{Float64})
+    @test MOI.supports_constraint(model, MOI.VariableIndex, MOI.LessThan{Float64})
+    @test MOI.supports_constraint(model, MOI.VariableIndex, MOI.GreaterThan{Float64})
+    @test MOI.supports_constraint(model, MOI.VariableIndex, MOI.EqualTo{Float64})
 
     x = MOI.add_variables(model,3)
     z = MOI.add_variable(model)
 
-    @inferred MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-1.0))
-    @inferred MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-1.0))
-    @inferred MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(2.0))
+    @inferred MOI.add_constraint(model, x[1], MOI.GreaterThan(-1.0))
+    @inferred MOI.add_constraint(model, x[2], MOI.LessThan(-1.0))
+    @inferred MOI.add_constraint(model, x[3], MOI.EqualTo(2.0))
 
     @test model._input_problem._variable_info[1].is_integer == false
     @test model._input_problem._variable_info[1].lower_bound == -1.0
@@ -107,21 +107,21 @@ end
     @test model._input_problem._variable_info[3].has_upper_bound == true
     @test model._input_problem._variable_info[3].is_fixed == true
 
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(NaN))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.LessThan(NaN))
+    @test_nowarn MOI.add_constraint(model, x[1], MOI.GreaterThan(NaN))
+    @test_nowarn MOI.add_constraint(model, x[1], MOI.LessThan(NaN))
 
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.GreaterThan(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.EqualTo(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[1]), MOI.ZeroOne())
+    @test_nowarn MOI.add_constraint(model, x[1], MOI.GreaterThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[1], MOI.EqualTo(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[1], MOI.ZeroOne())
 
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.LessThan(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.EqualTo(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[2]), MOI.ZeroOne())
+    @test_nowarn MOI.add_constraint(model, x[2], MOI.LessThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[2], MOI.EqualTo(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[2], MOI.ZeroOne())
 
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.GreaterThan(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.LessThan(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.EqualTo(-3.5))
-    @test_nowarn MOI.add_constraint(model, MOI.SingleVariable(x[3]), MOI.ZeroOne())
+    @test_nowarn MOI.add_constraint(model, x[3], MOI.GreaterThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[3], MOI.LessThan(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[3], MOI.EqualTo(-3.5))
+    @test_nowarn MOI.add_constraint(model, x[3], MOI.ZeroOne())
 end
 
 @testset "Add Linear Constraint " begin
@@ -176,12 +176,12 @@ end
 
     x = MOI.add_variables(model,3)
 
-    func1 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(5.0,x[1])],
-                                                 [MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],2.0)
-    func2 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(4.0,x[2])],
-                                                 [MOI.ScalarQuadraticTerm{Float64}(2.2,x[1],x[2])],2.1)
-    func3 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(3.0,x[3])],
-                                                 [MOI.ScalarQuadraticTerm{Float64}(2.1,x[1],x[1])],2.2)
+    func1 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],
+                                                 [MOI.ScalarAffineTerm{Float64}(5.0,x[1])], 2.0)
+    func2 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarQuadraticTerm{Float64}(2.2,x[1],x[2])],
+                                                 [MOI.ScalarAffineTerm{Float64}(4.0,x[2])], 2.1)
+    func3 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarQuadraticTerm{Float64}(2.1,x[1],x[1])], 
+                                                 [MOI.ScalarAffineTerm{Float64}(3.0,x[3])], 2.2)
 
     set1 = MOI.LessThan{Float64}(1.0)
     set2 = MOI.GreaterThan{Float64}(2.0)
@@ -228,21 +228,21 @@ end
     MOI.set(model, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
     @test model._input_problem._optimization_sense == MOI.FEASIBILITY_SENSE
 
-    @test MOI.supports(model, MOI.ObjectiveFunction{MOI.SingleVariable}())
+    @test MOI.supports(model, MOI.ObjectiveFunction{MOI.VariableIndex}())
     @test MOI.supports(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}())
     @test MOI.supports(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}())
 
     x = MOI.add_variables(model,3)
 
-    MOI.set(model, MOI.ObjectiveFunction{MOI.SingleVariable}(), MOI.SingleVariable(MOI.VariableIndex(2)))
+    MOI.set(model, MOI.ObjectiveFunction{MOI.VariableIndex}(), MOI.VariableIndex(2))
     @test model._input_problem._objective == MOI.SingleVariable(MOI.VariableIndex(2))
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[5.0,-2.3],[x[1],x[2]]),2.0))
     @test model._input_problem._objective.constant == 2.0
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
-                                         MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarAffineTerm{Float64}(5.0,x[1])],
-                                        [MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],3.0))
+                                         MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])], [MOI.ScalarAffineTerm{Float64}(5.0,x[1])], 
+                                         3.0))
     @test model._input_problem._objective.constant == 3.0
 end
 

@@ -129,17 +129,17 @@ const contquadratic_excludes = String[
 function test_moi(T::Type{<:Real}; solver_options...)
 
     optimizer = MOIU.CachingOptimizer(MOIU.UniversalFallback(MOIU.Model{T}()), EAGO.Optimizer())
-    MOI.set(optimizer, MOI.RawParameter(:verbosity), 0)
+    MOI.set(optimizer, MOI.RawParameter("verbosity"), 0)
 
     tol = 2sqrt(sqrt(eps(T)))
-    config = MOIT.TestConfig{T}(
+    config = MOIT.Config(T;
     atol = tol,
     rtol = tol,
-    solve = true,
-    query = true,
-    modify_lhs = false,
-    duals = false,
-    infeas_certificates = false,
+    #solve = true,
+    #query = true,
+    #modify_lhs = false,
+    #duals = false,
+    #infeas_certificates = false,
     )
 
     @testset "unit tests" begin
