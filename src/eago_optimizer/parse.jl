@@ -284,20 +284,20 @@ function label_branch_variables!(m::GlobalOptimizer)
     else
         m._branch_variables = fill(false, m._working_problem._variable_count)
         for f in wp._sqf_leq, t in f.func.quadratic_terms
-            m._branch_variables[t.variable_index_1.value] = true
-            m._branch_variables[t.variable_index_2.value] = true
+            m._branch_variables[t.variable_1.value] = true
+            m._branch_variables[t.variable_2.value] = true
         end
         for f in wp._sqf_eq, t in f.func.quadratic_terms
-            m._branch_variables[t.variable_index_1.value] = true
-            m._branch_variables[t.variable_index_2.value] = true
+            m._branch_variables[t.variable_1.value] = true
+            m._branch_variables[t.variable_2.value] = true
         end
         for f in wp._nonlinear_constr, i in sparsity(f)
              m._branch_variables[i] = true
         end
         if wp._objective isa BufferedQuadraticIneq
             for t in wp._objective.func.quadratic_terms
-                m._branch_variables[t.variable_index_1.value] = true
-                m._branch_variables[t.variable_index_2.value] = true
+                m._branch_variables[t.variable_1.value] = true
+                m._branch_variables[t.variable_2.value] = true
             end
         elseif wp._objective isa BufferedNonlinearFunction
             for i in sparsity(wp._objective)
