@@ -9,6 +9,8 @@
 # Defines constraints supported by optimizer and how to store them.
 #############################################################################
 
+result_index_1_error(v::T) where T = throw(MOI.ResultIndexBoundsError{T}(v, 1))
+
 ##### Utilities for checking that JuMP model contains variables used in expression
 function check_inbounds!(m::Optimizer, vi::VI)
     if !(1 <= vi.value <= m._input_problem._variable_count)
@@ -126,10 +128,16 @@ end
 =#
 
 function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{VI,<:Any}) where {R,S,T}
+    if v.result_index != 1
+        return result_index_1_error(v)
+    end
     return MOI.get(m, MOI.VariablePrimal(), MOI.VariableIndex(c.value))
 end
 
 function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::Union{CI{SAF,Q},CI{SQF,Q}}) where {R,S,T,Q}
+    if v.result_index != 1
+        return result_index_1_error(v)
+    end   
     return m._global_optimizer._constraint_primal[c.value]
 end
 
@@ -214,10 +222,25 @@ function MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices)
     return [MOI.VariableIndex(i) for i = 1:length(m._input_problem._variable_info)]
 end
 
-MOI.get(m::Optimizer, ::MOI.ObjectiveValue) = m._objective_value
+function MOI.get(m::Optimizer, v::MOI.ObjectiveValue)
+    if v.result_index != 1
+        return result_index_1_error(v)
+    end
+    return m._objective_value
+end
+
+function MOI.get(m::Optimizer, v::MOI.PrimalStatus)
+    if v.result_index != 1
+        return MOI.NO_SOLUTION
+    end
+    return m._result_status_code
+end
+
+function MOI.get(m::Optimizer, v::MOI.ObjectiveBound)
+    return m._objective_bound
+end
 
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
-MOI.get(m::Optimizer, ::MOI.ObjectiveBound) = m._objective_bound
 function MOI.get(m::Optimizer, ::MOI.RelativeGap)
     b = MOI.get(m, MOI.ObjectiveBound())
     v = MOI.get(m, MOI.ObjectiveValue())
@@ -225,15 +248,18 @@ function MOI.get(m::Optimizer, ::MOI.RelativeGap)
 end
 
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
+MOI.get(m::Optimizer, ::MOI.SolverVersion) = "0.7.0"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
-MOI.get(m::Optimizer, ::MOI.PrimalStatus) = m._result_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTimeSec) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._node_count
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
 MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m._parameters.time_limit
 
-function MOI.get(model::Optimizer, ::MOI.VariablePrimal, vi::MOI.VariableIndex)
+function MOI.get(model::Optimizer, v::MOI.VariablePrimal, vi::MOI.VariableIndex)
     check_inbounds!(model, vi)
+    if v.result_index != 1
+        return result_index_1_error(v)
+    end
     return model._global_optimizer._continuous_solution[vi.value]
 end
 
@@ -243,7 +269,7 @@ _to_sym(d) = error("EAGO only supports raw parameters with Symbol or String name
 _to_sym(d::String) = Symbol(d)
 _to_sym(d::Symbol) = d
 
-function MOI.get(m::Optimizer, p::MOI.RawOptimizerAttribute )
+function MOI.get(m::Optimizer, p::MOI.RawOptimizerAttribute)
     s = _to_sym(p.name)
     s in EAGO_PARAMETERS ? getfield(m._parameters, s) : getfield(m, s)
 end
@@ -256,7 +282,7 @@ function MOI.set(m::Optimizer, p::MOI.RawOptimizerAttribute , x)
     end
     return
 end
-
+MOI.get(m::Optimizer, p::MOI.RawStatusString) = m.global_optimizer._end_state
 
 #####
 #####
@@ -280,8 +306,13 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Unio
     m._input_problem._objective = f
     return
 end
+function MOI.get(m::Optimizer, ::MOI.ObjectiveFunction{T}) where T <: Union{VI,SAF,SQF}
+    return m._input_problem._objective
+end
+MOI.get(m::Optimizer, ::MOI.ObjectiveFunctionType) = typeof(m._input_problem._objective)
 
 function MOI.set(m::Optimizer, ::MOI.ObjectiveSense, s::MOI.OptimizationSense)
     m._input_problem._optimization_sense = s
     return
 end
+MOI.get(m::Optimizer, ::MOI.ObjectiveSense) = m._input_problem._optimization_sense

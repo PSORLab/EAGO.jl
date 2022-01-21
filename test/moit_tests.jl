@@ -1,64 +1,13 @@
-
+#=
 const unit_excludes = String[
     "number_threads",                 # EAGO won't support number of threads in near future
     "raw_status_string",              # TODO: ADD internal status states to EAGO
     "solve_unbounded_model",          # CBC returns infeasible or unbounded for linear...
-
     "solve_zero_one_with_bounds_3",   # GLPK has a non-standard return code
     "solve_result_index",             # TODO: Should throw error when querying for multiple results... (expected behavior?)
-
     "solve_qcp_edge_cases",           # Not box constrained NLP type problems...
     "solve_qp_zero_offdiag",
     "solve_qp_edge_cases",
-
-    # Passing
-    #=
-    "solve_objbound_edge_cases",
-    "solve_integer_edge_cases",
-    "solve_zero_one_with_bounds_1",
-    "solve_zero_one_with_bounds_2",
-    "solve_duplicate_terms_vector_affine",
-    "solve_with_upperbound",
-    "solve_single_variable_dual_max",
-    "solve_single_variable_dual_min",
-    "solve_farkas_lessthan",
-    "solve_farkas_interval_upper",
-    "solve_farkas_greaterthan",
-    "solve_with_lowerbound",
-    "solve_twice",
-    "solve_farkas_variable_lessthan_max",
-    "solve_farkas_variable_lessthan",
-    "delete_soc_variables",
-    "solve_farkas_equalto_lower",
-    "solve_farkas_equalto_upper",
-    "delete_nonnegative_variables",
-    "solve_affine_greaterthan",
-    "solve_farkas_interval_lower",
-    "add_variable",
-    "solve_singlevariable_obj",
-    "solve_constant_obj",
-    "solver_name",
-    "delete_variable",
-    "solve_time",
-    "solve_duplicate_terms_obj",
-    "delete_variables",
-    "add_variables",
-    "feasibility_sense",
-    "solve_affine_equalto",
-    "max_sense",
-    "variablenames",
-    "silent",
-    "update_dimension_nonnegative_variables",
-    "solve_blank_obj",
-    "min_sense",
-    "solve_affine_interval",
-    "solve_duplicate_terms_scalar_affine",
-    "time_limit_sec",
-    "getvariable",
-    "getconstraint",
-    "get_objective_function",
-    "solve_affine_lessthan",
-    =#
     "solve_affine_deletion_edge_cases"   # TODO: Fix this
 ]
 
@@ -168,3 +117,74 @@ end
 # Need to test with GLPK as well to ensure subsolver supports constraint
 # coefficient modification.
 test_moi(Float64)
+=#
+
+module TestEAGO
+
+import EAGO
+using MathOptInterface
+using Test
+
+const MOI = MathOptInterface
+const OPTIMIZER = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true))
+const BRIDGED = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true), with_bridge_type = Float64)
+const CONFIG = MOI.Test.Config(atol = 1e-3, rtol = 1e-3, optimal_status = MOI.OPTIMAL, 
+                               exclude = Any[MOI.DualObjectiveValue, MOI.VariableName, MOI.DualStatus, MOI.DualObjectiveValue, MOI.delete,
+                                             MOI.ConstraintFunction, MathOptInterface.ConstraintDual, MathOptInterface.ConstraintFunction, 
+                                             MOI.ListOfModelAttributesSet])
+
+"""
+    runtests()
+
+This function runs all functions in the this Module starting with `test_`.
+"""
+function runtests()
+    for name in names(@__MODULE__; all = true)
+        if startswith("$(name)", "test_")
+            @testset "$(name)" begin
+                getfield(@__MODULE__, name)()
+            end
+        end
+    end
+end
+
+"""
+    test_runtests()
+
+This function runs all the tests in MathOptInterface.Test.
+
+Pass arguments to `exclude` to skip tests for functionality that is not
+implemented or that your solver doesn't support.
+"""
+function test_runtests()
+    MOI.Test.runtests(BRIDGED, CONFIG, 
+                      exclude = ["test_attribute_NumberOfThreads",
+                                 #  - Excluded because this test is optional
+                                "test_model_ScalarFunctionConstantNotZero",
+                                #  - Excluded because Ipopt returns NORM_LIMIT instead of
+                                #    DUAL_INFEASIBLE
+                                "test_solve_TerminationStatus_DUAL_INFEASIBLE",
+                                #  - Excluded because Ipopt returns INVALID_MODEL instead of
+                                #    LOCALLY_SOLVED
+                                "test_linear_VectorAffineFunction_empty_row",
+                                #  - Excluded because Ipopt returns LOCALLY_INFEASIBLE instead of
+                                #    INFEASIBLE
+                                "INFEASIBLE",
+                                "test_conic_linear_INFEASIBLE",
+                                "test_conic_linear_INFEASIBLE_2",
+                                "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_",
+                                #  - Excluded due to upstream issue
+                                "test_model_LowerBoundAlreadySet",
+                                "test_model_UpperBoundAlreadySet",
+                                #  - CachingOptimizer does not throw if optimizer not attached
+                                "test_model_copy_to_UnsupportedAttribute",
+                                "test_model_copy_to_UnsupportedConstraint",
+                                "test_quadratic_"],
+                      exclude_tests_after = v"0.10.5")
+end
+
+end
+
+@testset "MOI" begin
+    TestEAGO.runtests()
+end            
