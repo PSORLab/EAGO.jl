@@ -1,7 +1,6 @@
 _is_incremental(::Type{Ipopt.Optimizer}) = true 
 
 function set_default_config!(ext::ExtensionType, d::GlobalOptimizer, m::Incremental{Ipopt.Optimizer}, local_solver::Bool)
-    @show "used this config"
     #=
     c_tol = _constraint_tol(d)*1E-3
     MOI.set(m, MOI.RawOptimizerAttribute("tol"), _absolute_tol(d)*1E-3)

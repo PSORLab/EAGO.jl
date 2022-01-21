@@ -60,11 +60,11 @@ const AFI = AffineFunctionIneq
 
 AffineFunctionIneq() = AffineFunctionIneq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionIneq(f::SAF, s::LT)
-    terms = map(x -> (x.coefficient, x.variable_index.value), f.terms)
+    terms = map(x -> (x.coefficient, x.variable.value), f.terms)
     AffineFunctionIneq(terms, f.constant - s.upper, length(f.terms))
 end
 function AffineFunctionIneq(f::SAF, s::GT)
-    terms = map(x -> (-x.coefficient, x.variable_index.value), f.terms)
+    terms = map(x -> (-x.coefficient, x.variable.value), f.terms)
     AffineFunctionIneq(terms, s.lower - f.constant, length(f.terms))
 end
 function AffineFunctionIneq(f::VI; is_max = false)
@@ -165,12 +165,12 @@ function create_buffer_dict(func::SQF)
     buffer = Dict{Int, Float64}()
 
     for term in func.quadratic_terms
-        buffer[term.variable_index_1.value] = 0.0
-        buffer[term.variable_index_2.value] = 0.0
+        buffer[term.variable_1.value] = 0.0
+        buffer[term.variable_2.value] = 0.0
     end
 
     for term in func.affine_terms
-        buffer[term.variable_index.value] = 0.0
+        buffer[term.variable.value] = 0.0
     end
 
     return buffer
@@ -227,9 +227,9 @@ function eliminate_fixed_variables!(f::T, v::Vector{VariableInfo}) where T <: Un
     i = 1
     while i + deleted_count <= f.len
         term = f.sqf.terms[i]
-        variable_info_1 = v[term.variable_index_1.value]
-        variable_info_2 = v[term.variable_index_2.value]
-        if variable_info_1.is_fixed && variable_index_2.is_fixed
+        variable_info_1 = v[term.variable_1.value]
+        variable_info_2 = v[term.variable_2.value]
+        if variable_info_1.is_fixed && variable_info_2.is_fixed
             f.sqf.constant += coeff*variable_info_1.lower_bound*variable_info_2.lower_bound
             deleteat!(f.sqf.terms, i)
             deleted_count += 1
