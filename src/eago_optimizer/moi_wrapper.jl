@@ -68,6 +68,12 @@ function MOI.add_constraint(m::Optimizer, v::VI, s::T) where T <: VAR_SETS
     return CI{VI, T}(v.value)
 end
 
+MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{VI, LT}) = count(is_less_than, m._input_problem._variable_info)
+MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{VI, GT}) = count(is_greater_than, m._input_problem._variable_info)
+MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{VI, ET}) = count(is_fixed, m._input_problem._variable_info)
+MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{VI, ZO}) = count(is_zero_one, m._input_problem._variable_info)
+MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{VI, MOI.Integer}) = count(x -> (is_integer(x) && !is_zero_one(x)) , m._input_problem._variable_info)
+
 ##### Supports function and add_constraint for scalar affine functions
 const INEQ_SETS = Union{LT, GT, ET}
 MOI.supports_constraint(::Optimizer, ::Type{SAF}, ::Type{S}) where {S <: INEQ_SETS} = true
@@ -82,6 +88,7 @@ macro define_addconstraint_linear(function_type, set_type, array_name)
             indx = CI{$function_type, $set_type}(civ)
             return indx
         end
+        MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{$function_type, $set_type}) = length(m._input_problem.$(array_name))
     end
 end
 @define_addconstraint_linear SAF LT _linear_leq_constraints
@@ -101,6 +108,7 @@ macro define_addconstraint_quadratic(function_type, set_type, array_name)
             indx = CI{$function_type, $set_type}(civ)
             return indx
         end
+        MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{$function_type, $set_type}) = length(m._input_problem.$(array_name))
     end
 end
 @define_addconstraint_quadratic SQF LT _quadratic_leq_constraints
