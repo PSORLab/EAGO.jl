@@ -172,17 +172,18 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     set_node!(wp._relaxed_evaluator, n)
 
     ηi = add_η!(d)
-    @variable(ip._nlp_data.evaluator.model, η)
-    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
-
-    sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
-    if !_is_input_min(m)
-        MOIU.operate!(-, Float64, sqf_obj)
+    if !isnothing(ip._nlp_data) 
+        @variable(ip._nlp_data.evaluator.model, η)
+        sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
+        if !_is_input_min(m)
+            MOIU.operate!(-, Float64, sqf_obj)
+        end
+        d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)    
+        push!(sqf_obj.affine_terms, SAT(-1.0, η.index))
+        MOI.add_constraint(backend(ip._nlp_data.evaluator.model), sqf_obj, LT(0.0))
+        @objective(ip._nlp_data.evaluator.model, Min, η)
     end
-    push!(sqf_obj.affine_terms, SAT(-1.0, η.index))
-    @show sqf_obj
-    MOI.add_constraint(backend(ip._nlp_data.evaluator.model), sqf_obj, LT(0.0))
-    @objective(ip._nlp_data.evaluator.model, Min, η)
+
     f.buffer[ηi] = 0.0
     f.len += 1
     if !_is_input_min(m)
