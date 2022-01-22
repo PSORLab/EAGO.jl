@@ -129,7 +129,7 @@ const MOI = MathOptInterface
 const OPTIMIZER = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true))
 const BRIDGED = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true), with_bridge_type = Float64)
 const CONFIG = MOI.Test.Config(atol = 1e-3, rtol = 1e-3, optimal_status = MOI.OPTIMAL, 
-                               exclude = Any[MOI.DualObjectiveValue, MOI.VariableName, MOI.DualStatus, MOI.DualObjectiveValue, MOI.delete,
+                               exclude = Any[MOI.DualObjectiveValue, MOI.VariableName, MOI.DualObjectiveValue, MOI.delete,
                                              MOI.ConstraintFunction, MOI.ConstraintDual, MOI.ConstraintSet, 
                                              MOI.ListOfModelAttributesSet, MOI.ListOfConstraintIndices, MOI.ListOfConstraintTypesPresent,
                                              MOI.add_constrained_variables])
@@ -177,9 +177,7 @@ function test_runtests()
                                 "test_model_copy_to_UnsupportedConstraint",
                                 # EAGO test exclusions
                                 "test_attribute_NumberOfThreads",
-                                "test_attribute_RawStatusString",
                                 "test_modification_",
-                                "test_model_default_DualStatus",
                                 "test_quadratic_",
                                 "test_variable_delete_",
                                 "test_model_ModelFilter_ListOfConstraintIndices",

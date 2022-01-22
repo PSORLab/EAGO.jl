@@ -244,6 +244,8 @@ function MOI.get(m::Optimizer, v::MOI.PrimalStatus)
     return m._result_status_code
 end
 
+MOI.get(m::Optimizer, ::MOI.DualStatus) = MOI.NO_SOLUTION
+
 function MOI.get(m::Optimizer, v::MOI.ObjectiveBound)
     return m._objective_bound
 end
@@ -290,7 +292,7 @@ function MOI.set(m::Optimizer, p::MOI.RawOptimizerAttribute , x)
     end
     return
 end
-MOI.get(m::Optimizer, p::MOI.RawStatusString) = m.global_optimizer._end_state
+MOI.get(m::Optimizer, p::MOI.RawStatusString) = string(m.global_optimizer._end_state)
 
 #####
 #####
