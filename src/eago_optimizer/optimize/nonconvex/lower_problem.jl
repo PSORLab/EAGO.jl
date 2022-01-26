@@ -27,6 +27,7 @@ solution of a relaxed problem.
 """
 @enum(RelaxResultStatus, RRS_OPTIMAL, RRS_DUAL_FEASIBLE, RRS_INFEASIBLE, RRS_INVALID)
 
+
 """
 $(SIGNATURES)
 

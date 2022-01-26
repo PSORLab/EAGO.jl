@@ -206,6 +206,7 @@ Base.@kwdef mutable struct EAGOParameters
     integer_abs_tol::Float64 = 1E-9
     integer_rel_tol::Float64 = 1E-9
 end
+const EAGO_PARAMETERS = fieldnames(EAGOParameters)
 
 """
 $(TYPEDEF)
@@ -216,34 +217,44 @@ The constraints generally aren't used for relaxations.
 Base.@kwdef mutable struct InputProblem
 
     # variables (set by MOI.add_variable in variables.jl)
-    _variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
+    #_variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
     _variable_count::Int = 0
+    _constraint_count::Int = 0
 
-    # last constraint index added
-    _last_constraint_index::Int = 0
+    # constraint index to function and set storage
+    _vi_leq_constraints::Dict{CI{VI,LT}, Tuple{VI,LT}} = Dict{CI{VI,LT}, Tuple{VI,LT}}()
+    _vi_geq_constraints::Dict{CI{VI,GT}, Tuple{VI,GT}} = Dict{CI{VI,GT}, Tuple{VI,GT}}()
+    _vi_eq_constraints::Dict{CI{VI,ET}, Tuple{VI,ET}} = Dict{CI{VI,ET}, Tuple{VI,ET}}()
+    _vi_it_constraints::Dict{CI{VI,IT}, Tuple{VI,IT}} = Dict{CI{VI,IT}, Tuple{VI,IT}}()
+    _vi_zo_constraints::Dict{CI{VI,ZO}, Tuple{VI,ZO}} = Dict{CI{VI,ZO}, Tuple{VI,ZO}}()
+    _vi_int_constraints::Dict{CI{VI,MOI.Integer}, Tuple{VI,MOI.Integer}} = Dict{CI{VI,MOI.Integer}, Tuple{VI,MOI.Integer}}()
 
-    # linear constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
-    _linear_leq_constraints::Vector{Tuple{SAF, LT, Int}} = Tuple{SAF, LT, Int}[]
-    _linear_geq_constraints::Vector{Tuple{SAF, GT, Int}} = Tuple{SAF, GT, Int}[]
-    _linear_eq_constraints::Vector{Tuple{SAF, ET, Int}} = Tuple{SAF, ET, Int}[]
+    _linear_leq_constraints::Dict{CI{SAF,LT}, Tuple{SAF,LT}} = Dict{CI{SAF,LT}, Tuple{SAF,LT}}()
+    _linear_geq_constraints::Dict{CI{SAF,GT}, Tuple{SAF,GT}} = Dict{CI{SAF,GT}, Tuple{SAF,GT}}()
+    _linear_eq_constraints::Dict{CI{SAF,ET}, Tuple{SAF,ET}} = Dict{CI{SAF,ET}, Tuple{SAF,ET}}()
 
-    # quadratic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
-    _quadratic_leq_constraints::Vector{Tuple{SQF, LT, Int}} = Tuple{SQF, LT, Int}[]
-    _quadratic_geq_constraints::Vector{Tuple{SQF, GT, Int}} = Tuple{SQF, GT, Int}[]
-    _quadratic_eq_constraints::Vector{Tuple{SQF, ET, Int}} = Tuple{SQF, ET, Int}[]
+    _quadratic_leq_constraints::Dict{CI{SQF,LT}, Tuple{SQF,LT}} = Dict{CI{SQF,LT}, Tuple{SQF,LT}}()
+    _quadratic_geq_constraints::Dict{CI{SQF,GT}, Tuple{SQF,GT}} = Dict{CI{SQF,GT}, Tuple{SQF,GT}}()
+    _quadratic_eq_constraints::Dict{CI{SQF,ET}, Tuple{SQF,ET}} = Dict{CI{SQF,ET}, Tuple{SQF,ET}}()
 
-    # dictionary mapping ci for input problem to local nlp problem
-    _linear_leq_ci_dict::Dict{Int,CI{SAF,LT}} = Dict{Int,CI{SAF,LT}}()
-    _linear_geq_ci_dict::Dict{Int,CI{SAF,GT}} = Dict{Int,CI{SAF,GT}}()
-    _linear_eq_ci_dict::Dict{Int,CI{SAF,ET}} = Dict{Int,CI{SAF,ET}}()
-    _quadratic_leq_ci_dict::Dict{Int,CI{SQF,LT}} = Dict{Int,CI{SQF,LT}}()
-    _quadratic_geq_ci_dict::Dict{Int,CI{SQF,GT}} = Dict{Int,CI{SQF,GT}}()
-    _quadratic_eq_ci_dict::Dict{Int,CI{SQF,ET}} = Dict{Int,CI{SQF,ET}}()
+    _conic_second_order::Dict{CI{VECOFVAR,SOC}, Tuple{VECOFVAR,SOC}} = Dict{CI{VECOFVAR,SOC}, Tuple{VECOFVAR,SOC}}()
 
-    _constraint_primal::Dict{Int,Float64} = Dict{Int,Float64}()
+    # primal storage
+    _linear_leq_primal::Dict{CI{SAF,LT},Float64} = Dict{CI{SAF,LT},Float64}()
+    _linear_geq_primal::Dict{CI{SAF,GT},Float64} = Dict{CI{SAF,GT},Float64}()
+    _linear_eq_primal::Dict{CI{SAF,ET},Float64} = Dict{CI{SAF,ET},Float64}()
 
-    # conic constraint storage and count (set by MOI.add_constraint in moi_constraints.jl)
-    _conic_second_order::Vector{Tuple{VECOFVAR, MOI.SecondOrderCone}} = Tuple{VECOFVAR, MOI.SecondOrderCone}[]
+    _quadratic_leq_primal::Dict{CI{SQF,LT},Float64} = Dict{CI{SQF,LT},Float64}()
+    _quadratic_geq_primal::Dict{CI{SQF,GT},Float64} = Dict{CI{SQF,GT},Float64}()
+    _quadratic_eq_primal::Dict{CI{SQF,ET},Float64} = Dict{CI{SQF,ET},Float64}()
+
+    _linear_leq_prob_to_ip::Dict{CI{SAF,LT},CI{SAF,LT}} = Dict{CI{SAF,LT},CI{SAF,LT}}()
+    _linear_geq_prob_to_ip::Dict{CI{SAF,GT},CI{SAF,GT}} = Dict{CI{SAF,GT},CI{SAF,GT}}()
+    _linear_eq_prob_to_ip::Dict{CI{SAF,ET},CI{SAF,ET}} = Dict{CI{SAF,ET},CI{SAF,ET}}()
+
+    _quadratic_leq_prob_to_ip::Dict{CI{SQF,LT},CI{SQF,LT}} = Dict{CI{SQF,LT},CI{SQF,LT}}()
+    _quadratic_geq_prob_to_ip::Dict{CI{SQF,GT},CI{SQF,GT}} = Dict{CI{SQF,GT},CI{SQF,GT}}()
+    _quadratic_eq_prob_to_ip::Dict{CI{SQF,ET},CI{SQF,ET}} = Dict{CI{SQF,ET},CI{SQF,ET}}()
 
     # nonlinear constraint storage
     _objective::Union{VI,SAF,SQF,Nothing} = nothing
@@ -255,6 +266,23 @@ Base.@kwdef mutable struct InputProblem
     _optimization_sense::MOI.OptimizationSense = MOI.MIN_SENSE
 end
 
+function MOI.empty!(ip::InputProblem)
+
+    for field in fieldnames(InputProblem)
+        field_value = getfield(x, field)
+        if (field_value isa Array) || (field_value isa Dict)
+            empty!(field_value)
+        end
+    end
+
+    ip._variable_count = 0
+    ip._constraint_count = 0
+    ip._objective = nothing
+    ip._nlp_data = nothing
+    ip._optimization_sense = MOI.MIN_SENSE
+    return
+end
+
 function Base.isempty(x::InputProblem)
 
     is_empty_flag = true
@@ -262,22 +290,20 @@ function Base.isempty(x::InputProblem)
 
     for field in fieldnames(InputProblem)
         field_value = getfield(x, field)
-        if field_value isa Array
+        if (field_value isa Array) || (field_value isa Dict)
             if !isempty(field_value)
                 is_empty_flag = false
                 break
             end
         elseif field_value isa Number
-            if getfield(new_input_problem, field) !== field_value
+            if getfield(new_input_problem, field) != field_value
                 is_empty_flag = false
                 break
             end
         end
     end
-
-    is_empty_flag &= x._nlp_data === nothing
-    is_empty_flag &= x._objective === nothing
-
+    is_empty_flag &= isnothing(x._nlp_data)
+    is_empty_flag &= isnothing(x._objective)
     return is_empty_flag
 end
 
@@ -316,6 +342,26 @@ Base.@kwdef mutable struct ParsedProblem
     _variable_count::Int = 0
 end
 
+function MOI.empty!(pp::ParsedProblem)
+
+    for field in fieldnames(ParsedProblem)
+        field_value = getfield(x, field)
+        if (field_value isa Array) || (field_value isa Dict)
+            empty!(field_value)
+        end
+    end
+
+    pp._objective = nothing
+    pp._problem_type = nothing
+    pp._nlp_data = nothing
+
+    pp._optimization_sense = MOI.MIN_SENSE
+    pp._relaxed_evaluator = Evaluator()
+    pp._objective_saf = SAF(SAT[], 0.0)
+    pp._variable_count = 0
+    return
+end
+
 function Base.isempty(x::ParsedProblem)
 
     is_empty_flag = true
@@ -331,17 +377,17 @@ function Base.isempty(x::ParsedProblem)
             end
 
         elseif field_value isa Number
-            if getfield(new_input_problem, field) !== field_value
+            if getfield(new_input_problem, field) != field_value
                 is_empty_flag = false
                 break
             end
         end
     end
 
-    is_empty_flag &= x._nlp_data === nothing
     is_empty_flag &= isempty(x._objective_saf.terms)
-    is_empty_flag &= x._objective_saf.constant === 0.0
-    is_empty_flag &= x._objective === nothing
+    is_empty_flag &= iszero(x._objective_saf.constant)
+    is_empty_flag &= isnothing(x._objective)
+    is_empty_flag &= isnothing(x._nlp_data)
 
     return is_empty_flag
 end
@@ -502,8 +548,8 @@ function MOI.empty!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q}
                                            _working_problem = m._working_problem)
 
     MOI.empty!(new_optimizer._subsolvers)
-   # MOI.empty!(new_optimizer._input_problem)
-   # MOI.empty!(new_optimizer._working_problem)
+    MOI.empty!(new_optimizer._input_problem)
+    MOI.empty!(new_optimizer._working_problem)
     for field in union(EAGO_MODEL_STRUCT_ATTRIBUTES, EAGO_MODEL_NOT_STRUCT_ATTRIBUTES)
         setfield!(m, field, getfield(new_optimizer, field))
     end
@@ -541,7 +587,6 @@ _upper_optimizer(m::GlobalOptimizer{R,S,Q})   where {R,S,Q} = m._subsolvers.uppe
 _ext_typ(m::GlobalOptimizer{R,S,Q})           where {R,S,Q} = m._subsolvers.ext_typ
 
 @inline function _is_input_min(m::GlobalOptimizer)
-    #println("input min sense = $(m._input_problem._optimization_sense)")
     return m._obj_mult == 1.0
 end
 @inline _branch_cost(m::GlobalOptimizer) = m._branch_cost.cost

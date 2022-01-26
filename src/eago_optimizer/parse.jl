@@ -158,7 +158,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     ip = m._input_problem
     wp = m._working_problem
 
-    vi = ip._variable_info
+    vi = wp._variable_info
     q = _variable_num(FullVar(), m)
     v = VariableValues{Float64}(x = mid.(vi), x0 = mid.(vi),
                                 lower_variable_bounds = lower_bound.(vi),
@@ -199,7 +199,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     ip = m._input_problem
     wp = m._working_problem
 
-    vi = ip._variable_info
+    vi = wp._variable_info
     q = _variable_num(FullVar(), m)
     v = VariableValues{Float64}(x = mid.(vi), x0 = mid.(vi),
                                 lower_variable_bounds = lower_bound.(vi),
@@ -344,6 +344,15 @@ function label_branch_variables!(m::GlobalOptimizer)
     return
 end
 
+
+function variable_load_parse!(m::Optimizer, ::Type{VI}, ::Type{T}) where T
+    wp = m._global_optimizer._working_problem = m._working_problem
+    for (i, v) in enumerate(values(_constraints(m, VI, T)))
+        wp._variable_info[i] = VariableInfo(wp._variable_info[i], v[2])
+    end
+    return
+end
+
 """
 Translates input problem to working problem. Routines and checks and optional manipulation is left to the presolve stage.
 """
@@ -352,21 +361,38 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
     # reset initial time and solution statistics
     m._global_optimizer._time_left = m._parameters.time_limit
 
-    # add variables to working model
     ip = m._global_optimizer._input_problem = m._input_problem
     wp = m._global_optimizer._working_problem = m._working_problem
     m._global_optimizer._parameters = m._parameters
-    append!(wp._variable_info, ip._variable_info)
+
+    # add variables to working model
+    wp._variable_info = VariableInfo{Float64}[VariableInfo{Float64}() for i=1:ip._variable_count]
+    variable_load_parse!(m, VI, LT)
+    variable_load_parse!(m, VI, GT)
+    variable_load_parse!(m, VI, ET)
+    variable_load_parse!(m, VI, ZO)
+    variable_load_parse!(m, VI, MOI.Integer)
     wp._variable_count = ip._variable_count
 
-    # add linear constraints to the working problem
-    append!(wp._saf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_leq_constraints])
-    append!(wp._saf_leq, [AffineFunctionIneq(c[1], c[2]) for c in ip._linear_geq_constraints])
-    wp._saf_eq  = [AffineFunctionEq(c[1], c[2]) for c in ip._linear_eq_constraints]
+    for (f, s) in values(ip._linear_leq_constraints)
+        push!(wp._saf_leq, AffineFunctionIneq(f, s))
+    end
+    for (f, s) in values(ip._linear_geq_constraints)
+        push!(wp._saf_leq, AffineFunctionIneq(f, s))
+    end
+    for (f, s) in values(ip._linear_eq_constraints)
+        push!(wp._saf_eq, AffineFunctionEq(f, s))
+    end
 
-    append!(wp._sqf_leq, [BufferedQuadraticIneq(c[1], c[2]) for c in ip._quadratic_leq_constraints])
-    append!(wp._sqf_leq, [BufferedQuadraticIneq(c[1], c[2]) for c in ip._quadratic_geq_constraints])
-    wp._sqf_eq  = [BufferedQuadraticEq(c[1], c[2]) for c in ip._quadratic_eq_constraints]
+    for (f, s) in values(ip._quadratic_leq_constraints)
+        push!(wp._sqf_leq, BufferedQuadraticIneq(f, s))
+    end
+    for (f, s) in values(ip._quadratic_geq_constraints)
+        push!(wp._sqf_leq, BufferedQuadraticIneq(f, s))
+    end
+    for (f, s) in values(ip._quadratic_eq_constraints)
+        push!(wp._sqf_eq, BufferedQuadraticEq(f, s))
+    end
 
     add_objective!(wp, ip._objective)    # set objective function
     add_nonlinear!(m._global_optimizer)  # add nonlinear constraints, evaluator, subexpressions
@@ -409,10 +435,10 @@ function parse_classify_problem!(m::GlobalOptimizer)
                       length(ip._quadratic_geq_constraints) +
                       length(ip._quadratic_eq_constraints)
 
-    if (ip._objective !== nothing)
+    if !isnothing(ip._objective)
         has_objective = true
     end
-    has_int_var = any(is_integer, ip._variable_info)
+    has_int_var = !iszero(length(ip._vi_zo_constraints) + length(ip._vi_int_constraints))
 
     lin_or_sv_obj = (ip._objective isa VI || ip._objective isa SAF || !has_objective)
     relaxed_supports_soc = false

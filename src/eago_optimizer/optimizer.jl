@@ -72,3 +72,18 @@ function Optimizer(subsolver_block::SubSolvers{Q,S,T} = SubSolvers(); kwargs...)
     m._global_optimizer = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb)
     return m
 end
+
+_constraints(m::Optimizer, ::Type{VI}, ::Type{LT}) = m._input_problem._vi_leq_constraints
+_constraints(m::Optimizer, ::Type{VI}, ::Type{GT}) = m._input_problem._vi_geq_constraints
+_constraints(m::Optimizer, ::Type{VI}, ::Type{ET}) = m._input_problem._vi_eq_constraints
+_constraints(m::Optimizer, ::Type{VI}, ::Type{IT}) = m._input_problem._vi_it_constraints
+_constraints(m::Optimizer, ::Type{VI}, ::Type{ZO}) = m._input_problem._vi_zo_constraints
+_constraints(m::Optimizer, ::Type{VI}, ::Type{MOI.Integer}) = m._input_problem._vi_int_constraints
+
+_constraints(m::Optimizer, ::Type{SAF}, ::Type{LT}) = m._input_problem._linear_leq_constraints
+_constraints(m::Optimizer, ::Type{SAF}, ::Type{GT}) = m._input_problem._linear_geq_constraints
+_constraints(m::Optimizer, ::Type{SAF}, ::Type{ET}) = m._input_problem._linear_eq_constraints
+
+_constraints(m::Optimizer, ::Type{SQF}, ::Type{LT}) = m._input_problem._quadratic_leq_constraints
+_constraints(m::Optimizer, ::Type{SQF}, ::Type{GT}) = m._input_problem._quadratic_geq_constraints
+_constraints(m::Optimizer, ::Type{SQF}, ::Type{ET}) = m._input_problem._quadratic_eq_constraints

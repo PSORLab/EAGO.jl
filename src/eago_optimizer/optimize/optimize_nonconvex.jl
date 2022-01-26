@@ -77,7 +77,15 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
     m._branch_variable_count = branch_variable_count
 
     # add linear constraints
-    add_linear_constraints!(m, d)
+    for (f, s) in collect(values(m._input_problem._linear_leq_constraints))
+        MOI.add_constraint(d, f, s)
+    end
+    for (f, s) in collect(values(m._input_problem._linear_geq_constraints))
+        MOI.add_constraint(d, f, s)
+    end
+    for (f, s) in collect(values(m._input_problem._linear_eq_constraints))
+        MOI.add_constraint(d, f, s)
+    end
 
     # sets relaxed problem objective sense to Min as all problems
     # are internally converted in Min problems in EAGO

@@ -33,21 +33,6 @@ function add_variables(m::GlobalOptimizer, d)
     return z
 end
 
-### LP and MILP routines
-function add_linear_constraints!(m::GlobalOptimizer, d::T) where T
-    ip = m._input_problem
-    for (f, leq, i) in ip._linear_leq_constraints
-        ip._linear_leq_ci_dict[i] = MOI.add_constraint(d, f, leq)
-    end
-    for (f, geq, i) in ip._linear_geq_constraints
-        ip._linear_geq_ci_dict[i] = MOI.add_constraint(d, f, geq)
-    end
-    for (f, eq, i) in ip._linear_eq_constraints
-        ip._linear_eq_ci_dict[i] = MOI.add_constraint(d, f, eq)
-    end
-    return
-end
-
 lp_obj!(m::GlobalOptimizer, d, f::Nothing) = false
 function lp_obj!(m::GlobalOptimizer, d, f::VI)
     MOI.set(d, MOI.ObjectiveFunction{VI}(), f)
@@ -68,7 +53,20 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
     MOI.empty!(r)
 
     d._relaxed_variable_index = add_variables(d, r)
-    add_linear_constraints!(d, r)
+
+    _linear_leq_ci_dict = Dict{Int,Tuple{SAF,LT}}()
+    _linear_geq_ci_dict = Dict{Int,Tuple{SAF,GT}}()
+    _linear_eq_ci_dict = Dict{Int,Tuple{SAF,ET}}()
+    for (i, fs) in enumerate(ip._linear_leq_constraints)
+        _linear_leq_ci_dict[i] = MOI.add_constraint(d, fs[2][1], fs[2][2])
+    end
+    for (i, fs) in enumerate(ip._linear_geq_constraints)
+        _linear_geq_ci_dict[i] = MOI.add_constraint(d, fs[2][1], fs[2][2])
+    end
+    for (i, fs) in enumerate(ip._linear_eq_constraints)
+        _linear_eq_ci_dict[i] = MOI.add_constraint(d, fs[2][1], fs[2][2])
+    end
+
     min_to_max = lp_obj!(d, r, ip._objective)
     if ip._optimization_sense == MOI.FEASIBILITY_SENSE
         MOI.set(r, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
@@ -79,7 +77,11 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
 
     MOI.optimize!(r)
 
-    m._termination_status_code = MOI.get(r, MOI.TerminationStatus())
+    ts = MOI.get(r, MOI.TerminationStatus())
+    #if ts == MOI.INFEASIBLE_OR_UNBOUNDED
+       # ts = MOI.INFEASIBLE
+    #end
+    m._termination_status_code = ts
     m._result_status_code = MOI.get(r, MOI.PrimalStatus())
 
     if MOI.get(r, MOI.ResultCount()) > 0
@@ -100,13 +102,17 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
             d._continuous_solution[i] = MOI.get(r, MOI.VariablePrimal(),  d._relaxed_variable_index[i])
         end
 
-        for (i, ci_saf_leq) in ip._linear_leq_ci_dict
+        i = 0
+        for ci_saf_leq in keys(_linear_leq_ci_dict)
+            i += 1
             d._constraint_primal[i] = MOI.get(r, MOI.ConstraintPrimal(), ci_saf_leq)
         end
-        for (i, ci_saf_geq) in ip._linear_geq_ci_dict
+        for ci_saf_geq in keys(_linear_geq_ci_dict)
+            i += 1
             d._constraint_primal[i] = MOI.get(r, MOI.ConstraintPrimal(), ci_saf_geq)
         end
-        for (i, ci_saf_eq) in ip._linear_eq_ci_dict
+        for ci_saf_eq in keys(_linear_eq_ci_dict)
+            i += 1
             d._constraint_primal[i] = MOI.get(r, MOI.ConstraintPrimal(), ci_saf_eq)
         end
     end

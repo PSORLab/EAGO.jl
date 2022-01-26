@@ -113,23 +113,23 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
             m._upper_solution .= MOI.get(d, MOI.VariablePrimal(), m._upper_variables)
             
             ip = m._input_problem
-            for (i, ci_saf_leq) in ip._linear_leq_ci_dict
-                ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_leq)
+            for (pci, dci) in ip._linear_leq_ci_dict
+                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_leq)
             end
             for (i, ci_saf_geq) in ip._linear_geq_ci_dict
-                ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_geq)
+                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_geq)
             end
             for (i, ci_saf_eq) in ip._linear_eq_ci_dict
-                ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_eq)
+                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_eq)
             end
             for (i, ci_sqf_leq) in ip._quadratic_leq_ci_dict
-                ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_leq)
+                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_leq)
             end
             for (i, ci_sqf_geq) in ip._quadratic_geq_ci_dict
-                ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_geq)
+                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_geq)
             end
             for (i, ci_sqf_eq) in ip._quadratic_eq_ci_dict
-                ip._constraint_primal[i] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_eq)
+                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_eq)
             end
         end
     else
