@@ -269,7 +269,7 @@ end
 function MOI.empty!(ip::InputProblem)
 
     for field in fieldnames(InputProblem)
-        field_value = getfield(x, field)
+        field_value = getfield(ip, field)
         if (field_value isa Array) || (field_value isa Dict)
             empty!(field_value)
         end
@@ -307,6 +307,82 @@ function Base.isempty(x::InputProblem)
     return is_empty_flag
 end
 
+_constraints(m::InputProblem, ::Type{VI}, ::Type{LT}) = m._vi_leq_constraints
+_constraints(m::InputProblem, ::Type{VI}, ::Type{GT}) = m._vi_geq_constraints
+_constraints(m::InputProblem, ::Type{VI}, ::Type{ET}) = m._vi_eq_constraints
+_constraints(m::InputProblem, ::Type{VI}, ::Type{IT}) = m._vi_it_constraints
+_constraints(m::InputProblem, ::Type{VI}, ::Type{ZO}) = m._vi_zo_constraints
+_constraints(m::InputProblem, ::Type{VI}, ::Type{MOI.Integer}) = m._vi_int_constraints
+
+_constraints(m::InputProblem, ::Type{SAF}, ::Type{LT}) = m._linear_leq_constraints
+_constraints(m::InputProblem, ::Type{SAF}, ::Type{GT}) = m._linear_geq_constraints
+_constraints(m::InputProblem, ::Type{SAF}, ::Type{ET}) = m._linear_eq_constraints
+
+_constraints(m::InputProblem, ::Type{SQF}, ::Type{LT}) = m._quadratic_leq_constraints
+_constraints(m::InputProblem, ::Type{SQF}, ::Type{GT}) = m._quadratic_geq_constraints
+_constraints(m::InputProblem, ::Type{SQF}, ::Type{ET}) = m._quadratic_eq_constraints
+
+_constraint_primal(m::InputProblem, ::Type{SAF}, ::Type{LT}) = m._linear_leq_primal
+_constraint_primal(m::InputProblem, ::Type{SAF}, ::Type{GT}) = m._linear_geq_primal
+_constraint_primal(m::InputProblem, ::Type{SAF}, ::Type{ET}) = m._linear_eq_primal
+
+_constraint_primal(m::InputProblem, ::Type{SQF}, ::Type{LT}) = m._quadratic_leq_primal
+_constraint_primal(m::InputProblem, ::Type{SQF}, ::Type{GT}) = m._quadratic_geq_primal
+_constraint_primal(m::InputProblem, ::Type{SQF}, ::Type{ET}) = m._quadratic_eq_primal
+
+"""
+Extracts primal constraint value from local problem and saves result to appropriate
+field of the global optimizer.
+"""
+function _extract_primal!(d, m::InputProblem, ::Type{F}, ::Type{S}) where {F,S}
+    for (k, v) in _constraint_index_to_ip(m, F, S)
+        _constraint_primal(m, F, S)[v] = MOI.get(d, MOI.ConstraintPrimal(), k)
+    end
+    return nothing
+end
+
+function _extract_primal_linear!(d, ip::InputProblem)
+    _extract_primal!(d, ip, SAF, LT)
+    _extract_primal!(d, ip, SAF, GT)
+    _extract_primal!(d, ip, SAF, ET)
+end
+function _extract_primal_quadratic!(d, ip::InputProblem)
+    _extract_primal!(d, ip, SQF, LT)
+    _extract_primal!(d, ip, SQF, GT)
+    _extract_primal!(d, ip, SQF, ET)
+end
+
+_constraint_index_to_ip(m::InputProblem, ::Type{SAF}, ::Type{LT}) = m._linear_leq_prob_to_ip
+_constraint_index_to_ip(m::InputProblem, ::Type{SAF}, ::Type{GT}) = m._linear_geq_prob_to_ip
+_constraint_index_to_ip(m::InputProblem, ::Type{SAF}, ::Type{ET}) = m._linear_eq_prob_to_ip
+
+_constraint_index_to_ip(m::InputProblem, ::Type{SQF}, ::Type{LT}) = m._quadratic_leq_prob_to_ip
+_constraint_index_to_ip(m::InputProblem, ::Type{SQF}, ::Type{GT}) = m._quadratic_geq_prob_to_ip
+_constraint_index_to_ip(m::InputProblem, ::Type{SQF}, ::Type{ET}) = m._quadratic_eq_prob_to_ip
+
+"""
+Adds a constraint to the local problem storing the new constraint index and the associated
+index in the input problem.
+"""
+function _add_constraint_store_ci!(d, m::InputProblem, ::Type{F}, ::Type{S}) where {F,S}
+    for (ci_ip, fs) in _constraints(m, F, S)
+        ci_wp = MOI.add_constraint(d, fs[1], fs[2])
+        _constraint_index_to_ip(m, F, S)[ci_wp] = ci_ip
+    end
+    return nothing
+end
+
+function _add_constraint_store_ci_linear!(d, ip::InputProblem)
+    _add_constraint_store_ci!(d, ip, SAF, LT)
+    _add_constraint_store_ci!(d, ip, SAF, GT)
+    _add_constraint_store_ci!(d, ip, SAF, ET)
+end
+function _add_constraint_store_ci_quadratic!(d, ip::InputProblem)
+    _add_constraint_store_ci!(d, ip, SQF, LT)
+    _add_constraint_store_ci!(d, ip, SQF, GT)
+    _add_constraint_store_ci!(d, ip, SQF, ET)
+end
+
 """
 $(TYPEDEF)
 
@@ -342,7 +418,7 @@ Base.@kwdef mutable struct ParsedProblem
     _variable_count::Int = 0
 end
 
-function MOI.empty!(pp::ParsedProblem)
+function MOI.empty!(x::ParsedProblem)
 
     for field in fieldnames(ParsedProblem)
         field_value = getfield(x, field)
@@ -351,14 +427,14 @@ function MOI.empty!(pp::ParsedProblem)
         end
     end
 
-    pp._objective = nothing
-    pp._problem_type = nothing
-    pp._nlp_data = nothing
+    x._objective    = nothing
+    x._problem_type = nothing
+    x._nlp_data     = nothing
 
-    pp._optimization_sense = MOI.MIN_SENSE
-    pp._relaxed_evaluator = Evaluator()
-    pp._objective_saf = SAF(SAT[], 0.0)
-    pp._variable_count = 0
+    x._optimization_sense = MOI.MIN_SENSE
+    x._relaxed_evaluator = Evaluator()
+    x._objective_saf = SAF(SAT[], 0.0)
+    x._variable_count = 0
     return
 end
 
@@ -430,7 +506,6 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _sol_to_branch_map::Vector{Int} = Int[]
 
     _continuous_solution::Vector{Float64} = Float64[]
-    _constraint_primal::Dict{Int,Float64} = Dict{Int,Float64}()
 
     _preprocess_feasibility::Bool = true
     _preprocess_primal_status::MOI.ResultStatusCode = MOI.OTHER_RESULT_STATUS
@@ -688,3 +763,5 @@ end
     m._lower_solution[i] = v
     return
 end
+
+_constraint_primal(m::GlobalOptimizer, ::Type{F}, ::Type{S}) where {F,S} = _constraint_primal(m._input_problem, F, S)

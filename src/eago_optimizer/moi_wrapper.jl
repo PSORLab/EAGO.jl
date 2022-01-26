@@ -68,9 +68,9 @@ function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{VI,<:Any}) 
     (v.result_index != 1) && result_index_1_error(v)
     return MOI.get(m, MOI.VariablePrimal(), MOI.VariableIndex(c.value))
 end
-function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::Union{CI{SAF,Q},CI{SQF,Q}}) where {R,S,T,Q}
+function MOI.get(m::Optimizer{R,Q,T}, v::MOI.ConstraintPrimal, c::CI{F,S}) where {R,Q,T,F,S}
     (v.result_index != 1) && result_index_1_error(v) 
-    return m._global_optimizer._constraint_primal[c.value]
+    return _constraint_primal(m._global_optimizer, F, S)[c]
 end
 
 MOI.get(m::Optimizer, ::MOI.ConstraintFunction, c::CI{F,S}) where {F,S} = _constraints(m,F,S)[c][1]

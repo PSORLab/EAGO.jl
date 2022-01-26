@@ -158,32 +158,47 @@ implemented or that your solver doesn't support.
 function test_runtests()
     MOI.Test.runtests(BRIDGED, CONFIG, 
                       exclude = [# IPOPT Inherited test exclusions
-                                #  - Excluded because this test is optional
                                 "test_model_ScalarFunctionConstantNotZero",
-                                #  - Excluded because Ipopt returns NORM_LIMIT instead of
-                                #    DUAL_INFEASIBLE
                                 "test_solve_TerminationStatus_DUAL_INFEASIBLE",
-                                #  - Excluded because Ipopt returns INVALID_MODEL instead of
-                                #    LOCALLY_SOLVED
                                 "test_linear_VectorAffineFunction_empty_row",
                                 "test_solve_DualStatus_INFEASIBILITY_CERTIFICATE_",
-                                #  - Excluded due to upstream issue
                                 "test_model_LowerBoundAlreadySet",
                                 "test_model_UpperBoundAlreadySet",
-                                #  - CachingOptimizer does not throw if optimizer not attached
                                 "test_model_copy_to_UnsupportedAttribute",
                                 "test_model_copy_to_UnsupportedConstraint",
                                 "test_objective_set_via_modify",
-                                "test_attribute_NumberOfThreads",
                                 "test_model_ModelFilter_ListOfConstraintIndices",
                                 "test_model_ModelFilter_ListOfConstraintTypesPresent",
+                                # Cbc default test exlucisons
+                                "_Indicator_",
+                                "test_linear_SOS1_integration",
+                                "test_linear_SOS2_integration",
+                                "test_solve_SOS2_add_and_delete",
+                                "test_conic_NormInfinityCone_INFEASIBLE",
+                                "test_conic_NormOneCone_INFEASIBLE",
+                                "test_solve_TerminationStatus_DUAL_INFEASIBLE",
+
                                 # EAGO test exclusions
-                                #"test_quadratic_",
-                                #"test_constraint_qcp_duplicate_diagonal",
-                                #"test_constraint_qcp_duplicate_off_diagonal",
-                                #"test_objective_get_ObjectiveFunction_ScalarAffineFunction",
-                                #"test_objective_qp_ObjectiveFunction_edge_cases",
-                                #"test_objective_qp_ObjectiveFunction_zero_ofdiag",
+                                "test_attribute_NumberOfThreads",
+                                "test_modification_",
+                                "test_linear_integration_delete_variables",
+
+                                "test_quadratic_SecondOrderCone_basic",
+                                
+                                "test_quadratic_constraint_GreaterThan",
+                                "test_quadratic_constraint_LessThan",
+                                "test_quadratic_constraint_basic",
+                                "test_quadratic_constraint_minimize",
+                                "test_quadratic_duplicate_terms",
+                                "test_quadratic_integration",
+                                "test_quadratic_nonconvex_constraint_integration",
+                                "test_quadratic_nonhomogeneous",
+
+                                "test_constraint_qcp_duplicate_diagonal",
+                                "test_constraint_qcp_duplicate_off_diagonal",
+                                "test_objective_get_ObjectiveFunction_ScalarAffineFunction",
+                                "test_objective_qp_ObjectiveFunction_edge_cases",
+                                "test_objective_qp_ObjectiveFunction_zero_ofdiag",
                                 ],
                       exclude_tests_after = v"0.10.5")
 end

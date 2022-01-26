@@ -9,7 +9,7 @@ const MOIB = MOI.Bridges
 
 
 include(joinpath(@__DIR__, "moit_tests.jl"))
-#include(joinpath(@__DIR__, "minlp_tests.jl"))
+include(joinpath(@__DIR__, "minlp_tests.jl"))
 
 #include(joinpath(@__DIR__, "branch_bound.jl"))
 #include(joinpath(@__DIR__, "domain_reduction.jl"))

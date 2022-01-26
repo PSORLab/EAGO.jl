@@ -42,6 +42,7 @@ end
 function lp_obj!(m::GlobalOptimizer, d, f::SAF)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), f)
     MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    #MOI.set(d, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
     return m._input_problem._optimization_sense == MOI.MAX_SENSE
 end
 
@@ -53,23 +54,21 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
     MOI.empty!(r)
 
     d._relaxed_variable_index = add_variables(d, r)
+    
+    # TODO: Remove when upstream Cbc issue https://github.com/jump-dev/Cbc.jl/issues/168 is fixed
+    # Add extra binary variable `issue_var` fixed to zero to prevent Cbc from displaying even though 
+    # silent is set to off. Sets `issue_var` to zero. 
+    issue_var = MOI.add_variable(d)
+    MOI.add_constraint(d, issue_var, ZO())
+    MOI.add_constraint(d, issue_var, ET(0.0))
 
-    _linear_leq_ci_dict = Dict{Int,Tuple{SAF,LT}}()
-    _linear_geq_ci_dict = Dict{Int,Tuple{SAF,GT}}()
-    _linear_eq_ci_dict = Dict{Int,Tuple{SAF,ET}}()
-    for (i, fs) in enumerate(ip._linear_leq_constraints)
-        _linear_leq_ci_dict[i] = MOI.add_constraint(d, fs[2][1], fs[2][2])
-    end
-    for (i, fs) in enumerate(ip._linear_geq_constraints)
-        _linear_geq_ci_dict[i] = MOI.add_constraint(d, fs[2][1], fs[2][2])
-    end
-    for (i, fs) in enumerate(ip._linear_eq_constraints)
-        _linear_eq_ci_dict[i] = MOI.add_constraint(d, fs[2][1], fs[2][2])
-    end
+    _add_constraint_store_ci_linear!(r, ip)
 
+    #@show tip._objective
+    @show ip._optimization_sense
     min_to_max = lp_obj!(d, r, ip._objective)
     if ip._optimization_sense == MOI.FEASIBILITY_SENSE
-        MOI.set(r, MOI.ObjectiveSense(), MOI.FEASIBILITY_SENSE)
+        MOI.set(r, MOI.ObjectiveSense(), ip._optimization_sense)
     end
 
     (d._parameters.verbosity < 5) && MOI.set(r, MOI.Silent(), true)
@@ -77,11 +76,7 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
 
     MOI.optimize!(r)
 
-    ts = MOI.get(r, MOI.TerminationStatus())
-    #if ts == MOI.INFEASIBLE_OR_UNBOUNDED
-       # ts = MOI.INFEASIBLE
-    #end
-    m._termination_status_code = ts
+    m._termination_status_code = MOI.get(r, MOI.TerminationStatus())
     m._result_status_code = MOI.get(r, MOI.PrimalStatus())
 
     if MOI.get(r, MOI.ResultCount()) > 0
@@ -102,19 +97,7 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
             d._continuous_solution[i] = MOI.get(r, MOI.VariablePrimal(),  d._relaxed_variable_index[i])
         end
 
-        i = 0
-        for ci_saf_leq in keys(_linear_leq_ci_dict)
-            i += 1
-            d._constraint_primal[i] = MOI.get(r, MOI.ConstraintPrimal(), ci_saf_leq)
-        end
-        for ci_saf_geq in keys(_linear_geq_ci_dict)
-            i += 1
-            d._constraint_primal[i] = MOI.get(r, MOI.ConstraintPrimal(), ci_saf_geq)
-        end
-        for ci_saf_eq in keys(_linear_eq_ci_dict)
-            i += 1
-            d._constraint_primal[i] = MOI.get(r, MOI.ConstraintPrimal(), ci_saf_eq)
-        end
+        _extract_primal_linear!(r, ip)
     end
     d._run_time = time() - d._start_time
     return

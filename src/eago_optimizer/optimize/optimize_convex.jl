@@ -100,12 +100,15 @@ function local_problem_status(t::MOI.TerminationStatusCode, r::MOI.ResultStatusC
 end
 
 function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
+
     tstatus = MOI.get(d, MOI.TerminationStatus())
     pstatus = MOI.get(d, MOI.PrimalStatus())
     m._upper_termination_status = tstatus
     m._upper_result_status = pstatus
+
     if local_problem_status(tstatus, pstatus) == LRS_FEASIBLE
         if is_integer_feasible(m)
+
             m._upper_feasibility = true
             obj_val = MOI.get(d, MOI.ObjectiveValue())
             stored_adjusted_upper_bound!(m, obj_val)
@@ -113,24 +116,8 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
             m._upper_solution .= MOI.get(d, MOI.VariablePrimal(), m._upper_variables)
             
             ip = m._input_problem
-            for (pci, dci) in ip._linear_leq_ci_dict
-                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_leq)
-            end
-            for (i, ci_saf_geq) in ip._linear_geq_ci_dict
-                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_geq)
-            end
-            for (i, ci_saf_eq) in ip._linear_eq_ci_dict
-                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_saf_eq)
-            end
-            for (i, ci_sqf_leq) in ip._quadratic_leq_ci_dict
-                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_leq)
-            end
-            for (i, ci_sqf_geq) in ip._quadratic_geq_ci_dict
-                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_geq)
-            end
-            for (i, ci_sqf_eq) in ip._quadratic_eq_ci_dict
-                ip._constraint_primal[i.value] = MOI.get(d, MOI.ConstraintPrimal(), ci_sqf_eq)
-            end
+            _extract_primal_linear!(d, ip)
+            _extract_primal_quadratic!(d, ip)
         end
     else
         m._upper_feasibility = false
@@ -155,21 +142,11 @@ function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType
     _update_upper_variables!(upper_optimizer, m)
     _set_starting_point!(upper_optimizer, m)
 
-    # Add linear and quadratic constraints to model
-    add_linear_constraints!(m, upper_optimizer)
-
+    # add constraints
     ip = m._input_problem
-    for (func, set, i) in ip._quadratic_leq_constraints
-        ip._quadratic_leq_ci_dict[i] = MOI.add_constraint(upper_optimizer, func, set)
-    end
-    for (func, set, i) in ip._quadratic_geq_constraints
-        ip._quadratic_geq_ci_dict[i] = MOI.add_constraint(upper_optimizer, func, set)
-    end
-    for (func, set, i) in ip._quadratic_eq_constraints
-        ip._quadratic_eq_ci_dict[i] = MOI.add_constraint(upper_optimizer, func, set)
-    end
-
-    add_soc_constraints!(m, upper_optimizer)
+    _add_constraint_store_ci_linear!(upper_optimizer, ip)
+    _add_constraint_store_ci_quadratic!(upper_optimizer, ip)
+     #add_soc_constraints!(m, upper_optimizer)
   
     # Add nonlinear evaluation block
     MOI.set(upper_optimizer, MOI.NLPBlock(), m._working_problem._nlp_data)

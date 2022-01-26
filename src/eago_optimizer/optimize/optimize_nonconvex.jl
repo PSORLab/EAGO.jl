@@ -244,7 +244,6 @@ function store_candidate_solution!(m::GlobalOptimizer)
         m._first_solution_node = m._maximum_node_id
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
-        copy!(m._constraint_primal, m._input_problem._constraint_primal)
     end
     return
 end

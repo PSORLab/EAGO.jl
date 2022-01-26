@@ -80,10 +80,10 @@ _constraints(m::Optimizer, ::Type{VI}, ::Type{IT}) = m._input_problem._vi_it_con
 _constraints(m::Optimizer, ::Type{VI}, ::Type{ZO}) = m._input_problem._vi_zo_constraints
 _constraints(m::Optimizer, ::Type{VI}, ::Type{MOI.Integer}) = m._input_problem._vi_int_constraints
 
-_constraints(m::Optimizer, ::Type{SAF}, ::Type{LT}) = m._input_problem._linear_leq_constraints
-_constraints(m::Optimizer, ::Type{SAF}, ::Type{GT}) = m._input_problem._linear_geq_constraints
-_constraints(m::Optimizer, ::Type{SAF}, ::Type{ET}) = m._input_problem._linear_eq_constraints
+_constraints(m::Optimizer, ::Type{SAF}, ::Type{LT}) = _constraints(m._input_problem, SAF, LT)
+_constraints(m::Optimizer, ::Type{SAF}, ::Type{GT}) = _constraints(m._input_problem, SAF, GT)
+_constraints(m::Optimizer, ::Type{SAF}, ::Type{ET}) = _constraints(m._input_problem, SAF, ET)
 
-_constraints(m::Optimizer, ::Type{SQF}, ::Type{LT}) = m._input_problem._quadratic_leq_constraints
-_constraints(m::Optimizer, ::Type{SQF}, ::Type{GT}) = m._input_problem._quadratic_geq_constraints
-_constraints(m::Optimizer, ::Type{SQF}, ::Type{ET}) = m._input_problem._quadratic_eq_constraints
+_constraints(m::Optimizer, ::Type{SQF}, ::Type{LT}) = _constraints(m._input_problem, SQF, LT)
+_constraints(m::Optimizer, ::Type{SQF}, ::Type{GT}) = _constraints(m._input_problem, SQF, GT)
+_constraints(m::Optimizer, ::Type{SQF}, ::Type{ET}) = _constraints(m._input_problem, SQF, ET)

@@ -81,6 +81,7 @@ function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int
     # need to retrieve variable bounds from locations other than
     # the node.
     for term in func.quadratic_terms
+        @show term
         a = term.coefficient
         i = term.variable_1.value
         j = term.variable_2.value
@@ -142,6 +143,7 @@ function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int
         count += 1
     end
     saf.constant = quadratic_constant
+    @show saf.terms
     return
 end
 
@@ -149,8 +151,10 @@ end
 $(TYPEDSIGNATURES)
 """
 function relax!(m::GlobalOptimizer, f::BQI, k::Int, check_safe::Bool)
+    @show BQI
     affine_relax_quadratic!(m, f.func, f.buffer, f.saf)
     valid_cut_flag = add_affine_relaxation!(m, f.saf, check_safe)
+    @show valid_cut_flag, f.saf
     return valid_cut_flag
 end
 
