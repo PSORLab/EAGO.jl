@@ -79,6 +79,8 @@ end
 @inbounds is_num(d::NonlinearExpression) = is_num(d.relax_cache, 1)
 var_num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = N
 
+mc_type(rc::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
+
 """
 $(TYPEDEF)
 
@@ -158,6 +160,8 @@ upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.
 # returns the interval bounds associated with the set
 interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
 is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
+
+mc_type(rc::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
 
 
 """

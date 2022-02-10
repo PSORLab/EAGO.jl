@@ -133,6 +133,16 @@ function initialize!(c::RelaxCache{V,N,T}, g::DirectedTree) where {V,N,T<:RelaxT
     return
 end
 
+function copy_subexpr!(rc::RelaxCache{V,N,T}, ds, dn, din, di) where {V,N,T<:RelaxTag}
+    rc._subexpression_set = ds
+    rc._subexpression_num = dn
+    rc._subexpression_is_num = din
+    rc._subexpression_info = di
+    return 
+end
+
+mc_type(rc::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
+
 ###
 ###
 ### Access functions for RelaxCache.
@@ -165,7 +175,7 @@ function store_subexpression_set!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) wher
     b._subexpression_set[i] = v
     nothing
 end
-function store_subexpression_num!(b::RelaxCache{V,N,T}, v::MC{N,T}, i::Int) where {V,N,T<:RelaxTag}
+function store_subexpression_num!(b::RelaxCache{V,N,T}, v, i::Int) where {V,N,T<:RelaxTag}
     b._subexpression_is_num[i] = true
     b._subexpression_num[i] = v
     nothing

@@ -155,6 +155,17 @@ function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType
 
     # Optimizes the object
     MOI.optimize!(upper_optimizer)
+
+    println(" ")
+    @show m._working_problem._objective_saf
+    @show upper_optimizer.optimizer.model.quadratic_le_constraints[1]
+    #@show typeof(upper_optimizer.optimizer.model.quadratic_le_constraints[1])
+    #@show upper_optimizer.optimizer.model.quadratic_ge_constraints
+    #@show upper_optimizer.optimizer.model.quadratic_eq_constraints
+
+    #@show upper_optimizer.optimizer.model.nlp_data
+    #@show fieldnames(typeof(upper_optimizer.optimizer.model.nlp_data))
+
     _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 

@@ -37,6 +37,51 @@ end
 add_nonlinear_evaluator!(m::GlobalOptimizer, nldata) = add_nonlinear_evaluator!(m, nldata.evaluator)
 add_nonlinear_evaluator!(m::GlobalOptimizer) = add_nonlinear_evaluator!(m, m._input_problem._nlp_data)
 
+
+function link_subexpression_dicts!(m::GlobalOptimizer)
+    evaluator = m._working_problem._relaxed_evaluator
+    n_subexpr = length(evaluator.subexpressions)
+
+    dn = Dict{Int,Float64}()
+    din = Dict{Int,Bool}()
+    for i = 1:n_subexpr
+        dn[i] = 0.0
+        din[i] = false
+    end
+    for ex in evaluator.subexpressions
+        mctyp = mc_type(ex)
+        ds = Dict{Int,mctyp}()
+        di = Dict{Int,mctyp}()
+        for i = 1:n_subexpr
+            ds[i] = zero(mctyp)
+            di[i] = zero(mctyp)
+        end
+        copy_subexpr!(ex.relax_cache, ds, dn, din, di)
+    end
+    if m._working_problem._objective isa BufferedNonlinearFunction
+        ex = m._working_problem._objective.ex.relax_cache
+        mctyp = mc_type(ex)
+        ds = Dict{Int,mctyp}()
+        di = Dict{Int,mctyp}()
+        for i = 1:n_subexpr
+            ds[i] = zero(mctyp)
+            di[i] = zero(mctyp)
+        end
+        copy_subexpr!(ex.relax_cache, ds, dn, din, di)
+    end
+    for f in m._working_problem._nonlinear_constr
+        mctyp = mc_type(f.ex)
+        ds = Dict{Int,mctyp}()
+        di = Dict{Int,mctyp}()
+        for i = 1:n_subexpr
+            ds[i] = zero(mctyp)
+            di[i] = zero(mctyp)
+        end
+        copy_subexpr!(f.ex.relax_cache, ds, dn, din, di)
+    end
+    return
+end
+
 """
 
 Adds a Evaluator, nonlinear functions, and populates each appropriately.
@@ -47,7 +92,9 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 
     nlp_data = m._input_problem._nlp_data
+
     MOI.initialize(evaluator, Symbol[:Grad, :Jac, :ExprGraph])
+
     user_operator_registry = OperatorRegistry(evaluator.model.nlp_data.user_operators)
 
     # set nlp data structure
@@ -172,17 +219,19 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     set_node!(wp._relaxed_evaluator, n)
 
     ηi = add_η!(d)
-    if !isnothing(ip._nlp_data) 
+    if !isnothing(ip._nlp_data)
         @variable(ip._nlp_data.evaluator.model, η)
-        sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
-        if !_is_input_min(m)
-            MOIU.operate!(-, Float64, sqf_obj)
-        end
-        d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)    
-        push!(sqf_obj.affine_terms, SAT(-1.0, η.index))
-        MOI.add_constraint(backend(ip._nlp_data.evaluator.model), sqf_obj, LT(0.0))
         @objective(ip._nlp_data.evaluator.model, Min, η)
     end
+
+    sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
+    if !_is_input_min(m)
+        MOIU.operate!(-, Float64, sqf_obj)
+    end
+    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)    
+    push!(sqf_obj.affine_terms, SAT(-1.0, VI(ηi)))
+    _constraints(ip, SQF, LT)[CI{SQF,LT}(ip._constraint_count += 1)] = (sqf_obj, LT(0.0))
+    push!(wp._sqf_leq, BufferedQuadraticIneq(sqf_obj, LT(0.0)))
 
     f.buffer[ηi] = 0.0
     f.len += 1
@@ -191,7 +240,8 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     end
     MOIU.operate!(-, Float64, f.func, VI(ηi))
     push!(f.saf.terms, SAT(-1.0, VI(ηi)))
-    push!(wp._sqf_leq, deepcopy(f))
+    #push!(wp._sqf_leq, deepcopy(f))
+    @show length(wp._sqf_leq)
     m._obj_var_slack_added = true
     return
 end
@@ -403,6 +453,8 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
     reform_epigraph_min!(m._global_optimizer)
     label_fixed_variables!(m._global_optimizer)
     label_branch_variables!(m._global_optimizer)
+
+    link_subexpression_dicts!(m._global_optimizer)
 
     # updates run and parse times
     new_time = time() - m._global_optimizer._start_time
