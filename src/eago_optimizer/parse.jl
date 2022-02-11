@@ -59,7 +59,7 @@ function link_subexpression_dicts!(m::GlobalOptimizer)
         copy_subexpr!(ex.relax_cache, ds, dn, din, di)
     end
     if m._working_problem._objective isa BufferedNonlinearFunction
-        ex = m._working_problem._objective.ex.relax_cache
+        ex = m._working_problem._objective.ex
         mctyp = mc_type(ex)
         ds = Dict{Int,mctyp}()
         di = Dict{Int,mctyp}()
@@ -398,7 +398,7 @@ end
 function variable_load_parse!(m::Optimizer, ::Type{VI}, ::Type{T}) where T
     wp = m._global_optimizer._working_problem = m._working_problem
     for (i, v) in enumerate(values(_constraints(m, VI, T)))
-        wp._variable_info[i] = VariableInfo(wp._variable_info[i], v[2])
+        wp._variable_info[v[1].value] = VariableInfo(wp._variable_info[v[1].value], v[2])
     end
     return
 end

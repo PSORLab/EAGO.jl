@@ -1,8 +1,13 @@
 
 function affine_expand_del(dx::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}, s::Vector{Int}) where N
+    #@show "ran aff expansion del"
     v = fx0
+    #@show v
     for i=1:N
-        v += ∇fx0[i]*dx[s[i]]
+        #@show i, ∇fx0[i], dx[s[i]]
+        #v += ∇fx0[i]*dx[s[i]]
+        v += ∇fx0[i]*dx[i]
+       #@show v
     end
     return v
 end
@@ -10,7 +15,8 @@ function affine_expand_del(dx::Vector{Interval{Float64}}, fx0::Float64, ∇fx0::
     v = fx0
     for i = 1:N
         t = ∇fx0[i]
-        tdx = dx[s[i]]
+        #tdx = dx[s[i]]
+        tdx = dx[i]
         v += t > 0.0 ? t*tdx.hi : t*tdx.lo
     end
     return v

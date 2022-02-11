@@ -98,6 +98,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
 
     if !xy_num(b, x, y)
         if xyset(b, x, y)
+            #@show "2 arity multiplication..."
             xv = set(b, x)
             yv = set(b, y)
             if b.use_apriori_mul
@@ -105,8 +106,8 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                 dP = b.dP
                 s = sparsity(g, 1)
 
-                xr = _info(b, x)
-                yr = _info(b, y)
+                xr = info(b, x)
+                yr = info(b, y)
 
                 xr_cv = cv(xr)                   # GOOD
                 xr_cc = cc(xr)                   # GOOD
@@ -128,19 +129,25 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                 s4 = affine_expand_del(dP, yrn_cc, yrn_cc_grad, s)
 
                 z = xv*yv
+                @show z
                 wIntv = z.Intv
-                if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
+                if (t3 < xv.Intv.hi) || (t4 < yv.Intv.hi)
                     t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
                     t2 = affine_expand_del(dp, yr_cv, yr_cv_grad, s)
                     za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
+                    @show za_l
                     z = z ∩ za_l
                 end
-                if (s3 < -x.Intv.lo) || (s4 < -z.Intv.lo)
+                #=
+                if (s3 > -xv.Intv.lo) || (s4 > -yv.Intv.lo)
                     s1 = affine_expand_del(dp, xrn_cc, xrn_cc_grad, s)
                     s2 = affine_expand_del(dp, yrn_cc, yrn_cc_grad, s)
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, xrn_cc_grad, yrn_cc_grad)
+                    @show za_u
                     z = z ∩ za_u
                 end
+                =#
+                @show z
             else
                 z = xv*yv
             end
@@ -216,22 +223,34 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
 end
 
 function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+    #println("start MULT N")
+    #println(" ")
+
     dp = b.dp
     dP = b.dP
     s = sparsity(g, 1)
+
+    #@show s
+    #@show dp
+    #@show dP
+
     z = one(MC{N,T})
+    zt = one(MC{N,T})
     zr = one(MC{N,T})
-    zok = one(MC{N,T})
     znum = one(Float64)
     firstset = true
     numval = true
-    for i in children(g, k)
+    for (q,i) in enumerate(children(g, k))
+        #println(" ")
+        #@show q
         if is_num(b, i)
             znum = znum*num(b, i)
         else
             numval = false
             x = set(b, i)
             xr = info(b, i)
+            #@show x
+            #@show xr
             if b.use_apriori_mul
                 if !firstset
                     xr_cv = cv(xr)
@@ -250,29 +269,99 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                     s4 = affine_expand_del(dP, zrn_cc, zrn_cc_grad, s)
 
                     wIntv = x.Intv*z.Intv
+                    zm = x*z
+                    #@show zm
                     if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
+                        # Relaxations are incorrect for za_l
                         t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
                         t2 = affine_expand_del(dp, zr_cv, zr_cv_grad, s)
+
+                        #=
+                        println(" ")
+                        @show x
+                        @show xr
+                        @show z
+                        @show zr
+
+                        println(" ")
+                        @show wIntv
+                        @show xr_cv_grad
+                        @show zr_cv_grad
+
+                        println(" ")
+                        @show t1
+                        @show t2
+                        @show t3
+                        @show t4
+
+                        println(" ")
+                        @show s
+                        @show dp
+                        @show dP
+                        =#
+
                         za_l = McCormick.mult_apriori_kernel(x, z, wIntv, t1, t2, t3, t4, xr_cv_grad, zr_cv_grad)
-                        z = z ∩ za_l
+                        #@show za_l
+                        #@show zm
+                        #@show za_l
+                        zm = zm ∩ za_l
                     end
-                    if (s3 < -x.Intv.lo) || (s4 < -z.Intv.lo)
+                    
+                    if (s3 > -x.Intv.lo) || (s4 > -z.Intv.lo)
+                        #@show "improved overestimators"
                         s1 = affine_expand_del(dp, xrn_cc, xrn_cc_grad, s)
                         s2 = affine_expand_del(dp, zrn_cc, zrn_cc_grad, s)
+                        #=
+                        println(" ")
+                        @show x
+                        @show xr
+                        @show z
+                        @show zr
+
+                        
+                        println(" ")
+                        @show -x
+                        @show -z
+
+                        println(" ")
+                        @show wIntv
+                        @show xrn_cc
+                        @show zrn_cc
+                        @show xrn_cc_grad
+                        @show zrn_cc_grad
+
+                        println(" ")
+                        @show s1
+                        @show s2
+                        @show s3
+                        @show s4
+
+                        println(" ")
+                        @show s
+                        @show dp
+                        @show dP
+                        =#
+                        
                         za_u = McCormick.mult_apriori_kernel(-x, -z, wIntv, s1, s2, s3, s4, xrn_cc_grad, zrn_cc_grad)
-                        z = z ∩ za_u
+                        #@show za_u
+                        #@show zm
+                        zm = zm ∩ za_u
                     end
+                    
+                    
+                    z = zm
                     zr = xr*zr
-                    zok = x*zok
                 else
                     firstset = false
                     zr = xr
                     z = x
-                    zok = x
                 end
             else
                 z = z*x
             end
+            zt = zt*x
+            #@show z
+            #@show zt
         end
     end
     if numval

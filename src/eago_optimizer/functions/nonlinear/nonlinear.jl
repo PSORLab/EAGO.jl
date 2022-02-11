@@ -152,8 +152,14 @@ end
 has_value(d::BufferedNonlinearFunction) = has_value(d.ex)
 dep_subexpr_count(d::BufferedNonlinearFunction) = dep_subexpr_count(d.ex)
 set_has_value!(d::BufferedNonlinearFunction, v::Bool) = set_has_value!(d.ex, v)
-sparsity(d::BufferedNonlinearFunction) = sparsity(d.ex)
-set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = set(d.ex)
+function sparsity(d::BufferedNonlinearFunction)
+    #println("sparsity of function is = $(sparsity(d.ex))")
+    sparsity(d.ex)
+end
+function set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
+    #println("sparsity of function is = $(set(d.ex))")
+    set(d.ex)
+end
 num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)
 lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
 upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
