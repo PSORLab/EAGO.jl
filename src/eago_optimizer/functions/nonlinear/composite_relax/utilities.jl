@@ -15,9 +15,11 @@ function affine_expand_del(dx::Vector{Interval{Float64}}, fx0::Float64, ∇fx0::
     v = fx0
     for i = 1:N
         t = ∇fx0[i]
-        #tdx = dx[s[i]]
-        tdx = dx[i]
-        v += t > 0.0 ? t*tdx.hi : t*tdx.lo
+        tdx = dx[s[i]]
+        #tdx = dx[i]
+        if !iszero(t)
+            v += t > 0.0 ? t*tdx.hi : t*tdx.lo
+        end
     end
     return v
 end

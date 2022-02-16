@@ -182,8 +182,12 @@ end
 $(TYPEDSIGNATURES)
 """
 function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, k::Int, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
+    #println("-----------------------------")
+    #println("start relax at current iteration with k = $k")
+    #println("-----------------------------")
     d = m._working_problem._relaxed_evaluator
     x = d.variable_values.x
+    d.pass_number = k
     forward_pass!(d, f)
     valid_cut_flag = true
 

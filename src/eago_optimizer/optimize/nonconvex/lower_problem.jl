@@ -230,9 +230,9 @@ function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     return
 end
 
-interval_objective_bound!(m::GlobalOptimizer, f::Nothing) = nothing
-function interval_objective_bound!(m::GlobalOptimizer, f::AffineFunctionIneq)
-    m._working_problem._relaxed_evaluator.is_first_eval = true
+interval_objective_bound!(m::GlobalOptimizer, f::Nothing, is_first_eval) = nothing
+function interval_objective_bound!(m::GlobalOptimizer, f::AffineFunctionIneq, is_first_eval)
+    m._working_problem._relaxed_evaluator.is_first_eval = is_first_eval
     fL, fU = bound_objective(m)
     if fL > m._lower_objective_value
         m._lower_objective_value = fL
@@ -241,8 +241,12 @@ function interval_objective_bound!(m::GlobalOptimizer, f::AffineFunctionIneq)
         m._cut_add_flag = false
     end
 end
-function interval_objective_bound!(m::GlobalOptimizer, f)
-    m._working_problem._relaxed_evaluator.is_first_eval = true
+function interval_objective_bound!(m::GlobalOptimizer, f, is_first_eval)
+    #println("bounded nonlinear")
+    m._working_problem._relaxed_evaluator.is_first_eval = is_first_eval
+    if is_first_eval
+        m._working_problem._relaxed_evaluator.pass_number = 1
+    end
     fL, fU = bound_objective(m)
     fv = _is_input_min(m) ? fL : -fU
     if fv > m._lower_objective_value
@@ -253,7 +257,7 @@ function interval_objective_bound!(m::GlobalOptimizer, f)
     end
     return
 end
-interval_objective_bound!(m::GlobalOptimizer) = interval_objective_bound!(m, m._working_problem._objective)
+interval_objective_bound!(m::GlobalOptimizer, is_first_eval = true) = interval_objective_bound!(m, m._working_problem._objective, is_first_eval)
 
 """
 $(SIGNATURES)
@@ -347,6 +351,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
 
     set_first_relax_point!(m)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
+
     while true
         relax_problem!(m)
         m._last_cut_objective = m._lower_objective_value
@@ -407,7 +412,9 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     if status == RRS_DUAL_FEASIBLE
         m._lower_objective_value = MOI.get(d, MOI.DualObjectiveValue())
     end
-    interval_objective_bound!(m)
+    #println("start interval objective bound")
+    interval_objective_bound!(m, true) # Operates on different function...
+    #println("end interval objective bound")
     return
 end
 lower_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = lower_problem!(_ext_typ(m), m)

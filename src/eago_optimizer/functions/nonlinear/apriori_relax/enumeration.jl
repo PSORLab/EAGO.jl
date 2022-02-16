@@ -29,32 +29,32 @@ const ENUM_OUTER_RND = 1E-9
 function f_init!(::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T}
     b.use_apriori_mul = false
     fprop!(Relax(), g, b)
-    xp = copy(b.v.x)
-    vlbd = _lbd(b.v)
-    vubd = _ubd(b.v)
+    xp = val(b)
+    vlbd = lbd(b)
+    vubd = ubd(b)
     xl = copy(vlbd)
     xu = copy(vubd)
     vlbd .-= ENUM_OUTER_RND
     vubd .+= ENUM_OUTER_RND
-    for k = 1:_node_count(g)
-        if _is_unlocked(b, k) && !_is_num(b, k)
-            b._info[k].v = _set(b, k)
+    for k = 1:node_count(g)
+        if  !is_num(b, k)
+            b._info[k].v = set(b, k)
         end
     end
-    s = _sparsity(g, 1)
+    s = sparsity(g, 1)
     for i = 0:2^N-1
         s = last(bitstring(i), N)
-        for (k,j) in enumerate(_sparsity(g, 1))
-            b.v.x[j] = s[k] == '1' ? xl[j] : xu[j]
+        for (k,j) in enumerate(sparsity(g, 1))
+            b.ic.v.x[j] = s[k] == '1' ? xl[j] : xu[j]
         end
         fprop!(Relax(), g, b)
-        for k = _node_count(g):-1:1
-            if _is_unlocked(b, k) && !_is_num(b, k)
-                b._info[k][i+1] = _set(b, k)
+        for k = node_count(g):-1:1
+            if !is_num(b, k)
+                b._info[k][i+1] = set(b, k)
             end
         end
     end
-    b.v.x .= xp
+    b.ic.v.x .= xp
     vlbd .= xl
     vubd .= xu
     b.use_apriori_mul = true
@@ -88,37 +88,22 @@ fprop!(t::RelaxMulEnumInner, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
 fprop!(t::RelaxMulEnumInner, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
 fprop!(t::RelaxMulEnumInner, v::Val{DIV}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
 fprop!(t::RelaxMulEnumInner, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k)
-
-function fprop!(t::RelaxMulEnumInner, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    i = _first_index(g, k)
-    x = _val(b, i)
-    l = _lbd(b, i)
-    u = _ubd(b, i)
-    #@show x, l, u
-    z = _var_set(MC{N,T}, _rev_sparsity(g, i, k), x, x, l, u)
-    #@show z
-    if !_first_eval(b)
-        z = z ∩ _interval(b, k)
-    end
-    #@show z
-    _store_set!(b, z, k)
-    return
-end
+fprop!(t::RelaxMulEnumInner, v::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag} = fprop!(Relax(), v, g, b, k) 
 
 function fprop_2!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = _child(g, 1, k)
-    y = _child(g, 2, k)
-    x_is_num = _is_num(b, x)
-    y_is_num = _is_num(b, y)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    x_is_num = is_num(b, x)
+    y_is_num = is_num(b, y)
     if !x_is_num && y_is_num
-        z = _set(b, x)*_num(b, y)
+        z = set(b, x)*num(b, y)
     elseif x_is_num && !y_is_num
-        z = _num(b, x)*_set(b, y)
+        z = num(b, x)*set(b, y)
     else
-        xs = _set(b, x)
-        ys = _set(b, y)
-        xinfo = _info(b, x)
-        yinfo = _info(b, y)
+        xs = set(b, x)
+        ys = set(b, y)
+        xinfo = info(b, x)
+        yinfo = info(b, y)
         xi = t.use_info ? xinfo.v : xs
         yi = t.use_info ? yinfo.v : ys
         xcvU, xccL = extract_apriori_info(t, xinfo, xs)
@@ -132,8 +117,8 @@ function fprop_2!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,
         za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
         z = (xs*ys) ∩ za_l ∩ za_u
     end
-    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    _store_set!(b, z, k)
+    z = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    b[k] = z
     return
 end
 
@@ -145,12 +130,12 @@ function fprop_n!(t::RelaxMulEnumInner, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T
     b._mult_temp.box .= one(MC{N,T})
     count = 0
     first_set = true
-    for i in _children(g, k)
-        if _is_num(b, i)
-            znum = znum*_num(b, i)
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = znum*num(b, i)
         else
-            xs = _set(b, i)
-            xinfo = _info(b, i)
+            xs = set(b, i)
+            xinfo = info(b, i)
             xi = t.use_info ? xinfo.v : xs
             if !first_set
                 xcvU, xccL = extract_apriori_info(t, xinfo, xs)
@@ -175,12 +160,12 @@ function fprop_n!(t::RelaxMulEnumInner, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T
         count += 1
     end
     z = ys*znum
-    z = _cut(z, _set(b, k), b.v, b.ϵ_sg, _sparsity(g, k), b.cut, false)
-    _store_set!(b, z, k)
+    z = cut(z, set(b, k), b.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    b[k] = z
     return
 end
 
 #TODO:
 function fprop!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    (_arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
+    (arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
 end

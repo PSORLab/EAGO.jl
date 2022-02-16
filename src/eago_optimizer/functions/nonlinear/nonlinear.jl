@@ -196,6 +196,7 @@ Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
     interval_intersect::Bool = false
     subgrad_tol::Float64 = 1E-10
     relax_type::RelaxType                       = STD_RELAX
+    pass_number::Int       = 0
 end
 set_variable_values!(d::Evaluator, v) = d.variable_values = v
 
@@ -291,18 +292,28 @@ end
 eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T<:RelaxTag} = eliminate_fixed_variables!(f.ex, v)
 f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool) = flag ? f_init!(t, g, c) : fprop!(t, g, c)
 function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
+    #println("ran forward pass")
     b = d.relax_cache
     update_box_and_pnt!(b.ic.v, z.variable_values, z.is_first_eval)
     if b.use_apriori_mul
         s = sparsity(d)
         v = b.ic.v
         x = v.x
+        for j in s
+            if isone(z.pass_number)
+                v.x0[j] = x[j]
+            end
+        end
         x0 = v.x0
         isempty(b.dp) && (b.dp = zeros(length(x));)
         isempty(b.dP) && (b.dP = zeros(Interval{Float64}, length(x));)
         for j in s
             b.dp[j] = x[j] - x0[j]
             b.dP[j] = Interval(lbd(b, j), ubd(b, j)) - x0[j]
+            #@show x[j]
+            #@show x0[j]
+            #@show lbd(b, j)
+            #@show ubd(b, j) 
         end
     end
     for i = 1:dep_subexpr_count(d)
