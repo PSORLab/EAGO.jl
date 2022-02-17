@@ -59,6 +59,30 @@ cc_grad(x::MC{N,T}) where {N,T} = x.cc_grad
 function zero(::Type{MCBoxPnt{Q,N,T}}) where {Q,N,T}
     MCBoxPnt{Q,N,T}(zero(MC{N,T}), zeros(MC{N,T}, Q))
 end
+function one(::Type{MCBoxPnt{Q,N,T}}) where {Q,N,T}
+    MCBoxPnt{Q,N,T}(one(MC{N,T}), ones(MC{N,T}, Q))
+end
+
+for op in (:+, :-, :/, :^, :*, :max, :min)
+    @eval function ($op)(x::MCBoxPnt{Q,N,T}, y::Float64)  where {Q,N,T}
+        MCBoxPnt{Q,N,T}(x.v*y, ($op).(x.box, y))
+    end
+    @eval function ($op)(x::Float64, y::MCBoxPnt{Q,N,T})  where {Q,N,T}
+        MCBoxPnt{Q,N,T}(x*y.v, ($op).(x, y.box))
+    end
+    @eval function ($op)(x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T})  where {Q,N,T}
+        MCBoxPnt{Q,N,T}(x.v*y.v, ($op).(x.box, y.box))
+    end
+end
+for ft in UNIVARIATE_ATOM_TYPES
+    op = UNIVARIATE_ATOM_DICT[ft]
+    if (op == :user) && continue
+        @eval function ($op)(x::MCBoxPnt{Q,N,T})  where {Q,N,T}
+            MCBoxPnt{Q,N,T}(($op)(x.v), ($op).(x.box))
+        end
+    end
+end
+
 function setindex!(d::MCBoxPnt{Q,N,T}, x::MC{N,T}, i::Int) where {Q,N,T}
     d.box[i] = x
 end

@@ -200,7 +200,7 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
     znum = one(Float64)
     numval = true
     if b.use_apriori_mul
-        zr = one(MC{N,T})
+        zr = one(V)
         dp = b.dp
         dP = b.dP
         s = sparsity(g, 1)
@@ -264,7 +264,7 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
     if is_num(b, y) && isone(num(b, y))
         b[k] = set(b, x)
     elseif is_num(b,y) && iszero(num(b, y))
-        b[k] = one(V)
+        b[k] = one(MC{N,T})
     elseif !xy_num(b, x, y)
         if xyset(b, x, y)
             z = set(b, x)^set(b, y)
@@ -354,18 +354,13 @@ function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{V,N,T}, k) where {V
 end
 
 function f_init!(t::Relax, g::DAT, b::RelaxCache)
+    @show "Relax Init"
     for k = node_count(g):-1:1
         c = node_class(g, k)
         (c == EXPRESSION)    && fprop!(t, Expression(), g, b, k)
         (c == VARIABLE)      && fprop!(t, Variable(), g, b, k)
         (c == SUBEXPRESSION) && fprop!(t, Subexpression(), g, b, k)
         b._info[k] = set(b, k)
-    end
-    for k = node_count(g):-1:1
-        if is_binary(g, k)
-            x = child(g, 1, k)
-            y = child(g, 2, k)
-        end
     end
     nothing
 end

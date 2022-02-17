@@ -31,7 +31,7 @@ module EAGO
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse, findnz
     using LinearAlgebra: eigmin, norm
     using Base: @propagate_inbounds
-    import Base: setindex!, + , *, -, ^, /, zero, one, inv, log, log10, exp, exp10, isempty
+    import Base: setindex!, + , *, -, ^, /, zero, one, inv, log, log10, exp, exp10, isempty, min, max
 
     @reexport using McCormick
     @reexport using SpecialFunctions

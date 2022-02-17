@@ -1,30 +1,3 @@
-function extract_apriori_info(t::RelaxMulEnumInner, x::Vector{MC{N,T}}, Q::Int) where {N,T}
-    cv = -Inf
-    cc = Inf
-    #DEBUG_NL && @show x.box
-    for i = 1:Q
-        z = x[i]
-        cvt = z.cv 
-        cct = z.cc
-        if cvt > cv
-            cv = cvt
-        end
-        if cct < cc
-            cc = cct
-        end
-    end
-    return cv, cc
-end
-function extract_apriori_info(t::RelaxMulEnumInner, x::MCBoxPnt{Q,N,T}, y::MC{N,T}) where {Q,N,T}
-    extract_apriori_info(t, x.box, Q)
-end
-
-_cut_info(t::RelaxMulEnumInner, v, z, x) = z
-_cut_info(t::RelaxMulEnum, v, z, x) = z
-
-relax_info(s::RelaxMulEnumInner, n::Int, t::T) where T = MCBoxPnt{2^n,n,T}
-relax_info(s::RelaxMulEnum, n::Int, t::T) where T = MCBoxPnt{2^n,n,T}
-
 const ENUM_OUTER_RND = 1E-9
 function f_init!(::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T}
     b.use_apriori_mul = false
@@ -58,9 +31,56 @@ function f_init!(::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T}
     vlbd .= xl
     vubd .= xu
     b.use_apriori_mul = true
-    fprop!(RelaxMulEnumInner(), g, b)
+    fprop!(Relax(), g, b)
     return   
 end
+
+_cut_info(t::RelaxMulEnumInner, v, z, x) = z
+_cut_info(t::RelaxMulEnum, v, z, x) = z
+
+relax_info(s::RelaxMulEnumInner, n::Int, t::T) where T = MCBoxPnt{2^n,n,T}
+relax_info(s::RelaxMulEnum, n::Int, t::T) where T = MCBoxPnt{2^n,n,T}
+
+function estimator_extrema(x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dP) where {Q,N,T}
+    xmax = maximum(cv, x.box)
+    ymax = maximum(cv, y.box) 
+    xmin = minimum(cv, x.box)
+    ymin = minimum(cv, y.box)
+    return xmax, ymax, xmin, ymin
+end
+
+function estimator_under(x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP) where {Q,N,T}
+    x.v.cv, y.v.cv, x.v.cv_grad, y.v.cv_grad
+end
+
+function estimator_over(x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP) where {Q,N,T}
+    -x.v.cc, -y.v.cc, -x.v.cc_grad, -y.v.cc_grad
+end
+
+
+#=
+function extract_apriori_info(t::RelaxMulEnumInner, x::Vector{MC{N,T}}, Q::Int) where {N,T}
+    cv = -Inf
+    cc = Inf
+    #DEBUG_NL && @show x.box
+    for i = 1:Q
+        z = x[i]
+        cvt = z.cv 
+        cct = z.cc
+        if cvt > cv
+            cv = cvt
+        end
+        if cct < cc
+            cc = cct
+        end
+    end
+    return cv, cc
+end
+function extract_apriori_info(t::RelaxMulEnumInner, x::MCBoxPnt{Q,N,T}, y::MC{N,T}) where {Q,N,T}
+    extract_apriori_info(t, x.box, Q)
+end
+
+
 function fprop!(t::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
     vlbd = _lbd(b.v)
     vubd = _ubd(b.v)
@@ -169,3 +189,4 @@ end
 function fprop!(t::RelaxMulEnumInner, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     (arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
 end
+=#
