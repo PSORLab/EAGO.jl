@@ -91,77 +91,6 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where 
     end
 end
 
-function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-
-    if !xy_num(b, x, y)
-        if xyset(b, x, y)
-            #@show "2 arity multiplication..."
-            xv = set(b, x)
-            yv = set(b, y)
-            if b.use_apriori_mul
-                dp = b.dp
-                dP = b.dP
-                s = sparsity(g, 1)
-
-                xr = info(b, x)
-                yr = info(b, y)
-
-                xr_cv = cv(xr)                   # GOOD
-                xr_cc = cc(xr)                   # GOOD
-                yr_cv = cv(yr)                   # GOOD
-                yr_cc = cc(yr)                   # GOOD
-                xr_cv_grad = cv_grad(xr)         # GOOD
-                xr_cc_grad = cc_grad(xr)         # GOOD
-                yr_cv_grad = cv_grad(yr)         # GOOD
-                yr_cc_grad = cc_grad(yr)         # GOOD
-
-                xrn_cc = -xr_cc
-                yrn_cc = -yr_cc
-                xrn_cc_grad = -xr_cc_grad
-                yrn_cc_grad = -yr_cc_grad
-
-                t3 = affine_expand_del(dP, xr_cv, xr_cv_grad, s)
-                t4 = affine_expand_del(dP, yr_cv, yr_cv_grad, s)
-                s3 = affine_expand_del(dP, xrn_cc, xrn_cc_grad, s)
-                s4 = affine_expand_del(dP, yrn_cc, yrn_cc_grad, s)
-
-                z = xv*yv
-                @show z
-                wIntv = z.Intv
-                if (t3 < xv.Intv.hi) || (t4 < yv.Intv.hi)
-                    t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
-                    t2 = affine_expand_del(dp, yr_cv, yr_cv_grad, s)
-                    za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, t1, t2, t3, t4, xr_cv_grad, yr_cv_grad)
-                    @show za_l
-                    z = z ∩ za_l
-                end
-                #=
-                if (s3 > -xv.Intv.lo) || (s4 > -yv.Intv.lo)
-                    s1 = affine_expand_del(dp, xrn_cc, xrn_cc_grad, s)
-                    s2 = affine_expand_del(dp, yrn_cc, yrn_cc_grad, s)
-                    za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, s1, s2, s3, s4, xrn_cc_grad, yrn_cc_grad)
-                    @show za_u
-                    z = z ∩ za_u
-                end
-                =#
-                @show z
-            else
-                z = xv*yv
-            end
-        elseif xset_ynum(b, x, y)
-            z = set(b, x)*num(b, y)
-        else
-            z = num(b, x)*set(b, y)
-        end
-        b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-    else
-        b[k] = num(b, x)*num(b, y)
-    end
-end
-
 function fprop_n!(t::Relax, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     z = zero(MC{N,T})
     znum = 0.0
@@ -222,153 +151,101 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
     end
 end
 
-function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    #println("start MULT N")
-    #println(" ")
+function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
 
-    dp = b.dp
-    dP = b.dP
-    s = sparsity(g, 1)
+    x = child(g, 1, k)
+    y = child(g, 2, k)
 
-    #@show s
-    #@show dp
-    #@show dP
-
-    z = one(MC{N,T})
-    zt = one(MC{N,T})
-    zr = one(MC{N,T})
-    znum = one(Float64)
-    firstset = true
-    numval = true
-    for (q,i) in enumerate(children(g, k))
-        #println(" ")
-        #@show q
-        if is_num(b, i)
-            znum = znum*num(b, i)
-        else
-            numval = false
-            x = set(b, i)
-            xr = info(b, i)
-            #@show x
-            #@show xr
+    if !xy_num(b, x, y)
+        if xyset(b, x, y)
+            xv = set(b, x)
+            yv = set(b, y)
             if b.use_apriori_mul
-                if !firstset
-                    xr_cv = cv(xr)
-                    zr_cv = cv(zr)
-                    xr_cv_grad = cv_grad(xr)
-                    zr_cv_grad = cv_grad(zr)
-                    
-                    xrn_cc = -cc(xr)
-                    zrn_cc = -cc(zr)
-                    xrn_cc_grad = -cc_grad(xr)
-                    zrn_cc_grad = -cc_grad(zr)
-
-                    t3 = affine_expand_del(dP, xr_cv, xr_cv_grad, s)
-                    t4 = affine_expand_del(dP, zr_cv, zr_cv_grad, s)
-                    s3 = affine_expand_del(dP, xrn_cc, xrn_cc_grad, s)
-                    s4 = affine_expand_del(dP, zrn_cc, zrn_cc_grad, s)
-
-                    wIntv = x.Intv*z.Intv
-                    zm = x*z
-                    #@show zm
-                    if (t3 < x.Intv.hi) || (t4 < z.Intv.hi)
-                        # Relaxations are incorrect for za_l
-                        t1 = affine_expand_del(dp, xr_cv, xr_cv_grad, s)
-                        t2 = affine_expand_del(dp, zr_cv, zr_cv_grad, s)
-
-                        #=
-                        println(" ")
-                        @show x
-                        @show xr
-                        @show z
-                        @show zr
-
-                        println(" ")
-                        @show wIntv
-                        @show xr_cv_grad
-                        @show zr_cv_grad
-
-                        println(" ")
-                        @show t1
-                        @show t2
-                        @show t3
-                        @show t4
-
-                        println(" ")
-                        @show s
-                        @show dp
-                        @show dP
-                        =#
-
-                        za_l = McCormick.mult_apriori_kernel(x, z, wIntv, t1, t2, t3, t4, xr_cv_grad, zr_cv_grad)
-                        #@show za_l
-                        #@show zm
-                        #@show za_l
-                        zm = zm ∩ za_l
-                    end
-                    
-                    if (s3 > -x.Intv.lo) || (s4 > -z.Intv.lo)
-                        #@show "improved overestimators"
-                        s1 = affine_expand_del(dp, xrn_cc, xrn_cc_grad, s)
-                        s2 = affine_expand_del(dp, zrn_cc, zrn_cc_grad, s)
-                        #=
-                        println(" ")
-                        @show x
-                        @show xr
-                        @show z
-                        @show zr
-
-                        
-                        println(" ")
-                        @show -x
-                        @show -z
-
-                        println(" ")
-                        @show wIntv
-                        @show xrn_cc
-                        @show zrn_cc
-                        @show xrn_cc_grad
-                        @show zrn_cc_grad
-
-                        println(" ")
-                        @show s1
-                        @show s2
-                        @show s3
-                        @show s4
-
-                        println(" ")
-                        @show s
-                        @show dp
-                        @show dP
-                        =#
-                        
-                        za_u = McCormick.mult_apriori_kernel(-x, -z, wIntv, s1, s2, s3, s4, xrn_cc_grad, zrn_cc_grad)
-                        #@show za_u
-                        #@show zm
-                        zm = zm ∩ za_u
-                    end
-                    
-                    
-                    z = zm
-                    zr = xr*zr
-                else
-                    firstset = false
-                    zr = xr
-                    z = x
+                dp = b.dp
+                dP = b.dP
+                s = sparsity(g, 1)
+                xr = info(b, x)
+                yr = info(b, y)
+                u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
+                z = xv*yv
+                wIntv = z.Intv
+                if (u1max < xv.Intv.hi) || (u2max < yv.Intv.hi)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(xr, yr, s, dp, dP)
+                    za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
+                    z = z ∩ za_l
+                end
+                if (v1nmax > -xv.Intv.lo) || (v2nmax > -yv.Intv.lo)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(xr, yr, s, dp, dP)
+                    za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
+                    z = z ∩ za_u
                 end
             else
-                z = z*x
+                z = xv*yv
             end
-            zt = zt*x
-            #@show z
-            #@show zt
+        elseif xset_ynum(b, x, y)
+            z = set(b, x)*num(b, y)
+        else
+            z = num(b, x)*set(b, y)
+        end
+        #println("[$k] MULT[$x, $y]... = $z (vs. $(b._info[k])) \n")
+        b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    else
+        b[k] = num(b, x)*num(b, y)
+    end
+end
+
+function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+
+    z = one(MC{N,T})
+    znum = one(Float64)
+    numval = true
+    if b.use_apriori_mul
+        zr = one(MC{N,T})
+        dp = b.dp
+        dP = b.dP
+        s = sparsity(g, 1)
+        for (q,i) in enumerate(children(g, k))
+            if is_num(b, i)
+                znum = znum*num(b, i)
+            else
+                numval = false
+                x = set(b, i)
+                xr = info(b, i)
+                u1max, u2max, v1nmax, v2nmax = estimator_extrema(zr, xr, s, dP)
+                zv = z*x
+                wIntv = zv.Intv
+                if (u1max < z.Intv.hi) || (u2max < x.Intv.hi)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(zr, xr, s, dp, dP)
+                    za_l = McCormick.mult_apriori_kernel(z, x, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
+                    zv = zv ∩ za_l
+                end
+                if (v1nmax > -z.Intv.lo) || (v2nmax > -x.Intv.lo)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(zr, xr, s, dp, dP)
+                    za_u = McCormick.mult_apriori_kernel(-z, -x, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
+                    zv = zv ∩ za_u
+                end
+                zr = zr*xr
+                zv = cut(zv, zv, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
+                z = zv
+            end
+        end
+    else
+        for (q,i) in enumerate(children(g, k))
+            if is_num(b, i)
+                znum = znum*num(b, i)
+            else
+                numval = false
+                x = set(b, i)
+                z = z*x
+                z = cut(z, z, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
+            end
         end
     end
     if numval
         b[k] = znum
     else
         z = z*znum
-        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b[k] = z
     end
 end
 

@@ -37,7 +37,7 @@ function f_init!(::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T}
     vlbd .-= ENUM_OUTER_RND
     vubd .+= ENUM_OUTER_RND
     for k = 1:node_count(g)
-        if  !is_num(b, k)
+        if !is_num(b, k)
             b._info[k].v = set(b, k)
         end
     end
@@ -70,8 +70,8 @@ function fprop!(t::RelaxMulEnum, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:Rel
     vubd .+= ENUM_OUTER_RND
     fprop!(RelaxMulEnumInner(false), g, b)
     for k = 1:_node_count(g)
-        if _is_unlocked(b, k) && !_is_num(b, k)
-            b._info[k].v = _set(b, k)
+        if !is_num(b, k)
+            b._info[k].v = set(b, k)
         end
     end
     vlbd .= xl
