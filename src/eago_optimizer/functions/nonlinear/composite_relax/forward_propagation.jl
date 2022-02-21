@@ -20,7 +20,7 @@ function varset(::Type{MC{N,T}}, i, x_cv, x_cc, l, u) where {V,N,T<:RelaxTag}
     return MC{N,T}(x_cv, x_cc, Interval{Float64}(l, u), v, v, false)
 end
 
-function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
+function fprop!(t::RelaxCacheAttribute, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
     i = first_index(g, k)
     x = val(b, i)
     l = lbd(b, i)
@@ -28,10 +28,22 @@ function fprop!(t::Relax, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k) where {
     if l == u
         b[k] = x
     else
+        #=
+        if !isfinite(x)
+            if !isfinite(l) && !isfinite(u)
+                x = 0.0
+            elseif isfinite(u)
+                x = u
+            elseif isfinite(l)
+                x = l
+            end
+        end
+        =#
         z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
         if !first_eval(t, b)
             z = z ∩ interval(b, k)
         end
+        #println("[$k] VARIABLE[$i]... = $z \n")
         b[k] = z
     end
     nothing
@@ -77,7 +89,9 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where 
             else
                 z = num(b, x) - set(b, y)
             end
+            #println("[$k] Minus[$x, $y]... = $z")
             b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            #println("[$k] Minus[$x, $y]... = $ztemp after cut \n")
         else
             b[k] = num(b, x) - num(b, y)
         end

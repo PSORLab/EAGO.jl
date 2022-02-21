@@ -1,19 +1,22 @@
+
+abstract type RelaxCacheAttribute <: AbstractCacheAttribute end
+
 """
     Relax
 
 Used to dispatch relaxations to a standard 
 """
-struct Relax <: AbstractCacheAttribute end
+struct Relax <: RelaxCacheAttribute end
 
 """
     RelaxAA
 """
-struct RelaxAA <: AbstractCacheAttribute
+struct RelaxAA <: RelaxCacheAttribute
     v::Vector{Int} 
 end
 RelaxAA() = RelaxAA(Int[])
 
-struct RelaxAAInfo <: AbstractCacheAttribute
+struct RelaxAAInfo <: RelaxCacheAttribute
     v::Vector{Int} 
 end
 RelaxAAInfo() = RelaxAAInfo(Int[])
@@ -21,7 +24,7 @@ RelaxAAInfo() = RelaxAAInfo(Int[])
 """
     RelaxMulEnum
 """
-struct RelaxMulEnum <: AbstractCacheAttribute
+struct RelaxMulEnum <: RelaxCacheAttribute
     v::Vector{Int}
     use_info::Bool
 end
@@ -29,7 +32,7 @@ RelaxMulEnum() = RelaxMulEnum(Int[], false)
 RelaxMulEnum(x::Vector{Int64}) = RelaxMulEnum(x, false)
 RelaxMulEnum(x::Bool) = RelaxMulEnum(Int[], x)
 
-struct RelaxMulEnumInner <: AbstractCacheAttribute
+struct RelaxMulEnumInner <: RelaxCacheAttribute
     v::Vector{Int}
     use_info::Bool
 end
@@ -218,6 +221,7 @@ ubd(b::RelaxCache{V,N,T}, i::Int) where {V,N,T<:RelaxTag} = ubd(b.ic.v, i)
 
 _set_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._set_mv_buffer, 1:n)
 _num_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._num_mv_buffer, 1:n)
+_info_input(b::RelaxCache{V,N,T}, n::Int) where {V,N,T<:RelaxTag} = view(b._info_mv_buffer, 1:n)
 
 include(joinpath(@__DIR__, "utilities.jl"))
 include(joinpath(@__DIR__, "forward_propagation.jl"))

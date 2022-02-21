@@ -69,6 +69,43 @@ end
 /(x::AffineEAGO{N}, α::Float64) where N = AffineEAGO{N}(x.c/α, x.γ/α, x.Δ/abs(α))
 /(α::Float64, x::AffineEAGO{N}) where N = α*inv(x)
 
+
+function exp(x::AffineEAGO{N}) where N
+    a, b = bounds(x)
+    fa = exp(a)
+    fb = exp(b)
+    if USE_MIN_RANGE
+        p = exp(a)
+        q = 0.5*(fa + fb - p*(a + b))
+        Δ = abs(0.5*(fb - fa - p*(b - a)))
+        return AffineEAGO(x, p, q, Δ)
+    end
+    p = (fb - fa)/(b - a)
+    ξ = log(p)
+    fξ = p
+    q = 0.5*(fa + fξ - p*(a + ξ))
+    Δ = abs(0.5*(fξ - fa - p*(ξ - a)))
+    return AffineEAGO(x, p, q, Δ)
+end
+
+function exp10(x::AffineEAGO{N}) where N
+    a, b = bounds(x)
+    fa = exp10(a)
+    fb = exp10(b)
+    if USE_MIN_RANGE
+        p = log10(a)
+        q = 0.5*(fa + fb - p*(a + b))
+        Δ = abs(0.5*(fb - fa - p*(b - a)))
+        return AffineEAGO(x, p, q, Δ)
+    end
+    p = (fb - fa)/(b - a)
+    ξ = log10(p)
+    fξ = p
+    q = 0.5*(fa + fξ - p*(a + ξ))
+    Δ = abs(0.5*(fξ - fa - p*(ξ - a)))
+    return AffineEAGO(x, p, q, Δ)
+end
+
 function log(x::AffineEAGO{N}) where N
     a, b = bounds(x)
     fa = log(a)
@@ -181,8 +218,9 @@ function ^(x::AffineEAGO{N}, n::Float64) where N
     return pow_1d(x, n, n*xL^(n-1))
 end
 
-# DONE...
-function ^(x::AffineEAGO{N}, n::Number) where N
+
+^(x::AffineEAGO{N}, y::AffineEAGO{N}) where N = exp(y*log(x))
+function ^(x::AffineEAGO{N}, n) where N
     if iszero(n) 
         return zero(x)
     elseif isone(n)
@@ -216,6 +254,8 @@ end
 MC(x::MCAffPnt{N,T}) where {N,T<:RelaxTag} = x.v
 MC(x::MC{N,T}) where {N, T<:RelaxTag} = x
 
+relax_info(s::RelaxAA, n::Int, t::T) where {N,T} = MCAffPnt{n,T}
+
 zero(::Type{MCAffPnt{N,T}}) where {N,T} = MCAffPnt{N,T}(zero(MC{N,T}), zero(AffineEAGO{N}))
 zero(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(zero(x.v), zero(x.box))
 
@@ -241,15 +281,401 @@ one(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(one(MC{N,T}), one(AffineEAGO{N
 
 ^(x::MCAffPnt{N,T}, n::Integer) where {N,T} = MCAffPnt{N,T}(x.v^n, x.box^n)
 ^(x::MCAffPnt{N,T}, n::Number) where {N,T} = MCAffPnt{N,T}(x.v^n, x.box^n)
-inv(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(inv(x.v), inv(x.box))
+^(x::MCAffPnt{N,T}, n::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(x.v^n.v, x.box^n.box)
 
-log(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(log(x.v), log(x.box))
-log10(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(log10(x.v), log10(x.box))
+for op in (:inv, :log, :log10, :exp, :exp10)
+    @eval ($op)(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(($op)(x.v), ($op)(x.box))
+end
 
-exp(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(exp(x.v), exp(x.box))
-exp10(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(exp10(x.v), exp10(x.box))
+Interval(x::MCAffPnt{N,T}) where {N,T<:RelaxTag} = Interval(x.v) ∩ Interval(x.box)
+
+function cut(x::MCAffPnt{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
+    (pflag & cflag)  && (return set_value_post(x ∩ Interval(z), v, s, ϵ))
+    (pflag & !cflag) && (return set_value_post(x, v, s, ϵ))
+    (pflag & cflag)  && (return x ∩ Interval(z))
+    return x
+end
+
+function varset(::Type{MCAffPnt{N,T}}, i, x_cv, x_cc, l, u) where {V,N,T<:RelaxTag}
+    v = seed_gradient(i, Val(N))
+    v_Intv = Interval{Float64}(l, u)
+    v_mc = MC{N,T}(x_cv, x_cc, v_Intv, v, v, false) 
+    v_aff = AffineEAGO{N}(x_cv, v_Intv, i)
+    return MCAffPnt{N,T}(v_mc, v_aff)
+end
+
+function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    i = first_index(g, k)
+    x = val(b, i)
+    l = lbd(b, i)
+    u = ubd(b, i)
+    if l == u
+        b[k] = x
+    else
+        z = varset(MCAffPnt{N,T}, rev_sparsity(g, i, k), x, x, l, u)
+        if !first_eval(t, b)
+            z = z ∩ interval(b, k)
+        end
+        b._info[k] = z
+    end
+    nothing
+end
+
+function fprop!(t::RelaxAA, ex::Subexpression, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    x =  first_index(g, k)
+    if subexpression_is_num(b, x)
+        b[k] = subexpression_num(b, x)
+    else
+        b._info[k] = subexpression_info(b, x)
+    end
+end
+
+for (F, f) in ((PLUS, :+), (MIN, :min), (MAX, :max), (DIV, :/), (ARH, :arh))
+    @eval function fprop_2!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+        x = child(g, 1, k)
+        y = child(g, 2, k)
+        if !xy_num(b, x, y)
+            if xyset(b, x, y)
+                z = ($f)(info(b, x), info(b, y))
+            elseif xset_ynum(b, x, y)
+                z = ($f)(info(b, x), num(b, y))
+            else
+                z = ($f)(num(b, x), info(b, y))
+            end
+            b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        else
+            b[k] = ($f)(num(b, x), num(b, y))
+        end
+    end
+end
+
+function fprop!(t::RelaxAA, v::Val{MINUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    x = child(g, 1, k)
+    if is_binary(g, k)
+        y = child(g, 2, k)
+        if !xy_num(b, x, y)
+            if xyset(b, x, y)
+                z = info(b, x) - info(b, y)
+            elseif xset_ynum(b, x, y)
+                z = info(b, x) - num(b, y)
+            else
+                z = num(b, x) - info(b, y)
+            end
+            b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        else
+            b[k] = num(b, x) - num(b, y)
+        end
+    else
+        if is_num(b, x)
+            b[k] = -num(b, x)
+        else
+            b._info[k] = cut(-info(b, x), info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        end
+    end
+end
+
+function fprop_n!(t::RelaxAA, v::Val{PLUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+    z = zero(MCAffPnt{N,T})
+    znum = 0.0
+    numval = true
+    for i in children(g, k)
+        if is_num(b, i)
+            znum += num(b, i)
+        else
+            numval = false
+            z += info(b, i)
+        end
+    end
+    if numval
+        b[k] = znum
+    else
+        z += znum
+        b._info[k] = cut(z, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    end
+end
+
+function fprop_n!(t::RelaxAA, v::Val{MIN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+    z = Inf*one(MCAffPnt{N,T})
+    znum = Inf
+    numval = true
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = min(znum, num(b, i))
+        else
+            numval = false
+            z = min(z, info(b, i))
+        end
+    end
+    if numval
+        b[k] = znum
+    else
+        z = min(z, znum)
+        b._info[k] = cut(z, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    end
+end
+
+function fprop_n!(t::RelaxAA, v::Val{MAX}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+    z = -Inf*one(MCAffPnt{N,T})
+    znum = -Inf
+    numval = true
+    for i in children(g, k)
+        if is_num(b, i)
+            znum = max(znum, num(b, i))
+        else
+            numval = false
+            z = max(z, info(b, i))
+        end
+    end
+    if numval
+        b[k] = znum
+    else
+        z = max(z, znum)
+        b._info[k] = cut(z, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    end
+end
+
+function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+
+    if !xy_num(b, x, y)
+        if xyset(b, x, y)
+            xr = info(b, x)
+            yr = info(b, y)
+            xv = xr.v
+            yv = yr.v
+            if b.use_apriori_mul
+                dp = b.dp
+                dP = b.dP
+                s = sparsity(g, 1)
+                u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
+                z = xv*yv
+                wIntv = z.Intv
+                if (u1max < xv.Intv.hi) || (u2max < yv.Intv.hi)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP)
+                    za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
+                    z = z ∩ za_l
+                end
+                if (v1nmax > -xv.Intv.lo) || (v2nmax > -yv.Intv.lo)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_over(xv, yv, xr, yr, s, dp, dP)
+                    za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
+                    z = z ∩ za_u
+                end
+            else
+                z = xv*yv
+            end
+        elseif xset_ynum(b, x, y)
+            z = info(b, x)*num(b, y)
+        else
+            z = num(b, x)*info(b, y)
+        end
+        b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    else
+        b[k] = num(b, x)*num(b, y)
+    end
+end
+
+function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+
+    z = one(MCAffPnt{N,T})
+    znum = one(Float64)
+    numval = true
+    if b.use_apriori_mul
+        zr = one(MCAffPnt{N,T})
+        dp = b.dp
+        dP = b.dP
+        s = sparsity(g, 1)
+        for (q,i) in enumerate(children(g, k))
+            if is_num(b, i)
+                znum = znum*num(b, i)
+            else
+                numval = false
+                xi = info(b, i)
+                x = xi.v
+                xr = info(b, i)
+                u1max, u2max, v1nmax, v2nmax = estimator_extrema(zr, xr, s, dP)
+                zv = z*x
+                wIntv = zv.Intv
+                if (u1max < z.Intv.hi) || (u2max < x.Intv.hi)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(zr, xr, s, dp, dP)
+                    za_l = McCormick.mult_apriori_kernel(z, x, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
+                    zv = zv ∩ za_l
+                end
+                if (v1nmax > -z.Intv.lo) || (v2nmax > -x.Intv.lo)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(zr, xr, s, dp, dP)
+                    za_u = McCormick.mult_apriori_kernel(-z, -x, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
+                    zv = zv ∩ za_u
+                end
+                zr = zr*xr
+                zv = cut(zv, zv, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
+                z = zv
+            end
+        end
+    else
+        for (q,i) in enumerate(children(g, k))
+            if is_num(b, i)
+                znum = znum*num(b, i)
+            else
+                numval = false
+                x = info(b, i)
+                z = z*x
+                z = cut(z, z, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
+            end
+        end
+    end
+    if numval
+        b[k] = znum
+    else
+        z = z*znum
+        b._info[k] = z
+    end
+end
+
+for F in (PLUS, MULT, MIN, MAX)
+    @eval function fprop!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+        is_binary(g, k) ? fprop_2!(RelaxAA(), Val($F), g, b, k) : fprop_n!(RelaxAA(), Val($F), g, b, k)
+    end
+end
+function fprop!(t::RelaxAA, v::Val{DIV}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    fprop_2!(RelaxAA(), v, g, b, k)
+end
+
+function fprop!(t::RelaxAA, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+    x = child(g, 1, k)
+    y = child(g, 2, k)
+    if is_num(b, y) && isone(num(b, y))
+        b._info[k] = info(b, x)
+    elseif is_num(b,y) && iszero(num(b, y))
+        b._info[k] = one(MCAffPnt{N,T})
+    elseif !xy_num(b, x, y)
+        if xyset(b, x, y)
+            z = info(b, x)^info(b, y)
+        elseif xset_ynum(b, x, y)
+            z = info(b, x)^num(b, y)
+        else
+            z = num(b, x)^info(b, y)
+        end
+        b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+    else
+        b[k] = num(b, x)^num(b, y)
+    end
+end
+
+function fprop!(t::RelaxAA, v::Val{USER}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+    f = user_univariate_operator(g, first_index(g, k))
+    x = child(g, 1, k)
+    if is_num(b, x)
+        b[k] = f(num(b, x))
+    else
+        z = f(info(b, x))
+        b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g, k), b.cut, b.post)
+    end
+end
+
+function fprop!(t::RelaxAA, v::Val{USERN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+    mv = user_multivariate_operator(g, first_index(g, k))
+    n = arity(g, k)
+    set_input = _info_input(b, n)
+    num_input = _num_input(b, n)
+    anysets = false
+    i = 1
+    for c in children(g, k)
+        if is_num(b, c)
+            x = num(b, c)
+            if !isinf(x)
+                set_input[i] = MCAffPnt{N,T}(x)
+                num_input[i] = x
+            end
+        else
+            set_input[i] = info(b, c)
+            anysets = true
+        end
+        i += 1
+    end
+    if anysets
+        z = MOI.eval_objective(mv, set_input)::MCAffPnt{N,T}
+        b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+    else
+        b[k] = MOI.eval_objective(mv, num_input)
+    end
+end
+
+for ft in UNIVARIATE_ATOM_TYPES
+    f = UNIVARIATE_ATOM_DICT[ft]
+    (f == :user || f == :+ || f == :-) && continue
+    @eval function fprop!(t::RelaxAA, v::Val{$ft}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+        x = child(g, 1, k)
+        if is_num(b, x)
+            return b[k] = ($f)(num(b, x))
+        else
+            z = ($f)(info(b, x))
+            b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+        end
+    end
+end
+
+for (F, f) in ((LOWER_BND, :lower_bnd), (UPPER_BND, :upper_bnd))
+    @eval function fprop!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+        y = child(g, 2, k)
+        if is_num(b, y)
+            z = info(b, child(g, 1, k))
+            z = ($f)(z, num(b, y))
+            b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g, k), b.cut, b.post)
+        end
+    end
+end
+
+function fprop!(t::RelaxAA, v::Val{BND}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    z = info(b, child(g, 1, k))
+    y = child(g, 2, k)
+    r = child(g, 3, k)
+    if is_num(b, y) && is_num(b, r)
+        z = bnd(z, num(b, y),num(b, r))
+    end
+    b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+end
+
+function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
+    for k = node_count(g):-1:1
+        c = node_class(g, k)
+        (c == EXPRESSION)    && fprop!(t, Expression(), g, b, k)
+        (c == VARIABLE)      && fprop!(t, Variable(), g, b, k)
+        (c == SUBEXPRESSION) && fprop!(t, Subexpression(), g, b, k)
+        b[k] = b._info[k].v
+    end
+    nothing
+end
+
+function estimator_extrema(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP) where {N,T}
+
+    xIntv = x.box.c + sum(z -> z*UNIT_INTERVAL, x.box.γ)
+    xcvU = xIntv.hi - x.box.Δ
+    xccL = xIntv.lo + x.box.Δ
+
+    yIntv = y.box.c + sum(z -> z*UNIT_INTERVAL, y.box.γ)
+    ycvU = yIntv.hi - y.box.Δ
+    yccL = yIntv.lo + y.box.Δ
+
+    return xcvU, ycvU, xccL, yccL
+end
+
+function estimator_under(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dp, dP) where {N,T}
+    #TODO
+    x_cv_grad = 0.5.*x.box.γ.*(dP .- dp)
+    y_cv_grad = 0.5.*y.box.γ.*(dP .- dp)
+    x_cv, y_cv, x_cv_grad, y_cv_grad
+end
+
+function estimator_over(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dp, dP) where {N,T}
+    #TODO
+    x_cc_grad = 0.5.*x.box.γ.*(dp .- dP)
+    y_cc_grad = 0.5.*y.box.γ.*(dp .- dP)
+    -x_cc, -y_cc, x_cc_grad, y_cc_grad
+end
 
 
+#=
 function extract_apriori_info(t::Union{RelaxAA,RelaxAAInfo}, v::VariableValues{Float64}, x::AffineEAGO{N}) where {N,T}
     z = 0.0
     for (k,i) in enumerate(t.v)
@@ -294,21 +720,6 @@ function _cut(t::RelaxAA, b, k, x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues,
     return
 end
 
-relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{n,T}
-function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
-    tinfo = RelaxAAInfo(t.v)
-    for k = node_count(g):-1:1
-        c = node_class(g, k)
-        if c == EXPRESSION
-            fprop!(tinfo, Expression(), g, b, k)
-        elseif c == VARIABLE
-            fprop!(tinfo, Variable(), g, b, k)
-        end
-        b._set[k] = info(b, k).v
-    end
-end
-
-
 function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
     i = first_index(g, k)
     x = val(b, i)
@@ -329,251 +740,11 @@ function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
     z = z ∩ _interval(b, k)
     _store_set!(b, z, k)
 end
+=#
 
-info_or_set(t::RelaxAAInfo, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = info(b, k)
-info_or_set(t::RelaxAA, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag} = set(b, k)
-_store_out!(t::RelaxAAInfo, b::RelaxCache{V,N,T}, z, k) where {V,N,T<:RelaxTag} = (b._info[k] = z; nothing)
-_store_out!(t::RelaxAA, b::RelaxCache{V,N,T}, z, k) where {V,N,T<:RelaxTag} = _store_set!(b, z, k)
 
-function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{EXP}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = info_or_set(t, b, child(g, 1, k))
-    _cut(t, b, k, exp(x), info(b, k), b.v, zero(Float64), sparsity(g,k), b.cut, b.post)
-end
-function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{EXP10}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = info_or_set(t, b, child(g, 1, k))
-    _cut(t, b, k, exp10(x), info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
-end
-function fprop!(t::Union{RelaxAAInfo,RelaxAA}, v::Val{LOG}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = info_or_set(t, b, child(g, 1, k))
-    _cut(t, b, k, log(x), info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
-end
 
-function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    x_is_num = is_num(b, x)
-    y_is_num = is_num(b, y)
-    if y_is_num && isone(num(b, y))
-        z = info_or_set(t, b, x)
-        store_out!(t, b, z, k)
-    elseif y_is_num && iszero(num(b, y))
-        store_out!(t, b, zero(info_or_set(t, b, x)), k)
-    else
-        if !x_is_num && y_is_num
-            z = info_or_set(t, b, x)^num(b, y)
-        elseif x_is_num && !y_is_num
-            z = num(b, x)^info_or_set(t, b, y)
-        elseif !x_is_num && !y_is_num
-            z = info_or_set(t, b, x)^info_or_set(t, b, y)
-        end
-    _cut(t, b, k, z, info(b,k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
-    end
-end
 
-function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    x_is_num = is_num(b, x)
-    if arity(g, k) == 2
-        y = child(g, 2, k)
-        y_is_num = is_num(b, y)
-        if !x_is_num && y_is_num
-            z = info_or_set(t, b, x) - num(b, y)
-        elseif x_is_num && !y_is_num
-            z = num(b, x) - info_or_set(t, b, y)
-        else
-            z = info_or_set(t, b, x) - info_or_set(t, b, y)
-        end
-    else
-        z = -info_or_set(t, b, x)
-    end
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
 
-function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{DIV}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    if !is_num(b, x) && is_num(b, y)
-        z = info_or_set(t, b, x)/num(b, y)
-    elseif is_num(b, x) && !is_num(b, y)
-        z = num(b, x)/info_or_set(t, b, y)
-    else
-        z = info_or_set(t, b, x)/info_or_set(t, b, y)
-    end
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
 
-function fprop_2!(t::RelaxAAInfo, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    x_is_num = is_num(b, x)
-    y_is_num = is_num(b, y)
-    if !x_is_num && y_is_num
-        z = info(b, x) + num(b, y)
-    elseif x_is_num && !y_is_num
-        z = num(b, x) + info(b, y)
-    else
-        z = info(b, x) + info(b, y)
-    end
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
 
-function fprop_2!(t::RelaxAA, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    x_is_num = is_num(b, x)
-    y_is_num = is_num(b, y)
-    if !x_is_num && y_is_num
-        z = set(b, x) + num(b, y)
-    elseif x_is_num && !y_is_num
-        z = num(b, x) + set(b, y)
-    else
-        z = set(b, x) + set(b, y)
-    end
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-function fprop_n!(t::RelaxAAInfo, ::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    z = one(V)
-    znum = one(Float64)
-    count = 0
-    for i in children(g, k)
-        if is_num(b, i)
-            znum = znum*num(b, i)
-        else
-            z = z*info(b, i)
-        end
-        count += 1
-    end
-    z = z*znum
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-function fprop_n!(t::RelaxAA, ::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    z = one(MC{N,T})
-    znum = one(Float64)
-    count = 0
-    for i in children(g, k)
-        if is_num(b, i)
-            znum = znum*num(b, i)
-        else
-            z = z*set(t, b, i)
-        end
-        count += 1
-    end
-    z = z*znum
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    x_is_num = is_num(b, x)
-    y_is_num = is_num(b, y)
-    if !x_is_num && y_is_num
-        zaff = *(info(b, x), num(b, y))
-    elseif x_is_num && !y_is_num
-        zaff = *(num(b, x), info(b, y))
-    else
-        xv = info(b, x)
-        yv = info(b, y)
-        xv_box = xv.box
-        yv_box = yv.box
-        z_box = xv_box*yv_box
-        xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), b.v, xv_box)
-        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv_box)
-        wIntv = xv.v.Intv*yv.v.Intv
-        za_l = McCormick.mult_apriori_kernel(xv.v, yv.v, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
-        za_u = McCormick.mult_apriori_kernel(-xv.v, -yv.v, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
-        z = xv.v*yv.v 
-        zaff = MCAffPnt{N,T}(z, z_box)                                        
-    end
-    _cut(t, b, k, zaff, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    x_is_num = is_num(b, x)
-    y_is_num = is_num(b, y)
-    if !x_is_num && y_is_num
-        z = *(set(b, x), num(b, y))
-    elseif x_is_num && !y_is_num
-        z = *(num(b, x), set(b, y))
-    else
-        xs = _set(b, x)
-        ys = _set(b, y)
-        xinfo = info(b, x)
-        yinfo = info(b, y)
-        xv = xinfo
-        yv = yinfo
-        xcv, xcvU, xcc, xccL, xcvg, xccg = extract_apriori_info(RelaxAA(), b.v, xv.box)
-        ycv, ycvU, ycc, yccL, ycvg, yccg = extract_apriori_info(RelaxAA(), b.v, yv.box)
-        wIntv = xv.v.Intv*yv.v.Intv 
-        za_l = McCormick.mult_apriori_kernel(xs, ys, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
-        za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
-        z = (xs*ys) ∩ za_l ∩ za_u                                        
-    end
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-#TODO:
-function fprop_n!(t::RelaxAAInfo, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    z = one(V)
-    znum = one(Float64)
-    count = 0
-    for i in children(g, k)
-        if is_num(b, i)
-            znum = znum*num(b, i)
-        else
-            z = z*info(b, i)
-        end
-        count += 1
-    end
-    z = z*znum
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    ys = one(MC{N,T})
-    znum = one(Float64)
-    b._mult_temp = one(MCAffPnt{N,T})
-    count = 0
-    first_set = true
-    for i in children(g, k)
-        if is_num(b, i)
-            znum = znum*num(b, i)
-        else
-            xs = _set(b, i)
-            xinfo = info(b, i)
-            xi = xinfo.v
-            if !first_set
-                ys = b._mult_temp.v
-                xcvU, xccL = extract_apriori_info(t, b.v, xinfo.box)
-                ycvU, yccL = extract_apriori_info(t, b.v, b._mult_temp.box)
-                xcv = xi.cv;       ycv = b._mult_temp.v.cv
-                xcc = xi.cc;       ycc = b._mult_temp.v.cc
-                xcvg = xi.cv_grad; ycvg = b._mult_temp.v.cv_grad
-                xccg = xi.cc_grad; yccg = b._mult_temp.v.cc_grad
-                wIntv = xs.Intv*ys.Intv ∩ Interval(xinfo.box*b._mult_temp.box)
-                za_l = McCormick.mult_apriori_kernel(xs, ys, wIntv, xcv, ycv, xcvU, ycvU, xcvg, ycvg)
-                za_u = McCormick.mult_apriori_kernel(-xs, -ys, wIntv, -xcc, -ycc, -xccL, -yccL, -xccg, -yccg)
-                ys = (xs*ys) ∩ za_l ∩ za_u
-                b._mult_temp = MCAffPnt{N,T}(ys, b._mult_temp.box*xinfo.box)
-            else
-                first_set = false
-                b._mult_temp = MCAffPnt{N,T}(xi, xinfo.box)
-                ys = xs
-            end
-        end
-        count += 1
-    end
-    z = ys*znum
-    _cut(t, b, k, z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-end
-
-function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    (arity(g, k) == 2) ? fprop_2!(t, Val(PLUS), g, b, k) : fprop_n!(t, Val(PLUS), g, b, k)
-end
-function fprop!(t::Union{RelaxAA,RelaxAAInfo}, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    (arity(g, k) == 2) ? fprop_2!(t, Val(MULT), g, b, k) : fprop_n!(t, Val(MULT), g, b, k)
-end
