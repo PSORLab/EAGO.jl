@@ -94,6 +94,8 @@ Base.@kwdef mutable struct RelaxCache{V,N,T<:RelaxTag} <: AbstractCache
     ic::IntervalCache                      = IntervalCache{Float64}()
     dp::Vector{Float64}                    = Float64[]
     dP::Vector{Interval{Float64}}          = Interval{Float64}[]
+    p_rel::Vector{Float64}                 = Float64[]
+    p_diam::Vector{Float64}                = Float64[]
     _set::Vector{MC{N,T}}                  = MC{N,T}[]
     _num::Vector{Float64}                  = Float64[]
     _is_num::Vector{Bool}                  = Bool[]

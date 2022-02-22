@@ -296,6 +296,13 @@ function cut(x::MCAffPnt{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64,
     return x
 end
 
+function cut(x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
+    (pflag & cflag)  && (return set_value_post(x ∩ Interval(z), v, s, ϵ))
+    (pflag & !cflag) && (return set_value_post(x, v, s, ϵ))
+    (pflag & cflag)  && (return x ∩ Interval(z))
+    return x
+end
+
 function varset(::Type{MCAffPnt{N,T}}, i, x_cv, x_cc, l, u) where {V,N,T<:RelaxTag}
     v = seed_gradient(i, Val(N))
     v_Intv = Interval{Float64}(l, u)
@@ -448,20 +455,23 @@ function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},
             if b.use_apriori_mul
                 dp = b.dp
                 dP = b.dP
+                p_rel = b.p_rel
+                p_diam = b.p_diam
                 s = sparsity(g, 1)
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
-                z = xv*yv
-                wIntv = z.Intv
+                zv = xv*yv
+                wIntv = zv.Intv
                 if (u1max < xv.Intv.hi) || (u2max < yv.Intv.hi)
-                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
                     za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
-                    z = z ∩ za_l
+                    zv = zv ∩ za_l
                 end
                 if (v1nmax > -xv.Intv.lo) || (v2nmax > -yv.Intv.lo)
-                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_over(xv, yv, xr, yr, s, dp, dP)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_over(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
-                    z = z ∩ za_u
+                    zv = zv ∩ za_u
                 end
+                z = MCAffPnt{N,T}(zv, xr.box*yr.box)
             else
                 z = xv*yv
             end
@@ -660,18 +670,30 @@ function estimator_extrema(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP) where {N,T
     return xcvU, ycvU, xccL, yccL
 end
 
-function estimator_under(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dp, dP) where {N,T}
-    #TODO
-    x_cv_grad = 0.5.*x.box.γ.*(dP .- dp)
-    y_cv_grad = 0.5.*y.box.γ.*(dP .- dp)
+function estimator_under(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP, dp, p_rel, p_diam) where {N,T}
+    x_cv = x.box.c - x.box.Δ
+    y_cv = y.box.c - y.box.Δ
+    for (i,p_i) ∈ enumerate(s)
+        rp = p_rel[p_i]
+        x_cv += x.box.γ[i]*rp
+        y_cv += y.box.γ[i]*rp
+    end
+    x_cv_grad = SVector{N,Float64}(ntuple(i -> x.box.γ[i].*p_diam[s[i]], Val(N)))
+    y_cv_grad = SVector{N,Float64}(ntuple(i -> y.box.γ[i].*p_diam[s[i]], Val(N)))
     x_cv, y_cv, x_cv_grad, y_cv_grad
 end
 
-function estimator_over(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dp, dP) where {N,T}
-    #TODO
-    x_cc_grad = 0.5.*x.box.γ.*(dp .- dP)
-    y_cc_grad = 0.5.*y.box.γ.*(dp .- dP)
-    -x_cc, -y_cc, x_cc_grad, y_cc_grad
+function estimator_over(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dp, dP, p_rel, p_diam) where {N,T}
+    x_cc = x.box.c + x.box.Δ
+    y_cc = y.box.c + y.box.Δ
+    for (i,p_i) ∈ enumerate(s)
+        rp = p_rel[p_i]
+        x_cc += x.box.γ[i]*rp
+        y_cc += x.box.γ[i]*rp
+    end
+    x_ccn_grad = SVector{N,Float64}(ntuple(i -> -x.box.γ[i].*p_diam[s[i]], Val(N)))
+    y_ccn_grad = SVector{N,Float64}(ntuple(i -> -y.box.γ[i].*p_diam[s[i]], Val(N)))
+    -x_cc, -y_cc, x_ccn_grad, y_ccn_grad
 end
 
 

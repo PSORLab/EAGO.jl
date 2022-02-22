@@ -11,7 +11,7 @@ function estimator_extrema(x::MC{N,T}, y::MC{N,T}, s, dP) where {N,T}
     return t3, t4, s3, s4
 end
 
-function estimator_under(xv, yv, x::MC{N,T}, y::MC{N,T}, s, dp, dP) where {N,T}
+function estimator_under(xv, yv, x::MC{N,T}, y::MC{N,T}, s, dp, dP, p_rel, p_diam) where {N,T}
     xcv = x.cv;   xcvg = x.cv_grad
     ycv = y.cv;   ycvg = y.cv_grad
     u1cv = affine_expand_del(dp, xcv, xcvg, s)
@@ -19,7 +19,7 @@ function estimator_under(xv, yv, x::MC{N,T}, y::MC{N,T}, s, dp, dP) where {N,T}
     return u1cv, u2cv, xcvg, ycvg
 end
 
-function estimator_over(xv, yv, x::MC{N,T}, y::MC{N,T}, s, dp, dP) where {N,T}
+function estimator_over(xv, yv, x::MC{N,T}, y::MC{N,T}, s, dp, dP, p_rel, p_diam) where {N,T}
     xccn = -x.cc; xccgn = -x.cc_grad
     yccn = -y.cc; yccgn = -y.cc_grad
     v1ccn = affine_expand_del(dp, xccn, xccgn, s)

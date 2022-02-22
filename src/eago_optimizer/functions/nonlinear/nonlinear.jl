@@ -307,13 +307,15 @@ function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T
         x0 = v.x0
         isempty(b.dp) && (b.dp = zeros(length(x));)
         isempty(b.dP) && (b.dP = zeros(Interval{Float64}, length(x));)
+        isempty(b.p_rel) && (b.p_rel = zeros(length(x));)
+        isempty(b.p_diam) && (b.p_diam  = zeros(length(x));)
         for j in s
+            l = lbd(b, j)
+            u = ubd(b, j)
             b.dp[j] = x[j] - x0[j]
-            b.dP[j] = Interval(lbd(b, j), ubd(b, j)) - x0[j]
-            #@show x[j]
-            #@show x0[j]
-            #@show lbd(b, j)
-            #@show ubd(b, j) 
+            b.dP[j] = Interval(l, u) - x0[j]
+            b.p_rel[j] = (x[j] - 0.5*(u + l))/(0.5*(u - l))
+            b.p_diam[j] = u - l
         end
     end
     for i = 1:dep_subexpr_count(d)

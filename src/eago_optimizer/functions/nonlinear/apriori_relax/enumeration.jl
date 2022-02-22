@@ -49,11 +49,11 @@ function estimator_extrema(x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dP) where 
     return xmax, ymax, xmin, ymin
 end
 
-function estimator_under(xv, yv, x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP) where {Q,N,T}
+function estimator_under(xv, yv, x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP, p_rel, p_diam) where {Q,N,T}
     xv.cv, yv.cv, xv.cv_grad, yv.cv_grad
 end
 
-function estimator_over(xv, yv, x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP) where {Q,N,T}
+function estimator_over(xv, yv, x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP, p_rel, p_diam) where {Q,N,T}
     -xv.cc, -yv.cc, -xv.cc_grad, -yv.cc_grad
 end
 

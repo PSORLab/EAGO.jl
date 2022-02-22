@@ -177,20 +177,32 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
             if b.use_apriori_mul
                 dp = b.dp
                 dP = b.dP
+                p_rel = b.p_rel
+                p_diam = b.p_diam
                 s = sparsity(g, 1)
                 xr = info(b, x)
                 yr = info(b, y)
+               # @show xr
+               # @show yr
+                @show xv
+                @show yv
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
+                @show u1max, u2max, v1nmax, v2nmax
                 z = xv*yv
+                @show z
                 wIntv = z.Intv
                 if (u1max < xv.Intv.hi) || (u2max < yv.Intv.hi)
-                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(xr, yr, s, dp, dP)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
+                    @show u1cv, u2cv, u1cvg, u2cvg
                     za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
+                    @show za_l
                     z = z ∩ za_l
                 end
                 if (v1nmax > -xv.Intv.lo) || (v2nmax > -yv.Intv.lo)
-                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(xr, yr, s, dp, dP)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_over(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
+                    @show v1ccn, v2ccn, v1ccgn, v2ccgn
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
+                    @show za_u
                     z = z ∩ za_u
                 end
             else
