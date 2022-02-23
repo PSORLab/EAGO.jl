@@ -180,6 +180,7 @@ function pow_even(x::AffineEAGO{N}, n::Int) where N
 end
 
 function pow_odd(x::AffineEAGO{N}, n::Int) where N
+    # TODO: DOES THIS HANDLE a <= 0.0 <= b?
     a, b = bounds(x)
     fa = a^n
     fb = b^n
@@ -202,7 +203,6 @@ function ^(x::AffineEAGO{N}, n::Int) where N
     elseif iseven(n)
         return pow_even(x, n)
     end
-    (xL < 0.0 < xU) && error("Undefined domain...")
     return pow_odd(x, n)
 end
 
@@ -318,12 +318,15 @@ function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,
     u = ubd(b, i)
     if l == u
         b[k] = x
+        b._is_num[k] = true
     else
         z = varset(MCAffPnt{N,T}, rev_sparsity(g, i, k), x, x, l, u)
         if !first_eval(t, b)
             z = z ∩ interval(b, k)
         end
         b._info[k] = z
+        @show "Ran variable k = $k"
+        b._is_num[k] = false
     end
     nothing
 end
@@ -332,8 +335,10 @@ function fprop!(t::RelaxAA, ex::Subexpression, g::DAT, b::RelaxCache{MCAffPnt{N,
     x =  first_index(g, k)
     if subexpression_is_num(b, x)
         b[k] = subexpression_num(b, x)
+        b._is_num[k] = true
     else
         b._info[k] = subexpression_info(b, x)
+        b._is_num[k] = false
     end
 end
 
@@ -350,8 +355,10 @@ for (F, f) in ((PLUS, :+), (MIN, :min), (MAX, :max), (DIV, :/), (ARH, :arh))
                 z = ($f)(num(b, x), info(b, y))
             end
             b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            b._is_num[k] = false
         else
             b[k] = ($f)(num(b, x), num(b, y))
+            b._is_num[k] = true
         end
     end
 end
@@ -369,14 +376,18 @@ function fprop!(t::RelaxAA, v::Val{MINUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
                 z = num(b, x) - info(b, y)
             end
             b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            b._is_num[k] = false
         else
             b[k] = num(b, x) - num(b, y)
+            b._is_num[k] = true
         end
     else
         if is_num(b, x)
             b[k] = -num(b, x)
+            b._is_num[k] = true
         else
             b._info[k] = cut(-info(b, x), info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            b._is_num[k] = false
         end
     end
 end
@@ -395,9 +406,11 @@ function fprop_n!(t::RelaxAA, v::Val{PLUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},
     end
     if numval
         b[k] = znum
+        b._is_num[k] = true
     else
         z += znum
         b._info[k] = cut(z, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b._is_num[k] = false
     end
 end
 
@@ -415,9 +428,11 @@ function fprop_n!(t::RelaxAA, v::Val{MIN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     end
     if numval
         b[k] = znum
+        b._is_num[k] = true
     else
         z = min(z, znum)
         b._info[k] = cut(z, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b._is_num[k] = false
     end
 end
 
@@ -435,9 +450,11 @@ function fprop_n!(t::RelaxAA, v::Val{MAX}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     end
     if numval
         b[k] = znum
+        b._is_num[k] = true
     else
         z = max(z, znum)
         b._info[k] = cut(z, info(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b._is_num[k] = false
     end
 end
 
@@ -481,8 +498,10 @@ function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},
             z = num(b, x)*info(b, y)
         end
         b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b._is_num[k] = true
     else
         b[k] = num(b, x)*num(b, y)
+        b._is_num[k] = false
     end
 end
 
@@ -536,9 +555,11 @@ function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     end
     if numval
         b[k] = znum
+        b._is_num[k] = true
     else
         z = z*znum
         b._info[k] = z
+        b._is_num[k] = false
     end
 end
 
@@ -554,6 +575,7 @@ end
 function fprop!(t::RelaxAA, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     x = child(g, 1, k)
     y = child(g, 2, k)
+    @show is_num(b, x), is_num(b, y), x, y, k
     if is_num(b, y) && isone(num(b, y))
         b._info[k] = info(b, x)
     elseif is_num(b,y) && iszero(num(b, y))
@@ -567,8 +589,10 @@ function fprop!(t::RelaxAA, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T
             z = num(b, x)^info(b, y)
         end
         b._info[k] = cut(z, info(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b._is_num[k] = false
     else
         b[k] = num(b, x)^num(b, y)
+        b._is_num[k] = true
     end
 end
 
@@ -577,9 +601,11 @@ function fprop!(t::RelaxAA, v::Val{USER}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,
     x = child(g, 1, k)
     if is_num(b, x)
         b[k] = f(num(b, x))
+        b._is_num[k] = true
     else
         z = f(info(b, x))
         b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g, k), b.cut, b.post)
+        b._is_num[k] = false
     end
 end
 
@@ -606,8 +632,10 @@ function fprop!(t::RelaxAA, v::Val{USERN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     if anysets
         z = MOI.eval_objective(mv, set_input)::MCAffPnt{N,T}
         b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+        b._is_num[k] = false
     else
         b[k] = MOI.eval_objective(mv, num_input)
+        b._is_num[k] = true
     end
 end
 
@@ -617,8 +645,10 @@ for ft in UNIVARIATE_ATOM_TYPES
     @eval function fprop!(t::RelaxAA, v::Val{$ft}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
         x = child(g, 1, k)
         if is_num(b, x)
+            b._is_num[k] = true
             return b[k] = ($f)(num(b, x))
         else
+            b._is_num[k] = false
             z = ($f)(info(b, x))
             b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
         end
@@ -627,32 +657,43 @@ end
 
 for (F, f) in ((LOWER_BND, :lower_bnd), (UPPER_BND, :upper_bnd))
     @eval function fprop!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+        x = child(g, 1, k)
         y = child(g, 2, k)
         if is_num(b, y)
-            z = info(b, child(g, 1, k))
+            z = info(b, x)
             z = ($f)(z, num(b, y))
             b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g, k), b.cut, b.post)
         end
+        b._is_num[k] = b._is_num[x]
     end
 end
 
 function fprop!(t::RelaxAA, v::Val{BND}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
-    z = info(b, child(g, 1, k))
+    x = child(g, 1, k)
+    z = info(b, x)
     y = child(g, 2, k)
     r = child(g, 3, k)
     if is_num(b, y) && is_num(b, r)
         z = bnd(z, num(b, y),num(b, r))
     end
+    b._is_num[k] = b._is_num[x]
     b._info[k] = cut(z, info(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
 end
 
 function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
+    println("starting is num")
+    for k = node_count(g):-1:1
+        @show k, b._is_num[k]
+    end
+    println("next is num")
     for k = node_count(g):-1:1
         c = node_class(g, k)
         (c == EXPRESSION)    && fprop!(t, Expression(), g, b, k)
         (c == VARIABLE)      && fprop!(t, Variable(), g, b, k)
         (c == SUBEXPRESSION) && fprop!(t, Subexpression(), g, b, k)
+        k_is_num = b._is_num[k]
         b[k] = b._info[k].v
+        b._is_num[k] = k_is_num
     end
     nothing
 end
