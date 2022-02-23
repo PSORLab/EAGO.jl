@@ -380,7 +380,6 @@ function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{V,N,T}, k) where {V
 end
 
 function f_init!(t::Relax, g::DAT, b::RelaxCache)
-    @show "Relax Init"
     for k = node_count(g):-1:1
         c = node_class(g, k)
         (c == EXPRESSION)    && fprop!(t, Expression(), g, b, k)

@@ -388,6 +388,9 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         p_status = MOI.get(d, MOI.PrimalStatus())
         d_status = MOI.get(d, MOI.DualStatus())
         status = relaxed_problem_status(t_status, p_status, d_status)
+        if status == RRS_OPTIMAL
+            m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
+        end
     end
 
     # check status -- if not feasible/infeasible then fallback to interval bounds
