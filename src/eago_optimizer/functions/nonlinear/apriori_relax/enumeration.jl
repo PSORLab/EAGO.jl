@@ -44,9 +44,9 @@ relax_info(s::RelaxMulEnum, n::Int, t::T) where T = MCBoxPnt{2^n,n,T}
 function estimator_extrema(x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dP) where {Q,N,T}
     xmax = maximum(cv, x.box)
     ymax = maximum(cv, y.box) 
-    xmin = minimum(cv, x.box)
-    ymin = minimum(cv, y.box)
-    return xmax, ymax, xmin, ymin
+    xmin = minimum(cc, x.box)
+    ymin = minimum(cc, y.box)
+    return xmax, ymax, -xmin, -ymin
 end
 
 function estimator_under(xv, yv, x::MCBoxPnt{Q,N,T}, y::MCBoxPnt{Q,N,T}, s, dp, dP, p_rel, p_diam) where {Q,N,T}
