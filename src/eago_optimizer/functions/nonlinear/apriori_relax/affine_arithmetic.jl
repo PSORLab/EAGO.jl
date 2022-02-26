@@ -1,5 +1,5 @@
 
-const USE_MIN_RANGE = true
+const USE_MIN_RANGE = false
 
 struct AffineEAGO{N}
     c::Float64               # mid-point
@@ -34,27 +34,21 @@ one(x::AffineEAGO{N}) where N = AffineEAGO{N}(1.0, zero(SVector{N,Float64}), 0.0
 +(α::Float64, x::AffineEAGO{N}) where N = x + α
 
 function *(x::AffineEAGO{N}, y::AffineEAGO{N}) where N
-    c = x.c * y.c
-    γ = x.c .* y.γ + y.c .* x.γ
-    pos_sum = 0.0
-    neg_sum = 0.0
+    #println("mult stuff...")
+    #@show x.c, y.c
+    #@show x.γ[1], y.γ[1]
+    x0 = x.c
+    y0 = y.c
+    γ = SVector{N,Float64}(ntuple(i -> x0*y.γ[i] + y0*x.γ[i], Val(N)))
+    Δ = abs(x0)*y.Δ + abs(y0)*x.Δ
+    sx = abs(x.Δ)
+    sy = abs(y.Δ)
     for i = 1:N
-        vt = y.γ[i]*x.γ[i]
-        if vt > 0.0
-            pos_sum += vt
-        else
-            neg_sum -= vt
-        end 
+        sx += abs(x.γ[i])
+        sy += abs(y.γ[i])
     end
-    Δ = max(pos_sum, neg_sum)
-    for i = 1:N
-        xi = x.γ[i]
-        yi = y.γ[i]
-        for j = 1:(i-1)
-            Δ += yi*x.γ[j] + y.γ[j]*xi
-        end
-    end
-    return AffineEAGO{N}(c, γ, Δ)
+    Δ += sx + sy
+    return AffineEAGO{N}(x0*y0, γ, Δ)
 end
 *(x::AffineEAGO{N}, α::Float64) where N = AffineEAGO{N}(α*x.c, α.*x.γ, abs(α)*x.Δ)
 *(α::Float64, x::AffineEAGO{N}) where N = x*α
@@ -160,26 +154,32 @@ function pow_1d(x::AffineEAGO{N}, n::Number, p) where N
 end
 
 function pow_even(x::AffineEAGO{N}, n::Int) where N
+    #println("ran even")
     a, b = bounds(x)
     fa = a^n
     fb = b^n
     if USE_MIN_RANGE
-        m = min(0.0, a, b)
-        M = max(0.0, a, b)
+       # @show "min_range"
+        m = min(0.0, fa, fb)
+        M = max(0.0, fa, fb)
         p = 0.0
         q = 0.5*(m + M)
         Δ = 0.5*(M - m)
+       # @show x, p, q, Δ
         return AffineEAGO(x, p, q, Δ)
     end
+    #@show "cheby..."
     p = (fb - fa)/(b - a)
     ξ = (p/n)^(1/(n - 1))
     fξ = ξ^n
     q = 0.5*(fa + fξ - p*(a + ξ))
     Δ = abs(0.5*(fξ - fa - p*(ξ - a)))
+    #@show x, p, q, Δ
     return AffineEAGO(x, p, q, Δ)
 end
 
 function pow_odd(x::AffineEAGO{N}, n::Int) where N
+    #println("ran power odd")
     # TODO: DOES THIS HANDLE a <= 0.0 <= b?
     a, b = bounds(x)
     fa = a^n
@@ -311,7 +311,7 @@ function varset(::Type{MCAffPnt{N,T}}, i, x_cv, x_cc, l, u) where {V,N,T<:RelaxT
     return MCAffPnt{N,T}(v_mc, v_aff)
 end
 
-function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
     i = first_index(g, k)
     x = val(b, i)
     l = lbd(b, i)
@@ -325,13 +325,13 @@ function fprop!(t::RelaxAA, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,
             z = z ∩ interval(b, k)
         end
         b._info[k] = z
-        @show "Ran variable k = $k"
+        #@show "Ran variable k = $k"
         b._is_num[k] = false
     end
     nothing
 end
 
-function fprop!(t::RelaxAA, ex::Subexpression, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, ex::Subexpression, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
     x =  first_index(g, k)
     if subexpression_is_num(b, x)
         b[k] = subexpression_num(b, x)
@@ -343,7 +343,7 @@ function fprop!(t::RelaxAA, ex::Subexpression, g::DAT, b::RelaxCache{MCAffPnt{N,
 end
 
 for (F, f) in ((PLUS, :+), (MIN, :min), (MAX, :max), (DIV, :/), (ARH, :arh))
-    @eval function fprop_2!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    @eval function fprop_2!(t::RelaxAAInfo, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
         x = child(g, 1, k)
         y = child(g, 2, k)
         if !xy_num(b, x, y)
@@ -363,7 +363,7 @@ for (F, f) in ((PLUS, :+), (MIN, :min), (MAX, :max), (DIV, :/), (ARH, :arh))
     end
 end
 
-function fprop!(t::RelaxAA, v::Val{MINUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, v::Val{MINUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
     x = child(g, 1, k)
     if is_binary(g, k)
         y = child(g, 2, k)
@@ -392,7 +392,7 @@ function fprop!(t::RelaxAA, v::Val{MINUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     end
 end
 
-function fprop_n!(t::RelaxAA, v::Val{PLUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::RelaxAAInfo, v::Val{PLUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     z = zero(MCAffPnt{N,T})
     znum = 0.0
     numval = true
@@ -414,7 +414,7 @@ function fprop_n!(t::RelaxAA, v::Val{PLUS}, g::DAT, b::RelaxCache{MCAffPnt{N,T},
     end
 end
 
-function fprop_n!(t::RelaxAA, v::Val{MIN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::RelaxAAInfo, v::Val{MIN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     z = Inf*one(MCAffPnt{N,T})
     znum = Inf
     numval = true
@@ -436,7 +436,7 @@ function fprop_n!(t::RelaxAA, v::Val{MIN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     end
 end
 
-function fprop_n!(t::RelaxAA, v::Val{MAX}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::RelaxAAInfo, v::Val{MAX}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     z = -Inf*one(MCAffPnt{N,T})
     znum = -Inf
     numval = true
@@ -458,7 +458,7 @@ function fprop_n!(t::RelaxAA, v::Val{MAX}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
     end
 end
 
-function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
 
     x = child(g, 1, k)
     y = child(g, 2, k)
@@ -505,7 +505,7 @@ function fprop_2!(t::RelaxAA, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},
     end
 end
 
-function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop_n!(t::RelaxAAInfo, ::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
 
     z = one(MCAffPnt{N,T})
     znum = one(Float64)
@@ -564,18 +564,18 @@ function fprop_n!(t::RelaxAA, ::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N
 end
 
 for F in (PLUS, MULT, MIN, MAX)
-    @eval function fprop!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
-        is_binary(g, k) ? fprop_2!(RelaxAA(), Val($F), g, b, k) : fprop_n!(RelaxAA(), Val($F), g, b, k)
+    @eval function fprop!(t::RelaxAAInfo, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+        is_binary(g, k) ? fprop_2!(RelaxAAInfo(), Val($F), g, b, k) : fprop_n!(RelaxAAInfo(), Val($F), g, b, k)
     end
 end
-function fprop!(t::RelaxAA, v::Val{DIV}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
-    fprop_2!(RelaxAA(), v, g, b, k)
+function fprop!(t::RelaxAAInfo, v::Val{DIV}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    fprop_2!(RelaxAAInfo(), v, g, b, k)
 end
 
-function fprop!(t::RelaxAA, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     x = child(g, 1, k)
     y = child(g, 2, k)
-    @show is_num(b, x), is_num(b, y), x, y, k
+    @show is_num(b, x), is_num(b, y), num(b,x), num(b,y), k
     if is_num(b, y) && isone(num(b, y))
         b._info[k] = info(b, x)
     elseif is_num(b,y) && iszero(num(b, y))
@@ -596,7 +596,7 @@ function fprop!(t::RelaxAA, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T
     end
 end
 
-function fprop!(t::RelaxAA, v::Val{USER}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, v::Val{USER}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     f = user_univariate_operator(g, first_index(g, k))
     x = child(g, 1, k)
     if is_num(b, x)
@@ -609,7 +609,7 @@ function fprop!(t::RelaxAA, v::Val{USER}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,
     end
 end
 
-function fprop!(t::RelaxAA, v::Val{USERN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, v::Val{USERN}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     mv = user_multivariate_operator(g, first_index(g, k))
     n = arity(g, k)
     set_input = _info_input(b, n)
@@ -642,7 +642,7 @@ end
 for ft in UNIVARIATE_ATOM_TYPES
     f = UNIVARIATE_ATOM_DICT[ft]
     (f == :user || f == :+ || f == :-) && continue
-    @eval function fprop!(t::RelaxAA, v::Val{$ft}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    @eval function fprop!(t::RelaxAAInfo, v::Val{$ft}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
         x = child(g, 1, k)
         if is_num(b, x)
             b._is_num[k] = true
@@ -656,7 +656,7 @@ for ft in UNIVARIATE_ATOM_TYPES
 end
 
 for (F, f) in ((LOWER_BND, :lower_bnd), (UPPER_BND, :upper_bnd))
-    @eval function fprop!(t::RelaxAA, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+    @eval function fprop!(t::RelaxAAInfo, v::Val{$F}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
         x = child(g, 1, k)
         y = child(g, 2, k)
         if is_num(b, y)
@@ -668,7 +668,7 @@ for (F, f) in ((LOWER_BND, :lower_bnd), (UPPER_BND, :upper_bnd))
     end
 end
 
-function fprop!(t::RelaxAA, v::Val{BND}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
+function fprop!(t::RelaxAAInfo, v::Val{BND}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k) where {N,T<:RelaxTag}
     x = child(g, 1, k)
     z = info(b, x)
     y = child(g, 2, k)
@@ -681,21 +681,26 @@ function fprop!(t::RelaxAA, v::Val{BND}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T
 end
 
 function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
-    println("starting is num")
-    for k = node_count(g):-1:1
-        @show k, b._is_num[k]
-    end
-    println("next is num")
+    tinfo = RelaxAAInfo()
+    println("init function")
     for k = node_count(g):-1:1
         c = node_class(g, k)
-        (c == EXPRESSION)    && fprop!(t, Expression(), g, b, k)
-        (c == VARIABLE)      && fprop!(t, Variable(), g, b, k)
-        (c == SUBEXPRESSION) && fprop!(t, Subexpression(), g, b, k)
+        (c == EXPRESSION)    && fprop!(tinfo, Expression(), g, b, k)
+        (c == VARIABLE)      && fprop!(tinfo, Variable(), g, b, k)
+        (c == SUBEXPRESSION) && fprop!(tinfo, Subexpression(), g, b, k)
+        #@show k, g.nodes[k].ex_type, b._info[k]
         k_is_num = b._is_num[k]
         b[k] = b._info[k].v
         b._is_num[k] = k_is_num
     end
+    println("end init function")
     nothing
+end
+
+for d in ALL_ATOM_TYPES
+    @eval function fprop!(t::RelaxAA, v::Val{$d}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+        fprop!(Relax(), v, g, b, k)
+    end
 end
 
 function estimator_extrema(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP) where {N,T}
@@ -708,7 +713,7 @@ function estimator_extrema(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP) where {N,T
     ycvU = yIntv.hi - y.box.Δ
     yccL = yIntv.lo + y.box.Δ
 
-    return xcvU, ycvU, xccL, yccL
+    return xcvU, ycvU, -xccL, -yccL
 end
 
 function estimator_under(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP, dp, p_rel, p_diam) where {N,T}

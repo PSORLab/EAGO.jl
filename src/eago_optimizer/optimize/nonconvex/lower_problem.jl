@@ -216,7 +216,7 @@ Retrieves the lower and upper duals for variable bounds from the
 """
 function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
-    if MOI.get(d, MOI.DualStatus()) === MOI.FEASIBLE_POINT
+    if MOI.get(d, MOI.DualStatus()) == MOI.FEASIBLE_POINT
         for (c, i) in m._relaxed_variable_lt
             m._lower_uvd[i] = MOI.get(d, MOI.ConstraintDual(), c)
         end
