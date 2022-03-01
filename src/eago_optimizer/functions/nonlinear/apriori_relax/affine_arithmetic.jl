@@ -1,5 +1,5 @@
 
-const USE_MIN_RANGE = false
+const USE_MIN_RANGE = true
 
 struct AffineEAGO{N}
     c::Float64               # mid-point
@@ -34,9 +34,6 @@ one(x::AffineEAGO{N}) where N = AffineEAGO{N}(1.0, zero(SVector{N,Float64}), 0.0
 +(α::Float64, x::AffineEAGO{N}) where N = x + α
 
 function *(x::AffineEAGO{N}, y::AffineEAGO{N}) where N
-    #println("mult stuff...")
-    #@show x.c, y.c
-    #@show x.γ[1], y.γ[1]
     x0 = x.c
     y0 = y.c
     γ = SVector{N,Float64}(ntuple(i -> x0*y.γ[i] + y0*x.γ[i], Val(N)))
@@ -154,27 +151,22 @@ function pow_1d(x::AffineEAGO{N}, n::Number, p) where N
 end
 
 function pow_even(x::AffineEAGO{N}, n::Int) where N
-    #println("ran even")
     a, b = bounds(x)
     fa = a^n
     fb = b^n
     if USE_MIN_RANGE
-       # @show "min_range"
         m = min(0.0, fa, fb)
         M = max(0.0, fa, fb)
         p = 0.0
         q = 0.5*(m + M)
         Δ = 0.5*(M - m)
-       # @show x, p, q, Δ
         return AffineEAGO(x, p, q, Δ)
     end
-    #@show "cheby..."
     p = (fb - fa)/(b - a)
     ξ = (p/n)^(1/(n - 1))
     fξ = ξ^n
     q = 0.5*(fa + fξ - p*(a + ξ))
     Δ = abs(0.5*(fξ - fa - p*(ξ - a)))
-    #@show x, p, q, Δ
     return AffineEAGO(x, p, q, Δ)
 end
 
@@ -190,6 +182,8 @@ function pow_odd(x::AffineEAGO{N}, n::Int) where N
     fξ = ξ^n
     Δ = abs(fξ - p*ξ)
     return AffineEAGO(x, p, q, Δ)
+    #y = Base.power_by_squaring(x,n)
+   # return y
 end
 
 function ^(x::AffineEAGO{N}, n::Int) where N
@@ -325,7 +319,6 @@ function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T
             z = z ∩ interval(b, k)
         end
         b._info[k] = z
-        #@show "Ran variable k = $k"
         b._is_num[k] = false
     end
     nothing
@@ -575,7 +568,6 @@ end
 function fprop!(t::RelaxAAInfo, v::Val{POW}, g::DAT, b::RelaxCache{MCAffPnt{N,T},N,T}, k::Int) where {N,T<:RelaxTag}
     x = child(g, 1, k)
     y = child(g, 2, k)
-    @show is_num(b, x), is_num(b, y), num(b,x), num(b,y), k
     if is_num(b, y) && isone(num(b, y))
         b._info[k] = info(b, x)
     elseif is_num(b,y) && iszero(num(b, y))
@@ -682,18 +674,16 @@ end
 
 function f_init!(t::RelaxAA, g::DAT, b::RelaxCache)
     tinfo = RelaxAAInfo()
-    println("init function")
     for k = node_count(g):-1:1
         c = node_class(g, k)
         (c == EXPRESSION)    && fprop!(tinfo, Expression(), g, b, k)
         (c == VARIABLE)      && fprop!(tinfo, Variable(), g, b, k)
         (c == SUBEXPRESSION) && fprop!(tinfo, Subexpression(), g, b, k)
-        #@show k, g.nodes[k].ex_type, b._info[k]
         k_is_num = b._is_num[k]
         b[k] = b._info[k].v
         b._is_num[k] = k_is_num
     end
-    println("end init function")
+    fprop!(Relax(), g, b)
     nothing
 end
 
@@ -720,12 +710,12 @@ function estimator_under(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP, dp, 
     x_cv = x.box.c - x.box.Δ
     y_cv = y.box.c - y.box.Δ
     for (i,p_i) ∈ enumerate(s)
-        rp = p_rel[p_i]
+        rp = 2.0*p_rel[p_i]
         x_cv += x.box.γ[i]*rp
         y_cv += y.box.γ[i]*rp
     end
-    x_cv_grad = SVector{N,Float64}(ntuple(i -> x.box.γ[i].*p_diam[s[i]], Val(N)))
-    y_cv_grad = SVector{N,Float64}(ntuple(i -> y.box.γ[i].*p_diam[s[i]], Val(N)))
+    x_cv_grad = SVector{N,Float64}(ntuple(i -> 2.0*x.box.γ[i].*p_diam[s[i]], Val(N)))
+    y_cv_grad = SVector{N,Float64}(ntuple(i -> 2.0*y.box.γ[i].*p_diam[s[i]], Val(N)))
     x_cv, y_cv, x_cv_grad, y_cv_grad
 end
 
@@ -733,12 +723,12 @@ function estimator_over(xv, yv, x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dp, dP, p
     x_cc = x.box.c + x.box.Δ
     y_cc = y.box.c + y.box.Δ
     for (i,p_i) ∈ enumerate(s)
-        rp = p_rel[p_i]
+        rp = 2.0*p_rel[p_i]
         x_cc += x.box.γ[i]*rp
         y_cc += x.box.γ[i]*rp
     end
-    x_ccn_grad = SVector{N,Float64}(ntuple(i -> -x.box.γ[i].*p_diam[s[i]], Val(N)))
-    y_ccn_grad = SVector{N,Float64}(ntuple(i -> -y.box.γ[i].*p_diam[s[i]], Val(N)))
+    x_ccn_grad = SVector{N,Float64}(ntuple(i -> -2.0*x.box.γ[i].*p_diam[s[i]], Val(N)))
+    y_ccn_grad = SVector{N,Float64}(ntuple(i -> -2.0*y.box.γ[i].*p_diam[s[i]], Val(N)))
     -x_cc, -y_cc, x_ccn_grad, y_ccn_grad
 end
 
