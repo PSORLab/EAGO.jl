@@ -479,7 +479,7 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     obbt_variable_values::Vector{Bool} = Bool[]
 
     enable_optimize_hook::Bool = false
-    ext::Dict{Symbol, Any} = Dict{Symbol,Any}()
+    ext
 
     # set as user-specified option
     _end_state::GlobalEndState = GS_UNSET
@@ -610,7 +610,7 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
 end
 
 const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :upper_optimizer,
-                                         :enable_optimize_hook, :ext, :ext_type, :_parameters]
+                                         :enable_optimize_hook, :ext, :_parameters]
 const EAGO_MODEL_STRUCT_ATTRIBUTES = Symbol[:_stack, :_log, :_current_node, :_working_problem, :_input_problem, :_branch_cost]
 const EAGO_MODEL_NOT_STRUCT_ATTRIBUTES = setdiff(fieldnames(GlobalOptimizer), union(EAGO_OPTIMIZER_ATTRIBUTES, EAGO_MODEL_STRUCT_ATTRIBUTES))
                            
@@ -620,7 +620,8 @@ function MOI.empty!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q}
     new_optimizer = GlobalOptimizer{R,S,Q}(_subsolvers = m._subsolvers,
                                            _parameters = m._parameters, 
                                            _input_problem = m._input_problem,
-                                           _working_problem = m._working_problem)
+                                           _working_problem = m._working_problem,
+                                           ext = nothing)
 
     MOI.empty!(new_optimizer._subsolvers)
     MOI.empty!(new_optimizer._input_problem)
@@ -643,7 +644,8 @@ function MOI.is_empty(m::GlobalOptimizer{R,S,Q}) where {R,S,Q}
     new_optimizer = GlobalOptimizer{R,S,Q}(_subsolvers = m._subsolvers,
                                            _parameters = m._parameters, 
                                            _input_problem = m._input_problem,
-                                           _working_problem = m._working_problem)
+                                           _working_problem = m._working_problem,
+                                           ext = nothing)
     for field in EAGO_MODEL_NOT_STRUCT_ATTRIBUTES
         if getfield(m, field) != getfield(new_optimizer, field)
             is_empty_flag = false

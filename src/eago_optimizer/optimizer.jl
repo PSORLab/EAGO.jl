@@ -31,7 +31,7 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
 
     subsolver_block::SubSolvers{Q,S,T}
     enable_optimize_hook::Bool
-    ext
+    ext::Union{Nothing,T}
   
     _auxillary_variable_info::Union{Nothing,_AuxVarData}
     _global_optimizer::GlobalOptimizer{Q,S,T}
@@ -54,7 +54,10 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     _node_count::Int
 end
 function Optimizer{Q,S,T}(sb::SubSolvers{Q,S,T}) where {Q,S,T}
-    return Optimizer{Q,S,T}(sb, false, Dict{Symbol,Any}(), nothing, GlobalOptimizer{Q,S,T}( _subsolvers = sb),
+    println("optimzier")
+    @show Q, S, T
+    @show typeof(_ext(sb))
+    return Optimizer{Q,S,T}(sb, false, nothing, nothing, GlobalOptimizer{Q,S,T}(_subsolvers = sb, ext = _ext(sb)),
                      InputProblem(), ParsedProblem(), EAGOParameters(),
                      MOI.OPTIMIZE_NOT_CALLED, MOI.OTHER_RESULT_STATUS,
                      0.0, -Inf, Inf, Inf, 0, 0)
@@ -69,7 +72,7 @@ function Optimizer(subsolver_block::SubSolvers{Q,S,T} = SubSolvers(); kwargs...)
                                                      Incremental(subsolver_block.upper_optimizer),  
                                                      subsolver_block.ext)
     m = Optimizer{Incremental{Q},Incremental{S},T}(sb)
-    m._global_optimizer = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb)
+    m._global_optimizer = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb, ext = _ext(sb))
     return m
 end
 

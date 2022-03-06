@@ -25,7 +25,7 @@ end
 function _ext(d::SubSolvers{Q,S,T}) where {Q <: MOI.AbstractOptimizer, 
                                                 S <: MOI.AbstractOptimizer, 
                                                 T <: ExtensionType}
-    return d.ex
+    return d.ext
 end
 
 function isempty(d::SubSolvers{Q,S,T}) where {Q,S,T}

@@ -16,16 +16,12 @@ include("optimize_convex.jl")
 include("optimize_nonconvex.jl")
 
 function throw_optimize_hook!(m::Optimizer{Q,S,T}) where {Q,S,T}
-    @show "throw optimize hook" 
-    @show typeof(m._global_optimizer)
     optimize_hook!(m.ext, m)
 end
 
 function MOI.optimize!(m::Optimizer{Q,S,T}) where {Q,S,T}
 
     m._global_optimizer._start_time = time()
-
-    @show m.enable_optimize_hook
     # Runs the branch and bound routine
     if !m.enable_optimize_hook
 
