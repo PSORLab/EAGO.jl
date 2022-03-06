@@ -5,7 +5,7 @@ A structure containing the
 mutable struct SubSolvers{Q<:MOI.AbstractOptimizer, S<:MOI.AbstractOptimizer, T<:ExtensionType}
     relaxed_optimizer::Q
     upper_optimizer::S
-    ext_typ::T
+    ext::T
 end
 SubSolvers{Q,S,T}(; r::Q = Cbc.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r, u, t)
 SubSolvers(; r::Q = Cbc.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r,u,t)
@@ -22,10 +22,10 @@ function _upper_optimizer(d::SubSolvers{Q,S,T}) where {Q <: MOI.AbstractOptimize
     return d.upper_optimizer
 end
 
-function _ext_type(d::SubSolvers{Q,S,T}) where {Q <: MOI.AbstractOptimizer, 
+function _ext(d::SubSolvers{Q,S,T}) where {Q <: MOI.AbstractOptimizer, 
                                                 S <: MOI.AbstractOptimizer, 
                                                 T <: ExtensionType}
-    return d.ext_typ
+    return d.ex
 end
 
 function isempty(d::SubSolvers{Q,S,T}) where {Q,S,T}

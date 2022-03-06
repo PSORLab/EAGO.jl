@@ -182,7 +182,7 @@ function relax_all_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int)
     return valid_relax_flag
 end
 relax_constraints!(t::ExtensionType, m::GlobalOptimizer, k::Int) = relax_all_constraints!(t, m, k)
-relax_constraints!(m::GlobalOptimizer{R,S,Q}, k::Int) where {R,S,Q<:ExtensionType} = relax_constraints!(_ext_typ(m), m, k)
+relax_constraints!(m::GlobalOptimizer{R,S,Q}, k::Int) where {R,S,Q<:ExtensionType} = relax_constraints!(_ext(m), m, k)
 
 function relax_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     wp = m._working_problem
@@ -311,7 +311,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     m._preprocess_feasibility = feasible_flag
     return
 end
-preprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = preprocess!(_ext_typ(m), m)
+preprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = preprocess!(_ext(m), m)
 
 """
 $(SIGNATURES)
@@ -329,7 +329,7 @@ function cut_condition(t::ExtensionType, m::GlobalOptimizer)
     flag &= obj_new - obj_old > _cut_ϵ_rel(m)*abs(obj_new)
     return flag
 end
-cut_condition(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = cut_condition(_ext_typ(m), m)
+cut_condition(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = cut_condition(_ext(m), m)
 
 is_integer_subproblem(m) = !continuous(_current_node(m))
 """
@@ -420,4 +420,4 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
     #println("end interval objective bound")
     return
 end
-lower_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = lower_problem!(_ext_typ(m), m)
+lower_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = lower_problem!(_ext(m), m)

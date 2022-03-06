@@ -53,4 +53,4 @@ function upper_problem!(t::ExtensionType, m::GlobalOptimizer)
     end
     return
 end
-upper_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = upper_problem!(_ext_typ(m), m)
+upper_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = upper_problem!(_ext(m), m)

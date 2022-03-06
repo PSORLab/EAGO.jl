@@ -49,4 +49,4 @@ EAGO (provided that a specialized subsolver configuration routine has been
 provided and `m.user_solver_config = false`).
 """
 set_default_config!(ext::ExtensionType, m::GlobalOptimizer) = set_default_config!(DefaultExt(), m)
-set_default_config!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = set_default_config!(_ext_typ(m), m)
+set_default_config!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = set_default_config!(_ext(m), m)

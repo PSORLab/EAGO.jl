@@ -180,7 +180,7 @@ function MOI.get(m::Optimizer, p::MOI.RawOptimizerAttribute)
     s = _to_sym(p.name)
     s in EAGO_PARAMETERS ? getfield(m._parameters, s) : getfield(m, s)
 end
-function MOI.set(m::Optimizer, p::MOI.RawOptimizerAttribute , x)
+function MOI.set(m::Optimizer, p::MOI.RawOptimizerAttribute, x)
     s = _to_sym(p.name)
     if (s == :relaxed_optimizer) || (s == :upper_optimizer)
         setfield!(m, s, Incremental(x))

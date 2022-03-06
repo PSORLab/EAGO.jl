@@ -659,7 +659,7 @@ MOI.get(m::GlobalOptimizer, ::MOI.ObjectiveValue) = _is_input_min(m) ? m._global
 
 _relaxed_optimizer(m::GlobalOptimizer{R,S,Q}) where {R,S,Q} = m._subsolvers.relaxed_optimizer
 _upper_optimizer(m::GlobalOptimizer{R,S,Q})   where {R,S,Q} = m._subsolvers.upper_optimizer
-_ext_typ(m::GlobalOptimizer{R,S,Q})           where {R,S,Q} = m._subsolvers.ext_typ
+_ext(m::GlobalOptimizer{R,S,Q})               where {R,S,Q} = m._subsolvers.ext
 
 @inline function _is_input_min(m::GlobalOptimizer)
     return m._obj_mult == 1.0

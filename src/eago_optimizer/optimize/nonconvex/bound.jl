@@ -185,4 +185,4 @@ function bound_objective(m::GlobalOptimizer, f::VI)
 end
 
 bound_objective(t::ExtensionType, m::GlobalOptimizer) = bound_objective(m, m._working_problem._objective)
-bound_objective(m::GlobalOptimizer{R,Q,S}) where {R,Q,S<:ExtensionType} = bound_objective(_ext_typ(m), m)
+bound_objective(m::GlobalOptimizer{R,Q,S}) where {R,Q,S<:ExtensionType} = bound_objective(_ext(m), m)

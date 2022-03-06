@@ -23,7 +23,7 @@ include(joinpath(@__DIR__,"nonconvex","configure_subsolver.jl"))
 Basic parsing for global solutions (no extensive manipulation)
 """
 parse_global!(t::ExtensionType, m::GlobalOptimizer) = nothing
-parse_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}  = parse_global!(_ext_typ(m), m)
+parse_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}  = parse_global!(_ext(m), m)
 
 """
 $(TYPEDSIGNATURES)
@@ -142,7 +142,7 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     m._presolve_time = time() - m._parse_time
     return
 end
-presolve_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = presolve_global!(_ext_typ(m), m)
+presolve_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = presolve_global!(_ext(m), m)
 
 """
 $(SIGNATURES)
@@ -174,7 +174,7 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
     end
     return true
 end
-termination_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = termination_check(_ext_typ(m), m)
+termination_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = termination_check(_ext(m), m)
 
 const GLOBALEND_TSTATUS = Dict{GlobalEndState, MOI.TerminationStatusCode}(
         GS_OPTIMAL => MOI.OPTIMAL,
@@ -228,7 +228,7 @@ function convergence_check(t::ExtensionType, m::GlobalOptimizer)
 
     return t
 end
-convergence_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = convergence_check(_ext_typ(m), m)
+convergence_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = convergence_check(_ext(m), m)
 
 """
 $(SIGNATURES)

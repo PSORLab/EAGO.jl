@@ -165,7 +165,7 @@ function branch_node!(t::ExtensionType, m::GlobalOptimizer)
     m._node_count += 2
     return
 end
-branch_node!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = branch_node!(_ext_typ(m), m)
+branch_node!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = branch_node!(_ext(m), m)
 
 """
 $(SIGNATURES)
@@ -182,7 +182,7 @@ function single_storage!(t::ExtensionType, m::GlobalOptimizer)
                            lower_bound, upper_bound, y.depth, y.cont_depth, y.id, y.branch_direction, y.last_branch, y.branch_extent))
     return
 end
-single_storage!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = single_storage!(_ext_typ(m), m)
+single_storage!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = single_storage!(_ext(m), m)
 
 """
 $(SIGNATURES)
@@ -194,7 +194,7 @@ function node_selection!(t::ExtensionType, m::GlobalOptimizer)
     m._current_node = popmin!(m._stack)
     return
 end
-node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_selection!(_ext_typ(m), m)
+node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_selection!(_ext(m), m)
 
 """
 $(SIGNATURES)
@@ -216,7 +216,7 @@ function fathom!(t::ExtensionType, m::GlobalOptimizer)
     end
     return
 end
-fathom!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = fathom!(_ext_typ(m), m)
+fathom!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = fathom!(_ext(m), m)
 
 """
 $(TYPEDSIGNATURES)

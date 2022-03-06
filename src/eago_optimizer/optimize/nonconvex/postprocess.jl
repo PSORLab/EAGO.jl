@@ -12,7 +12,7 @@ function postprocess!(t::ExtensionType, m::GlobalOptimizer)
     end
     return
 end
-postprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = postprocess!(_ext_typ(m), m)
+postprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = postprocess!(_ext(m), m)
 
 """
 $(SIGNATURES)
@@ -20,4 +20,4 @@ $(SIGNATURES)
 Checks to see if current node should be reprocessed.
 """
 repeat_check(t::ExtensionType, m::GlobalOptimizer) = false
-repeat_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = repeat_check(_ext_typ(m), m)
+repeat_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = repeat_check(_ext(m), m)

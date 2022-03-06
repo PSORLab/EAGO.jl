@@ -31,7 +31,7 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
 
     subsolver_block::SubSolvers{Q,S,T}
     enable_optimize_hook::Bool
-    ext::Dict{Symbol, Any}
+    ext
   
     _auxillary_variable_info::Union{Nothing,_AuxVarData}
     _global_optimizer::GlobalOptimizer{Q,S,T}
@@ -67,7 +67,7 @@ function Optimizer(subsolver_block::SubSolvers{Q,S,T} = SubSolvers(); kwargs...)
     end
     sb = SubSolvers{Incremental{Q},Incremental{S},T}(Incremental(subsolver_block.relaxed_optimizer), 
                                                      Incremental(subsolver_block.upper_optimizer),  
-                                                     subsolver_block.ext_typ)
+                                                     subsolver_block.ext)
     m = Optimizer{Incremental{Q},Incremental{S},T}(sb)
     m._global_optimizer = GlobalOptimizer{Incremental{Q},Incremental{S},T}(; _subsolvers = sb)
     return m
