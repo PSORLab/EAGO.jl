@@ -42,7 +42,7 @@ function log_iteration!(x::GlobalOptimizer)
                 push!(log.postprocess_feasibility, x._postprocess_feasibility)
             end
 
-            if _is_input_min(m)
+            if _is_input_min(x)
                 push!(log.global_lower_bound, x._global_lower_bound)
                 push!(log.global_upper_bound, x._global_upper_bound)
             else

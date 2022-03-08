@@ -90,3 +90,5 @@ _constraints(m::Optimizer, ::Type{SAF}, ::Type{ET}) = _constraints(m._input_prob
 _constraints(m::Optimizer, ::Type{SQF}, ::Type{LT}) = _constraints(m._input_problem, SQF, LT)
 _constraints(m::Optimizer, ::Type{SQF}, ::Type{GT}) = _constraints(m._input_problem, SQF, GT)
 _constraints(m::Optimizer, ::Type{SQF}, ::Type{ET}) = _constraints(m._input_problem, SQF, ET)
+
+_ext(m::Optimizer) = _ext(m._global_optimizer)

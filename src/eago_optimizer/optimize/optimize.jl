@@ -16,7 +16,7 @@ include("optimize_convex.jl")
 include("optimize_nonconvex.jl")
 
 function throw_optimize_hook!(m::Optimizer{Q,S,T}) where {Q,S,T}
-    optimize_hook!(m.ext, m)
+    optimize_hook!(_ext(m), m)
 end
 
 function MOI.optimize!(m::Optimizer{Q,S,T}) where {Q,S,T}
