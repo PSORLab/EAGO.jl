@@ -54,9 +54,6 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     _node_count::Int
 end
 function Optimizer{Q,S,T}(sb::SubSolvers{Q,S,T}) where {Q,S,T}
-    println("optimzier")
-    @show Q, S, T
-    @show typeof(_ext(sb))
     return Optimizer{Q,S,T}(sb, false, nothing, nothing, GlobalOptimizer{Q,S,T}(_subsolvers = sb, ext = _ext(sb)),
                      InputProblem(), ParsedProblem(), EAGOParameters(),
                      MOI.OPTIMIZE_NOT_CALLED, MOI.OTHER_RESULT_STATUS,

@@ -98,10 +98,6 @@ end
         return Node(Val(true), Val(DIV), v[c])
     elseif i == 6
         error("If-else currently unsupported...")
-    elseif i == 7
-        return Node(Val(true), Val(MAX), v[c])
-    elseif i == 8
-        return Node(Val(true), Val(MIN), v[c])
     elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
         i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
         d = op.multivariate_id[i_mv]
