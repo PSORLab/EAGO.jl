@@ -1,4 +1,10 @@
-function is_integer_feasible(m::GlobalOptimizer)
+
+"""
+$(SIGNATURES)
+
+Checks thats the integer 
+"""
+function is_integer_feasible_relaxed(m::GlobalOptimizer)
     bool = true
     atol = _integer_abs_tol(m)
     rtol = _integer_rel_tol(m)
@@ -24,17 +30,22 @@ $(SIGNATURES)
 Default check to see if the upper bounding problem should be run. By default,
 The upper bounding problem is run on every node up to depth `upper_bounding_depth`
 and is triggered with a probability of `0.5^(depth - upper_bounding_depth)`
-afterwards.
+afterwards for continuous problems. For integral problems, the `upper_bounding_depth`
+the above approach is used as well as running on every node up to depth 
+`upper_bounding_depth + cont_depth` and is triggered with a probability of 
+`0.5^(depth - upper_bounding_depth - cont_depth)`.
 """
 function default_nlp_heurestic(m::GlobalOptimizer)
     bool = false
     ubd_limit = m._parameters.upper_bounding_depth
     n = _current_node(m)
-    if is_integer_feasible(m)
+    if is_integer_feasible_relaxed(m)
         Δdepth = n.depth - n.cont_depth
         bool |= (Δdepth <= ubd_limit)
         bool |= (rand() < 0.5^(Δdepth - ubd_limit))
     end
+    bool |= (n.depth <= ubd_limit)
+    bool |= (rand() < 0.5^(n.depth - ubd_limit))
     return bool
 end
 

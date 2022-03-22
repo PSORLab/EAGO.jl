@@ -182,20 +182,21 @@ end
 $(TYPEDSIGNATURES)
 """
 function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, k::Int, check_safe::Bool) where {V,R,S,N,T<:RelaxTag,Q<:ExtensionType}
-    #println("-----------------------------")
-    #println("start relax at current iteration with k = $k")
-    #println("-----------------------------")
     d = m._working_problem._relaxed_evaluator
     x = d.variable_values.x
     d.pass_number = k
     forward_pass!(d, f)
     valid_cut_flag = true
+    num_feasible_cut = true
 
     grad_sparsity = sparsity(f)
     if is_num(f)
         f.saf.constant = num(f)
         for i = 1:length(grad_sparsity)
             f.saf.terms[i] = SAT(0.0, VI(grad_sparsity[i]))
+        end
+        if !(lower_bound(f) <= num(f) <= upper_bound(f))
+            num_feasible_cut = false
         end
     else
         v = set(f)
@@ -226,9 +227,11 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
                     valid_cut_flag &= check_set_affine_nl!(m, f, upper_cut_valid, check_safe)
                 end
             end
+        else
+            num_feasible_cut = false
         end
     end
-    return valid_cut_flag
+    return valid_cut_flag, num_feasible_cut
 end
 
 relax!(m::GlobalOptimizer, f::Union{Nothing, VI, AFI}, k::Int, b::Bool) = true

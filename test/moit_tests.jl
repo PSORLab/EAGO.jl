@@ -182,6 +182,14 @@ function test_runtests()
                                 "test_attribute_NumberOfThreads",
                                 "test_modification_",
                                 "test_linear_integration_delete_variables",
+                                "conic_NormOneCone_VectorAffineFunction",
+                                "conic_NormOneCone_VectorOfVariables",
+                                "conic_NormInfinityCone_VectorOfVariables",
+                                "conic_NormInfinityCone_VectorAffineFunction",
+                                "linear_integer_solve_twice",
+                                "linear_integration",
+                                "conic_linear_VectorAffineFunction",
+                                "conic_linear_VectorAffineFunction_2",
 
                                 "test_quadratic_SecondOrderCone_basic",
                                 

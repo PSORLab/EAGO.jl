@@ -56,16 +56,13 @@ function NodeBB(l::Vector{Float64}, u::Vector{Float64}, d::BitVector)
     NodeBB(l, u, d, any(d), -Inf, Inf, 1, -1, 1, BD_NONE, -1, 0.0)
 end
 NodeBB() = NodeBB(Float64[], Float64[], BitVector(), false, -Inf, Inf, 0, -1, 1, BD_NONE, -1, 0.0)
-NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds),
-                           copy(x.is_integer), x.continuous,
-                           x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
+NodeBB(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds), copy(x.is_integer), 
+                           x.continuous, x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
                            x.branch_direction, x.last_branch, x.branch_extent)
 
 # Copy utilities
-Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds),
-                              copy(x.upper_variable_bounds),
-                              copy(x.is_integer), x.continuous,
-                              x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
+Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variable_bounds), copy(x.is_integer), 
+                              x.continuous, x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
                               x.branch_direction, x.last_branch, x.branch_extent)
 
 # using alternative name as to not interfere with ordering...
@@ -73,11 +70,11 @@ function uninitialized(x::NodeBB)
     flag = isempty(x.lower_variable_bounds)
     flag &= isempty(x.upper_variable_bounds)
     flag &= isempty(x.is_integer)
-    flag &= x.lower_bound === -Inf
-    flag &= x.upper_bound === Inf
-    flag &= x.depth === 0
-    flag &= x.cont_depth === -1 
-    flag &= x.id === 1
+    flag &= x.lower_bound == -Inf
+    flag &= x.upper_bound == Inf
+    flag &= x.depth == 0
+    flag &= x.cont_depth == -1 
+    flag &= x.id == 1
     return flag
 end
 
@@ -101,8 +98,8 @@ Base.isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
 Base.length(x::NodeBB) = length(x.lower_variable_bounds)
 function Base.isempty(x::NodeBB)
     for i = 1:length(x)
-        @inbounds lower = x.lower_variable_bounds[i]
-        @inbounds upper = x.upper_variable_bounds[i]
+        lower = @inbounds x.lower_variable_bounds[i]
+        upper = @inbounds x.upper_variable_bounds[i]
         (lower > upper) && (return true)
     end
     return false
@@ -126,6 +123,5 @@ end
 # Compute middle & diameter
 @inline diam(x::NodeBB) = upper_variable_bounds(x) - lower_variable_bounds(x)
 @inline diam(x::NodeBB, i::Int) = upper_variable_bounds(x,i) - lower_variable_bounds(x,i)
-
 @inline mid(x::NodeBB) = 0.5*(upper_variable_bounds(x) + lower_variable_bounds(x))
 @inline mid(x::NodeBB, i::Int) = 0.5*(upper_variable_bounds(x,i) + lower_variable_bounds(x,i))

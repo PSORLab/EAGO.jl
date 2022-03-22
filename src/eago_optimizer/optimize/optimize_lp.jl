@@ -58,14 +58,12 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
     # TODO: Remove when upstream Cbc issue https://github.com/jump-dev/Cbc.jl/issues/168 is fixed
     # Add extra binary variable `issue_var` fixed to zero to prevent Cbc from displaying even though 
     # silent is set to off. Sets `issue_var` to zero. 
-    issue_var = MOI.add_variable(d)
-    MOI.add_constraint(d, issue_var, ZO())
-    MOI.add_constraint(d, issue_var, ET(0.0))
+    issue_var = MOI.add_variable(r)
+    MOI.add_constraint(r, issue_var, ZO())
+    MOI.add_constraint(r, issue_var, ET(0.0))
 
     _add_constraint_store_ci_linear!(r, ip)
 
-    #@show tip._objective
-    @show ip._optimization_sense
     min_to_max = lp_obj!(d, r, ip._objective)
     if ip._optimization_sense == MOI.FEASIBILITY_SENSE
         MOI.set(r, MOI.ObjectiveSense(), ip._optimization_sense)

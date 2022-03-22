@@ -46,7 +46,7 @@
     @test length(x._stack) == 1
 
     @inferred EAGO.branch_node!(x)
-    @inferred EAGO.node_selection!(EAGO._ext_typ(x), x)
+    @inferred EAGO.node_selection!(EAGO._ext(x), x)
     @inferred EAGO.set_global_lower_bound!(x)
     @inferred EAGO.fathom!(x)
 

@@ -13,6 +13,31 @@
 #############################################################################
 
 """
+$(SIGNATURES)
+
+"""
+function is_integer_feasible_local(m::GlobalOptimizer, d)
+    bool = true
+    atol = _integer_abs_tol(m)
+    rtol = _integer_rel_tol(m)
+    for i = 1:_variable_num(BranchVar(), m)
+        if is_integer(BranchVar(), m, i)
+            xsol = MOI.get(d, MOI.VariablePrimal(), m._upper_variables[i])
+            if isapprox(floor(xsol), xsol; atol = atol, rtol = rtol)
+                continue
+            elseif isapprox(ceil(xsol), xsol; atol = atol, rtol = rtol)
+                continue
+            else
+                bool &= false
+                break
+            end
+        end
+    end
+    return bool
+end
+
+"""
+$(SIGNATURES)
 
 Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_tolerance/100.0)*f* + absolute_tolerance/100.0`.
 This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
@@ -107,7 +132,7 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
     m._upper_result_status = pstatus
 
     if local_problem_status(tstatus, pstatus) == LRS_FEASIBLE
-        if is_integer_feasible(m)
+        if is_integer_feasible_local(m, d)
 
             m._upper_feasibility = true
             obj_val = MOI.get(d, MOI.ObjectiveValue())
@@ -155,21 +180,7 @@ function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType
 
     # Optimizes the object
     MOI.optimize!(upper_optimizer)
-
-    #println(" ")
-    #@show m._working_problem._objective_saf
-    #@show upper_optimizer.optimizer.model.quadratic_le_constraints[1]
-    #@show typeof(upper_optimizer.optimizer.model.quadratic_le_constraints[1])
-    #@show upper_optimizer.optimizer.model.quadratic_ge_constraints
-    #@show upper_optimizer.optimizer.model.quadratic_eq_constraints
-
-    #@show upper_optimizer.optimizer.model.nlp_data
-    #@show fieldnames(typeof(upper_optimizer.optimizer.model.nlp_data))
-
     _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 
-function optimize!(::DIFF_CVX, m::GlobalOptimizer)
-    solve_local_nlp!(m)
-    return
-end
+optimize!(::DIFF_CVX, m::GlobalOptimizer) = solve_local_nlp!(m)

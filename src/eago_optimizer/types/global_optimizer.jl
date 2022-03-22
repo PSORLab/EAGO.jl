@@ -115,9 +115,9 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum number of iterations (default 3E6)"
     iteration_limit::Int = 1E9 #2*10^5
     "Absolute tolerance for termination (default = 1E-3)"
-    absolute_tolerance::Float64 = 1E-3
+    absolute_tolerance::Float64 = 1E-4
     "Relative tolerance for termination (default = 1E-3)"
-    relative_tolerance::Float64 = 1E-3
+    relative_tolerance::Float64 = 1E-4
     "Absolute constraint feasibility tolerance"
     absolute_constraint_feas_tolerance::Float64 = 1E-8
 

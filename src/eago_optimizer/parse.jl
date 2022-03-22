@@ -224,7 +224,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
         @objective(ip._nlp_data.evaluator.model, Min, η)
     end
 
-    sqf_obj = copy(MOI.get(ip._nlp_data.evaluator.model, MOI.ObjectiveFunction{SQF}()))
+    sqf_obj = copy(m._input_problem._objective)
     if !_is_input_min(m)
         MOIU.operate!(-, Float64, sqf_obj)
     end
@@ -240,8 +240,6 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     end
     MOIU.operate!(-, Float64, f.func, VI(ηi))
     push!(f.saf.terms, SAT(-1.0, VI(ηi)))
-    #push!(wp._sqf_leq, deepcopy(f))
-    @show length(wp._sqf_leq)
     m._obj_var_slack_added = true
     return
 end

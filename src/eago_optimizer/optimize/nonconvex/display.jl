@@ -45,8 +45,7 @@ function print_solution!(m::GlobalOptimizer)
         end
         println("Solution is :")
         if m._feasible_solution_found
-            k = _obj_var_slack_added(m) ? 1 : 0
-            for i = 1:(m._input_problem._variable_count - k)
+            for i = 1:m._input_problem._variable_count
                 println("    X[$i] = $(m._continuous_solution[i])")
             end
         end
@@ -116,39 +115,39 @@ function print_iteration!(m::GlobalOptimizer)
             end
             #temp_str = string(round(lower, sigdigits = 5))
             #temp_str = string(lower, sigdigits = 3))
-            temp_str = @sprintf "%.2E" lower
+            temp_str = @sprintf "%.3E" lower
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             #temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
             #temp_str = string(upper, sigdigits = 3))
-            temp_str = @sprintf "%.2E" upper
+            temp_str = @sprintf "%.3E" upper
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*"  |"
+            print_str *= (" "^(max_len - len_str))*temp_str*" |"
 
             max_len = 12
             #temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
-            temp_str = @sprintf "%.2E" abs(m._global_upper_bound - m._global_lower_bound)
+            temp_str = @sprintf "%.3E" abs(m._global_upper_bound - m._global_lower_bound)
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*"  | "
+            print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 12
             #temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
-            temp_str = @sprintf "%.2E" relative_gap(m._global_lower_bound, m._global_upper_bound)
+            temp_str = @sprintf "%.3E" relative_gap(m._global_lower_bound, m._global_upper_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 12
             #temp_str = string(round(x._run_time, sigdigits = 3))
-            temp_str = @sprintf "%.2E" m._run_time
+            temp_str = @sprintf "%.3E" m._run_time
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" |  "
+            print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             max_len = 12
             #temp_str = string(round(x._time_left, sigdigits = 4))
-            temp_str = @sprintf "%.2E" m._time_left
+            temp_str = @sprintf "%.3E" m._time_left
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*"  |"
+            print_str *= (" "^(max_len - len_str))*temp_str*" |"
 
             println(print_str)
         end
