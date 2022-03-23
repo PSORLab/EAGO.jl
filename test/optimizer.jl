@@ -704,7 +704,7 @@ end
 
 @testset "Display Testset" begin
     m = EAGO.Optimizer()
-    MOI.set(m, MOI.RawParameter("verbosity"), 2)
+    MOI.set(m, MOI.RawOptimizerAttribute("verbosity"), 2)
     @test_nowarn EAGO.print_solution!(m._global_optimizer)
     @test_nowarn EAGO.print_results!(m._global_optimizer, true)
     @test_nowarn EAGO.print_results!(m._global_optimizer, false)
