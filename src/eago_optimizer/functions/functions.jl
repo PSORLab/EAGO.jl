@@ -9,7 +9,7 @@
 # Defines variable info and function types.
 #############################################################################
 
-include(joinpath(@__DIR__, "nonlinear\\auxiliary_variables.jl"))
+#include(joinpath(@__DIR__, "nonlinear\\auxiliary_variables.jl"))
 
 """
 $(TYPEDEF)
