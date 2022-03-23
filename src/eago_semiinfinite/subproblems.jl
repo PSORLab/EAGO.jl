@@ -146,7 +146,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     # fill buffer with subproblem result info
     psol = JuMP.value.(p)
     load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), psol)
-    result.solution_time += MOI.get(m, MOI.SolveTime())
+    result.solution_time += MOI.get(m, MOI.SolveTimeSec())
 
     return nothing
 end
@@ -213,7 +213,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
 
     # fill buffer with subproblem result info
     load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), JuMP.value.(x))
-    result.solution_time += MOI.get(m, MOI.SolveTime())
+    result.solution_time += MOI.get(m, MOI.SolveTimeSec())
 
     return nothing
 end
@@ -284,7 +284,7 @@ function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
 
     # fill buffer with subproblem result info
     load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), JuMP.value.(x))
-    result.solution_time += MOI.get(m, MOI.SolveTime())
+    result.solution_time += MOI.get(m, MOI.SolveTimeSec())
 
     return nothing
 end
