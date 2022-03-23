@@ -90,7 +90,7 @@ const AFE = AffineFunctionEq
 
 AffineFunctionEq() = AffineFunctionEq(Tuple{Float64,Int}[], 0.0, 0)
 function AffineFunctionEq(func::SAF, set::ET)
-    terms = map(x -> (x.coefficient, x.variable_index.value), func.terms)
+    terms = map(x -> (x.coefficient, x.variable.value), func.terms)
     return AffineFunctionEq(terms, func.constant - set.value, length(func.terms))
 end
 
