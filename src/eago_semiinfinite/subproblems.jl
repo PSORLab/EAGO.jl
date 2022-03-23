@@ -132,7 +132,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
             push!(nl_obj.args, p[i])
         end
     end
-    set_NL_objective(m, MOI.MAX_SENSE, nl_obj)
+    set_nonlinear_objective(m, MOI.MAX_SENSE, nl_obj)
 
     # add uncertainty constraints
     add_uncertainty_constraint!(m, prob)
@@ -203,7 +203,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
             push!(nl_obj.args, x[i])
         end
     end
-    set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
+    set_nonlinear_objective(m, MOI.MIN_SENSE, nl_obj)
 
     # optimize model and check status
     JuMP.optimize!(m)
