@@ -36,6 +36,8 @@ function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, abs_tol::Flo
     optimizer_name = JuMP.solver_name(m)
     if optimizer_name === "EAGO: Easy Advanced Global Optimization"
         set_optimizer_attribute(m, "absolute_tolerance", abs_tol)
+        #set_optimizer_attribute(m, "constr_viol_tol", c_tol)
+        #set_optimizer_attribute(m, "relative_tolerance", rel_tol)
     elseif optimizer_name === "SCIP"
         set_optimizer_attribute(m, "limits/absgap", abs_tol)
     elseif optimizer_name === "Alpine"

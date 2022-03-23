@@ -152,17 +152,12 @@ end
 has_value(d::BufferedNonlinearFunction) = has_value(d.ex)
 dep_subexpr_count(d::BufferedNonlinearFunction) = dep_subexpr_count(d.ex)
 set_has_value!(d::BufferedNonlinearFunction, v::Bool) = set_has_value!(d.ex, v)
-function sparsity(d::BufferedNonlinearFunction)
-    #println("sparsity of function is = $(sparsity(d.ex))")
-    sparsity(d.ex)
-end
-function set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
-    #println("sparsity of function is = $(set(d.ex))")
-    set(d.ex)
-end
+sparsity(d::BufferedNonlinearFunction) = sparsity(d.ex)
+set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = set(d.ex)
 num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)
 lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
 upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
+
 # returns the interval bounds associated with the set
 interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
 is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
@@ -323,7 +318,7 @@ function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T
         forward_pass!(z, z.subexpressions[j])
     end
     _load_subexprs!(d.relax_cache, d.g, z.subexpressions, d.g.dependent_subexpressions)
-    (z.relax_type == STD_RELAX)    && (return f_init_prop!(Relax(), d.g, d.relax_cache, z.is_first_eval))
+    (z.relax_type == STD_RELAX) && (return f_init_prop!(Relax(), d.g, d.relax_cache, z.is_first_eval))
     (z.relax_type == MC_AFF_RELAX) && (return f_init_prop!(RelaxAA(d.grad_sparsity), d.g, d.relax_cache, z.is_first_eval))
     return f_init_prop!(RelaxMulEnum(d.grad_sparsity), d.g, d.relax_cache, z.is_first_eval)
 end

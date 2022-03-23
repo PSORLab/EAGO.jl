@@ -209,7 +209,6 @@ function relax_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     return valid_relax_flag, num_feasible_relax_flag
 end
 
-
 """
 $(SIGNATURES)
 

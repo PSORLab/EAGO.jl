@@ -55,33 +55,34 @@ A tree graph with a single sink node.
 """
 Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
     "List of nodes"
-    nodes::Vector{Node}                       = Node[]
+    nodes::Vector{Node}                         = Node[]
     "List of index of variables in this tree"
-    variables::Dict{Int,Int}                  = Dict{Int,Int}()
+    variables::Dict{Int,Int}                    = Dict{Int,Int}()
     "Information on all variables..."
-    v::VariableValues{Float64}                = VariableValues{Float64}()
+    v::VariableValues{Float64}                  = VariableValues{Float64}()
     "List of constant values"
-    constant_values::Vector{Float64}          = Float64[]
+    constant_values::Vector{Float64}            = Float64[]
     "List of constant values"
-    parameter_values::Vector{Float64}         = Float64[]
+    parameter_values::Vector{Float64}           = Float64[]
     "Number of nodes"
-    node_count::Int                           = 0
+    node_count::Int                             = 0
     "Number of variables"
-    variable_count::Int                       = 0
+    variable_count::Int                         = 0
     "Number of constants"
-    constant_count::Int                       = 0
-    sink_bnd::Interval{Float64}               = Interval{Float64}(-Inf,Inf)
+    constant_count::Int                         = 0
+    sink_bnd::Interval{Float64}                 = Interval{Float64}(-Inf,Inf)
     ""
-    sparsity::Vector{Int}                     = Int[]
+    sparsity::Vector{Int}                       = Int[]
     ""
-    rev_sparsity::Dict{Int,Int}               = Dict{Int,Int}()
-    dependent_variable_count::Int             = 0
-    dep_subexpr_count::Int                    = 0
-    dependent_subexpressions::Vector{Int}     = Int[]
-    linearity::Linearity                      = LIN_CONSTANT
-    user_operators::OperatorRegistry          = OperatorRegistry()
-    #children::SpraseMatrixCSC{Bool,Int}      = spzeros(Bool,1,1)
-    #parents::SparseMatrixCSC{Bool,Int}       = spzeros(Bool,1,1)
+    rev_sparsity::Dict{Int,Int}                 = Dict{Int,Int}()
+    dependent_variable_count::Int               = 0
+    dep_subexpr_count::Int                      = 0
+    dependent_subexpressions::Vector{Int}       = Int[]
+    dependent_subexpression_dict::Dict{Int,Int} = Dict{Int,Int}()
+    linearity::Linearity                        = LIN_CONSTANT
+    user_operators::OperatorRegistry            = OperatorRegistry()
+    #children::SpraseMatrixCSC{Bool,Int}        = spzeros(Bool,1,1)
+    #parents::SparseMatrixCSC{Bool,Int}         = spzeros(Bool,1,1)
 end
 #DirectedTree(n::Int) = DirectedTree(children = spzeros(Bool,n,n), parents=spzeros(Bool,n,n))
 const DAT = DirectedTree
@@ -112,13 +113,13 @@ node_count(g::DAT)     = g.node_count
 variable_count(g::DAT) = g.variable_count
 constant_count(g::DAT) = g.constant_count
 
-dep_subexpr_count(g::DAT)            = length(g.dependent_subexpressions)
-sparsity(g::DAT, i)                  = g.sparsity
-rev_sparsity(g::DAT, i::Int, k::Int) = g.rev_sparsity[i]
+dependent_subexpression_index(g::DAT, i) = g.dependent_subexpression_dict[i]
+dep_subexpr_count(g::DAT)                = length(g.dependent_subexpressions)
+sparsity(g::DAT, i)                      = g.sparsity
+rev_sparsity(g::DAT, i::Int, k::Int)     = g.rev_sparsity[i]
 
 user_univariate_operator(g::DAT, i) = g.user_operators.univariate_operator_f[i]
 user_multivariate_operator(g::DAT, i) = g.user_operators.multivariate_operator_evaluator[i]
-
 
 function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
 
@@ -127,6 +128,10 @@ function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,
     const_values = copy(d.const_values)
 
     sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity, is_sub, subexpr_indx)
+    dependent_subexpression_dict = Dict{Int,Int}()
+    for (i, v) in enumerate(dependent_subexpressions)
+        dependent_subexpression_dict[v] = i
+    end
     rev_sparsity = Dict{Int,Int}()
     for (i,s) in enumerate(sparsity)
         rev_sparsity[s] = i
@@ -146,6 +151,7 @@ function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,
                     dependent_variable_count = length(sparsity),
                     dep_subexpr_count = length(dependent_subexpressions),
                     dependent_subexpressions = copy(dependent_subexpressions),
+                    dependent_subexpression_dict = dependent_subexpression_dict,
                     linearity = lin[1],
                     user_operators = op
                     )

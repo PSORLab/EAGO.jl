@@ -199,19 +199,6 @@ function set_reference_point!(m::GlobalOptimizer)
             new_reference_point = true
         end
     end
-    #=
-    for node_i = 1:m._branch_variable_count
-        solution_i = m._branch_to_sol_map[node_i]
-
-        node_x = current_xref[node_i]
-        solution_x = evaluator_x[solution_i]
-
-        if node_x !== solution_x
-            evaluator_x[solution_i] = node_x
-            new_reference_point = true
-        end
-    end
-    =#
 
     if new_reference_point
         foreach(c -> _set_has_value!(c, false), wp._nonlinear_constr)

@@ -28,29 +28,18 @@ function fprop!(t::RelaxCacheAttribute, vt::Variable, g::DAT, b::RelaxCache{V,N,
     if l == u
         b[k] = x
     else
-        #=
-        if !isfinite(x)
-            if !isfinite(l) && !isfinite(u)
-                x = 0.0
-            elseif isfinite(u)
-                x = u
-            elseif isfinite(l)
-                x = l
-            end
-        end
-        =#
         z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
         if !first_eval(t, b)
             z = z ∩ interval(b, k)
         end
-        #println("[$k] VARIABLE[$i]... = $z \n")
         b[k] = z
     end
     nothing
 end
 
 function fprop!(t::Relax, ex::Subexpression, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-    x =  first_index(g, k)
+    y = first_index(g, k)
+    x = dependent_subexpression_index(g, y)
     if subexpression_is_num(b, x)
         b[k] = subexpression_num(b, x)
     else
@@ -89,9 +78,7 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where 
             else
                 z = num(b, x) - set(b, y)
             end
-            #println("[$k] Minus[$x, $y]... = $z")
             b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
-            #println("[$k] Minus[$x, $y]... = $ztemp after cut \n")
         else
             b[k] = num(b, x) - num(b, y)
         end
@@ -203,7 +190,6 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
         else
             z = num(b, x)*set(b, y)
         end
-        #println("[$k] MULT[$x, $y]... = $z (vs. $(b._info[k])) \n")
         b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
     else
         b[k] = num(b, x)*num(b, y)
