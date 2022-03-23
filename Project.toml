@@ -28,7 +28,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 [compat]
 Cassette = "0.3.1"
-Cbc = "~0.9"
+Cbc = "~1"
 DataStructures = "~0.17, ~0.18"
 DocStringExtensions = "~0.8"
 FastRounding = "~0.2, ~0.3"
