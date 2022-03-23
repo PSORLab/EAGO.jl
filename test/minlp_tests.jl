@@ -22,8 +22,9 @@ MINLPTests.test_nlp(solver, exclude = minlp_nlp_exclude,
                             primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
 
 minlp_nlp_cvx_exclude = String[
-
+    "001_010",
     "001_011", # convex quadratic objective... (linear unbounded...)
+    "002_010",
     "002_011", # unbounded linear problem & convex quadratic objective
     "101_010", # convex quadratic nl constraints...
     "101_011", 
