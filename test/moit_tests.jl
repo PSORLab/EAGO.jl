@@ -186,13 +186,30 @@ function test_runtests()
                                 "conic_NormOneCone_VectorOfVariables",
                                 "conic_NormInfinityCone_VectorOfVariables",
                                 "conic_NormInfinityCone_VectorAffineFunction",
+                                "test_conic_NormInfinityCone_3",
+                                "test_conic_NormOneCone",
+                                "test_conic_linear_VectorOfVariables",
+                                "test_conic_linear_VectorOfVariables_2",
+
                                 "linear_integer_solve_twice",
                                 "linear_integration",
                                 "conic_linear_VectorAffineFunction",
                                 "conic_linear_VectorAffineFunction_2",
 
+                                "test_linear_integer_knapsack",
+                                "test_linear_integer_integration",
+                                "test_linear_inactive_bounds",
+                                "test_linear_add_constraints",
+                                "test_linear_FEASIBILITY_SENSE",
+
+                                "test_constraint_ScalarAffineFunction_EqualTo",
+                                "test_constraint_ScalarAffineFunction_GreaterThan",
+                                "test_constraint_ScalarAffineFunction_Interval",
+                                "test_constraint_ScalarAffineFunction_LessThan",
+                                "test_constraint_ScalarAffineFunction_duplicate",
+                                "test_constraint_VectorAffineFunction_duplicate",
+
                                 "test_quadratic_SecondOrderCone_basic",
-                                
                                 "test_quadratic_constraint_GreaterThan",
                                 "test_quadratic_constraint_LessThan",
                                 "test_quadratic_constraint_basic",
@@ -201,6 +218,23 @@ function test_runtests()
                                 "test_quadratic_integration",
                                 "test_quadratic_nonconvex_constraint_integration",
                                 "test_quadratic_nonhomogeneous",
+                                "test_quadratic_constraint_integration",
+
+                                "test_variable_solve_Integer_with_lower_bound",
+                                "test_variable_solve_Integer_with_upper_bound",
+                                "test_variable_solve_with_lowerbound",
+                                "test_variable_solve_with_upperbound",
+
+                                "test_solve_result_index",
+
+                                "test_objective_ObjectiveFunction_duplicate_terms",
+                                "test_objective_ObjectiveFunction_constant",
+                                "test_objective_ObjectiveFunction_VariableIndex",
+
+                                "test_solve_ObjectiveBound_MAX_SENSE_IP",
+                                "test_solve_ObjectiveBound_MAX_SENSE_LP",
+                                "test_solve_ObjectiveBound_MIN_SENSE_IP",
+                                "test_solve_ObjectiveBound_MIN_SENSE_LP",                                                                                          
 
                                 "test_constraint_qcp_duplicate_diagonal",
                                 "test_constraint_qcp_duplicate_off_diagonal",
