@@ -29,8 +29,9 @@ function register_eago_operators!(m::JuMP.Model)
     JuMP.register(m, :bisigmoid, 1, bisigmoid, McCormick.bisigmoid_deriv, McCormick.bisigmoid_deriv2)
     JuMP.register(m, :softsign, 1, softsign, McCormick.softsign_deriv, McCormick.softsign_deriv2)
     JuMP.register(m, :gelu, 1, gelu, McCormick.gelu_deriv, McCormick.gelu_deriv2)
-    JuMP.register(m, :swish1, 1, swish1, McCormick.swish1_deriv, McCormick.swish1_deriv2)
+    JuMP.register(m, :swish, 1, swish, McCormick.swish_deriv, McCormick.swish_deriv2)
     JuMP.register(m, :xabsx, 1, xabsx, McCormick.xabsx_deriv, McCormick.xabsx_deriv2)
+    JuMP.register(m, :logcosh, 1, xabsx, McCormick.xabsx_deriv, McCormick.xabsx_deriv2)
 
     # register activatio functions w/ parameters
     d_param_relu = JuMP._UserFunctionEvaluator(x -> param_relu(x...),

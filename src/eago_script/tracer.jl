@@ -81,78 +81,67 @@ for i in (abs, sin, cos, tan, sec, csc, cot, asin, acos, atan, asec, acsc,
           acsch, coth, acoth, sqrt, log, log2, log10, log1p, exp, exp2, expm1,
           +, -, inv)
     id = univariate_operator_to_id[Symbol(i)]
-    @eval function overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace)
-                node = NodeInfo(CALLUNIVAR, $id, [val(x)])
-                add_set_node!(ctx.metadata, node)
+    @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace)
+                add_set_node!(ctx.metadata, NodeInfo(CALLUNIVAR, $id, [val(x)]))
                 return SetTrace(ctx.metadata.set_trace_count)
           end
-    @eval overdub(ctx::TraceCtx, ::typeof($i), x::Real) = ($i)(x)
+    @eval Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::Real) = ($i)(x)
 end
 
 # defines primitives for bivariate CALL operators (NEED TO ADD ^)
-for i in (+, -, *, ^, /, max, min)
+for i in (+, -, *, ^, /) # TODO ADD :max, :min
     id = operator_to_id[Symbol(i)]
-    @eval function overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
-               node = NodeInfo(CALL, $id, [val(x), val(y)])
-               add_set_node!(ctx.metadata, node)
+    @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
+               add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [val(x), val(y)]))
                SetTrace(ctx.metadata.set_trace_count)
           end
     for j in (Int16,Int32,Int64,Float16,Float32,Float64,Irrational)
-        @eval function overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::($j))
-                    c_val = add_constant(ctx.metadata, y)
-                    node = NodeInfo(CALL, $id, [val(x),c_val])
-                    add_set_node!(ctx.metadata, node)
+        @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::($j))
+                    add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [val(x), add_constant(ctx.metadata, y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
-        @eval function overdub(ctx::TraceCtx, ::typeof($i), x::($j), y::SetTrace)
-                    c_val = add_constant(ctx.metadata, x)
-                    node = NodeInfo(CALL, $id, [c_val,val(y)])
-                    add_set_node!(ctx.metadata, node)
+        @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::($j), y::SetTrace)
+                    add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [add_constant(ctx.metadata, x),val(y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
     end
-    @eval overdub(ctx::TraceCtx, ::typeof($i), x::Real, y::Real) = ($i)(x,y)
+    @eval Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::Real, y::Real) = ($i)(x,y)
 end
 
 # defines primitives for bivariate COMPARISON operators
 for i in (>,<,==,>=,<=)
     id = comparison_operator_to_id[Symbol(i)]
-    @eval function overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
-                node = NodeInfo(COMPARISON, $id, [val(x), val(y)])
-                add_set_node!(ctx.metadata, node)
+    @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
+                add_set_node!(ctx.metadata, NodeInfo(COMPARISON, $id, [val(x), val(y)]))
                 SetTrace(ctx.metadata.set_trace_count)
             end
     for j in (Int16,Int32,Int64,Float16,Float32,Float64,Irrational)
-        @eval function overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::($j))
-                    c_val = add_constant(ctx.metadata, y)
-                    node = NodeInfo(COMPARISON, $id, [val(x),c_val])
-                    add_set_node!(ctx.metadata, node)
+        @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::($j))
+                    add_set_node!(ctx.metadata, NodeInfo(COMPARISON, $id, [val(x),add_constant(ctx.metadata, y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
-        @eval function overdub(ctx::TraceCtx, ::typeof($i), x::($j), y::SetTrace)
-                    c_val = add_constant(ctx.metadata, x)
-                    node = NodeInfo(COMPARISON, $id, [c_val, val(y)])
-                    add_set_node!(ctx.metadata, node)
+        @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::($j), y::SetTrace)
+                    add_set_node!(ctx.metadata, NodeInfo(COMPARISON, $id, [add_constant(ctx.metadata, x), val(y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
     end
-    @eval overdub(ctx::TraceCtx, ::typeof($i), x::Real, y::Real) = ($i)(x, y)
+    @eval Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::Real, y::Real) = ($i)(x, y)
 end
 
 # define primitives for associative terms
-overdub(ctx::TraceCtx, ::typeof(*), x, y) = afoldl(x, y)
-overdub(ctx::TraceCtx, ::typeof(afoldl), x, y, z) = afoldl(x, y, z)
-overdub(ctx::TraceCtx, ::typeof(afoldl), a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p...) = afoldl(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p...)
+Cassette.overdub(ctx::TraceCtx, ::typeof(*), x, y) = afoldl(x, y)
+Cassette.overdub(ctx::TraceCtx, ::typeof(afoldl), x, y, z) = afoldl(x, y, z)
+Cassette.overdub(ctx::TraceCtx, ::typeof(afoldl), a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p...) = afoldl(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p...)
 
 # conversion
-overdub(ctx::TraceCtx, ::typeof(float), x) = x
-overdub(ctx::TraceCtx, ::typeof(AbstractFloat), x) = x
+Cassette.overdub(ctx::TraceCtx, ::typeof(float), x) = x
+Cassette.overdub(ctx::TraceCtx, ::typeof(AbstractFloat), x) = x
 
 # primitive for array access
-overdub(ctx::TraceCtx, ::typeof(getindex), A::Array, i::Int) = getindex(A,i)
-overdub(ctx::TraceCtx, ::typeof(getindex), A::SetTraceSto, i::Int) = getindex(A,i)
+Cassette.overdub(ctx::TraceCtx, ::typeof(getindex), A::Array, i::Int) = getindex(A,i)
+Cassette.overdub(ctx::TraceCtx, ::typeof(getindex), A::SetTraceSto, i::Int) = getindex(A,i)
 
-function overdub(ctx::TraceCtx, ::typeof(typeassert), x::Real, type::Type)
+function Cassette.overdub(ctx::TraceCtx, ::typeof(typeassert), x::Real, type::Type)
     if !isa(x,SetTrace)
         typeassert(x, type)
     end
@@ -160,7 +149,7 @@ function overdub(ctx::TraceCtx, ::typeof(typeassert), x::Real, type::Type)
 end
 
 # prehook for debugging mainly
-function prehook(ctx::TraceCtx, f::Function, args...)
+function Cassette.prehook(ctx::TraceCtx, f::Function, args...)
     #println(f, args)
 end
 

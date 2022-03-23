@@ -13,12 +13,37 @@
 #############################################################################
 
 """
+$(SIGNATURES)
+
+"""
+function is_integer_feasible_local(m::GlobalOptimizer, d)
+    bool = true
+    atol = _integer_abs_tol(m)
+    rtol = _integer_rel_tol(m)
+    for i = 1:_variable_num(BranchVar(), m)
+        if is_integer(BranchVar(), m, i)
+            xsol = MOI.get(d, MOI.VariablePrimal(), m._upper_variables[i])
+            if isapprox(floor(xsol), xsol; atol = atol, rtol = rtol)
+                continue
+            elseif isapprox(ceil(xsol), xsol; atol = atol, rtol = rtol)
+                continue
+            else
+                bool &= false
+                break
+            end
+        end
+    end
+    return bool
+end
+
+"""
+$(SIGNATURES)
 
 Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_tolerance/100.0)*f* + absolute_tolerance/100.0`.
 This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
 tolerance (local problem is minimum).
 """
-function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
+function stored_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
     adj_atol = d._parameters.absolute_tolerance/100.0
     adj_rtol = d._parameters.relative_tolerance/100.0
     if v > 0.0
@@ -26,41 +51,104 @@ function stored_adjusted_upper_bound!(d::Optimizer, v::Float64)
     else
         d._upper_objective_value = v*(1.0 - adj_rtol) + adj_atol
     end
-
     return nothing
 end
 
+function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    for i = 1:_variable_num(FullVar(), m)
+        v = m._upper_variables[i]
+        l  = _lower_bound(FullVar(), m, i)
+        u  = _upper_bound(FullVar(), m, i)
+        if is_integer(FullVar(), m, i)
+            l = ceil(l)
+            u = floor(u)
+        end
+        is_fixed_int = l == u
+        vi = _working_variable_info(m,i)
+        if is_fixed(vi) || is_fixed_int
+            MOI.add_constraint(d, v, ET(l))
+        elseif is_less_than(vi)
+            MOI.add_constraint(d, v, LT(u))
+        elseif is_greater_than(vi)
+            MOI.add_constraint(d, v, GT(l))
+        elseif is_real_interval(vi)
+            MOI.add_constraint(d, v, LT(u))
+            MOI.add_constraint(d, v, GT(l))
+        end
+    end
+    return
+end
 
-revert_adjusted_upper_bound!(t::ExtensionType, d::Optimizer) = nothing
+function _finite_mid(l::T, u::T) where T
+    (isfinite(l) && isfinite(u)) && return 0.5*(l + u)
+    isfinite(l) ? l : (isfinite(u) ? u : zero(T))
+end
+function _set_starting_point!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    for i = 1:_variable_num(FullVar(), m)
+        l  = _lower_bound(FullVar(), m, i)
+        u  = _upper_bound(FullVar(), m, i)
+        v = m._upper_variables[i]
+        MOI.set(d, MOI.VariablePrimalStart(), v, _finite_mid(l, u))
+    end
+    return
+end
 
-function revert_adjusted_upper_bound!(t::DefaultExt, d::Optimizer)
+"""
+    LocalResultStatus
 
-    adj_atol = d._parameters.absolute_tolerance/100.0
-    adj_rtol = d._parameters.relative_tolerance/100.0
+Status code used internally to determine how to interpret the results from the
+solution of a local problem solve.
+"""
+@enum(LocalResultStatus, LRS_FEASIBLE, LRS_OTHER)
 
-    adj_objective_value = d._global_upper_bound
-    adj_objective_value -= adj_atol
-    if adj_objective_value > 0.0
-        adj_objective_value /= (1.0 + adj_rtol)
+"""
+$(SIGNATURES)
+
+Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns `true`
+if this corresponds to a solution that is proven to be feasible.
+Returns `false` otherwise.
+"""
+function local_problem_status(t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
+
+    if (t == MOI.OPTIMAL) && (r == MOI.FEASIBLE_POINT)
+        return LRS_FEASIBLE
+    elseif (t == MOI.LOCALLY_SOLVED) && (r == MOI.FEASIBLE_POINT)
+        return LRS_FEASIBLE
+    # This is default solver specific... the acceptable constraint tolerances
+    # are set to the same values as the basic tolerance. As a result, an
+    # acceptably solved solution is feasible but non necessarily optimal
+    # so it should be treated as a feasible point
+    elseif (t == MOI.ALMOST_LOCALLY_SOLVED) && (r == MOI.NEARLY_FEASIBLE_POINT)
+        return LRS_FEASIBLE
+    end
+    return LRS_OTHER
+end
+
+function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
+
+    tstatus = MOI.get(d, MOI.TerminationStatus())
+    pstatus = MOI.get(d, MOI.PrimalStatus())
+    m._upper_termination_status = tstatus
+    m._upper_result_status = pstatus
+
+    if local_problem_status(tstatus, pstatus) == LRS_FEASIBLE
+        if is_integer_feasible_local(m, d)
+
+            m._upper_feasibility = true
+            obj_val = MOI.get(d, MOI.ObjectiveValue())
+            stored_adjusted_upper_bound!(m, obj_val)
+            m._best_upper_value = min(obj_val, m._best_upper_value)
+            m._upper_solution .= MOI.get(d, MOI.VariablePrimal(), m._upper_variables)
+            
+            ip = m._input_problem
+            _extract_primal_linear!(d, ip)
+            _extract_primal_quadratic!(d, ip)
+        end
     else
-        adj_objective_value /= (1.0 - adj_rtol)
+        m._upper_feasibility = false
+        m._upper_objective_value = Inf
     end
-    d._global_upper_bound = adj_objective_value
-
-    return nothing
-end
-
-# translates quadratic cone
-function add_soc_constraints_as_quad!(m::Optimizer, opt::T) where T
-
-    for (func, set) in m._input_problem._conic_second_order
-        # quadratic cone implies variable[1] >= 0.0, bounds contracted accordingly in initial_parse!
-        quad_terms = SQT[SQT((), func.variables[i], func.variables[i]) for i = 1:length(func.variables)]
-        sqf = SQF(SQT[], SAF[], 0.0)
-        MOI.add_constraint(opt, sqf, LT_ZERO)
-    end
-
-    return nothing
+    return
 end
 
 """
@@ -68,140 +156,31 @@ end
 Constructs and solves the problem locally on on node `y` updated the upper
 solution informaton in the optimizer.
 """
-function solve_local_nlp!(m::Optimizer)
+function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
-    upper_optimizer = m.upper_optimizer
+    upper_optimizer = _upper_optimizer(m)
     MOI.empty!(upper_optimizer)
 
-    upper_variables = m._upper_variables
     for i = 1:m._working_problem._variable_count
-        @inbounds upper_variables[i] = MOI.add_variable(upper_optimizer)
+        m._upper_variables[i] = MOI.add_variable(upper_optimizer)
     end
+    _update_upper_variables!(upper_optimizer, m)
+    _set_starting_point!(upper_optimizer, m)
 
-    n = m._current_node
-    sol_to_branch_map = m._sol_to_branch_map
-    lower_variable_bounds = n.lower_variable_bounds
-    upper_variable_bounds = n.upper_variable_bounds
-    variable_info = m._input_problem._variable_info
-
-    lvb = 0.0
-    uvb = 0.0
-    x0 = 0.0
-
-    for i = 1:m._input_problem._variable_count
-        vinfo = @inbounds variable_info[i]
-        single_variable = MOI.SingleVariable(@inbounds upper_variables[i])
-
-        if vinfo.branch_on === BRANCH
-            if vinfo.is_integer
-            else
-                indx = @inbounds sol_to_branch_map[i]
-                lvb  = @inbounds lower_variable_bounds[indx]
-                uvb  = @inbounds upper_variable_bounds[indx]
-                if vinfo.is_fixed
-                    MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
-
-                elseif vinfo.has_lower_bound
-                    if vinfo.has_upper_bound
-                        MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    else
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    end
-                elseif vinfo.has_upper_bound
-                    MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-
-                end
-            end
-            x0 = 0.5*(lvb + uvb)
-            upper_variable_index = @inbounds upper_variables[i]
-            MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
-
-        else
-            # not branch variable
-            if vinfo.is_integer
-            else
-                lvb  = vinfo.lower_bound
-                uvb  = vinfo.upper_bound
-                if vinfo.is_fixed
-                    MOI.add_constraint(upper_optimizer, single_variable, ET(lvb))
-
-                elseif vinfo.has_lower_bound
-                    if vinfo.has_upper_bound
-                        MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    else
-                        MOI.add_constraint(upper_optimizer, single_variable, GT(lvb))
-
-                    end
-                elseif vinfo.has_upper_bound
-                    MOI.add_constraint(upper_optimizer, single_variable, LT(uvb))
-                end
-                x0 = 0.5*(lvb + uvb)
-                upper_variable_index = @inbounds upper_variables[i]
-                MOI.set(upper_optimizer, MOI.VariablePrimalStart(), upper_variable_index, x0)
-            end
-        end
-    end
-
-    # Add linear and quadratic constraints to model
-    add_linear_constraints!(m, upper_optimizer)
-
-    for (func, set) in m._input_problem._quadratic_leq_constraints
-        MOI.add_constraint(upper_optimizer, func, set)
-    end
-    for (func, set) in m._input_problem._quadratic_geq_constraints
-        MOI.add_constraint(upper_optimizer, func, set)
-    end
-    for (func, set) in m._input_problem._quadratic_eq_constraints
-        MOI.add_constraint(upper_optimizer, func, set)
-    end
-
-    if MOI.supports_constraint(upper_optimizer, VECOFVAR, SOC)
-        add_soc_constraints!(m, upper_optimizer)
-    else
-        add_soc_constraints_as_quad!(m, upper_optimizer)
-    end
-
+    # add constraints
+    ip = m._input_problem
+    _add_constraint_store_ci_linear!(upper_optimizer, ip)
+    _add_constraint_store_ci_quadratic!(upper_optimizer, ip)
+     #add_soc_constraints!(m, upper_optimizer)
+  
     # Add nonlinear evaluation block
     MOI.set(upper_optimizer, MOI.NLPBlock(), m._working_problem._nlp_data)
     MOI.set(upper_optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-
-    # set objective as NECESSARY
-    add_sv_or_aff_obj!(m, upper_optimizer)
-    if m._input_problem._objective_type === SCALAR_QUADRATIC
-        MOI.set(upper_optimizer, MOI.ObjectiveFunction{SQF}(), m._input_problem._objective_sqf)
-    end
+    MOI.set(upper_optimizer, MOI.ObjectiveFunction{SAF}(), m._working_problem._objective_saf)
 
     # Optimizes the object
     MOI.optimize!(upper_optimizer)
-
-    # Process output info and save to CurrentUpperInfo object
-    m._upper_termination_status = MOI.get(upper_optimizer, MOI.TerminationStatus())
-    m._upper_result_status = MOI.get(upper_optimizer, MOI.PrimalStatus())
-
-    if is_feasible_solution(m._upper_termination_status, m._upper_result_status)
-        m._upper_feasibility = true
-        value = MOI.get(upper_optimizer, MOI.ObjectiveValue())
-        stored_adjusted_upper_bound!(m, value)
-        m._best_upper_value = min(value, m._best_upper_value)
-        m._upper_solution .= MOI.get(upper_optimizer, MOI.VariablePrimal(), upper_variables)
-
-    else
-        m._upper_feasibility = false
-        m._upper_objective_value = Inf
-
-    end
-
-    return nothing
+    _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 
-function optimize!(::Val{DIFF_CVX}, m::Optimizer)
-
-    solve_local_nlp!(m)
-
-    return nothing
-end
+optimize!(::DIFF_CVX, m::GlobalOptimizer) = solve_local_nlp!(m)

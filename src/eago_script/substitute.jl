@@ -153,8 +153,6 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
                   const_values::Vector{Float64}, parameter_values::Vector{Float64})
     match_flag = true
     match_dict = Dict{Int,Int}()
-    pattern_length = pattern.ndlen
-    dag_length = pattern.daglen
     pattern_adj = pattern.adj
     pat_children_arr = rowvals(pattern_adj)
     dag_children_arr = rowvals(dag_adj)
@@ -282,7 +280,7 @@ function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{N
     queue = Tuple{Int,Int,Int}[(prior_prt, 1, -1)] # node_num, prior_prt, dag_num, dag_prt
     inner_node_count = node_count
     while ~isempty(queue)
-        (num_prt, num_sub, num_sub_prt) = popfirst!(queue)
+        (num_prt, num_sub, _) = popfirst!(queue)
         @inbounds active_node = subs_template.nd[num_sub]
         active_type = active_node.type
         if active_type === :op

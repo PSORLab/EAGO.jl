@@ -8,15 +8,14 @@ is highly recommended. Both Gurobi and CPLEX are free for academics and
 installation information can be found through http://www.gurobi.com/academia/academia-center and
 https://www.ibm.com/developerworks/community/blogs/jfp/entry/CPLEX_Is_Free_For_Students?lang=en, respectively.
 
-!!! warning
-    EAGO assumes that the MOI wrapper for any sub-solver exhibits the expected behavior. Any deviation for the expected may lead to an error. We currently recommend using either the default GLPK solver or Gurobi rather than CPLEX. Our experience has been that the GLPK and Gurobi MathOptInterface wrappers are better maintained and less prone to unexpected behavior than CPLEX currently is (though this is continuously improving) and in particular GLPK is quite stable.
-
 A non-default LP solver can then be selected by the user via a series of keyword argument inputs as illustrated in the code snippet below. The `relaxed_optimizer` contains an instance optimizer with valid relaxations that are made at the root node and is updated with affine relaxations in place.
 
 ```julia
 
 # Create opt EAGO Optimizer with Gurobi as a lower subsolver
-m = Model(optimizer_with_attributes(EAGO.Optimizer, "relaxed_optimizer" => Gurobi.Optimizer(OutputFlag=0))
+subsolver_config = SubSolvers(relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0))
+eago_factory = () -> EAGO.Optimizer(subsolvers = subsolver_config)
+m = Model(eago_factory)
 ```
 
 ## Rounding Mode

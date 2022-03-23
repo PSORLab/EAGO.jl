@@ -1,0 +1,155 @@
+
+"""
+    NodeType
+
+Each node in the directed graph can be classified into the following types
+- VARIABLE: Denotes a decision variable.
+- PARAMETER: An adjustable parameter value (not a decision variable).
+- CONSTANT: A constant value
+- EXPRESSION: Any other expression that isn't a subexpression
+- SUBEXPRESSION: Any expression referencing a different graph representation.
+"""
+@enum(NodeClass, CONSTANT, PARAMETER, VARIABLE, EXPRESSION, SUBEXPRESSION)
+#=
+- SELECT: These nodes do not store values rather they reference the output
+          stored in the buffer assocatied with an EXPRESSION. These nodes
+          only occur after a multiple output function. In the mimo JuMP
+          extension they correspond to intermediate variables introduced
+          by the user.
+=#
+
+struct Variable end
+struct Parameter end
+struct Constant end
+struct Expression end
+struct Subexpression end
+struct User end
+
+function user end
+function usern end
+
+const ATOM_TYPE_INSTANCES = instances(AtomType)
+
+abstract type AbstractNode end
+
+"""
+Describes connectivity and expression represented by node.
+"""
+struct Node <: AbstractNode
+    node_class::NodeClass
+    ex_type::AtomType
+    first_index::Int
+    second_index::Int
+    arity::Int
+    children::Vector{Int}
+end
+
+for (t, s, a) in ((Variable, VARIABLE, VAR_ATOM),
+                  (Parameter, PARAMETER, PARAM_ATOM),
+                  (Constant, CONSTANT, CONST_ATOM),
+                  (Subexpression, SUBEXPRESSION, SUBEXPR),)
+    @eval Node(::$t, i::Int) = Node($s, $a, i, 0, 0, Int[])
+end
+
+for v in (PLUS, MINUS, MULT, POW, DIV, MAX, MIN)
+    @eval Node(::Val{true}, ::Val{$v}, c::Vector{Int}) = Node(EXPRESSION, $v, 0, 0, length(c), c)
+end
+for d in ALL_ATOM_TYPES
+    @eval Node(::Val{false}, ::Val{$d}, c::Vector{Int}) = Node(EXPRESSION, $d, 0, 0, 1, c)
+end
+Node(::Val{true}, ::Val{USER}, i::Int, c::Vector{Int}) = Node(EXPRESSION, USER, i, 0, 1, c)
+Node(::Val{true}, ::Val{USERN}, i::Int, c::Vector{Int}) = Node(EXPRESSION, USERN, i, 0, length(c), c)
+
+
+Node(::Val{:first_index}, n::Node, i::Int) = Node(node_class(n), ex_type(n), i, second_index(n), arity(n), children(n))
+
+node_class(n::Node)   = n.node_class
+ex_type(n::Node)      = n.ex_type
+first_index(n::Node)  = n.first_index
+second_index(n::Node) = n.node_second_index
+arity(n::Node)        = n.arity
+children(n::Node)     = n.children
+child(n::Node, i)     = @inbounds getindex(n.children, i)
+
+node_is_class(::Variable, n::Node) = node_class(n) == VARIABLE
+node_is_class(::Parameter, n::Node) = node_class(n) == PARAMETER
+node_is_class(::Constant, n::Node) = node_class(n) == CONSTANT
+
+mv_eago_not_jump = setdiff(JuMP._Derivatives.operators,
+                           union(Symbol[k for k in keys(REV_BIVARIATE_ATOM_DICT)],
+                                 Symbol[k for k in keys(REV_NARITY_ATOM_DICT)]))
+eago_mv_switch = quote end
+for s in mv_eago_not_jump
+    global eago_mv_switch = quote
+        $eago_mv_switch
+        (d == $s) && (return Node(Val(true), Val($s), v[c]))
+    end
+end
+@eval function _create_call_node(i, v, c::UnitRange{Int}, op::OperatorRegistry)
+    if i == 1
+        return Node(Val(true), Val(PLUS), v[c])
+    elseif i == 2
+        return Node(Val(true), Val(MINUS), v[c])
+    elseif i == 3
+        return Node(Val(true), Val(MULT), v[c])
+    elseif i == 4
+        return Node(Val(true), Val(POW), v[c])
+    elseif i == 5
+        return Node(Val(true), Val(DIV), v[c])
+    elseif i == 6
+        error("If-else currently unsupported...")
+    elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
+        i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
+        d = op.multivariate_id[i_mv]
+        $eago_mv_switch
+        return Node(Val(true), Val(USERN), i_mv, v[c])
+    end
+end
+
+function binary_switch_typ(ids, exprs)
+    if length(exprs) <= 3
+        out = Expr(:if, Expr(:call, :(==), :i, ids[1]),
+                   :(Node(Val(false), Val($(exprs[1])), v[c])))
+        if length(exprs) > 1
+            push!(out.args, binary_switch_typ(ids[2:end], exprs[2:end]))
+        end
+        return out
+    else
+        mid = length(exprs) >>> 1
+        return Expr(:if, Expr(:call, :(<=), :i, ids[mid]),
+                         binary_switch_typ(ids[1:mid], exprs[1:mid]),
+                         binary_switch_typ(ids[mid+1:end], exprs[mid+1:end]))
+    end
+end
+
+indx_JuMP = Int[]
+indx_EAGO = AtomType[]
+for k in univariate_operators
+    if haskey(REV_UNIVARIATE_ATOM_DICT, k)
+        k_EAGO = REV_UNIVARIATE_ATOM_DICT[k]
+        push!(indx_JuMP, univariate_operator_to_id[k])
+        push!(indx_EAGO, k_EAGO)
+    end
+end
+
+uni_eago_not_jump = setdiff(univariate_operators, Symbol[k for k in keys(REV_UNIVARIATE_ATOM_DICT)])
+uni_eago_not_jump = push!(uni_eago_not_jump, :-)
+eago_uni_switch = quote end
+for s in uni_eago_not_jump
+    global eago_uni_switch = quote
+        $eago_uni_switch
+        (d == $s) && (return Node(Val(false), Val($s), v[c]))
+    end
+end
+atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
+@eval function _create_call_node_uni(i::Int, v, c::UnitRange{Int}, op::OperatorRegistry)
+
+    if i >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
+        j = i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
+        dop = op.univariate_operator_id[j]
+        d = op.univariate_operator_to_id[dop]
+        $eago_uni_switch
+        return Node(Val(true), Val(USER), j, v[c])
+    end
+    $atom_switch
+end

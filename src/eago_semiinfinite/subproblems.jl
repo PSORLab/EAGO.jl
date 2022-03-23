@@ -26,7 +26,7 @@ function build_model(t::DefaultExt, a::A, s::S, p::SIPProblem) where {A <: Abstr
     return model, v
 end
 function build_model(t::ExtensionType, a::A, s::S, p::SIPProblem) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    build_model(DefaultExt(), s, p)
+    build_model(DefaultExt(), a, s, p)
 end
 
 ###
@@ -36,6 +36,8 @@ function set_tolerance_inner!(t::DefaultExt, alg, s, m::JuMP.Model, abs_tol::Flo
     optimizer_name = JuMP.solver_name(m)
     if optimizer_name === "EAGO: Easy Advanced Global Optimization"
         set_optimizer_attribute(m, "absolute_tolerance", abs_tol)
+        #set_optimizer_attribute(m, "constr_viol_tol", c_tol)
+        #set_optimizer_attribute(m, "relative_tolerance", rel_tol)
     elseif optimizer_name === "SCIP"
         set_optimizer_attribute(m, "limits/absgap", abs_tol)
     elseif optimizer_name === "Alpine"
@@ -88,20 +90,18 @@ function add_uncertainty_constraint!(m::JuMP.Model, prob::SIPProblem)
     return nothing
 end
 
-for (p, s) in ((:LowerLevel1,:lbd), (:LowerLevel2, :ubd), (:LowerLevel3,:res))
-    @eval function get_xbar(t::DefaultExt, alg::A, s::$p, sr::SIPSubResult) where {A <: AbstractSIPAlgo}
-        sr.$s.sol
-    end
-end
+get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel1, sr::SIPSubResult) = sr.lbd.sol
+get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel2, sr::SIPSubResult) = sr.ubd.sol
+get_xbar(t::DefaultExt, alg::AbstractSIPAlgo, s::LowerLevel3, sr::SIPSubResult) = sr.lbd.res
 
 function llp_check(islocal::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
-    valid, feasible = is_globally_optimal(t, r)
+    flag = true
     if islocal && ((t != MOI.LOCALLY_SOLVED) && (t != MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
-    elseif !valid
+    elseif t !== MOI.OPTIMAL
         error("Error in lower level problem. Termination status = $t, primal status = $r.")
     end
-    return feasible
+    return flag
 end
 
 """
@@ -124,16 +124,15 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     g(p...) = cb.gSIP[i](xbar, p)
     register(m, :g, prob.np, g, autodiff=true)
     if isone(prob.np)
-        nl_obj = :(-g($(p[1])))
+        nl_obj = :(g($(p[1])))
     else
         nl_obj = Expr(:call)
         push!(nl_obj.args, :g)
         for i in 1:prob.np
             push!(nl_obj.args, p[i])
         end
-        nl_obj = :(-$nl_obj)
     end
-    set_NL_objective(m, MOI.MIN_SENSE, nl_obj)
+    set_NL_objective(m, MOI.MAX_SENSE, nl_obj)
 
     # add uncertainty constraints
     add_uncertainty_constraint!(m, prob)
@@ -146,7 +145,7 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
 
     # fill buffer with subproblem result info
     psol = JuMP.value.(p)
-    load!(s, sr, feas, -JuMP.objective_value(m), -JuMP.objective_bound(m), psol)
+    load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), psol)
     result.solution_time += MOI.get(m, MOI.SolveTime())
 
     return nothing
@@ -154,7 +153,7 @@ end
 function sip_llp!(t::ExtensionType, alg::A, s::S, result::SIPResult,
                      sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                      i::Int64) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
-    sip_llp!(DefaultSubproblem(), s, result, sr, prob, cb, i)
+    sip_llp!(DefaultSubproblem(), alg, s, result, sr, prob, cb, i)
 end
 
 """
@@ -303,7 +302,7 @@ algorithm `alg::AbstractSIPAlgo` in subproblem `s::AbstractSubproblemType` via t
 command `get_sip_optimizer(t::ExtensionType, alg::AbstractSIPAlgo, s::AbstractSubproblemType)`.
 """
 function get_sip_optimizer(t::ExtensionType, alg::A, s::AbstractSubproblemType) where {A <: AbstractSIPAlgo}
-    return get_sip_optimizer(DefaultExt(), s)
+    return get_sip_optimizer(DefaultExt(), alg, s)
 end
 
 # Printing
@@ -391,15 +390,14 @@ end
 get_bnds(s::Union{LowerLevel1,LowerLevel2,LowerLevel3}, p::SIPProblem) = p.p_l, p.p_u, p.np
 get_bnds(s::Union{LowerProblem,UpperProblem, ResProblem}, p::SIPProblem) = p.x_l, p.x_u, p.nx
 
-function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode,
-                   r::MOI.ResultStatusCode)
-    valid_result, is_feasible = is_globally_optimal(t, r)
-    if !(valid_result && is_feasible) && !is_local
+function bnd_check(is_local::Bool, t::MOI.TerminationStatusCode, r::MOI.ResultStatusCode)
+    if t === MOI.OPTIMAL
+        return true
+    elseif !is_local
         error("Lower problem did not solve to global optimality.
                Termination status = $t. Primal status = $r")
-    elseif !(valid_result && is_feasible) && is_local &&
-           !((t == MOI.LOCALLY_SOLVED) || (t == MOI.ALMOST_LOCALLY_SOLVED))
+    elseif is_local && !((t == MOI.LOCALLY_SOLVED) || (t == MOI.ALMOST_LOCALLY_SOLVED))
         error("Lower problem did not solve to local optimality.")
     end
-    return is_feasible
+    return false
 end

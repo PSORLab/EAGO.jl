@@ -10,16 +10,18 @@
 # throw_optimize_hook!.
 #############################################################################
 
-include("optimize_lp_cone.jl")
+include("optimize_lp.jl")
+include("optimize_conic.jl")
 include("optimize_convex.jl")
 include("optimize_nonconvex.jl")
 
-throw_optimize_hook!(m::Optimizer) = optimize_hook!(m.ext_type, m)
+function throw_optimize_hook!(m::Optimizer{Q,S,T}) where {Q,S,T}
+    optimize_hook!(_ext(m), m)
+end
 
-function MOI.optimize!(m::Optimizer)
+function MOI.optimize!(m::Optimizer{Q,S,T}) where {Q,S,T}
 
-    m._start_time = time()
-
+    m._global_optimizer._start_time = time()
     # Runs the branch and bound routine
     if !m.enable_optimize_hook
 
@@ -29,18 +31,17 @@ function MOI.optimize!(m::Optimizer)
 
         # Determines if the problem is an LP, MILP, SOCP, MISCOP,
         # CONVEX, OF MINCVX PROBLEM TYPE
-        parse_classify_problem!(m)
+        parse_classify_problem!(m._global_optimizer)
 
-        m._parse_time = m._start_time - time()
+        m._global_optimizer._parse_time = m._global_optimizer._start_time - time()
 
         # Throws the problem to the appropriate solution routine
-        optimize!(Val{m._working_problem._problem_type}(), m)
+        optimize!(m._working_problem._problem_type, m)
     else
 
         # throws to user-defined optimization hook
         throw_optimize_hook!(m)
-
     end
 
-    return nothing
+    return
 end

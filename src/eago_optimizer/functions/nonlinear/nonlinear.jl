@@ -12,49 +12,74 @@
 # copy_subexpression_value!, eliminate_fixed_variables!
 #############################################################################
 
-include("register_special.jl")
-include("empty_evaluator.jl")
-include("univariate.jl")
+const DEBUG_NL = false
+
+include(joinpath(@__DIR__, "register_special.jl"))
+include(joinpath(@__DIR__, "graph", "graph.jl"))
+include(joinpath(@__DIR__, "interval", "interval.jl"))
+include(joinpath(@__DIR__, "composite_relax", "composite_relax.jl"))
+include(joinpath(@__DIR__, "apriori_relax", "apriori_relax.jl"))
+
+@enum(RelaxType, STD_RELAX, MC_AFF_RELAX, MC_ENUM_RELAX)
+
+_set_has_value!(d, v) = nothing
 
 """
 $(TYPEDEF)
 
 Stores a general quadratic function with a buffer.
 """
-mutable struct NonlinearExpression{V} <: AbstractEAGOConstraint
-
-    "List of nodes in nonlinear expression"
-    nd::Vector{JuMP.NodeData}
-    "Adjacency Matrix for the expression"
-    adj::SparseMatrixCSC{Bool,Int64}
-    const_values::Vector{Float64}
-
-    setstorage::Vector{V}
-    numberstorage::Vector{Float64}
-    isnumber::Vector{Bool}
-    value::V
-    value_available::Bool
-
-    tp1storage::Vector{Float64}
-    tp2storage::Vector{Float64}
-    tp3storage::Vector{Float64}
-    tp4storage::Vector{Float64}
-    tpdict::Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}
-
-    # sparsity of constraint + indices in node to reference
-    grad_sparsity::Vector{Int64}       # indices of variables in the problem space (size = np)
-    reverse_sparsity::Vector{Int64}
-
-    # role in problem
-    dependent_variable_count::Int64
-    dependent_subexpression_count::Int64
-    dependent_subexpressions::Vector{Int64}
-    linearity::JuMP._Derivatives.Linearity
-
-    # buffer for subgradients
-    cv_grad_buffer::Vector{Float64}
-    cc_grad_buffer::Vector{Float64}
+mutable struct NonlinearExpression{V,N,T<:RelaxTag} <: AbstractEAGOConstraint
+    g::DirectedTree
+    relax_cache::RelaxCache{V,N,T}
+    has_value::Bool
+    last_reverse::Bool
+    lower_bound::Float64
+    upper_bound::Float64
+    grad_sparsity::Vector{Int}
 end
+function NonlinearExpression()
+    g = DirectedTree()
+    c = RelaxCache{MC{1,NS},1,NS}()
+    return NonlinearExpression{MC{1,NS},1,NS}(g, c, false, false, -Inf, Inf, Int[])
+end
+
+relax_info(s::Relax, n::Int, t::T) where T = MC{n,T}
+function NonlinearExpression!(aux_info, rtype::S, sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
+                              b::MOI.NLPBoundsPair, sub_sparsity::Dict{Int,Vector{Int}},
+                              subexpr_indx::Int,
+                              subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                              op::OperatorRegistry, parameter_values,
+                              tag::T, use_apriori_flag::Bool; is_sub::Bool = false) where {S,T}
+    g = DirectedTree(aux_info, sub, op, sub_sparsity, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
+    grad_sparsity = sparsity(g, 1)
+    n = length(grad_sparsity)
+    V = relax_info(rtype, n, tag)
+    c = RelaxCache{V,n,T}()
+    c.use_apriori_mul = use_apriori_flag
+    initialize!(c, g)
+    return NonlinearExpression{V,n,T}(g, c, false, false, b.lower, b.upper, grad_sparsity)
+end
+
+@inline has_value(d::NonlinearExpression) = d.has_value
+@inline dep_subexpr_count(d::NonlinearExpression) = dep_subexpr_count(d.g)
+@inline set_has_value!(d::NonlinearExpression, v::Bool) = (d.has_value = v; return )
+function _set_last_reverse!(d::NonlinearExpression{V, N, T}, v::Bool) where {V,N,T<:RelaxTag}
+    d.last_reverse = v; 
+    return
+end
+function set_variable_storage!(d::NonlinearExpression, v::VariableValues{S}) where S<:Real
+    d.relax_cache.ic.v = v
+    return
+end
+@inbounds sparsity(d::NonlinearExpression) = sparsity(d.g, 1)
+@inbounds set(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = set(d.relax_cache, 1)
+@inbounds info(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = info(d.relax_cache, 1)
+@inbounds num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = num(d.relax_cache, 1)
+@inbounds is_num(d::NonlinearExpression) = is_num(d.relax_cache, 1)
+var_num(d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = N
+
+mc_type(rc::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
 
 """
 $(TYPEDEF)
@@ -62,262 +87,84 @@ $(TYPEDEF)
 Stores a general nonlinear function with a buffer represented by the sum of a tape
 and a scalar affine function.
 """
-mutable struct BufferedNonlinearFunction{V} <: AbstractEAGOConstraint
-    expr::NonlinearExpression{V}
+mutable struct BufferedNonlinearFunction{V,N,T<:RelaxTag} <: AbstractEAGOConstraint
+    ex::NonlinearExpression{V,N,T}
     saf::SAF
-    lower_bound::Float64
-    upper_bound::Float64
-    last_relax_convex::Bool
-    last_relax_concave::Bool
-    last_past_reverse::Bool
-    has_value::Bool
 end
-
-###
-### Constructor definitions
-###
-function NonlinearExpression!(sub::JuMP._SubexpressionStorage, sub_sparsity_dict::Dict{Int64,Vector{Int64}},
-                             subexpr_indx::Int64, subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                             tag::T) where T
-    nd = copy(sub.nd)
-    adj = copy(sub.adj)
-    const_values = copy(sub.const_values)
-
-    lenx = length(nd)
-    numberstorage = zeros(lenx)
-    isnumber = fill(false, lenx)
-
-    # creates tiepoint storage and populates the sparsity of subexpression
-    # not including dependent subexpressions
-    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
-    tp1_count = 0
-    tp2_count = 0
-    for i = 1:lenx
-        # tiepoint storage part
-        node = @inbounds nd[i]
-        op = node.index
-        if double_tp(op)
-            tp1_count += 1
-            tp2_count += 1
-            tpdict[i] = (tp1_count, tp1_count, tp2_count, tp2_count)
-        elseif single_tp(op)
-            tp1_count += 1
-            tpdict[i] = (tp1_count, tp1_count, -1, -1)
-        end
-    end
-    tp1storage = zeros(tp1_count)
-    tp2storage = zeros(tp1_count)
-    tp3storage = zeros(tp2_count)
-    tp4storage = zeros(tp2_count)
-
-    linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
-
-    # counts variables in subexpression and collects list of subexpressions
-    dependent_subexpressions = Int64[]
-    variable_dict = Dict{Int,Bool}()
-    for (i,node) in enumerate(nd)
-        if node.nodetype === JuMP._Derivatives.VARIABLE
-            indx = node.index
-            if !haskey(variable_dict, indx)
-                variable_dict[indx] = true
-            end
-        end
-        if node.nodetype === JuMP._Derivatives.VALUE
-            indx = node.index
-            numberstorage[i] = const_values[indx]
-        end
-        if node.nodetype === JuMP._Derivatives.SUBEXPRESSION
-            indx = node.index
-            push!(dependent_subexpressions, indx)
-        end
-    end
-    grad_sparsity = collect(keys(variable_dict))
-    unique!(dependent_subexpressions)
-    sort!(dependent_subexpressions)
-
-    # adds sparsity of dependent subexpressions to sparsity of current subexpression
-    dependent_subexpression_count = length(dependent_subexpressions)
-    for i = 1:dependent_subexpression_count
-        dependent_indx = dependent_subexpressions[i]
-        append!(grad_sparsity, sub_sparsity_dict[dependent_indx])
-    end
-    unique!(grad_sparsity)
-    sort!(grad_sparsity)
-
-    # sets subexpression sparsity dictionary
-    sub_sparsity_dict[subexpr_indx] = copy(grad_sparsity)
-
-    reverse_sparsity_length = grad_sparsity[end]
-    reverse_sparsity = zeros(Int64, reverse_sparsity_length)
-    current_grad_sparsity = grad_sparsity[1]
-    current_grad_sparsity_count = 1
-    for i = 1:reverse_sparsity_length
-        if i == current_grad_sparsity
-            reverse_sparsity[i] = current_grad_sparsity_count
-            current_grad_sparsity_count += 1
-            if current_grad_sparsity_count <= length(grad_sparsity)
-                current_grad_sparsity = grad_sparsity[current_grad_sparsity_count]
-            else
-                break
-            end
-        end
-    end
-
-    dependent_variable_count = length(grad_sparsity)
-    N = dependent_variable_count
-
-    cv_grad_buffer = zeros(dependent_variable_count)
-    cc_grad_buffer = zeros(dependent_variable_count)
-
-    setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
-    subexpression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
-                                                 isnumber, zero(MC{N,T}), false,
-                                                 tp1storage, tp2storage,
-                                                 tp3storage, tp4storage, tpdict, grad_sparsity,
-                                                 reverse_sparsity, dependent_variable_count,
-                                                 dependent_subexpression_count,
-                                                 dependent_subexpressions, JuMP._Derivatives.CONSTANT,
-                                                 cv_grad_buffer, cc_grad_buffer)
-    return subexpression
-end
-
-function NonlinearExpression()
-    return NonlinearExpression{MC{1,NS}}(JuMP.NodeData[], spzeros(Bool, 1), Float64[],
-                                         MC{1,NS}[], Float64[], Bool[], zero(MC{1,NS}), false,
-                                         Float64[], Float64[], Float64[], Float64[],
-                                         Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}(),
-                                         Int64[], Int64[], 0, 0, Int64[], JuMP._Derivatives.CONSTANT,
-                                         Float64[], Float64[])
-end
-
-function BufferedNonlinearFunction(func::JuMP._FunctionStorage, bnds::MOI.NLPBoundsPair,
-                                   sub_sparsity_dict::Dict{Int64,Vector{Int64}},
-                                   subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
-                                   tag::T) where T <: RelaxTag
-
-    nd = copy(func.nd)
-    adj = copy(func.adj)
-    const_values = copy(func.const_values)
-
-    # sorted by JuMP, _FunctionStorage but amalagation of the sparsity of the
-    # function and the nonlinear expressions is not necessarily
-    # so we
-    grad_sparsity = copy(func.grad_sparsity)
-    for nd in func.nd
-        if nd.nodetype === JuMP._Derivatives.SUBEXPRESSION
-            append!(grad_sparsity, sub_sparsity_dict[nd.index])
-        end
-    end
-    unique!(grad_sparsity)
-    sort!(grad_sparsity)
-
-    reverse_sparsity_length = grad_sparsity[end]
-    reverse_sparsity = zeros(Int64, reverse_sparsity_length)
-    current_grad_sparsity = grad_sparsity[1]
-    current_grad_sparsity_count = 1
-    for i = 1:reverse_sparsity_length
-        if i == current_grad_sparsity
-            reverse_sparsity[i] = current_grad_sparsity_count
-            current_grad_sparsity_count += 1
-            if current_grad_sparsity_count <= length(grad_sparsity)
-                current_grad_sparsity = grad_sparsity[current_grad_sparsity_count]
-            else
-                break
-            end
-        end
-    end
-
-    N = length(grad_sparsity)
-    dependent_variable_count = length(grad_sparsity)
-
-    lenx = length(nd)
-    setstorage = fill(MC{N,T}(Interval(-Inf, Inf)), lenx)
-    numberstorage = zeros(lenx)
-    isnumber = fill(false, lenx)
-
-    tpdict = Dict{Int64,Tuple{Int64,Int64,Int64,Int64}}()
-    tp1_count = 0
-    tp2_count = 0
-    for i = 1:lenx
-        node = @inbounds nd[i]
-        op = node.index
-        if double_tp(op)
-            tp1_count += 1
-            tp2_count += 1
-            tpdict[i] = (tp1_count, tp1_count, tp2_count, tp2_count)
-        elseif single_tp(op)
-            tp1_count += 1
-            tpdict[i] = (tp1_count, tp1_count, -1, -1)
-        end
-    end
-
-    for (i,node) in enumerate(nd)
-        if node.nodetype === JuMP._Derivatives.VALUE
-            indx = node.index
-            numberstorage[i] = const_values[indx]
-        end
-    end
-
-    tp1storage = zeros(tp1_count)
-    tp2storage = zeros(tp1_count)
-    tp3storage = zeros(tp2_count)
-    tp4storage = zeros(tp2_count)
-
-    dependent_subexpressions = copy(func.dependent_subexpressions)
-    dependent_subexpression_count = length(dependent_subexpressions)
-
-    linearity = JuMP._Derivatives.classify_linearity(nd, adj, subexpr_linearity)
-
-    cv_grad_buffer = zeros(dependent_variable_count)
-    cc_grad_buffer = zeros(dependent_variable_count)
-
-    expression = NonlinearExpression{MC{N,T}}(nd, adj, const_values, setstorage, numberstorage,
-                                              isnumber, zero(MC{N,T}), false,
-                                              tp1storage, tp2storage, tp3storage, tp4storage,
-                                              tpdict, grad_sparsity, reverse_sparsity,
-                                              dependent_variable_count, dependent_subexpression_count,
-                                              dependent_subexpressions, JuMP._Derivatives.CONSTANT,
-                                              cv_grad_buffer, cc_grad_buffer)
-
-    saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:length(grad_sparsity)], 0.0)
-
-    lower_bound = bnds.lower
-    upper_bound = bnds.upper
-
-    last_relax_convex = false
-    last_relax_concave = false
-    last_past_reverse = false
-    has_value = false
-
-    return BufferedNonlinearFunction{MC{N,T}}(expression, saf, lower_bound, upper_bound,
-                                              last_relax_convex, last_relax_concave,
-                                              last_past_reverse, has_value)
-end
-
 function BufferedNonlinearFunction()
-    return BufferedNonlinearFunction{MC{1,NS}}(NonlinearExpression(), SAF(SAT[], 0.0),
-                                               -Inf, Inf, false, false, false, false)
+    ex = NonlinearExpression()
+    saf = SAF(SAT[], 0.0)
+    return BufferedNonlinearFunction{MC{1,NS},1,NS}(ex, saf)
 end
 
-function set_intersect_value!(expr::NonlinearExpression{V}, value) where V
-    if !expr.isnumber[1]
-        expr.value = expr.setstorage[1] ∩ value
-        expr.setstorage[1] = expr.value
+function BufferedNonlinearFunction(aux_info, rtype::RELAX_ATTRIBUTE, f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
+                                   sub_sparsity::Dict{Int,Vector{Int}},
+                                   subexpr_lin::Vector{JuMP._Derivatives.Linearity},
+                                   op::OperatorRegistry, parameter_values,
+                                   tag::T, use_apriori_flag::Bool) where T <: RelaxTag
+
+    ex = NonlinearExpression!(aux_info, rtype, f, b, sub_sparsity, -1, subexpr_lin, op, parameter_values, tag, use_apriori_flag)
+    n = length(sparsity(ex.g, 1))
+    saf = SAF(SAT[SAT(0.0, VI(i)) for i = 1:n], 0.0)
+    V = relax_info(rtype, n, tag)
+    return BufferedNonlinearFunction{V,n,T}(ex, saf)
+end
+
+function expand_sv!(out::Vector{Float64}, n::Int, m::Int, vs::Vector{Int}, gs::Vector{Int}, x::SVector{N,T}) where {N,T}
+    k = 1
+    for q = 1:m
+        i = @inbounds vs[q]
+        for j = k:n
+            if i == @inbounds gs[j]
+                @inbounds out[j] = x[q]
+                k = j
+                break
+            end
+        end
     end
-
-    return nothing
+    nothing
+end
+function _load_subexprs!(d::RelaxCache{V,N,T}, g, subexpressions, dep_subexprs) where {V,N,T<:RelaxTag}
+    gs = sparsity(g, 1)
+    for (i,ds) in enumerate(dep_subexprs)
+        s = subexpressions[ds]
+        if is_num(s)
+            store_subexpression_num!(d, num(s), i)
+        else
+            vs = sparsity(s)
+            v = set(s)
+            m = var_num(s)
+            expand_sv!(d._cv_grad_buffer, N, m, vs, gs, v.cv_grad)
+            expand_sv!(d._cc_grad_buffer, N, m, vs, gs, v.cc_grad)
+            cvg = SVector{N,Float64}(d._cv_grad_buffer)
+            ccg = SVector{N,Float64}(d._cc_grad_buffer)
+            store_subexpression_set!(d, MC{N,T}(v.cv, v.cc, v.Intv, cvg, ccg, false), i)
+        end
+    end
+    return
 end
 
-function set_node_flag!(f::BufferedNonlinearFunction{V}) where V
-    f.last_relax_convex = false
-    f.last_relax_concave = false
-
-    return nothing
+@inline _set_last_reverse!(d::BufferedNonlinearFunction{V,N,T}, v::Bool) where {V,N,T<:RelaxTag} = _set_last_reverse!(d.ex, v)
+function set_variable_storage!(d::BufferedNonlinearFunction{V,N,T}, v::VariableValues{Float64}) where {V,N,T<:RelaxTag}
+    set_variable_storage!(d.ex, v)
 end
 
-###
-### Defines evaluator storage structure
-###
+has_value(d::BufferedNonlinearFunction) = has_value(d.ex)
+dep_subexpr_count(d::BufferedNonlinearFunction) = dep_subexpr_count(d.ex)
+set_has_value!(d::BufferedNonlinearFunction, v::Bool) = set_has_value!(d.ex, v)
+sparsity(d::BufferedNonlinearFunction) = sparsity(d.ex)
+set(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = set(d.ex)
+num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)
+lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
+upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
+
+# returns the interval bounds associated with the set
+interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
+is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
+
+mc_type(rc::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
+
+
 """
     Evaluator
 
@@ -328,105 +175,70 @@ Checks that the resulting value should be a number...
 $(TYPEDFIELDS)
 """
 Base.@kwdef mutable struct Evaluator <: MOI.AbstractNLPEvaluator
-
-    user_operators::JuMP._Derivatives.UserOperatorRegistry = JuMP._Derivatives.UserOperatorRegistry()
+    user_operators::OperatorRegistry = OperatorRegistry()
     has_user_mv_operator::Bool = false
     num_mv_buffer::Vector{Float64} = Float64[]
     parameter_values::Vector{Float64} = Float64[]
-
-    current_node::NodeBB = NodeBB()
-    treat_x_as_number = Bool[]
-    lower_variable_bounds::Vector{Float64} = Float64[]
-    upper_variable_bounds::Vector{Float64} = Float64[]
-    x::Vector{Float64} = Float64[]
-    node_to_variable_map::Vector{Int64} = Int64[]
-    variable_to_node_map::Vector{Int64} = Int64[]
-
-    variable_count::Int64 = 0
-    node_count::Int64 = 0
-
-    "Context used to guard against domain violations & branch on these violations if necessary"
+    node::NodeBB = NodeBB()
+    variable_values::VariableValues{Float64} = VariableValues{Float64}()
     subgrad_tighten::Bool = false
     reverse_subgrad_tighten::Bool = false
-    ctx::GuardCtx = GuardCtx()
-
     subexpressions::Vector{NonlinearExpression} = NonlinearExpression[]
-    subexpressions_eval::Vector{Bool} = Bool[]
-
+    subexpressions_eval::Vector{Bool}           = Bool[]
     is_post::Bool = false
     is_intersect::Bool = false
     is_first_eval::Bool = false
     interval_intersect::Bool = false
-
     subgrad_tol::Float64 = 1E-10
+    relax_type::RelaxType                       = STD_RELAX
+    pass_number::Int       = 0
 end
+set_variable_values!(d::Evaluator, v) = d.variable_values = v
 
 """
 $(FUNCTIONNAME)
 
 Sets the current node in the Evaluator structure.
 """
-function set_node!(evaluator::Evaluator, n::NodeBB)
-
-    evaluator.current_node = NodeBB(n)
-    node_to_variable_map = evaluator.node_to_variable_map
-    node_lower_bounds = n.lower_variable_bounds
-    node_upper_bounds = n.upper_variable_bounds
-    eval_lower_bounds = evaluator.lower_variable_bounds
-    eval_upper_bounds = evaluator.upper_variable_bounds
-
-    for i = 1:length(evaluator.current_node)
-        full_variable_index = node_to_variable_map[i]
-        eval_lower_bounds[full_variable_index] = node_lower_bounds[i]
-        eval_upper_bounds[full_variable_index] = node_upper_bounds[i]
+function set_node!(d::Evaluator, n::NodeBB)
+    d.node = NodeBB(n)
+    for i = 1:length(n)
+        vi = d.variable_values.node_to_variable_map[i]
+        d.variable_values.lower_variable_bounds[vi] = n.lower_variable_bounds[i]
+        d.variable_values.upper_variable_bounds[vi] = n.upper_variable_bounds[i]
     end
-    fill!(evaluator.subexpressions_eval, false)
-    evaluator.is_first_eval = true
-
-    #@show node_lower_bounds
-    #@show node_upper_bounds
-    #@show eval_lower_bounds
-    #@show eval_upper_bounds
-
+    fill!(d.subexpressions_eval, false)
+    d.is_first_eval = true
     return nothing
 end
 
 function retrieve_node(d::Evaluator)
-    cn = d.current_node
-    node_to_variable_map = d.node_to_variable_map
-
-    return NodeBB(copy(d.lower_variable_bounds[node_to_variable_map]),
-                  copy(d.upper_variable_bounds[node_to_variable_map]),
-                  cn.lower_bound, cn.upper_bound, cn.depth, cn.id)
+    n = d.node
+    nv_map = d.variable_values.node_to_variable_map
+    return NodeBB(copy(d.variable_values.lower_variable_bounds[nv_map]),
+                  copy(d.variable_values.upper_variable_bounds[nv_map]),
+                  copy(n.is_integer), n.continuous,
+                  n.lower_bound, n.upper_bound, n.depth, n.cont_depth, n.id,
+                  n.branch_direction, n.last_branch, n.branch_extent)
 end
-
-function retrieve_x!(out::Vector{Float64}, d::Evaluator)
-    x = d.x
-    node_to_variable_map = d.node_to_variable_map
-    for i in 1:length(node_to_variable_map)
-        vindx = node_to_variable_map[i]
-        out[i] = x[vindx]
-    end
-
-    return nothing
+@inline function _get_x!(::Type{BranchVar}, out::Vector{Float64}, d::Evaluator)
+    return _get_x!(BranchVar, out, d.variable_values)
 end
-
-# Returns false if subexpression has been evaluated at current reference point
-prior_eval(d::Evaluator, i::Int64) = d.subexpressions_eval[i]
+prior_eval(d::Evaluator, i::Int) = d.subexpressions_eval[i]
 
 #=
 Assumes the sparsities are sorted...
 =#
-function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpression{MC{N1,T}},
-                                   numvalued::Vector{Bool}, numberstorage::Vector{Float64}, setstorage::Vector{MC{N2,T}},
-                                   cv_buffer::Vector{Float64}, cc_buffer::Vector{Float64},
-                                   func_sparsity::Vector{Int64}) where {N1, N2, T <: RelaxTag}
+function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpression{V,MC{N1,T}},
+                                   numvalued::Vector{Bool}, numberstorage::Vector{S}, setstorage::Vector{MC{N2,T}},
+                                   cv_buffer::Vector{S}, cc_buffer::Vector{S},
+                                   func_sparsity::Vector{Int}) where {V, N1, N2, S, T <: RelaxTag}
 
     # fill cv_grad/cc_grad buffers
     sub_sparsity = subexpression.grad_sparsity
     sset = subexpression.setstorage[1]
-    fill!(cv_buffer, 0.0)
-    fill!(cc_buffer, 0.0)
+    fill!(cv_buffer, zero(S))
+    fill!(cc_buffer, zero(S))
 
     sub_sparsity_count = 1
     subs_index = @inbounds sub_sparsity[1]
@@ -448,12 +260,11 @@ function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpr
     return nothing
 end
 
-function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{VariableInfo}) where V
+function eliminate_fixed_variables!(f::NonlinearExpression{V,N,T}, v::Vector{VariableInfo}) where {V,N,T<:RelaxTag}
     num_constants = length(f.const_values)
     indx_to_const_loc = Dict{Int,Int}()
     for i = 1:length(expr.nd)
         nd = @inbounds expr.nd[i]
-        # Assumes MOI Variable have been eliminated previously...
         if nd.nodetype === JuMP._Derivatives.VARIABLE
             indx = nd.index
             if v[indx].is_fixed
@@ -470,13 +281,57 @@ function eliminate_fixed_variables!(f::NonlinearExpression{V}, v::Vector{Variabl
             end
         end
     end
-
     return nothing
 end
 
-function eliminate_fixed_variables!(f::BufferedNonlinearFunction{V}, v::Vector{VariableInfo}) where V
-    eliminate_fixed_variables!(f.expr, v)
+eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T<:RelaxTag} = eliminate_fixed_variables!(f.ex, v)
+f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool) = flag ? f_init!(t, g, c) : fprop!(t, g, c)
+function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
+    #println("ran forward pass")
+    b = d.relax_cache
+    update_box_and_pnt!(b.ic.v, z.variable_values, z.is_first_eval)
+    if b.use_apriori_mul
+        s = sparsity(d)
+        v = b.ic.v
+        x = v.x
+        for j in s
+            if isone(z.pass_number)
+                v.x0[j] = x[j]
+            end
+        end
+        x0 = v.x0
+        isempty(b.dp) && (b.dp = zeros(length(x));)
+        isempty(b.dP) && (b.dP = zeros(Interval{Float64}, length(x));)
+        isempty(b.p_rel) && (b.p_rel = zeros(length(x));)
+        isempty(b.p_diam) && (b.p_diam  = zeros(length(x));)
+        for j in s
+            l = lbd(b, j)
+            u = ubd(b, j)
+            b.dp[j] = x[j] - x0[j]
+            b.dP[j] = Interval(l, u) - x0[j]
+            b.p_rel[j] = (x[j] - 0.5*(u + l))/(0.5*(u - l))
+            b.p_diam[j] = u - l
+        end
+    end
+    for i = 1:dep_subexpr_count(d)
+        j = d.g.dependent_subexpressions[i]
+        forward_pass!(z, z.subexpressions[j])
+    end
+    _load_subexprs!(d.relax_cache, d.g, z.subexpressions, d.g.dependent_subexpressions)
+    (z.relax_type == STD_RELAX) && (return f_init_prop!(Relax(), d.g, d.relax_cache, z.is_first_eval))
+    (z.relax_type == MC_AFF_RELAX) && (return f_init_prop!(RelaxAA(d.grad_sparsity), d.g, d.relax_cache, z.is_first_eval))
+    return f_init_prop!(RelaxMulEnum(d.grad_sparsity), d.g, d.relax_cache, z.is_first_eval)
 end
 
-include("forward_pass.jl")
-include("reverse_pass.jl")
+function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
+    forward_pass!(x, d.ex)
+    _set_has_value!(d, true)
+    _set_last_reverse!(d, false)
+    return
+end
+
+rprop!(::Relax, x::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag} = rprop!(Relax(), d.g, d.relax_cache)
+function rprop!(::Relax, x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
+    _set_last_reverse!(d, true)
+    return rprop!(Relax(), x, d.ex)
+end

@@ -13,8 +13,8 @@
 @context ScrubCtx
 
 # Cassette specific functions for scrubbing udfs of objects that interfere with overloading
-overdub(ctx::ScrubCtx, ::typeof(typeassert), x::Real, type::Type) = x
-function overdub(ctx::ScrubCtx, ::typeof(zeros), t, dims...)
+Cassette.overdub(ctx::ScrubCtx, ::typeof(typeassert), x::Real, type::Type) = x
+function Cassette.overdub(ctx::ScrubCtx, ::typeof(zeros), t, dims...)
     if t <: AbstractFloat
         return zeros(Real, dims...)
     elseif t <: Integer
@@ -23,14 +23,14 @@ function overdub(ctx::ScrubCtx, ::typeof(zeros), t, dims...)
     return zeros(t, dims...)
 end
 #overdub(ctx::ScrubCtx, ::typeof(zero), type::Type) = zero(type)
-function overdub(ctx::ScrubCtx, ::typeof(hcat), A...)
+function Cassette.overdub(ctx::ScrubCtx, ::typeof(hcat), A...)
     vA = hcat(A...)
     sz = size(vA)
     vR = zeros(Real, sz...)
     vR[:] = vA[:]
     return vR
 end
-function overdub(ctx::ScrubCtx, ::typeof(vcat), A...)
+function Cassette.overdub(ctx::ScrubCtx, ::typeof(vcat), A...)
     vA = vcat(A...)
     sz = size(vA)
     vR = zeros(Real, sz...)
