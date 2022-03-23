@@ -187,7 +187,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
             for i in 1:prob.nx
                 push!(gic.args, x[i])
             end
-            JuMP.add_NL_constraint(m, :($gic + $ϵ_g <= 0))
+            JuMP.add_nonlinear_constraint(m, :($gic + $ϵ_g <= 0))
         end
     end
 
@@ -253,7 +253,7 @@ function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
             push!(gip.args, :+)
             push!(gip.args, gic)
             push!(gip.args, η)
-            JuMP.add_NL_constraint(m, :($gip <= 0))
+            JuMP.add_nonlinear_constraint(m, :($gip <= 0))
         end
     end
 
@@ -270,7 +270,7 @@ function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
                 push!(nl_obj.args, x[i])
             end
         end
-        JuMP.add_NL_constraint(m, :($nl_obj + $(sr.fRes) <= 0))
+        JuMP.add_nonlinear_constraint(m, :($nl_obj + $(sr.fRes) <= 0))
     end
 
     # define the objective
