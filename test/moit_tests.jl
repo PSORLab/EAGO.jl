@@ -202,6 +202,9 @@ function test_runtests()
                                 "test_linear_add_constraints",
                                 "test_linear_FEASIBILITY_SENSE",
 
+                                "test_constraint_ZeroOne_bounds",
+                                "test_variable_solve_ZeroOne_with_upper_bound",
+
                                 "test_constraint_ScalarAffineFunction_EqualTo",
                                 "test_constraint_ScalarAffineFunction_GreaterThan",
                                 "test_constraint_ScalarAffineFunction_Interval",
