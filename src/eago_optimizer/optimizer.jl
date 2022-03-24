@@ -38,8 +38,9 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
     _input_problem::InputProblem
     _working_problem::ParsedProblem
 
-       # set as user-specified option
+    # set as user-specified option
     _parameters::EAGOParameters
+    _optimizer_attributes_set::Vector{MOI.AbstractOptimizerAttribute}
 
     _termination_status_code::MOI.TerminationStatusCode
     _result_status_code::MOI.ResultStatusCode
@@ -55,7 +56,7 @@ mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
 end
 function Optimizer{Q,S,T}(sb::SubSolvers{Q,S,T}) where {Q,S,T}
     return Optimizer{Q,S,T}(sb, false, nothing, nothing, GlobalOptimizer{Q,S,T}(_subsolvers = sb, ext = _ext(sb)),
-                     InputProblem(), ParsedProblem(), EAGOParameters(),
+                     InputProblem(), ParsedProblem(), EAGOParameters(), MOI.AbstractOptimizerAttribute[],
                      MOI.OPTIMIZE_NOT_CALLED, MOI.OTHER_RESULT_STATUS,
                      0.0, -Inf, Inf, Inf, 0, 0)
 end

@@ -113,11 +113,11 @@ Base.@kwdef mutable struct EAGOParameters
     "Maximum CPU time in seconds (default = 1000)"
     time_limit::Float64 = 100.0
     "Maximum number of iterations (default 3E6)"
-    iteration_limit::Int = 1E9 #2*10^5
+    iteration_limit::Int = 1E9
     "Absolute tolerance for termination (default = 1E-3)"
-    absolute_tolerance::Float64 = 1E-4
+    absolute_tolerance::Float64 = 1E-3
     "Relative tolerance for termination (default = 1E-3)"
-    relative_tolerance::Float64 = 1E-4
+    relative_tolerance::Float64 = 1E-3
     "Absolute constraint feasibility tolerance"
     absolute_constraint_feas_tolerance::Float64 = 1E-8
 
@@ -169,6 +169,11 @@ Base.@kwdef mutable struct EAGOParameters
     reverse_subgrad_tighten::Bool = false
     "Outer round computed subgradient bounds by this amount"
     subgrad_tol::Float64 = 1E-10
+    "Selects the type of relaxation to use for the bilinear term (multiplication): 0 corresponds to
+     a standard McCormick arithmetic approach. Options 1-3 augment the standard McCormick relaxation
+     with implied apriori relaxations, (1) results a subgradient based apriori relaxation approach, (2) 
+     results in a affine arithmetic based apriori approach, and (3) corresponds to a enumerative apriori
+     relaxation based approach"
     mul_relax_style::Int = 0
 
     # Tolerance to add cuts and max number of cuts
@@ -203,7 +208,9 @@ Base.@kwdef mutable struct EAGOParameters
     "If true, then EAGO forgos its default configuration process for subsolvers"
     user_solver_config::Bool = false
 
+    "Absolute tolerance used to check for integrality of decision variables"
     integer_abs_tol::Float64 = 1E-9
+    "Relative tolerance used to check for integrality of decision variables"
     integer_rel_tol::Float64 = 1E-9
 end
 const EAGO_PARAMETERS = fieldnames(EAGOParameters)
@@ -216,12 +223,11 @@ The constraints generally aren't used for relaxations.
 """
 Base.@kwdef mutable struct InputProblem
 
-    # variables (set by MOI.add_variable in variables.jl)
-    #_variable_info::Vector{VariableInfo{Float64}} = VariableInfo{Float64}[]
+    # counts for number of variables and constraints
     _variable_count::Int = 0
     _constraint_count::Int = 0
 
-    # constraint index to function and set storage
+    # constraint index to function and set dictionaries
     _vi_leq_constraints::Dict{CI{VI,LT}, Tuple{VI,LT}} = Dict{CI{VI,LT}, Tuple{VI,LT}}()
     _vi_geq_constraints::Dict{CI{VI,GT}, Tuple{VI,GT}} = Dict{CI{VI,GT}, Tuple{VI,GT}}()
     _vi_eq_constraints::Dict{CI{VI,ET}, Tuple{VI,ET}} = Dict{CI{VI,ET}, Tuple{VI,ET}}()
@@ -239,7 +245,7 @@ Base.@kwdef mutable struct InputProblem
 
     _conic_second_order::Dict{CI{VECOFVAR,SOC}, Tuple{VECOFVAR,SOC}} = Dict{CI{VECOFVAR,SOC}, Tuple{VECOFVAR,SOC}}()
 
-    # primal storage
+    # constraint index to primal storage dictionary
     _linear_leq_primal::Dict{CI{SAF,LT},Float64} = Dict{CI{SAF,LT},Float64}()
     _linear_geq_primal::Dict{CI{SAF,GT},Float64} = Dict{CI{SAF,GT},Float64}()
     _linear_eq_primal::Dict{CI{SAF,ET},Float64} = Dict{CI{SAF,ET},Float64}()
@@ -268,6 +274,7 @@ end
 
 function MOI.empty!(ip::InputProblem)
 
+    # empties all arrays and dictionaries in input problem
     for field in fieldnames(InputProblem)
         field_value = getfield(ip, field)
         if (field_value isa Array) || (field_value isa Dict)
@@ -275,6 +282,7 @@ function MOI.empty!(ip::InputProblem)
         end
     end
 
+    # resets all non-array and dictionaries in input problem to original value
     ip._variable_count = 0
     ip._constraint_count = 0
     ip._objective = nothing
@@ -307,6 +315,7 @@ function Base.isempty(x::InputProblem)
     return is_empty_flag
 end
 
+# Helper functions which simplify 
 _constraints(m::InputProblem, ::Type{VI}, ::Type{LT}) = m._vi_leq_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{GT}) = m._vi_geq_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{ET}) = m._vi_eq_constraints

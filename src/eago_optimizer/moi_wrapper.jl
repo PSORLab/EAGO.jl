@@ -124,7 +124,9 @@ MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, 
 #####
 MOI.supports(::Optimizer, ::MOI.Silent) = true
 
-function MOI.set(m::Optimizer, ::MOI.Silent, value)
+function MOI.set(m::Optimizer, s::MOI.Silent, value)
+    push!(m._optimizer_attributes_set, s)
+    unique!(m._optimizer_attributes_set)
     if value
         m._parameters.verbosity = 0
         m._parameters.log_on = false
@@ -134,8 +136,18 @@ function MOI.set(m::Optimizer, ::MOI.Silent, value)
     return
 end
 
-MOI.set(m::Optimizer, ::MOI.TimeLimitSec, ::Nothing) = m._parameters.time_limit = Inf
-MOI.set(m::Optimizer, ::MOI.TimeLimitSec, v::Float64) = m._parameters.time_limit = v
+function MOI.set(m::Optimizer, s::MOI.TimeLimitSec, ::Nothing)
+    push!(m._optimizer_attributes_set, s)
+    unique!(m._optimizer_attributes_set)
+    m._parameters.time_limit = Inf
+end
+function MOI.set(m::Optimizer, s::MOI.TimeLimitSec, v::Float64)
+    push!(m._optimizer_attributes_set, s)
+    unique!(m._optimizer_attributes_set)
+    m._parameters.time_limit = v
+end
+
+MOI.get(m::Optimizer, ::MOI.ListOfOptimizerAttributesSet) = m._optimizer_attributes_set
 
 function MOI.get(m::Optimizer, ::MOI.ListOfConstraintTypesPresent)
     constraint_types = []
@@ -180,7 +192,13 @@ function MOI.get(m::Optimizer, p::MOI.RawOptimizerAttribute)
     s = _to_sym(p.name)
     s in EAGO_PARAMETERS ? getfield(m._parameters, s) : getfield(m, s)
 end
+
+raw_param_name(p::MOI.RawOptimizerAttribute) = _to_sym(p.name)
+raw_param_name(p) = nothing
 function MOI.set(m::Optimizer, p::MOI.RawOptimizerAttribute, x)
+    inds = findall(x -> raw_param_name(x) == raw_param_name(p), m._optimizer_attributes_set)
+    deleteat!(m._optimizer_attributes_set, inds)
+    push!(m._optimizer_attributes_set, p)
     s = _to_sym(p.name)
     if (s == :relaxed_optimizer) || (s == :upper_optimizer)
         setfield!(m, s, Incremental(x))

@@ -161,12 +161,11 @@ end
 function MOI.get(d::Incremental{S}, n::MOI.SolverName) where S
     MOI.get(d.optimizer, n)::String
 end
+MOI.get(d::Incremental{S}, n::MOI.ListOfConstraintTypesPresent) where S = MOI.get(_get_storage(d), n)
 
 # define optimize!
-function MOI.optimize!(d::Incremental{S}) where S
-    MOI.optimize!(_get_storage(d))
-    return
-end
+MOI.optimize!(d::Incremental{S}) where S = MOI.optimize!(S, d)
+MOI.optimize!(x, d::Incremental{S}) where S = MOI.optimize!(_get_storage(d))
 
 function MOI.empty!(d::Incremental{S}) where S
     MOI.empty!(_get_storage(d))

@@ -7,7 +7,6 @@ const MOIT = MOI.Test
 const MOIU = MOI.Utilities
 const MOIB = MOI.Bridges
 
-
 include(joinpath(@__DIR__, "moit_tests.jl"))
 include(joinpath(@__DIR__, "minlp_tests.jl"))
 

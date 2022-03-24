@@ -42,7 +42,6 @@ end
 function lp_obj!(m::GlobalOptimizer, d, f::SAF)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), f)
     MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    #MOI.set(d, MOI.ObjectiveSense(), m._input_problem._optimization_sense)
     return m._input_problem._optimization_sense == MOI.MAX_SENSE
 end
 
@@ -54,16 +53,8 @@ function optimize!(::LP, m::Optimizer{Q,S,T}) where {Q,S,T}
     MOI.empty!(r)
 
     d._relaxed_variable_index = add_variables(d, r)
-    
-    # TODO: Remove when upstream Cbc issue https://github.com/jump-dev/Cbc.jl/issues/168 is fixed
-    # Add extra binary variable `issue_var` fixed to zero to prevent Cbc from displaying even though 
-    # silent is set to off. Sets `issue_var` to zero. 
-    issue_var = MOI.add_variable(r)
-    MOI.add_constraint(r, issue_var, ZO())
-    MOI.add_constraint(r, issue_var, ET(0.0))
-
     _add_constraint_store_ci_linear!(r, ip)
-
+    
     min_to_max = lp_obj!(d, r, ip._objective)
     if ip._optimization_sense == MOI.FEASIBILITY_SENSE
         MOI.set(r, MOI.ObjectiveSense(), ip._optimization_sense)
