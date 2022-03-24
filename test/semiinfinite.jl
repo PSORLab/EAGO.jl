@@ -16,6 +16,7 @@
     @test isapprox(sip_result.xsol[2], -0.6184706298867955, atol = 1E-2)
 end
 
+#=
 @testset "SIP ResRev" begin
     # Define semi-infinite program
     f(x) = (1/3)*x[1]^2 + x[2]^2 + x[1]/2
@@ -34,7 +35,7 @@ end
     @test isapprox(sip_result.xsol[2], -0.6184706298867955, atol = 1E-2)
 end
 
-#=
+
 @testset "SIP Hybrid" begin
     # Define semi-infinite program
     f(x) = (1/3)*x[1]^2 + x[2]^2 + x[1]/2
