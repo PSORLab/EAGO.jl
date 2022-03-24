@@ -16,7 +16,7 @@ minlp_nlp_exclude = String[
 ]
 MINLPTests.test_nlp(solver, exclude = minlp_nlp_exclude, 
                             objective_tol = 1E-3,
-                            #primal_tol = PRIMAL_TOL,
+                            primal_tol = 1E-3,
                             dual_tol = NaN,
                             termination_target = MINLPTests.TERMINATION_TARGET_GLOBAL,
                             primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
@@ -78,7 +78,7 @@ minlp_nlp_cvx_exclude = String[
 ]
 MINLPTests.test_nlp_cvx(solver, exclude = minlp_nlp_cvx_exclude,
                                 objective_tol = 1E-3,
-                                #primal_tol = PRIMAL_TOL,
+                                primal_tol = 1E-3,
                                 dual_tol = NaN,
                                 termination_target = MINLPTests.TERMINATION_TARGET_GLOBAL,
                                 primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
@@ -105,6 +105,6 @@ minlp_nlp_mi_exclude = String[
     #"007_020"    # no way of specifying 
 ]
 MINLPTests.test_nlp_mi(solver, exclude = minlp_nlp_mi_exclude, 
-objective_tol = 1E-3,
+objective_tol = 1E-3, primal_tol = 1E-3,
 termination_target = MINLPTests.TERMINATION_TARGET_GLOBAL,
 primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
