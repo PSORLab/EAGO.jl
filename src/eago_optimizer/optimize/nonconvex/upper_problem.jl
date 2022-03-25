@@ -69,7 +69,7 @@ Default upper bounding problem which simply calls `solve_local_nlp!` to solve
 the nlp locally.
 """
 function upper_problem!(t::ExtensionType, m::GlobalOptimizer)
-    if !default_nlp_heurestic(m)
+    if !default_upper_heurestic(m)
         m._upper_feasibility = false
         m._upper_objective_value = Inf
     else

@@ -9,7 +9,6 @@
 # Contains the subroutines used for stack management. Namely, initialize_stack!
 # select_branch_variable!, select_branch_point!, branch_node!, and fathom!.
 #############################################################################
-
 #=
 function _variable_infeasibility(m::GlobalOptimizer, i::Int)
     tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)
@@ -131,7 +130,7 @@ function branch_node!(t::ExtensionType, m::GlobalOptimizer)
     x = select_branch_point(t, m, k)
     n = m._current_node
 
-    isfinite(n.last_branch) && _store_pseudocosts!(m, n)
+    #isfinite(n.last_branch) && _store_pseudocosts!(m, n)
 
     l_bound = max(n.lower_bound, m._lower_objective_value)
     u_bound = min(n.upper_bound, m._upper_objective_value)
@@ -152,9 +151,9 @@ function branch_node!(t::ExtensionType, m::GlobalOptimizer)
     l_ubd[k] = lx
     u_lbd[k] = ux
 
-    psuedo_cost_flag = _branch_pseudocost_on(m)
-    l_ext = psuedo_cost_flag ? _lo_extent(m, lx, k) : zero(Float64)
-    u_ext = psuedo_cost_flag ? _hi_extent(m, ux, k) : zero(Float64)
+    #psuedo_cost_flag = _branch_pseudocost_on(m)
+    l_ext = zero(Float64) #psuedo_cost_flag ? _lo_extent(m, lx, k) : zero(Float64)
+    u_ext = zero(Float64) #psuedo_cost_flag ? _hi_extent(m, ux, k) : zero(Float64)
 
     l_idepth = (flag && l_cont) ? n.depth + 1 : n.cont_depth
     u_idepth = (flag && u_cont) ? n.depth + 1 : n.cont_depth
