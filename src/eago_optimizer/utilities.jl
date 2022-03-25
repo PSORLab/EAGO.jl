@@ -37,6 +37,7 @@ argmax(f, domain) = mapfoldl(x -> (f(x), x), _rf_findmax, domain)[2]
 relative_gap(L::Float64, U::Float64) = ((L > -Inf) && (U < Inf)) ?  abs(U - L)/(max(abs(L), abs(U))) : Inf
 relative_tolerance(L::Float64, U::Float64, tol::Float64) = relative_gap(L, U)  > tol || ~(L > -Inf)
 
+#=
 """
     gershgorin_λmin
 
@@ -58,3 +59,4 @@ function gershgorin_λmin(x::AbstractMatrix{T}) where T
     end
     return xmin
 end
+=#

@@ -13,8 +13,10 @@
 #############################################################################
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
+Checks that the solution of a local solve is integer feasible to within
+the tolerances specified by `integer_abs_tol` and `integer_rel_tol`.
 """
 function is_integer_feasible_local(m::GlobalOptimizer, d)
     bool = true

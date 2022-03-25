@@ -1,8 +1,21 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This code is licensed under MIT license (see LICENSE.md for full details)
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimize/nonconvex.jl
+# Functions which determine when the upper bounding (local nlp) problem should
+# be solved as well as routines used to call the upper bounding problem.
+#############################################################################
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Checks thats the integer 
+Checks thats the solution of the lower (relaxed problem) is integer feasible to
+within tolerances specified by the parameters: `integer_abs_tol` (absolute tolerance)
+and `integer_rel_tol` (relative tolerance).
 """
 function is_integer_feasible_relaxed(m::GlobalOptimizer)
     bool = true
@@ -25,7 +38,7 @@ function is_integer_feasible_relaxed(m::GlobalOptimizer)
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Default check to see if the upper bounding problem should be run. By default,
 The upper bounding problem is run on every node up to depth `upper_bounding_depth`
@@ -35,7 +48,7 @@ the above approach is used as well as running on every node up to depth
 `upper_bounding_depth + cont_depth` and is triggered with a probability of 
 `0.5^(depth - upper_bounding_depth - cont_depth)`.
 """
-function default_nlp_heurestic(m::GlobalOptimizer)
+function default_upper_heurestic(m::GlobalOptimizer)
     bool = false
     ubd_limit = m._parameters.upper_bounding_depth
     n = _current_node(m)
@@ -50,7 +63,7 @@ function default_nlp_heurestic(m::GlobalOptimizer)
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Default upper bounding problem which simply calls `solve_local_nlp!` to solve
 the nlp locally.

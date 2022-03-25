@@ -6,10 +6,11 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/optimize/nonconvex_branch/stack_management.jl
-# Contains the subroutines used for stack management. Namely, node_selection!,
-# single_storage!, branch_node!, and fathom!.
+# Contains the subroutines used for stack management. Namely, initialize_stack!
+# select_branch_variable!, select_branch_point!, branch_node!, and fathom!.
 #############################################################################
 
+#=
 function _variable_infeasibility(m::GlobalOptimizer, i::Int)
     tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)
     d = m._branch_cost
@@ -75,6 +76,7 @@ end
 function _select_branch_variable_cost(m::GlobalOptimizer)
     return map_argmax(i -> score(m.branch_cost, i), 1:_variable_num(BranchVar(),m))
 end
+=#
 
 # In the case of diam(X) = Inf variables rel_diam may equal NaN, this should be set to
 # a zero relative diameter to prevent "branching" on these variables for a functionally infinite
@@ -88,23 +90,23 @@ function _select_branch_variable_width(m::GlobalOptimizer)
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Selects the variable to branch on psuedocost branching is used if
-(parameter: `branch_pseudocost_on` = true).
+Using a maximum relative with branching rule by default.
 """
 function select_branch_variable(t::ExtensionType, m::GlobalOptimizer)
-    _branch_pseudocost_on(m) && return _select_branch_variable_cost(m)
+    #_branch_pseudocost_on(m) && return _select_branch_variable_cost(m)
     return _select_branch_variable_width(m)
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Selects a point `xb` which is a convex combination (parameter:
-`branch_cvx_factor`) of the solution to the relaxation and the midpoint of the
-node. If this solution lies within (parameter: `branch_offset`) of a bound then
-the branch point is moved to a distance of `branch_offset` from the bound.
+By default, selects a point `xb` within the domain of the `i` branching variable
+which is a convex combination (parameter: `branch_cvx_factor`) of the solution 
+to the relaxation and the midpoint of the node. If this solution lies within 
+(parameter: `branch_offset`) of a bound then the branch point is moved to a 
+distance of `branch_offset` from the bound.
 """
 function select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
     l = _lower_bound(BranchVar(), m, i)
@@ -116,10 +118,12 @@ function select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Creates two nodes from `current_node` and stores them to the stack. Calls
-`select_branch_variable(t, m)` and `select_branch_point(t, m, k)`.
+`select_branch_variable(t, m)` and `select_branch_point(t, m, k)` to determine
+the variable that should be branched on and the point at which branching should
+occur, respectively.
 """
 function branch_node!(t::ExtensionType, m::GlobalOptimizer)
 
@@ -168,9 +172,9 @@ end
 branch_node!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = branch_node!(_ext(m), m)
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Stores the current node to the stack after updating lower/upper bounds.
+By default, stores the current node to the stack after updating lower/upper bounds.
 """
 function single_storage!(t::ExtensionType, m::GlobalOptimizer)
     y = m._current_node
@@ -185,9 +189,9 @@ end
 single_storage!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = single_storage!(_ext(m), m)
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Selects node with the lowest lower bound in stack.
+By default, performs best-first node selection (selects the node with the lowest lower bound in stack).
 """
 function node_selection!(t::ExtensionType, m::GlobalOptimizer)
     m._node_count -= 1
@@ -197,10 +201,10 @@ end
 node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_selection!(_ext(m), m)
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Selects and deletes nodes from stack with lower bounds greater than global
-upper bound.
+By default, selects and deletes nodes from stack with 
+lower bounds greater than global upper bound.
 """
 function fathom!(t::ExtensionType, m::GlobalOptimizer)
     u = m._global_upper_bound
@@ -221,12 +225,13 @@ fathom!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = fathom!(_ext(m
 """
 $(TYPEDSIGNATURES)
 
-Creates an initial node with initial box constraints and adds it to the stack.
+By default, creates an initial node with initial box constraints and adds it to the stack.
 """
-function initialize_stack!(m::GlobalOptimizer)
+function initialize_stack!(t::ExtensionType, m::GlobalOptimizer)
     d = _working_variable_info.(m, m._branch_to_sol_map)
     push!(m._stack, NodeBB(lower_bound.(d), upper_bound.(d), is_integer.(d)))
     m._node_count = 1
     m._maximum_node_id += 1
     return
 end
+initialize_stack!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = initialize_stack!(_ext(m), m)

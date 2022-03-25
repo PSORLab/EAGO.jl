@@ -10,7 +10,7 @@
 #############################################################################
 
 """
-    log_iteration!(x::GlobalOptimizer)
+$(TYPEDSIGNATURES)
 
 If 'logging_on' is true, the 'global_lower_bound', 'global_upper_bound',
 'run_time', and 'node_count' are stored every 'log_interval'. If

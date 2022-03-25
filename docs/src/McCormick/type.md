@@ -23,3 +23,17 @@ newton
 McCormick.golden_section_it
 McCormick.golden_section
 ```
+
+## **(Under development) MCNoGrad**
+
+A handful of applications make use of McCormick relaxations directly without the need for subgradients. We
+are currently adding support for a McCormick `struct` which omits subgradient propagation in favor of return
+a MCNoGrad object and associated derivative information. This is currently under-development and likely 
+lacking key functionality
+
+```@docs
+    McCormick.MCNoGrad
+    MCNoGrad(y::Float64)
+    MCNoGrad(y::Interval{Float64})
+    MCNoGrad(cv::Float64, cc::Float64)
+```

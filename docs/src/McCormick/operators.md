@@ -42,24 +42,6 @@ Arbitrarily differentiable relaxations can be constructed for the following oper
 - [x] **minimization** (min)
 - [x] **maximization** (max)
 
-### Activation Functions Supported
-```@docs
-relu
-leaky_relu
-param_relu
-sigmoid
-bisigmoid
-softsign
-softplus
-maxtanh
-maxsig
-pentanh
-gelu
-elu
-selu
-swish1
-```
-
 ### Common subexpressions
 The following functions can be used in place of common subexpressions encountered
 in optimization and will result in improved performance (standard McCormick composition rules are often more expansive in each case).
@@ -67,6 +49,7 @@ in optimization and will result in improved performance (standard McCormick comp
 xexpax
 arh
 xlogx
+mm
 ```
 
 ### Bound Setting Functions
@@ -80,6 +63,14 @@ negative
 lower_bnd
 upper_bnd
 bnd
+```
+
+### Specialized Activation Functions
+```@docs
+    pentanh
+    leaky_relu
+    param_relu
+    maxtanh
 ```
 
 ### References

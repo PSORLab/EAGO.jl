@@ -1,3 +1,4 @@
+#=
 @enum(Monotonicity, MONO_CONST, MONO_NONINCR, MONO_NONDECR, MONO_NONE, MONO_UNSET)
 
 function *(m::Monotonicity, v::Vexity)
@@ -165,3 +166,4 @@ function monotonicity(buffer::ConvexityBuffer, indx)
     populate_monotonicity!(_node(dag, indx), buffer, indx)
     return _mono(buffer, i)
 end
+=#

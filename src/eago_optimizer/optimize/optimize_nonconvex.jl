@@ -145,11 +145,11 @@ end
 presolve_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = presolve_global!(_ext(m), m)
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Checks for termination of algorithm due to satisfying absolute or relative
-tolerance, infeasibility, or a specified limit, returns a boolean valued true
-if algorithm should continue.
+By default, checks for termination of algorithm due to satisfaction of absolute or 
+relative tolerance, infeasibility, or a specified limit, returns `true` if the algorithm 
+should continue and `false` otherwise.
 """
 function termination_check(t::ExtensionType, m::GlobalOptimizer)
     nlen = length(m._stack)
@@ -207,10 +207,10 @@ function set_result_status!(m::GlobalOptimizer)
 end
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Checks for convergence of algorithm with respect to absolute and/or relative
-tolerances.
+By default, checks for convergence of algorithm with respect to absolute 
+and/or relative tolerances.
 """
 function convergence_check(t::ExtensionType, m::GlobalOptimizer)
 

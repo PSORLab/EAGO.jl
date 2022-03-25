@@ -477,6 +477,12 @@ function Base.isempty(x::ParsedProblem)
     return is_empty_flag
 end
 
+"""
+    GlobalOptimizer
+
+Optimizer internal to EAGO which performs branch-and-bound in order
+to solve nonconvex MINLPs.
+"""
 Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.AbstractOptimizer
     
     _subsolvers::SubSolvers{R,Q,S} = SubSolvers{R,Q,S}()

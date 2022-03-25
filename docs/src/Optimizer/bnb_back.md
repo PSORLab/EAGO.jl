@@ -8,31 +8,65 @@ All components of the branch-and-bound routine can be customized by the individu
     EAGO.NodeBB
 ```
 
-## Customizable subroutines
+The global optimizer structure holds all information relevant to branch-and-bound.
 
 ```@docs
-    EAGO.branch_node!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.convergence_check(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.fathom!(t::ExtensionType, d::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.lower_problem!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.node_selection!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.postprocess!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.preprocess!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.repeat_check(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.single_storage!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.termination_check(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
-    EAGO.upper_problem!(t::ExtensionType, x::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    EAGO.GlobalOptimizer
+```
+
+# Customizable subroutines
+
+## Stack management subroutines
+```@docs
+    EAGO.branch_node!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.select_branch_variable(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
+    EAGO.node_selection!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.fathom!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.initialize_stack!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.single_storage!(t::ExtensionType, m::GlobalOptimizer)
+```
+
+## Internal Subproblem Status Codes & Subsolver Management
+```@docs
+    EAGO.RelaxResultStatus
+    EAGO.LocalResultStatus
+    EAGO.Incremental
+    EAGO.SubSolvers
+    EAGO.set_default_config!(t::ExtensionType, m::GlobalOptimizer)
+```
+
+## Main subproblem and termination subroutines
+```@docs
+    EAGO.convergence_check(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.cut_condition(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    EAGO.preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+    EAGO.postprocess!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.repeat_check(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.termination_check(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.upper_problem!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.parse_global!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.optimize_hook!(t::ExtensionType, m::GlobalOptimizer)
 ```
 
 ## Internal Subroutines
 ```@docs
+    EAGO.is_integer_subproblem(m)
+    EAGO.is_integer_feasible_local(m::GlobalOptimizer, d)
+│   EAGO.is_integer_feasible_relaxed(m::GlobalOptimizer)
     EAGO.interval_bound
     EAGO.lower_interval_bound
-    EAGO.log_iteration!(x::Optimizer)
     EAGO.same_box(x::NodeBB,y::NodeBB, atol::Float64)
     EAGO.solve_local_nlp!(x::Optimizer)
     EAGO.set_dual!(x::Optimizer)
     EAGO.update_relaxed_problem_box!
+    EAGO.reform_epigraph_min!(m::GlobalOptimizer)
+    EAGO.label_fixed_variables!(m::GlobalOptimizer)
+    EAGO.label_branch_variables!(m::GlobalOptimizer)
+    EAGO.add_nonlinear!(m::GlobalOptimizer)
+    EAGO.parse_classify_problem!(m::GlobalOptimizer)
+    EAGO.local_problem_status!(t::MathOptInterface.TerminationStatusCode, r::MathOptInterface.ResultStatusCode)
 ```
 
 ## Functions for generating console output
@@ -41,6 +75,12 @@ All components of the branch-and-bound routine can be customized by the individu
     EAGO.print_node!
     EAGO.print_results!
     EAGO.print_solution!
+```
+
+## Support for log output at each iteration
+```@docs
+    EAGO.Log
+    EAGO.log_iteration!(x::GlobalOptimizer)
 ```
 
 ## Interval Representations of Expressions

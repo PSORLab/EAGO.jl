@@ -1,7 +1,7 @@
 push!(LOAD_PATH,"../src/")
 
 using Documenter, DocumenterTools
-using EAGO, IntervalArithmetic, MathOptInterface, McCormick
+using EAGO, IntervalArithmetic, MathOptInterface, McCormick, JuMP
 
 import McCormick: final_cut, mid3v, precond_and_contract!, AbstractMCCallback, populate_affine!,
                   dline_seg, correct_exp!, cut, mid_grad, preconditioner_storage, newton, secant,
@@ -9,7 +9,8 @@ import McCormick: final_cut, mid3v, precond_and_contract!, AbstractMCCallback, p
 
 import EAGO: ExtensionType, Evaluator, variable_dbbt!, set_current_node!,
              VariableInfo, Log, aggressive_filtering!,
-             bool_indx_diff, trivial_filtering!, SIPResult, SIPProblem
+             bool_indx_diff, trivial_filtering!, SIPResult, SIPProblem, 
+             GlobalOptimizer, InputProblem, ParsedProblem
 import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
                     Template_Node, scrub, scrub!, flatten_expression!
 

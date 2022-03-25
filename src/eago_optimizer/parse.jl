@@ -82,10 +82,6 @@ function link_subexpression_dicts!(m::GlobalOptimizer)
     return
 end
 
-"""
-
-Adds a Evaluator, nonlinear functions, and populates each appropriately.
-"""
 add_nonlinear!(m::GlobalOptimizer, evaluator::Nothing) = nothing
 function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
@@ -174,6 +170,12 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     return
 end
 add_nonlinear!(m::GlobalOptimizer, nldata) = add_nonlinear!(m, nldata.evaluator)
+
+"""
+$(TYPEDSIGNATURES)
+
+Adds a Evaluator, nonlinear functions, and populates each appropriately.
+"""
 add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_data)
 
 function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::VI)
@@ -294,6 +296,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
 end
 
 """
+$(TYPEDSIGNATURES)
 
 Performs an epigraph reformulation assuming the working_problem is a minimization problem.
 """
@@ -402,7 +405,9 @@ function variable_load_parse!(m::Optimizer, ::Type{VI}, ::Type{T}) where T
 end
 
 """
-Translates input problem to working problem. Routines and checks and optional manipulation is left to the presolve stage.
+$(TYPEDSIGNATURES)
+
+Translates input problem to working problem. Checks and optional manipulation is left to the presolve stage.
 """
 function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
 

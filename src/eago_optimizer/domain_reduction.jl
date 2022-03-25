@@ -55,7 +55,7 @@ function set_preprocess_status(m::GlobalOptimizer{R,S,Q}, d) where {R,S,Q<:Exten
 end
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
 Excludes OBBT on variable indices that are tight for the solution of the relaxation.
 """
@@ -85,7 +85,7 @@ end
 
 and_not(x,y) = x & ~y
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
 Utility function used to set vector of booleans z to x & ~y. Avoids the
 generation of conversion of the BitArray created by broadcasting logical operators.
@@ -93,7 +93,7 @@ generation of conversion of the BitArray created by broadcasting logical operato
 bool_indx_diff!(z::Vector{Bool},x::Vector{Bool}, y::Vector{Bool}) = map!(and_not, z, x, y)
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
 Excludes OBBT on variable indices after a search in a filtering direction.
 """

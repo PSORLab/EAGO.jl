@@ -33,7 +33,7 @@ et al. J Glob Optim (2017) 67: 731. https://doi.org/10.1007/s10898-016-0450-4.
 
 ```@docs
 EAGO.obbt!
-trivial_filtering!
-aggressive_filtering!
-bool_indx_diff
+EAGO.trivial_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType}
+EAGO.aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType}
+EAGO.bool_indx_diff!(z::Vector{Bool},x::Vector{Bool}, y::Vector{Bool})
 ```

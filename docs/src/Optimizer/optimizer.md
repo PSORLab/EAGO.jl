@@ -8,6 +8,15 @@ of all user-facing options has been provided in the docstring.
 Optimizer
 ```
 
+## EAGO Specific functions and operators
+EAGO supports a number of functions and operators that for which specialized relaxation
+routines are available. These can be registered and added to a JuMP model using the 
+function 
+
+```@docs
+EAGO.register_eago_operators!(m::JuMP.Model)
+```
+
 ## Storage for Input Parameters
 ```@docs
 EAGO.EAGOParameters
@@ -17,13 +26,17 @@ EAGO.EAGOParameters
 ```@docs
 VariableInfo
 ExtensionType
-Log
 ```
 
 ## Internal Problem Representations
 ```@docs
 EAGO.InputProblem
 EAGO.ParsedProblem
+```
+
+## Interval Optimizer Subroutines
+```@docs
+initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
 ```
 
 ## Extending EAGO

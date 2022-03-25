@@ -1,3 +1,16 @@
+# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# This code is licensed under MIT license (see LICENSE.md for full details)
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimize/lower_problem.jl
+# Functions which define how relaxations of subproblems are constructed,
+# when domain reductions algorithms are run, and the lower bounding (relaxed
+# problem solution subroutines).
+#############################################################################
+
 """
 $(FUNCTIONNAME)
 
@@ -232,6 +245,9 @@ function set_dual!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     return
 end
 
+"""
+"""
+function interval_objective_bound! end
 interval_objective_bound!(m::GlobalOptimizer, f::Nothing, is_first_eval) = nothing
 function interval_objective_bound!(m::GlobalOptimizer, f::AffineFunctionIneq, is_first_eval)
     m._working_problem._relaxed_evaluator.is_first_eval = is_first_eval
@@ -261,11 +277,12 @@ end
 interval_objective_bound!(m::GlobalOptimizer, is_first_eval = true) = interval_objective_bound!(m, m._working_problem._objective, is_first_eval)
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Runs interval, linear, quadratic contractor methods followed by obbt and a
-constraint programming walk up to tolerances specified in
-`EAGO.Optimizer` object.
+Runs contractor methods prior to solving lower bounding problem. By default linear and quadratic 
+contractor methods followed by interval constraint propagation then optimization-based bound 
+tightening for a specified number of iterations while the subproblem at current node `n` has 
+not been proven infeasible.
 """
 function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
@@ -312,12 +329,13 @@ end
 preprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = preprocess!(_ext(m), m)
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
-Checks if a cut should be added and computes a new reference point to add the
-cut at. If no cut should be added the constraints not modified in place are
-deleted from the relaxed optimizer and the solution is compared with the
-interval lower bound. The best lower bound is then used.
+Returns `true` if a cut should be added and computes a new reference point to add the
+cut at. By default, checks that `cut_max_iterations` are not exceeded and that the 
+improvement in the objective value associated with the previous cut is greater than
+both an absolute tolerance `cut_ϵ_abs` and a relative tolerance `cut_ϵ_rel`. Returns
+`false` otherwise.
 """
 function cut_condition(t::ExtensionType, m::GlobalOptimizer)
     obj_old = m._last_cut_objective
@@ -329,12 +347,30 @@ function cut_condition(t::ExtensionType, m::GlobalOptimizer)
 end
 cut_condition(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = cut_condition(_ext(m), m)
 
-is_integer_subproblem(m) = !continuous(_current_node(m))
 """
 $(SIGNATURES)
 
-Constructs and solves the relaxation using the default EAGO relaxation scheme
-and optimizer on node `y`.
+Returns `true` that the subproblem at the current node `n` has participating integer variables
+that have not been fixed to constant valued as the branch-and-bound algorithm progresses. Returns
+`false` otherwise.
+"""
+is_integer_subproblem(m) = !continuous(_current_node(m))
+
+"""
+$(TYPEDSIGNATURES)
+
+Constructs a relaxation of the MINLP on node `y` and solves it using the default EAGO 
+relaxation scheme. By default, EAGO applies Kelley's algorithm (from Kelley Jr., J.E.: 
+The cutting-plane method for solving convex programs. J. Soc. Ind. Appl. Math. 8(4), 
+703 to 712 (1960)) while `cut_condition(m)` returns `true` then activates the integrality
+constraints of the relaxed problems and solves the resulting MILP relaxation. results
+are stored to the `_lower_solution`, `_lower_termination_status`, `_lower_primal_status`,
+`_lower_dual_status`, `_lower_objective_value`, and `_lower_feasibility`. Further, lower
+and upper variable duals are stored `_lower_lvd` and `_lower_uvd`, respectively, for use
+in duality based bound tightening. If relaxation-based bounds are weaker or cutting-planes 
+are numerically poorly ill-posed, then interval bounds are used instead. If the problem is
+dual feasible but the primal status is ambiguous the dual objective value is used for the 
+lower bound to avoid numerical issues.
 """
 function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 

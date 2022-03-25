@@ -1,3 +1,4 @@
+#=
 @enum(Vexity, VEX_CONST, VEX_AFFINE, VEX_CONVEX, VEX_CONCAVE, VEX_NONDCP, VEX_UNSET)
 
 function -(v::Vexity)
@@ -122,3 +123,4 @@ end
 
 # TODO: sech
 # TODO: maxtanh, pentanh, sigmoid, bisigmoid, softsign, softplus, elu
+=#
