@@ -3,7 +3,7 @@ TODO: Each graph representation is assumed to be static... so
 =#
 
 """
-$(TYPDEF)
+$(TYPEDEF)
 
 Abstract supertype for generic directed graph structure.
 """

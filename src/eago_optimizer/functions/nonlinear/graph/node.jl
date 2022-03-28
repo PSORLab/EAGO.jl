@@ -33,7 +33,7 @@ const ATOM_TYPE_INSTANCES = instances(AtomType)
 abstract type AbstractNode end
 
 """
-$(TYPDEF)
+$(TYPEDEF)
 
 Describes connectivity and expression represented by node.
 """

@@ -1,5 +1,5 @@
 """
-$(TYPDEF)
+$(TYPEDEF)
 
 Abstract supertype used for information storage object the directed acyclic graph.
 """
@@ -17,7 +17,7 @@ function initialize!(::AbstractCache, ::AbstractDirectedGraph)
 end
 
 """
-$(TYPDEF)
+$(TYPEDEF)
 
 Abstract supertype used for attributes stored in a cache.
 """
