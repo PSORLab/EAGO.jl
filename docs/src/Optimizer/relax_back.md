@@ -41,22 +41,26 @@ Three included `AbstractCacheAttributes` are used to
 The forward and reverse routines are overloaded as follows:
 
 ```@docs
-f_init!(::AbstractCacheAttribute, ::AbstractDirectedGraph, ::AbstractCache)
-fprop!(::AbstractCacheAttribute, ::Variable, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-fprop!(::AbstractCacheAttribute, ::Subexpression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-fprop!(::AbstractCacheAttribute, ::Expression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-fprop!(::AbstractCacheAttribute, ::Parameter, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-fprop!(::AbstractCacheAttribute, ::Constant, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+    EAGO.f_init!(t::AbstractCacheAttribute, g::AbstractDirectedGraph, c::AbstractCache)
+    EAGO.fprop!(t::AbstractCacheAttribute, v::Variable, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.fprop!(t::AbstractCacheAttribute, v::Subexpression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.fprop!(t::AbstractCacheAttribute, v::Expression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.fprop!(t::AbstractCacheAttribute, v::Parameter, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.fprop!(t::AbstractCacheAttribute, v::Constant, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
 ```
 
 ```@docs
-r_init!(::AbstractCacheAttribute, ::AbstractDirectedGraph, ::AbstractCache)
-rprop!(::AbstractCacheAttribute, ::Variable, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-rprop!(::AbstractCacheAttribute, ::Subexpression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-rprop!(::AbstractCacheAttribute, ::Expression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-rprop!(::AbstractCacheAttribute, ::Parameter, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
-rprop!(::AbstractCacheAttribute, ::Constant, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+    EAGO.r_init!(t::AbstractCacheAttribute, g::AbstractDirectedGraph, c::AbstractCache)
+    EAGO.rprop!(t::AbstractCacheAttribute, v::Variable, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.rprop!(t::AbstractCacheAttribute, v::Subexpression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.rprop!(t::AbstractCacheAttribute, v::Expression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.rprop!(t::AbstractCacheAttribute, v::Parameter, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+    EAGO.rprop!(t::AbstractCacheAttribute, v::Constant, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
 ```
+
+Forward and reverse subroutines are overloaded for individual operators using through functions of the forms 
+`fprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)` and
+`rprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)`. 
 
 ## Other routines
 ```@docs

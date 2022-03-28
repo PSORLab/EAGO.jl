@@ -16,14 +16,12 @@ function initialize!(::AbstractCache, ::AbstractDirectedGraph)
            of AbstractCache and AbstractDirectedGraph.")
 end
 
-
 """
 $(TYPDEF)
 
 Abstract supertype used for attributes stored in a cache.
 """
 abstract type AbstractCacheAttribute end
-
 
 """
 $(TYPEDSIGNATURES)

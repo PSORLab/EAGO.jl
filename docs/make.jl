@@ -11,8 +11,11 @@ import EAGO: ExtensionType, Evaluator, variable_dbbt!, set_current_node!,
              VariableInfo, Log, aggressive_filtering!,
              bool_indx_diff, trivial_filtering!, SIPResult, SIPProblem, 
              GlobalOptimizer, InputProblem, ParsedProblem, is_integer_feasible_relaxed, 
-             local_problem_status, default_upper_heurestic, label_branch_variables!
-             label_fixed_variables!
+             local_problem_status, default_upper_heurestic, label_branch_variables!,
+             label_fixed_variables!, AbstractDirectedGraph, AbstractCache, 
+             AbstractCacheAttribute, initialize!, f_init!, r_init!, fprop!, rprop!,
+             Variable, Subexpression, Expression, Constant, Parameter
+             
 import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
                     Template_Node, scrub, scrub!, flatten_expression!
 

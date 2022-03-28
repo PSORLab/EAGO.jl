@@ -36,7 +36,7 @@ EAGO.ParsedProblem
 
 ## Interval Optimizer Subroutines
 ```@docs
-initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
+EAGO.initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
 ```
 
 ## Extending EAGO
