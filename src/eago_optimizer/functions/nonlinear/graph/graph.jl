@@ -2,6 +2,11 @@
 TODO: Each graph representation is assumed to be static... so
 =#
 
+"""
+$(TYPDEF)
+
+Abstract supertype for generic directed graph structure.
+"""
 abstract type AbstractDirectedGraph end
 abstract type AbstractDirectedAcyclicGraph <: AbstractDirectedGraph end
 

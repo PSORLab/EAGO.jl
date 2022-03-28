@@ -1,16 +1,124 @@
 """
-    AbstractCache
+$(TYPDEF)
 
 Abstract supertype used for information storage object the directed acyclic graph.
 """
 abstract type AbstractCache end
 
 """
-    AbstractCacheAttribute
+$(TYPEDSIGNATURES)
+
+Function used to initialize the storage cache `d::AbstractCache` 
+for a given type of directed acycle graph `g::AbstractDirectedGraph`.
+"""
+function initialize!(::AbstractCache, ::AbstractDirectedGraph)
+    error("Initialization method not defined for this combination 
+           of AbstractCache and AbstractDirectedGraph.")
+end
+
+
+"""
+$(TYPDEF)
 
 Abstract supertype used for attributes stored in a cache.
 """
 abstract type AbstractCacheAttribute end
+
+
+"""
+$(TYPEDSIGNATURES)
+
+Initializes information in cache `c` for each node in `g` that may be used in a forward-pass of attribute `t`. 
+"""
+f_init!(t::AbstractCacheAttribute, g::AbstractDirectedGraph, c::AbstractCache)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a variable `v` at index `k` in 
+cache `c` associated with graph `g` using information at index `k`. 
+"""
+fprop!(t::AbstractCacheAttribute, v::Variable, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a subexpression `v` at index `k` in 
+cache `c` associated with graph `g` using information taken from the children of `k`. 
+"""
+fprop!(t::AbstractCacheAttribute, v::Subexpression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a expression `v` at index `k` in 
+cache `c` associated with graph `g` using information taken from the children of `k`. 
+"""
+fprop!(t::AbstractCacheAttribute, v::Expression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a parameter `v` at index `k` in 
+cache `c` associated with graph `g` using information at index `k`. 
+"""
+fprop!(t::AbstractCacheAttribute, v::Parameter, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a constant `v` at index `k` in 
+cache `c` associated with graph `g` using information at index `k`. 
+"""
+fprop!(t::AbstractCacheAttribute, v::Constant, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Initializes information in cache `c` for each node in `g` that may be used in a reverse-pass of attribute `t`. 
+"""
+r_init!(t::AbstractCacheAttribute, g::AbstractDirectedGraph, c::AbstractCache)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a variable `v` at index `k` in  cache `c` 
+associated with graph `g` using information at index `k` taken from the parents of `k`. 
+"""
+rprop!(t::AbstractCacheAttribute, v::Variable, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a subexpressions `v` at index `k` in  cache `c` 
+associated with graph `g` using information at index `k` taken from the parents of `k`. 
+"""
+rprop!(t::AbstractCacheAttribute, v::Subexpression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a expressions `v` at index `k` in  cache `c` 
+associated with graph `g` using information at index `k` taken from the parents of `k`. 
+"""
+rprop!(t::AbstractCacheAttribute, v::Expression, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a parameters `v` at index `k` in  cache `c` 
+associated with graph `g` using information at index `k` taken from the parents of `k`. 
+"""
+rprop!(t::AbstractCacheAttribute, v::Parameter, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
+"""
+$(TYPEDSIGNATURES)
+
+Populates information associated with attribute `t` for a constant `v` at index `k` in  cache `c` 
+associated with graph `g` using information at index `k` taken from the parents of `k`.
+"""
+rprop!(t::AbstractCacheAttribute, v::Constant, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
+
 
 Base.@kwdef mutable struct VariableValues{T<:Real}
     x0::Vector{T}                          = T[]

@@ -2,9 +2,7 @@
 
 ## Graphs, Caches, Forward and Reverse Propagation
 
-EAGO makes use of a specialized tape structure for each function in order to compute valid
-composite bounds and relaxations. Each variable, constant, and expression is respresented by
-a node in a directed graph structure. 
+EAGO makes use of a specialized tape structure for each function in order to compute valid composite bounds and relaxations. Each variable, constant, and expression is respresented by a node in a directed graph structure. 
 
 ```@docs
     EAGO.Node
@@ -13,18 +11,20 @@ a node in a directed graph structure.
 ```
 
 ```@docs
+    EAGO.AbstractDirectedGraph
     EAGO.DirectedTree
 ```
 
-EAGO organizes information associated with each node a given graph structure using an
-`EAGO.AbstractCache` which stores the given information.
+Each field of the ith `EAGO.Node` using a basic access function. For instance the ith node's `ex_type` for graph `d` may be accessed by `ex_type(d, i)`. The `sparsity` of node `i` returns an ordered list of `children` nodes which form the argument tuple for the operator performed at node `i`. The `sparsity` of node `i` returns a list of `parent` nodes which form the argument tuple for the operator performed at node `i`. The `parameter_values` and `constant_values` functions are used to access the ith parameter values or ith constant values.
+
+EAGO organizes information associated with each node in a given graph structure using an `EAGO.AbstractCache` which stores the given information.
 
 ```@docs
     EAGO.AbstractCache
+    EAGO.initialize!(::AbstractCache, ::AbstractDirectedGraph)
 ```
 
-Information in a given `EAGO.AbstractCache` is populated by performing a series of 
-forward and reverse passes of the graph structure which dispatch off of an
+Information in a given `EAGO.AbstractCache` is populated by performing a series of forward and reverse passes of the graph structure which dispatch off of an
 `EAGO.AbstractCacheAttribute` which indicates what particular information is desired.
 
 ```@docs
@@ -40,7 +40,23 @@ Three included `AbstractCacheAttributes` are used to
 
 The forward and reverse routines are overloaded as follows:
 
-XXX
+```@docs
+f_init!(::AbstractCacheAttribute, ::AbstractDirectedGraph, ::AbstractCache)
+fprop!(::AbstractCacheAttribute, ::Variable, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+fprop!(::AbstractCacheAttribute, ::Subexpression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+fprop!(::AbstractCacheAttribute, ::Expression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+fprop!(::AbstractCacheAttribute, ::Parameter, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+fprop!(::AbstractCacheAttribute, ::Constant, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+```
+
+```@docs
+r_init!(::AbstractCacheAttribute, ::AbstractDirectedGraph, ::AbstractCache)
+rprop!(::AbstractCacheAttribute, ::Variable, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+rprop!(::AbstractCacheAttribute, ::Subexpression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+rprop!(::AbstractCacheAttribute, ::Expression, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+rprop!(::AbstractCacheAttribute, ::Parameter, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+rprop!(::AbstractCacheAttribute, ::Constant, ::AbstractDirectedGraph, ::AbstractCache, ::Int)
+```
 
 ## Other routines
 ```@docs
