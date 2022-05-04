@@ -9,6 +9,7 @@
 # Defines constraints supported by optimizer and how to store them.
 #############################################################################
 
+# Sets used in general constraints
 const INEQ_SETS = Union{LT, GT, ET}
 const VAR_SETS = Union{LT, GT, ET, ZO, MOI.Integer}
 
@@ -141,6 +142,11 @@ function MOI.set(m::Optimizer, s::MOI.TimeLimitSec, ::Nothing)
     unique!(m._optimizer_attributes_set)
     m._parameters.time_limit = Inf
 end
+function MOI.set(m::Optimizer, s::MOI.TimeLimitSec, v::Int)
+    push!(m._optimizer_attributes_set, s)
+    unique!(m._optimizer_attributes_set)
+    m._parameters.time_limit = v
+end
 function MOI.set(m::Optimizer, s::MOI.TimeLimitSec, v::Float64)
     push!(m._optimizer_attributes_set, s)
     unique!(m._optimizer_attributes_set)
@@ -170,7 +176,7 @@ MOI.get(m::Optimizer, ::MOI.DualStatus) = MOI.NO_SOLUTION
 MOI.get(m::Optimizer, ::MOI.ObjectiveBound) = m._objective_bound
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
 MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
-MOI.get(m::Optimizer, ::MOI.SolverVersion) = "0.7.0"
+MOI.get(m::Optimizer, ::MOI.SolverVersion) = "0.7.1"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTimeSec) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._node_count

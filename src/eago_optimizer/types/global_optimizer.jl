@@ -91,11 +91,11 @@ Base.@kwdef mutable struct EAGOParameters
 
     # Node branching options
     "Convex coefficient used to select branch point. Branch point is given by
-    `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol` (default = 0.5)"
-    branch_cvx_factor::Float64 = 0.5
+    `branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol` (default = 0.25)"
+    branch_cvx_factor::Float64 = 0.25
     "Minimum distance from bound to have branch point normalized by width of
     dimension to branch on (default = 0.2)"
-    branch_offset::Float64 = 0.2
+    branch_offset::Float64 = 0.15
     "Indicates that pseudocost branching should be used"
     branch_pseudocost_on::Bool = false
     "Variables to branch on (default is all nonlinear)."
@@ -110,8 +110,8 @@ Base.@kwdef mutable struct EAGOParameters
     # Termination limits
     "Maximum number of nodes (default = 1E-7)"
     node_limit::Int = 1*10^7
-    "Maximum CPU time in seconds (default = 1000)"
-    time_limit::Float64 = 100.0
+    "Maximum CPU time in seconds (default = 3600)"
+    time_limit::Float64 = 3600.0
     "Maximum number of iterations (default 3E6)"
     iteration_limit::Int = 1E9
     "Absolute tolerance for termination (default = 1E-3)"
@@ -134,9 +134,9 @@ Base.@kwdef mutable struct EAGOParameters
 
     # obbt options
     "Depth in B&B tree above which OBBT should be disabled (default = 6)"
-    obbt_depth::Int = 0
+    obbt_depth::Int = 6
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
-    obbt_repetitions::Int = 1
+    obbt_repetitions::Int = 3
     "Turn aggresive OBBT on (default = false)"
     obbt_aggressive_on::Bool = true
     "Maximum iteration to perform aggresive OBBT (default = 2)"
@@ -184,7 +184,7 @@ Base.@kwdef mutable struct EAGOParameters
     "Absolute tolerance checked for continuing cut"
     cut_tolerance_abs::Float64 = 1E-6
     "Relative tolerance checked for continuing cut"
-    cut_tolerance_rel::Float64 = 1E-2
+    cut_tolerance_rel::Float64 = 1E-3
 
     "Use tolerances to determine safe cuts in a Khajavirad 2018 manner"
     cut_safe_on::Bool = true
@@ -548,7 +548,7 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _postprocess_feasibility::Bool = true
 
     # set to time limit in initial_parse! in parse.jl, decremented throughout global_solve in optimize_nonconvex.jl
-    _time_left::Float64 = 1000.0
+    _time_left::Float64 = 3600.0
 
     # set constructor reset on empty! and  to zero in initial parse! in parse.jl
     _start_time::Float64 = 0.0
