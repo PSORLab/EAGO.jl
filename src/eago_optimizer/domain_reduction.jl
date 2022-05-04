@@ -245,8 +245,9 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     feasibility = true
     n = m._current_node
     d = _relaxed_optimizer(m)
-
-    if relax_problem!(m)
+     
+    validity, feasibility = relax_problem!(m)
+    if validity & feasibility
         MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
         MOI.optimize!(d)
 
