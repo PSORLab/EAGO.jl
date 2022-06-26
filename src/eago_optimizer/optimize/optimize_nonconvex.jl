@@ -271,7 +271,6 @@ function global_solve!(m::GlobalOptimizer)
 
     parse_global!(m)
     presolve_global!(m)
-
     print_preamble!(m)
 
     # terminates when max nodes or iteration is reach, or when node stack is empty

@@ -4,7 +4,11 @@ solver = JuMP.optimizer_with_attributes(EAGO.Optimizer, "relative_tolerance" => 
  
 minlp_nlp_exclude = String[
     "001_010", # Unbounded box, check solution bad if not gradient-based....
-    "002_010", # Unbounded box   
+    "002_010", # Unbounded box
+   # "003_010",
+   # "003_011",
+    #"003_013",
+    #"003_015",   
     "004_010", # Unbounded box
     "004_011", # Unbounded box
     "005_010", # Unbounded box
@@ -87,7 +91,7 @@ minlp_nlp_mi_exclude = String[
     "001_010",  # no box constraints
     "002_010",
 
-    #"003_010",   # TODO: Fix 003_010 - 003_016
+    "003_010",   # TODO: Fix 003_010 - 003_016
     "003_011",  # FAIL
     "003_012",  # FAIL
     "003_013",  # FAIL
@@ -102,7 +106,7 @@ minlp_nlp_mi_exclude = String[
     "005_011",   # \ operator not in JuMP
     "006_010",
     "007_010",
-    #"007_020"    # no way of specifying 
+    "007_020"    # no way of specifying 
 ]
 MINLPTests.test_nlp_mi(solver, exclude = minlp_nlp_mi_exclude, 
 objective_tol = 1E-3, primal_tol = 1E-3,

@@ -222,8 +222,12 @@ function active_argmin(f, b, n)
     end
     vi, v
 end
-Δxl(m, i) = _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
-Δux(m, i) = _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
+function Δxl(m, i)
+    _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
+end
+function Δux(m, i) 
+    _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
+end
 
 function reset_objective!(m::GlobalOptimizer{R,S,Q}, d) where {R,S,Q<:ExtensionType}
     MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
@@ -247,6 +251,8 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
      
     validity, feasibility = relax_problem!(m)
+    #println(" post relax problem initial obbt")
+    #print_problem_summary!(_relaxed_optimizer(m), "post relax problem initial obbt ...")
     if validity & feasibility
         MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
         MOI.optimize!(d)
@@ -260,6 +266,8 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
         # determined by solving the feasibility problem
         trivial_filtering!(m, n)
         feasibility = aggressive_filtering!(m, n)
+        #println(" post relax problem initial obbt post filter")
+        #print_problem_summary!(_relaxed_optimizer(m), "post relax problem initial obbt  post filter ...")
         if set_preprocess_status(m,d) == RRS_OPTIMAL
             xLP = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
         else
@@ -272,8 +280,8 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
               # min of xLP - yL and xU - xLP for potential directions
             lower_indx, lower_value = active_argmin(i -> Δxl(m, i), m._obbt_working_lower_index, obbt_variable_count)
-            upper_indx, upper_value = active_argmin(i -> Δux(m, i), m._obbt_working_lower_index, obbt_variable_count)
-
+            upper_indx, upper_value = active_argmin(i -> Δux(m, i), m._obbt_working_upper_index, obbt_variable_count)
+ 
             # default to upper bound if no lower bound is found, use maximum distance otherwise
             if lower_value <= upper_value && lower_indx > 0
                 m._obbt_working_lower_index[lower_indx] = false
@@ -283,7 +291,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                 status = set_preprocess_status(m,d)
                 if status == RRS_OPTIMAL
                     xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
-                    updated_value = xLP[_bvi(m, lower_indx)]
+                    updated_value = MOI.get(d, MOI.ObjectiveValue()) # xLP[_bvi(m, lower_indx)]
                     previous_value = n.lower_variable_bounds[lower_indx]
 
                     # if bound is improved update node and corresponding constraint update
@@ -303,23 +311,23 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                     end
 
                 elseif status == RRS_INFEASIBLE
-                    feasibility = false
-                    break
+                    if MOI.get(d, MOI.TerminationStatus()) != MOI.INFEASIBLE_OR_UNBOUNDED
+                        feasibility = false
+                        break
+                    end
                 else
                     break
                 end
 
             elseif upper_indx > 0
-                
                 m._obbt_working_upper_index[upper_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
                 MOI.set(d, MOI.ObjectiveFunction{VI}(), m._relaxed_variable_index[_bvi(m, upper_indx)])
                 MOI.optimize!(d)
-
                 status = set_preprocess_status(m,d)
                 if status == RRS_OPTIMAL
                     xLP .= MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
-                    updated_value = xLP[_bvi(m, upper_indx)]
+                    updated_value = MOI.get(d, MOI.ObjectiveValue()) # xLP[_bvi(m, upper_indx)]
                     previous_value = n.upper_variable_bounds[upper_indx]
 
                     # if bound is improved update node and corresponding constraint update
@@ -339,8 +347,10 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                     end
 
                 elseif status == RRS_INFEASIBLE
-                    feasibility = false
-                    break
+                    if MOI.get(d, MOI.TerminationStatus()) != MOI.INFEASIBLE_OR_UNBOUNDED
+                        feasibility = false
+                        break
+                    end
                 else
                     break
                 end

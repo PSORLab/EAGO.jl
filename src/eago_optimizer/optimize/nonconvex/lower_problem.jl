@@ -316,13 +316,14 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     end
 
     if _obbt_depth(m) >= _iteration_count(m)
-        for k = 1:_obbt_repetitions(m)
+        for k = 1:_obbt_repetitions(m) 
             ns = NodeBB(_current_node(m))
             feasible_flag = feasible_flag && obbt!(m)
             m._obbt_performed_flag = true
             (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break
         end
     end
+
     m._preprocess_feasibility = feasible_flag
     return
 end

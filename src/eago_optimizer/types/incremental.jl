@@ -115,32 +115,25 @@ function MOI.set(d::Incremental, ::MOI.ConstraintSet, ci::CI{VI,T}, s::T) where 
 end
 
 # Get attributes
-function MOI.get(d::Incremental{S}, ::MOI.TerminationStatus) where S
-    MOI.get(d.optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
-end
-function MOI.get(d::Incremental{S}, ::MOI.PrimalStatus) where S
-    MOI.get(d.optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
-end
-function MOI.get(d::Incremental{S}, ::MOI.DualStatus) where S
-    MOI.get(d.optimizer, MOI.DualStatus())::MOI.ResultStatusCode
-end
-function MOI.get(d::Incremental{S}, ::MOI.RawStatusString) where S
-    MOI.get(d.optimizer, MOI.RawStatusString())::MOI.String
-end
+MOI.get(d::Incremental{S}, ::MOI.TerminationStatus) where S = MOI.get(d.optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
+MOI.get(d::Incremental{S}, ::MOI.PrimalStatus) where S = MOI.get(d.optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
+MOI.get(d::Incremental{S}, ::MOI.DualStatus) where S = MOI.get(d.optimizer, MOI.DualStatus())::MOI.ResultStatusCode
+MOI.get(d::Incremental{S}, ::MOI.RawStatusString) where S = MOI.get(d.optimizer, MOI.RawStatusString())::MOI.String
 
-function MOI.get(d::Incremental{S}, ::MOI.ObjectiveBound) where S
-    MOI.get(d.optimizer, MOI.ObjectiveBound())::Float64
+for T in (MOI.ObjectiveBound, MOI.ObjectiveValue, MOI.DualObjectiveValue)
+    @eval MOI.get(d::Incremental{S}, ::$T) where S = MOI.get(d.optimizer, ($T)())::Float64
 end
-function MOI.get(d::Incremental{S}, ::MOI.ObjectiveValue) where S
-    MOI.get(d.optimizer, MOI.ObjectiveValue())::Float64
-end
-function MOI.get(d::Incremental{S}, ::MOI.DualObjectiveValue) where S
-    MOI.get(d.optimizer, MOI.DualObjectiveValue())::Float64
-end
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveSense) where S = MOI.get(d.optimizer, MOI.ObjectiveSense())
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveFunctionType) where S = MOI.get(_get_storage(d), MOI.ObjectiveFunctionType())
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveFunction{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ObjectiveFunction{T}())
 
-function MOI.get(d::Incremental{S}, ::MOI.VariablePrimal, vi::VI) where S
-    MOI.get(d.optimizer, MOI.VariablePrimal(), vi)::Float64
-end
+MOI.get(d::Incremental{S}, ::MOI.VariableName, vi::VI) where S = MOI.get(_get_storage(d), MOI.VariableName(), vi)
+MOI.get(d::Incremental{S}, x::MOI.ListOfConstraintIndices{T}) where {S,T} = MOI.get(_get_storage(d), x)
+
+MOI.get(d::Incremental{S}, ::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ConstraintFunction(), ci)
+MOI.get(d::Incremental{S}, ::MOI.ConstraintSet, ci::MOI.ConstraintIndex{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ConstraintSet(), ci)
+
+MOI.get(d::Incremental{S}, ::MOI.VariablePrimal, vi::VI) where S = MOI.get(d.optimizer, MOI.VariablePrimal(), vi)::Float64
 
 const SAF_CI_TYPES = Union{CI{SAF,LT},CI{SAF,GT},CI{SAF,ET}}
 function MOI.get(d::Incremental{S}, ::MOI.ConstraintPrimal, ci::SAF_CI_TYPES) where S

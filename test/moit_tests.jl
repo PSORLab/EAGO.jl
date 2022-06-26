@@ -86,7 +86,8 @@ function test_runtests()
                                 "test_quadratic_homogeneous",
                                 "test_quadratic_nonhomogeneous",
                                 "test_quadratic_constraint_integration",
-                                "test_quadratic_constraint_basic",                                                                               
+                                "test_quadratic_constraint_basic",
+                                "test_quadratic_nonconvex_constraint_basic",                                                                               
 
                                 "test_constraint_qcp_duplicate_diagonal",
                                 "test_constraint_qcp_duplicate_off_diagonal",

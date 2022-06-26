@@ -88,6 +88,7 @@ module EAGO
     export register_eago_operators!
 
     # map/reduce nonallocating no bounds checking map-reduce like utilities
+    include(joinpath(@__DIR__, "eago_optimizer", "debug_tools.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "utilities.jl"))
 
     # creates a context that removes domain violations when constructing bounds

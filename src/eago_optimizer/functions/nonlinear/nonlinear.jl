@@ -287,7 +287,6 @@ end
 eliminate_fixed_variables!(f::BufferedNonlinearFunction{N,T}, v::Vector{VariableInfo}) where {N,T<:RelaxTag} = eliminate_fixed_variables!(f.ex, v)
 f_init_prop!(t, g::DAT, c::RelaxCache, flag::Bool) = flag ? f_init!(t, g, c) : fprop!(t, g, c)
 function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T<:RelaxTag}
-    #println("ran forward pass")
     b = d.relax_cache
     update_box_and_pnt!(b.ic.v, z.variable_values, z.is_first_eval)
     if b.use_apriori_mul
@@ -325,6 +324,7 @@ end
 
 function forward_pass!(x::Evaluator, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag}
     forward_pass!(x, d.ex)
+    x = d.ex.relax_cache.ic.v.x
     _set_has_value!(d, true)
     _set_last_reverse!(d, false)
     return

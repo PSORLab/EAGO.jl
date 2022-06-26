@@ -15,10 +15,10 @@
 
     EAGO.node_selection!(x)
     @test isapprox(x._current_node.lower_variable_bounds[1], 1.0; atol = 1E-4)
-    @test isapprox(x._current_node.upper_variable_bounds[1], 1.45; atol = 1E-2)
+    @test isapprox(x._current_node.upper_variable_bounds[1], 1.475; atol = 1E-2)
 
     EAGO.node_selection!(x)
-    @test isapprox(x._current_node.lower_variable_bounds[1], 1.45; atol = 1E-2)
+    @test isapprox(x._current_node.lower_variable_bounds[1], 1.475; atol = 1E-2)
     @test isapprox(x._current_node.upper_variable_bounds[1], 2.0; atol = 1E-4)
 
     x._global_upper_bound = -4.5
