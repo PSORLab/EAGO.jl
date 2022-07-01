@@ -507,5 +507,10 @@ function parse_classify_problem!(m::GlobalOptimizer)
     else
         m._working_problem._problem_type = MINCVX()
     end
+
+    if m._parameters.force_global_solve
+        m._working_problem._problem_type = MINCVX()
+    end
+
     return
 end

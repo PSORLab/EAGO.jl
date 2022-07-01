@@ -199,7 +199,7 @@ Base.@kwdef mutable struct EAGOParameters
     and with a probabilityof (1/2)^(depth-upper_bounding_depth) otherwise (default = 8)"
     upper_bounding_depth::Int = 8
 
-    # handling for domain violations
+    # Handling for domain violations
     "Amount about a domain violation to ignore when propagating bounds."
     domain_violation_guard_on::Bool = false
     "Amount about a domain violation to ignore when propagating bounds."
@@ -212,6 +212,10 @@ Base.@kwdef mutable struct EAGOParameters
     integer_abs_tol::Float64 = 1E-9
     "Relative tolerance used to check for integrality of decision variables"
     integer_rel_tol::Float64 = 1E-9
+
+    # Other forcing options
+    "Ignore EAGO's ability to parse problem types and force it to run global optimization"
+    force_global_solve::Bool = false
 end
 const EAGO_PARAMETERS = fieldnames(EAGOParameters)
 
