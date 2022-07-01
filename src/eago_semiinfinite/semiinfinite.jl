@@ -25,7 +25,7 @@ constraint(s).
 """
 function sip_solve(alg::T, x_l::Vector{Float64}, x_u::Vector{Float64},
                    p_l::Vector{Float64}, p_u::Vector{Float64},
-                   f::Function, gSIP::Vector{Any}; d = DefaultExt(), kwargs...) where {T <: AbstractSIPAlgo}
+                   f::Function, gSIP::Vector; d = DefaultExt(), kwargs...) where {T <: AbstractSIPAlgo}
 
     @assert length(p_l) == length(p_u)
     @assert length(x_l) == length(x_u)
