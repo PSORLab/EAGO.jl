@@ -113,7 +113,7 @@ function select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
     s = _lower_solution(BranchVar(), m, i)
     α = _branch_cvx_α(m)
     b = _branch_offset_β(m)*(u - l)
-    return max(l + b, min(u - b, α*s + (one(Float64) - α)*_mid(BranchVar(), m, i)))
+    return max(l + b, min(u - b, α*_mid(BranchVar(), m, i) + (one(Float64) - α)*s))
 end
 
 """
