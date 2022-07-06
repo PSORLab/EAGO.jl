@@ -493,7 +493,8 @@ Base.@kwdef mutable struct GlobalOptimizer{R,Q,S<:ExtensionType} <: MOI.Abstract
     _parameters::EAGOParameters = EAGOParameters()
     _input_problem::InputProblem = InputProblem()
     _working_problem::ParsedProblem = ParsedProblem()
-    _auxillary_variable_info::Union{Nothing,_AuxVarData} = nothing
+    "Information on any auxiliary variables"
+    _auxiliary_variable_info::Union{Nothing,_AuxVarData} = nothing
 
     obbt_variable_values::Vector{Bool} = Bool[]
 

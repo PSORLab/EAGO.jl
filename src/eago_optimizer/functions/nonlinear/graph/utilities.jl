@@ -24,7 +24,7 @@ function Node(aux_info, d::JuMP._Derivatives.NodeData, child_vec, c::UnitRange{I
     (nt == JuMP._Derivatives.VALUE)         && return Node(Constant(), i)
     (nt == JuMP._Derivatives.PARAMETER)     && return Node(Parameter(), i)
     (nt == JuMP._Derivatives.SUBEXPRESSION) && return Node(Subexpression(), i)
-    (nt == JuMP._Derivatives.VARIABLE)      && return !is_auxilliary_variable(aux_info, i) ? Node(Variable(), i) : Node(Select(), i)
+    (nt == JuMP._Derivatives.VARIABLE)      && return !is_auxiliary_variable(aux_info, i) ? Node(Variable(), i) : Node(Select(), i)
     (nt == JuMP._Derivatives.LOGIC)         && error("Unable to load JuMP expression. Logical operators not currently supported.")
     (nt == JuMP._Derivatives.COMPARISON)    && error("Unable to load JuMP expression. Comparisons not currently supported.")
     error("Node type = $nt not expected from JuMP.")
