@@ -130,7 +130,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     if length(evaluator.model.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
         for i = 1:length(evaluator.subexpressions)
             subexpr = evaluator.subexpressions[i]
-            nlexpr = NonlinearExpression!(m._auxillary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
+            nlexpr = NonlinearExpression!(m._auxiliary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
                                           dict_sparsity, i, evaluator.subexpression_linearity, 
                                           user_operator_registry, evaluator.model.nlp_data.nlparamvalues,
                                           m._parameters.relax_tag, ruse_apriori; is_sub = true)
@@ -147,7 +147,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     # add nonlinear objective
     if evaluator.has_nlobj
-        m._working_problem._objective = BufferedNonlinearFunction(m._auxillary_variable_info, rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
+        m._working_problem._objective = BufferedNonlinearFunction(m._auxiliary_variable_info, rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.subexpression_linearity,
                                                                  user_operator_registry,
                                                                  evaluator.model.nlp_data.nlparamvalues,
@@ -159,7 +159,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     for i = 1:length(evaluator.constraints)
         constraint = evaluator.constraints[i]
         bnds = constraint_bounds[i]
-        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(m._auxillary_variable_info, rtype, constraint, bnds, dict_sparsity,
+        push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(m._auxiliary_variable_info, rtype, constraint, bnds, dict_sparsity,
                                                                               evaluator.subexpression_linearity,
                                                                               user_operator_registry,
                                                                               evaluator.model.nlp_data.nlparamvalues,
