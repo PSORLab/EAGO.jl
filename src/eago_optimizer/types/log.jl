@@ -10,10 +10,10 @@
 #############################################################################
 
 """
-$(TYPEDEF)
+    $(TYPEDEF)
 
 A structure used to store information on the history of the solution procedure
-for generating convergence plots and other analysis.
+for generating convergence plots and other analyses.
 
 $(TYPEDFIELDS)
 """

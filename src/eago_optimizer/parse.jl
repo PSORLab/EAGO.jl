@@ -13,7 +13,7 @@
 """
     add_objective!
 
-Adds objective function (if any) to the parsed problem.
+Add objective function (if any) to the parsed problem.
 """
 add_objective!(m::ParsedProblem, f) = nothing
 add_objective!(m::ParsedProblem, f::VI) = (m._objective = f; nothing)
@@ -23,7 +23,7 @@ add_objective!(m::ParsedProblem, f::SQF) = (m._objective = BufferedQuadraticIneq
 """
     add_nonlinear_evaluator!
 
-    Adds a Evaluator structure if nonlinear terms are attached.
+Add an Evaluator structure if nonlinear terms are attached.
 """
 add_nonlinear_evaluator!(m::GlobalOptimizer, evaluator::Nothing) = nothing
 function add_nonlinear_evaluator!(m::GlobalOptimizer, d::JuMP.NLPEvaluator)
@@ -174,7 +174,7 @@ add_nonlinear!(m::GlobalOptimizer, nldata) = add_nonlinear!(m, nldata.evaluator)
 """
 $(TYPEDSIGNATURES)
 
-Adds a Evaluator, nonlinear functions, and populates each appropriately.
+Add an Evaluator and nonlinear functions and populate each appropriately.
 """
 add_nonlinear!(m::GlobalOptimizer) = add_nonlinear!(m, m._input_problem._nlp_data)
 
@@ -298,7 +298,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Performs an epigraph reformulation assuming the working_problem is a minimization problem.
+Perform an epigraph reformulation assuming the working_problem is a minimization problem.
 """
 function reform_epigraph_min!(m::GlobalOptimizer)
     ip = m._input_problem
@@ -316,15 +316,15 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Detects any variables set to a fixed value by equality or inequality constraints
-and populates the `_fixed_variable` storage array.
+Detect any variables set to a fixed value by equality or inequality constraints
+and populate the `_fixed_variable` storage array.
 """
 label_fixed_variables!(m::GlobalOptimizer) = map!(x -> check_set_is_fixed(x), m._fixed_variable, m._working_problem._variable_info)
 
 """
 $(TYPEDSIGNATURES)
 
-Detects any variables participating in nonconvex terms and populates the
+Detect any variables participating in nonconvex terms and populate the
 `_branch_variables` storage array.
 """
 function label_branch_variables!(m::GlobalOptimizer)
@@ -395,7 +395,11 @@ function label_branch_variables!(m::GlobalOptimizer)
     return
 end
 
+"""
+    variable_load_parse!
 
+Parse constraint information of a given constraint type to fill in related variable information.
+"""
 function variable_load_parse!(m::Optimizer, ::Type{VI}, ::Type{T}) where T
     wp = m._global_optimizer._working_problem = m._working_problem
     for (i, v) in enumerate(values(_constraints(m, VI, T)))
@@ -407,18 +411,21 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Translates input problem to working problem. Checks and optional manipulation is left to the presolve stage.
+Translate the input problem to the working problem. Any checks or optional
+manipulation are left to the presolve stage.
 """
 function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
 
-    # reset initial time and solution statistics
+    # Copy time information to the global optimizer
     m._global_optimizer._time_left = m._parameters.time_limit
 
+    # Copy input and working problem info to the global optimizer
     ip = m._global_optimizer._input_problem = m._input_problem
     wp = m._global_optimizer._working_problem = m._working_problem
     m._global_optimizer._parameters = m._parameters
 
-    # add variables to working model
+    # Parse different constraint types to add information to variables in
+    # the working problem
     wp._variable_info = VariableInfo{Float64}[VariableInfo{Float64}() for i=1:ip._variable_count]
     variable_load_parse!(m, VI, LT)
     variable_load_parse!(m, VI, GT)
@@ -427,6 +434,7 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
     variable_load_parse!(m, VI, MOI.Integer)
     wp._variable_count = ip._variable_count
 
+    # Copy all constraint dictionaries from the input problem to the working problem
     for (f, s) in values(ip._linear_leq_constraints)
         push!(wp._saf_leq, AffineFunctionIneq(f, s))
     end
@@ -447,68 +455,84 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
         push!(wp._sqf_eq, BufferedQuadraticEq(f, s))
     end
 
-    add_objective!(wp, ip._objective)    # set objective function
-    add_nonlinear!(m._global_optimizer)  # add nonlinear constraints, evaluator, subexpressions
+    # Copy the input problem objective to the working problem
+    add_objective!(wp, ip._objective)
 
-    # converts a maximum problem to a minimum problem (internally) if necessary
-    # this is placed after adding nonlinear functions as this prior routine
-    # copies the nlp_block from the input_problem to the working problem
+    # Add an evaluator, nonlinear constraints, and subexpressions
+    add_nonlinear!(m._global_optimizer)
+
+    # Convert maximum problem to a minimum problem (internally) if necessary.
+    # This is done after adding nonlinear functions as `add_nonlinear!` copies
+    # the nlp_block from the input problem to the working problem
     reform_epigraph_min!(m._global_optimizer)
+
+    # Identify any fixed variables and variables to branch on
     label_fixed_variables!(m._global_optimizer)
     label_branch_variables!(m._global_optimizer)
 
     link_subexpression_dicts!(m._global_optimizer)
 
-    # updates run and parse times
+    # Update run and parse times
     new_time = time() - m._global_optimizer._start_time
-    m._global_optimizer._parse_time = new_time
     m._global_optimizer._run_time = new_time
+    m._global_optimizer._parse_time = new_time
     return
 end
 
 """
-Classifies the problem type
+    parse_classify_problem!(m::GlobalOptimizer)
+
+Interprets the type/number of constraints and the type of objective function
+to infer a problem type. Current possible types include:
+
+- `LP`: Linear program; sent to `optimize_lp.jl`
+- 'MILP`: Mixed integer linear program; sent to `optimize_lp.jl`
+- `SOCP`: Second-order cone program; sent to `optimize_conic.jl`
+- `MINCVX`: Mixed-integer nonconvex; sent to `optimize_nonconvex.jl`
+
+If the `force_global_solve` parameter is set to `true`, `parse_classify_problem!`
+will set the problem type to `MINCVX` to pass the problem to `optimize_nonconvex.jl`.
 """
 function parse_classify_problem!(m::GlobalOptimizer)
 
-    ip = m._input_problem
+    if !m._parameters.force_global_solve
+        ip = m._input_problem
 
-    nl_expr_num = 0
-    if isnothing(ip._objective) && !isnothing(ip._nlp_data)
-        if ip._nlp_data.has_objective
-            nl_expr_num += 1
-            has_objective = true
-        else
+        nl_expr_num = 0
+        if isnothing(ip._objective) && !isnothing(ip._nlp_data)
+            if ip._nlp_data.has_objective
+                nl_expr_num += 1
+                has_objective = true
+            else
+                has_objective = false
+            end
+        elseif isnothing(ip._objective) && isnothing(ip._nlp_data)
             has_objective = false
         end
-    elseif isnothing(ip._objective) && isnothing(ip._nlp_data)
-        has_objective = false
-    end
-    nl_expr_num += length(m._working_problem._nonlinear_constr)
-    cone_constr_num = length(ip._conic_second_order)
-    quad_constr_num = length(ip._quadratic_leq_constraints) +
-                      length(ip._quadratic_geq_constraints) +
-                      length(ip._quadratic_eq_constraints)
+        nl_expr_num += length(m._working_problem._nonlinear_constr)
+        cone_constr_num = length(ip._conic_second_order)
+        quad_constr_num = length(ip._quadratic_leq_constraints) +
+                        length(ip._quadratic_geq_constraints) +
+                        length(ip._quadratic_eq_constraints)
 
-    if !isnothing(ip._objective)
-        has_objective = true
-    end
-    has_int_var = !iszero(length(ip._vi_zo_constraints) + length(ip._vi_int_constraints))
+        if !isnothing(ip._objective)
+            has_objective = true
+        end
+        has_int_var = !iszero(length(ip._vi_zo_constraints) + length(ip._vi_int_constraints))
 
-    lin_or_sv_obj = (ip._objective isa VI || ip._objective isa SAF || !has_objective)
-    relaxed_supports_soc = false
+        lin_or_sv_obj = (ip._objective isa VI || ip._objective isa SAF || !has_objective)
+        relaxed_supports_soc = false
 
-    if (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var
-        m._working_problem._problem_type = LP()
-    elseif (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj
-        m._working_problem._problem_type = MILP()
-    elseif (quad_constr_num == 0) && relaxed_supports_soc && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var
-        m._working_problem._problem_type = SOCP()
+        if (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var
+            m._working_problem._problem_type = LP()
+        elseif (cone_constr_num == 0) && (quad_constr_num == 0) && (nl_expr_num == 0) && lin_or_sv_obj
+            m._working_problem._problem_type = MILP()
+        elseif (quad_constr_num == 0) && relaxed_supports_soc && (nl_expr_num == 0) && lin_or_sv_obj && !has_int_var
+            m._working_problem._problem_type = SOCP()
+        else
+            m._working_problem._problem_type = MINCVX()
+        end
     else
-        m._working_problem._problem_type = MINCVX()
-    end
-
-    if m._parameters.force_global_solve
         m._working_problem._problem_type = MINCVX()
     end
 

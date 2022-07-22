@@ -14,8 +14,9 @@
 """
 $(FUNCTIONNAME)
 
-Prints solution information for the B&B problem. Displays first node found, solution value,
-solution, and time spent solving subproblems.
+Print solution information for the B&B problem. Display node with the best solution,
+solution value, solution, and time spent solving subproblems. This print occurs
+following termination of the B&B algorithm.
 """
 function print_solution!(m::GlobalOptimizer)
     if _verbosity(m) > 0
@@ -35,7 +36,7 @@ function print_solution!(m::GlobalOptimizer)
         elseif m._end_state == GS_TIME_LIMIT
             println("Time Limit Exceeded")
         end
-        println("First Solution Found at Node $(m._first_solution_node)")
+        println("First Solution Found at Node $(m._first_solution_node)") #TODO: Why is this "first solution"?
         if !_is_input_min(m)
             println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
             println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
@@ -57,7 +58,8 @@ end
 """
 $(FUNCTIONNAME)
 
-Prints node information for the B&B problem. Node id, bound, and interval box.
+Print information about the current node. Includes node ID, lower bound,
+and interval box.
 """
 function print_node!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
@@ -76,21 +78,22 @@ end
 """
 $(FUNCTIONNAME)
 
-Prints the iteration information based on verbosity. The header is displayed
-every `header_interval`, the iteration info is displayed every `iteration_interval`.
+Print status information based on iteration count. The header print frequency is
+based on the `header_iterations` setting, and the data print frequency is based on
+the `output_iterations` setting.
 """
 function print_iteration!(m::GlobalOptimizer)
 
     if _verbosity(m) > 0
 
-        # prints header line every B.hdr_intv times
+        # Print header line every `header_iterations` times
         if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
             println("-----------------------------------------------------------------------------------------------------------------------------")
             println("|  Iteration #  |     Nodes    | Lower Bound  |  Upper Bound  |      Gap     |     Ratio    |     Time     |    Time Left   |")
             println("-----------------------------------------------------------------------------------------------------------------------------")
         end
 
-        # prints iteration summary every B.itr_intv times
+        # Print iteration summary every `output_iterations` times
         if mod(m._iteration_count, m._parameters.output_iterations) === 0
 
             print_str = "| "
@@ -110,7 +113,7 @@ function print_iteration!(m::GlobalOptimizer)
                 lower = m._global_lower_bound
                 upper = m._global_upper_bound
             else
-                lower = m._global_lower_bound
+                lower = m._global_lower_bound #TODO: Shouldn't these be negated?
                 upper = m._global_upper_bound
             end
             #temp_str = string(round(lower, sigdigits = 5))
@@ -157,15 +160,17 @@ function print_iteration!(m::GlobalOptimizer)
 end
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
-Prints the results of a single bounding problem.
+Print the results of a single (lower or upper) bounding problem. `lower_flag=true`
+prints information for the lower problem, `lower_flag=false` prints information for
+the upper problem.
 """
-function print_results!(m::GlobalOptimizer, flag::Bool)
+function print_results!(m::GlobalOptimizer, lower_flag::Bool)
     if _verbosity(m) > 1
         k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
-        if flag
+        if lower_flag
             if _is_input_min(m)
                 print("Lower Bound (First Iteration): $(m._lower_objective_value),")
             else
@@ -191,16 +196,17 @@ end
 """
 $(FUNCTIONNAME)
 
-Prints the iteration information based on verbosity. The header is displayed
-every `header_interval`, the iteration info is displayed every `iteration_interval`.
+Print noteworthy information prior to running branch-and-bound. Currently prints
+a note about flipping `max(f)` to `-min(-f)` internally, if a maximization problem
+is inputted and `verbosity>=3`.
 """
 function print_preamble!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
         if !_is_input_min(m) && isone(m._iteration_count)
             println(" ")
             println("For maximization problems a max(f) = -min(-f) transformation is applied.")
-            println("Objectives values for each subproblem are the negative value of the objective")
-            println("in the original problem and reconciled after branch and bound terminates.")
+            println("Objective values for each subproblem are the negative value of the objective")
+            println("in the original problem and are reconciled after branch-and-bound terminates.")
             println(" ")
         end
     end

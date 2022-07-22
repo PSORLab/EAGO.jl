@@ -14,7 +14,7 @@
 """
 $(FUNCTIONNAME)
 
-Adds linear objective cut constraint to the `x.relaxed_optimizer`.
+Add linear objective cut constraint to the `m._subsolvers.relaxed_optimizer`.
 """
 function objective_cut!(m::GlobalOptimizer, check_safe::Bool)
     f = m._working_problem._objective_saf
@@ -44,11 +44,13 @@ solution of a relaxed problem.
 """
 $(SIGNATURES)
 
-Takes an `MOI.TerminationStatusCode` and a `MOI.ResultStatusCode` and returns
-the tuple `(valid_result::Bool, feasible::Bool)`. The value `valid_result` is
-`true` if the pair of codes prove that either the subproblem solution was solved
-to global optimality or the subproblem solution is infeasible. The value of
-`feasible` is true if the problem is feasible and false if the problem is infeasible.
+Take an `MOI.TerminationStatusCode` and two `MOI.ResultStatusCode`s (one each for
+the primal and dual status) and return a `RelaxResultStatus`. Returns `RRS_OPTIMAL`
+if the codes prove that the subproblem solution was solved to global optimality.
+Returns `RRS_INFEASIBLE` if the codes prove that the subproblem solution is
+infeasible. Returns `RRS_DUAL_FEASIBLE` if subproblem solution is not optimal
+and not proven infeasible, but the dual status is `MOI.FEASIBLE_POINT`. Returns
+`RRS_INVALID` otherwise.
 """
 function relaxed_problem_status(t::MOI.TerminationStatusCode,
                                 p::MOI.ResultStatusCode,
@@ -71,7 +73,7 @@ end
 """
 $(SIGNATURES)
 
-Updates the relaxed constraint by setting the constraint set of `v == x*`` ,
+Update the relaxed constraint by setting the constraint set of `v == x*` ,
 `xL_i <= x_i`, and `x_i <= xU_i` for each such constraint added to the relaxed
 optimizer. Resets integral valued constraints to either `EqualTo` or `Interval` 
 constraints.
@@ -142,7 +144,7 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
 end
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
 """
 function set_first_relax_point!(m::GlobalOptimizer)

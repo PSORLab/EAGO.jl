@@ -170,6 +170,13 @@ function copy_subexpr!(rc::RelaxCache{V,N,T}, ds, dn, din, di) where {V,N,T<:Rel
     return 
 end
 
+"""
+    mc_type(::RelaxCache{V, N, T} where {V, N, T<:RelaxTag}
+    mc_type(::NonlinearExpression{V, N, T} where {V, N, T<:RelaxTag}
+    mc_type(::BufferedNonlinearFunction{V, N, T} where {V, N, T<:RelaxTag}
+
+Returns a McCormick structure of type `MC{N, T<:RelaxTag}`.
+"""
 mc_type(rc::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
 
 ###

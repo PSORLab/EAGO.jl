@@ -12,29 +12,54 @@
 include(joinpath(@__DIR__, "nonlinear","auxiliary_variables.jl"))
 
 """
-$(TYPEDEF)
+    $(TYPEDEF)
 
 An abstract super-type used for representing constraints built by EAGO's backend.
+
 """
 abstract type AbstractEAGOConstraint end
 
 """
+    lower_interval_bound(::GlobalOptimizer, ::T)
 
-Computes the lower interval bound for `AbstractEAGOConstraint` representing an
+Compute the lower interval bound for an `AbstractEAGOConstraint` representing an
 inequality constraint.
+
+# Options for T (all are subtypes of AbstractEAGOConstraint):
+- AffineFunctionIneq
+- BufferedQuadraticIneq
+- BufferedSOC
+- BufferedNonlinearFunction{V,N,T} where {V,N,T}
 """
 function lower_interval_bound end
 
 """
+    interval_bound(::GlobalOptimizer, ::T)
 
-Computes a tuple representing the lower and upper interval bounds for a
+Compute a tuple representing the lower and upper interval bounds for an
 `AbstractEAGOConstraint` representing an equality constraint.
+
+# Options for T (all are subtypes of AbstractEAGOConstraint):
+- AffineFunctionEq
+- AffineFunctionIneq
+- BufferedQuadraticEq
+- BufferedQuadraticIneq
+- BufferedNonlinearFunction{V,N,T} where {V,N,T}
+
 """
 function interval_bound end
 
 """
+    eliminate_fixed_variables!(::T, ::Vector{VariableInfo})
 
-Eliminate fixed variables by rearrangment or restructuring of `AbstractEAGOConstraint`.
+Eliminate fixed variables by rearrangment or restructuring of the `AbstractEAGOConstraint`.
+
+# Options for T (all are subtypes of AbstractEAGOConstraint):
+- AffineFunctionEq
+- AffineFunctionIneq
+- BufferedQuadraticIneq
+- BufferedNonlinearFunction{N,T} where {N, T<:RelaxTag}
+- NonlinearExpression{V,N,T} where {V, N, T<:RelaxTag}
 """
 function eliminate_fixed_variables! end
 
@@ -48,8 +73,10 @@ function eliminate_fixed_variables! end
 """
 $(TYPEDEF)
 
-Current only used for bound tightening. Stores a representation
-of an affine inequality.
+Representation of an affine inequality. Currently only used for
+bound tightening.
+
+$(TYPEDFIELDS)
 """
 mutable struct AffineFunctionIneq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
@@ -78,8 +105,10 @@ end
 """
 $(TYPEDEF)
 
-Current only used for bound tightening. Stores a representation
-of an affine equality.
+Representation of an affine equality. Currently only used for
+bound tightening.
+
+$(TYPEDFIELDS)
 """
 mutable struct AffineFunctionEq <: AbstractEAGOConstraint
     terms::Vector{Tuple{Float64,Int}}
@@ -127,20 +156,9 @@ end
 """
 $(TYPEDEF)
 
-Stores a general quadratic inequality constraint with a buffer.
-"""
-mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
-    func::SQF
-    buffer::Dict{Int, Float64}
-    saf::SAF
-    len::Int
-end
-const BQI = BufferedQuadraticIneq
+Representation of a general quadratic equality constraint with a buffer.
 
-"""
-$(TYPEDEF)
-
-Stores a general quadratic equality constraint with a buffer.
+$(TYPEDFIELDS)
 """
 mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
     func::SQF
@@ -151,6 +169,21 @@ mutable struct BufferedQuadraticEq <: AbstractEAGOConstraint
 end
 const BQE = BufferedQuadraticEq
 
+"""
+$(TYPEDEF)
+
+Representation of a general quadratic inequality constraint with a buffer.
+
+$(TYPEDFIELDS)
+"""
+mutable struct BufferedQuadraticIneq <: AbstractEAGOConstraint
+    func::SQF
+    buffer::Dict{Int, Float64}
+    saf::SAF
+    len::Int
+end
+const BQI = BufferedQuadraticIneq
+
 #=
 mutable struct BufferedConvexQuadratic <: AbstractEAGOConstraint
     func::SQF
@@ -160,6 +193,11 @@ mutable struct BufferedConvexQuadratic <: AbstractEAGOConstraint
 end
 =#
 
+"""
+$(TYPEDSIGNATURES)
+
+Create a buffer dictionary from a ScalarQuadraticFunction.
+"""
 function create_buffer_dict(func::SQF)
 
     buffer = Dict{Int, Float64}()
@@ -252,7 +290,7 @@ end
 """
 $(TYPEDEF)
 
-Stores a second-order cone with a buffer.
+Representation of a second-order cone with a buffer.
 """
 mutable struct BufferedSOC <: AbstractEAGOConstraint
     variables::VECOFVAR

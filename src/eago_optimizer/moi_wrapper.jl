@@ -106,7 +106,7 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     flag &= m._termination_status_code == MOI.OPTIMIZE_NOT_CALLED
     flag &= m._result_status_code == MOI.OTHER_RESULT_STATUS
 
-    # set constructor reset on empty! and  to zero in initial parse! in parse.jl
+    # set constructor reset on empty! and to zero in initial_parse! in parse.jl
     flag &= iszero(m._run_time)
     flag &= iszero(m._iteration_count)
     flag &= iszero(m._node_count)

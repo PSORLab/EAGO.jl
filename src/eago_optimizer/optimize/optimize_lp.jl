@@ -1,14 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, & Matthew Stuber.
 # This code is licensed under MIT license (see LICENSE.md for full details)
 #############################################################################
 # EAGO
 # A development environment for robust and global optimization
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
-# src/eeago_optimizer/optimize/optimize_lp_cone.jl
-# Contains the optimize! routines for LP, SOCP, (and in the future MILP and
-# MISOCP) type problems. This also includes functions to add variables,
-# linear constraints, soc constraints, and unpack solutions.
+# src/eago_optimizer/optimize/optimize_lp.jl
+# Contains the optimize! routines for LP and MILP type problems. This also
+# includes functions to add variables, linear constraints, soc constraints, 
+# and unpack solutions.
 #############################################################################
 
 function add_variables(m::GlobalOptimizer, d)

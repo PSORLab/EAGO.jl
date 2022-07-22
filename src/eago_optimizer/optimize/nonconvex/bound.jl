@@ -163,6 +163,18 @@ function interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T})
     return v.lo, v.hi
 end
 
+"""
+    is_feasible(::GlobalOptimizer, ::T)
+
+Check if a given bound is feasible.
+
+# Options for T (all are subtypes of AbstractEAGOConstraint):
+- AffineFunctionIneq
+- AffineFunctionEq
+- BufferedQuadraticIneq
+- BufferedQuadraticEq
+- BufferedNonlinearFunction{V,N,T}
+"""
 is_feasible(m::GlobalOptimizer, f::Union{AFI,BQI}) = lower_interval_bound(m, f) <= 0.0
 function is_feasible(m::GlobalOptimizer, f::Union{AFE,BQE})
     l, u = interval_bound(m, f)
@@ -174,6 +186,20 @@ function is_feasible(m::GlobalOptimizer, f::BufferedNonlinearFunction{V,N,T}) wh
     feasible_flag && (l <= upper_bound(f))
 end
 
+"""
+    bound_objective(::GlobalOptimizer, ::T)
+    bound_objective(::ExtensionType, ::GlobalOptimizer)
+
+Compute a tuple representing the lower and upper bounds for an objective function.
+Note: `bound_objective(::GlobalOptimizer)` dispatches to 
+`bound_objective(::ExtensionType, ::GlobalOptimizer)`.
+
+# Options for T:
+- AffineFunctionIneq
+- BufferedNonlinearFunction
+- BufferedQuadraticIneq
+- MOI.VariableIndex
+"""
 bound_objective(m::GlobalOptimizer, f::BufferedNonlinearFunction) = interval_bound(m, f)
 bound_objective(m::GlobalOptimizer, f::AffineFunctionIneq) = interval_bound(m, f)
 bound_objective(m::GlobalOptimizer, f::BufferedQuadraticIneq) = interval_bound(m, f)

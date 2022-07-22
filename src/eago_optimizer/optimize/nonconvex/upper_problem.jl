@@ -6,14 +6,14 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/optimize/nonconvex.jl
-# Functions which determine when the upper bounding (local nlp) problem should
+# Functions which determine when the upper bounding (local NLP) problem should
 # be solved as well as routines used to call the upper bounding problem.
 #############################################################################
 
 """
 $(TYPEDSIGNATURES)
 
-Checks thats the solution of the lower (relaxed problem) is integer feasible to
+Check that the solution of the lower (relaxed problem) is integer feasible to
 within tolerances specified by the parameters: `integer_abs_tol` (absolute tolerance)
 and `integer_rel_tol` (relative tolerance).
 """
@@ -44,8 +44,8 @@ Default check to see if the upper bounding problem should be run. By default,
 The upper bounding problem is run on every node up to depth `upper_bounding_depth`
 and is triggered with a probability of `0.5^(depth - upper_bounding_depth)`
 afterwards for continuous problems. For integral problems, the `upper_bounding_depth`
-the above approach is used as well as running on every node up to depth 
-`upper_bounding_depth + cont_depth` and is triggered with a probability of 
+approach is used as well as running on every node up to depth 
+`upper_bounding_depth + cont_depth` with another trigger of probability
 `0.5^(depth - upper_bounding_depth - cont_depth)`.
 """
 function default_upper_heurestic(m::GlobalOptimizer)
@@ -66,11 +66,11 @@ end
 $(TYPEDSIGNATURES)
 
 Default upper bounding problem which simply calls `solve_local_nlp!` to solve
-the nlp locally.
+the NLP locally.
 """
 function upper_problem!(t::ExtensionType, m::GlobalOptimizer)
     if !default_upper_heurestic(m)
-        m._upper_feasibility = false
+        m._upper_feasibility = false # Ensures that global upper bound not updated
         m._upper_objective_value = Inf
     else
         solve_local_nlp!(m)

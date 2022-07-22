@@ -6,8 +6,8 @@
 # See https://github.com/PSORLab/EAGO.jl
 #############################################################################
 # src/eago_optimizer/types/incremental.jl
-# A type-stable wrapper with for optimizers used by EAGO to enable bridging and
-# incremental loading. This is taylored to the internal routines used by EAGO.jl
+# A type-stable wrapper for optimizers used by EAGO to enable bridging and
+# incremental loading. This is tailored to the internal routines used by EAGO.jl
 # so methods may be specialized by optimizer types and error checking is often
 # avoided.
 #############################################################################
@@ -18,12 +18,14 @@ end
 =#
 
 """
-    Incremental{Q,S}
+    $(TYPEDEF)
 
 A type-stable cache used to wrapper for an optimizer that enables incremental
 modification of solvers that don't inherently suppport this. Explicitly checks
-support of MOI functionality used in EAGO. For `Q = Val{true}`, the subsolver
-supports incremental loading. For `Q = Val{false}`, the subsolver does not.
+support of MOI functionality used in EAGO. 
+
+(Deprecated) For `Q = Val{true}`, the subsolver supports incremental loading. 
+For `Q = Val{false}`, the subsolver does not.
 """
 mutable struct Incremental{S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer
     optimizer::MOIB.LazyBridgeOptimizer{S}
