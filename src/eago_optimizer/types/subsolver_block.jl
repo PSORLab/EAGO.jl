@@ -7,13 +7,13 @@ extension.
 $(TYPEDFIELDS)
 """
 mutable struct SubSolvers{Q<:MOI.AbstractOptimizer, S<:MOI.AbstractOptimizer, T<:ExtensionType}
-    "Optimizer used to solve relaxed subproblems (<: `MOI.AbstractOptimizer`) 
+    "Optimizer used to solve relaxed subproblems. Set using `r = [...]` (<: `MOI.AbstractOptimizer`) 
         (default = `Cbc.Optimizer()`)"
     relaxed_optimizer::Q
-    "Optimizer used to solve upper bounding problems (<: `MOI.AbstractOptimizer`) 
+    "Optimizer used to solve upper bounding problems. Set using `u = [...]` (<: `MOI.AbstractOptimizer`) 
         (default = `Ipopt.Optimizer()`)"
     upper_optimizer::S
-    "User-defined extension to use (<: `EAGO.ExtensionType`)"
+    "User-defined extension to use. Set using `t = [...]`(<: `EAGO.ExtensionType`)"
     ext::T
 end
 SubSolvers{Q,S,T}(; r::Q = Cbc.Optimizer(), u::S = Ipopt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r, u, t)

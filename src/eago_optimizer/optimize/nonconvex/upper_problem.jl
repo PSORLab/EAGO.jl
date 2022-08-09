@@ -48,7 +48,7 @@ approach is used as well as running on every node up to depth
 `upper_bounding_depth + cont_depth` with another trigger of probability
 `0.5^(depth - upper_bounding_depth - cont_depth)`.
 """
-function default_upper_heurestic(m::GlobalOptimizer)
+function default_upper_heuristic(m::GlobalOptimizer)
     bool = false
     ubd_limit = m._parameters.upper_bounding_depth
     n = _current_node(m)
@@ -69,7 +69,7 @@ Default upper bounding problem which simply calls `solve_local_nlp!` to solve
 the NLP locally.
 """
 function upper_problem!(t::ExtensionType, m::GlobalOptimizer)
-    if !default_upper_heurestic(m)
+    if !default_upper_heuristic(m)
         m._upper_feasibility = false # Ensures that global upper bound not updated
         m._upper_objective_value = Inf
     else

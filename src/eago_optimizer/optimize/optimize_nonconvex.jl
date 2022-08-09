@@ -158,14 +158,14 @@ presolve_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = preso
 """
     termination_check(m::GlobalOptimizer)
     termination_check(t::ExtensionType, m::GlobalOptimizer) -> Bool
-=
+
 Check for termination of the branch-and-bound algorithm.
 
 If only the `GlobalOptimizer` is given as an argument, `termination_check` dispatches
-to the other form using the `ExtensionType` given in the `SubSolvers`. By default, 
-this will check for satisfaction of absolute or relative tolerances, solution infeasibility,
-and other specified limits. Returns `true` if branch-and-bound should continue and `false`
-otherwise.
+to the other form using the `ExtensionType` given in the `SubSolvers`. If there is no
+user-defined extension, then by default, this will check for satisfaction of absolute
+or relative tolerances, solution infeasibility, and other specified limits. Returns 
+`true` if any conditions are met and branch-and-bound should end, and `false` otherwise.
 """
 function termination_check(t::ExtensionType, m::GlobalOptimizer)
     nlen = length(m._stack)
