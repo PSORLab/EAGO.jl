@@ -45,7 +45,7 @@ PrettyTables = "~1"
 Reexport = "~0.2, ~1"
 Requires = "~1"
 SpecialFunctions = "~1, ~2"
-julia = "~1.6, ~1.7"
+julia = "1.6 - 1.8"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

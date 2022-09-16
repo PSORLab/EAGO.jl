@@ -333,6 +333,10 @@ function label_branch_variables!(m::GlobalOptimizer)
     m._user_branch_variables = !isempty(m._parameters.branch_variable)
     if m._user_branch_variables
         m._branch_variables = m._parameters.branch_variable
+        if length(wp._variable_info) > length(m._branch_variables) #Should only need 1
+            push!(m._parameters.branch_variable, true)
+            push!(m._branch_variables, true)
+        end
     else
         m._branch_variables = fill(false, m._working_problem._variable_count)
         for f in wp._sqf_leq, t in f.func.quadratic_terms
