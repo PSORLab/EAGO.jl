@@ -16,7 +16,7 @@ $(TYPEDSIGNATURES)
 Default postprocess perfoms duality-based bound tightening (Tawarmalani, M., 
 Sahinidis, N.V.: Global optimization of mixed-integer nonlinear programs: 
 a theoretical and computational study. Math. Progr. 99, 563–591 (2004).) up to
-an iteration limit set by (`dbbt_depth`).
+an iteration limit set by `dbbt_depth`.
 """
 function postprocess!(t::ExtensionType, m::GlobalOptimizer)
     if m._parameters.dbbt_depth > m._iteration_count
@@ -31,8 +31,8 @@ postprocess!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = postproce
 """
 $(TYPEDSIGNATURES)
 
-Checks to see if current node should be reprocessed. 
-Currently, this returns `false`` by default.
+Check to see if current node should be reprocessed. Without any custom extension,
+return `false` by default.
 """
 repeat_check(t::ExtensionType, m::GlobalOptimizer) = false
 repeat_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = repeat_check(_ext(m), m)

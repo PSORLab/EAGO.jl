@@ -1,16 +1,16 @@
-# **Types**
+# Types
 
 ```@docs
 McCormick.MC
 McCormick.RelaxTag
 ```
 
-## **Constructors for MC**
+## Constructors for MC
 ```@docs
 MC{N,T}(y::Float64)
 ```
 
-## **Internal Utilities**
+## Internal Utilities
 ```@docs
 mid3
 mid3v
@@ -24,12 +24,12 @@ McCormick.golden_section_it
 McCormick.golden_section
 ```
 
-## **(Under development) MCNoGrad**
+## (Under development) MCNoGrad
 
 A handful of applications make use of McCormick relaxations directly without the need for subgradients. We
 are currently adding support for a McCormick `struct` which omits subgradient propagation in favor of return
-a MCNoGrad object and associated derivative information. This is currently under-development and likely 
-lacking key functionality
+a MCNoGrad object and associated derivative information. This is currently under development and likely 
+lacking key functionality.
 
 ```@docs
     McCormick.MCNoGrad

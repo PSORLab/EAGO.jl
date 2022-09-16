@@ -1,3 +1,16 @@
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, & Matthew Stuber.
+# This code is licensed under MIT license (see LICENSE.md for full details)
+#############################################################################
+# EAGO
+# A development environment for robust and global optimization
+# See https://github.com/PSORLab/EAGO.jl
+#############################################################################
+# src/eago_optimizer/optimize/optimize_conic.jl
+# Contains the optimize! routine for SOCP (and in the future MISOCP) type 
+# problems. This also includes functions to add variables, linear 
+# constraints, soc constraints, and unpack solutions.
+#############################################################################
+
 ### LP and MILP routines
 function add_soc_constraints!(m::GlobalOptimizer, opt::T) where T
     for (func, set) in m._input_problem._conic_second_order
@@ -8,7 +21,7 @@ end
 
 function optimize!(::SOCP, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
-    relaxed_optimizer = m.relaxed_optimizer
+    relaxed_optimizer = m._subsolvers.relaxed_optimizer
     MOI.empty!(relaxed_optimizer)
 
     m._relaxed_variable_index = add_variables(m, relaxed_optimizer, m._input_problem._variable_count)
@@ -29,4 +42,5 @@ function optimize!(::SOCP, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     return
 end
 
-optimize!(::MISOCP, m::GlobalOptimizer) = optimize!(SOCP(), m)
+optimize!(::SOCP, m::Optimizer) = optimize!(SOCP(), m._global_optimizer)
+optimize!(::MISOCP, m::GlobalOptimizer) = optimize!(SOCP(), m._global_optimizer)

@@ -10,14 +10,16 @@
 #############################################################################
 
 """
-$(FUNCTIONNAME)
+    $(TYPEDSIGNATURES)
 
 Applies the safe cut checks detailed in Khajavirad, 2018 [Khajavirad, Aida,
 and Nikolaos V. Sahinidis. "A hybrid LP/NLP paradigm for global optimization
 relaxations." Mathematical Programming Computation 10.3 (2018): 383-421] to
-ensure that only numerically safe affine relaxations are added. Checks that
-i) ``|b| <= safe b`, ii) `safe_l <= abs(ai) <= safe u`, and iii) violates
-`safe_l <= abs(ai/aj) <= safe_u`.
+ensure that only numerically safe affine relaxations are added. Checks that:
+
+ 1) `|b| <= safe b`, 
+ 2) `safe_l <= abs(ai) <= safe u`, and 
+ 3) `safe_l <= abs(ai/aj) <= safe_u`.
 """
 function is_safe_cut!(m::GlobalOptimizer, f::SAF)
 
@@ -60,12 +62,12 @@ end
 """
 $(FUNCTIONNAME)
 
-Relaxs the constraint by adding an affine constraint to the model.
+Relax the constraint by adding an affine constraint to the model.
 """
 function relax! end
 
 """
-$(FUNCTIONNAME)
+    affine_relax_quadratic!
 
 Default routine for relaxing quadratic constraint `func < 0.0` on node `n`.
 Takes affine bounds of convex part at point `x0` and secant line bounds on

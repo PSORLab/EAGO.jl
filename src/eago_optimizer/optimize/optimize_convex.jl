@@ -1,4 +1,4 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, & Matthew Stuber.
 # This code is licensed under MIT license (see LICENSE.md for full details)
 #############################################################################
 # EAGO
@@ -8,7 +8,7 @@
 # src/eago_optimizer/optimize/optimize_convex.jl
 # Contains the solve_local_nlp! routine which computes the optimal value
 # of a convex function. This is used to compute the upper bound in the
-# branch and bound routine. A number of utility function required for
+# branch and bound routine. A number of utility functions required for
 # solve_local_nlp! are also included.
 #############################################################################
 
@@ -185,4 +185,5 @@ function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType
     _unpack_local_nlp_solve!(m, upper_optimizer)
 end
 
+optimize!(::DIFF_CVX, m::Optimizer) = solve_local_nlp!(m._global_optimizer)
 optimize!(::DIFF_CVX, m::GlobalOptimizer) = solve_local_nlp!(m)

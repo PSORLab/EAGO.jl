@@ -14,44 +14,72 @@ export Optimizer
 """
 $(TYPEDEF)
 
-The main optimizer object used by EAGO to solve problems during the optimization
-routine. The following commonly used options are described below and can be set
-via keyword arguments in the JuMP/MOI model. The raw parameter interface however
-is likely preferable. The Optimizer is organized in the following manner. Parameters
-which are expected to be constant over the entire solve are stored in
-`_parameters::EAGOParameters` field. User-facing keywords not in EAGOParameters field:
-- `relaxed_optimizer::MOI.AbstractOptimizer`: An instance of the optimizer used to solve the relaxed subproblems (default = GLPK.Optimizer())
-- `obbt_variable_values::Vector{Bool}`: Variables to perform OBBT on (default: all variables in nonlinear expressions).
-- `upper_optimizer::MOI.AbstractOptimizer`: Optimizer used to solve upper bounding problems. (default = Ipopt.Optimizer)
-- `enable_optimize_hook::Bool`: Specifies that the optimize_hook! function should be called rather than throw the problem to the standard B&B routine (default = false).
-- `ext::Dict{Symbol, Any}`: Holds additional storage needed for constructing extensions to EAGO (default = Dict{Symbol,Any}).
-- `ext_type::ExtensionType`: Holds an instance of a subtype of `EAGO.ExtensionType` used to define new custom subroutines (default = DefaultExt()).
+The highest level optimizer object used by EAGO to solve problems during the optimization
+routine. Additional options and temporary storage are located in the
+`_global_optimizer::GlobalOptimizer{Q,S,T}` field. Parameters which are expected to
+be constant over the entire solve are stored in the `_parameters::EAGOParameters` field. 
+Some user-facing keywords not in the `EAGOParameters` field include:
+- `relaxed_optimizer::MOI.AbstractOptimizer`: An instance of the optimizer used to solve 
+    the relaxed subproblems (default = `Cbc.Optimizer()`). Located in `subsolver_block::SubSolvers{Q,S,T}`.
+- `upper_optimizer::MOI.AbstractOptimizer`: Optimizer used to solve upper bounding problems 
+    (default = `Ipopt.Optimizer()`). Located in `subsolver_block::SubSolvers{Q,S,T}`.
+- `ext::ExtensionType`: Holds an instance of a subtype of `EAGO.ExtensionType`, used to define
+    new custom subroutines (default = `DefaultExt()`). Located in `subsolver_block::SubSolvers{Q,S,T}`.
+- `enable_optimize_hook::Bool`: Specifies that the user-defined `optimize_hook!` function should
+    be called rather than use the standard EAGO optimization routines. Located in `Optimizer`
+    and `_global_optimizer::GlobalOptimizer{Q,S,T}`.
+- `obbt_variable_values::Vector{Bool}`: Variables to perform OBBT on (default: all variables in nonlinear
+    expressions). Located in `_global_optimizer::GlobalOptimizer{Q,S,T}`.
+
+Descriptions of all `Optimizer` fields available in extended help.
+
+# Extended Help
+$(TYPEDFIELDS)
 """
 mutable struct Optimizer{Q,S,T} <: MOI.AbstractOptimizer
-
+    "Holds definitions of the relaxed and upper optimizers, as well as any user-defined extension types"
     subsolver_block::SubSolvers{Q,S,T}
+    "Specifies that the optimize_hook! function should be called rather than throw the
+    problem to the standard routine"
     enable_optimize_hook::Bool
+    "(Deprecated, use `subsolver_block` instead) Storage for custom extension types" 
     ext::Union{Nothing,T}
   
-    _auxillary_variable_info::Union{Nothing,_AuxVarData}
+    "Information on any auxiliary variables"
+    _auxiliary_variable_info::Union{Nothing,_AuxVarData}
+    "Additional options and temporary storage for solving optimization problems"
     _global_optimizer::GlobalOptimizer{Q,S,T}
+    "Expressions and constraints added to the EAGO model (not directly
+    used for relaxations)"
     _input_problem::InputProblem
+    "Expressions and problem descriptions that EAGO uses to formulate
+    relaxed problems"
     _working_problem::ParsedProblem
 
-    # set as user-specified option
+    # Set as user-specified option
+    "Parameters that do not change during a global solve"
     _parameters::EAGOParameters
+    "Set of optimizer attributes"
     _optimizer_attributes_set::Vector{MOI.AbstractOptimizerAttribute}
 
+    "The MathOptInterface-compliant completion status code"
     _termination_status_code::MOI.TerminationStatusCode
+    "Value indicating the feasibility status of the result"
     _result_status_code::MOI.ResultStatusCode
 
-    # set constructor reset on empty! and  to zero in initial parse! in parse.jl
+    # Set constructor reset on empty! and to zero in initial parse! in parse.jl
+    "Optimization run time"
     _run_time::Float64
 
+    "The objective value of the primal solution"
     _objective_value::Float64
+    "The best-known bound on the optimal objective value"
     _objective_bound::Float64
+    "The gap between the upper and lower bound, relative to the bound with the larger magnitude"
     _relative_gap::Float64
+    "The number of iterations the branch-and-bound algorithm has completed"
     _iteration_count::Int
+    "The number of nodes in the stack"
     _node_count::Int
 end
 function Optimizer{Q,S,T}(sb::SubSolvers{Q,S,T}) where {Q,S,T}
@@ -74,6 +102,11 @@ function Optimizer(subsolver_block::SubSolvers{Q,S,T} = SubSolvers(); kwargs...)
     return m
 end
 
+"""
+    _constraints
+
+Helper function which simplifies finding constraints of different types. See also: [`_constraint_primal`](@ref)
+"""
 _constraints(m::Optimizer, ::Type{VI}, ::Type{LT}) = m._input_problem._vi_leq_constraints
 _constraints(m::Optimizer, ::Type{VI}, ::Type{GT}) = m._input_problem._vi_geq_constraints
 _constraints(m::Optimizer, ::Type{VI}, ::Type{ET}) = m._input_problem._vi_eq_constraints

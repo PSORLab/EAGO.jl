@@ -6,7 +6,7 @@ function _not_EAGO_error!(m::JuMP.Model)
 end
 
 #=
-Reference for auxillary variables
+Reference for auxiliary variables
 =#
 struct AuxiliaryVariableRef <: JuMP.AbstractVariableRef
     idx::Int
@@ -18,31 +18,31 @@ Base.@kwdef mutable struct _AuxVarData
     #mimo_expr::Vector{MIMOExpr} = MIMOExpr[]
     last_hook::Union{Nothing,Function} = nothing
 end
-function is_auxilliary_variable(m::_AuxVarData, i::Int)
+function is_auxiliary_variable(m::_AuxVarData, i::Int)
     false
 end
-is_auxilliary_variable(::Nothing, ::Int) = false
+is_auxiliary_variable(::Nothing, ::Int) = false
 
 
 #=
 function aux_variable_optimizehook(model::JuMP.Model)
-    initialize_auxillary_variables!(model)
+    initialize_auxiliary_variables!(model)
     model.optimize_hook = model.ext[:aux_var].last_hook
     optimize!(model)
     model.optimize_hook = aux_variable_optimizehook
     return
 end
-function _initialize_auxillary_variable_data(model::Model)
+function _initialize_auxiliary_variable_data(model::Model)
     model.ext[:aux_var] = _AuxVarData()
     model.ext[:aux_var].last_hook = model.optimize_hook 
     model.optimize_hook = aux_variable_optimizehook
     return model
 end
-function enable_auxillary_variables(model::Model)
-    haskey(model.ext, :aux_var) && error("Model has auxillary variables parameter enabled")
-    return _initialize_auxillary_variable_data(model)
+function enable_auxiliary_variables(model::Model)
+    haskey(model.ext, :aux_var) && error("Model has auxiliary variables parameter enabled")
+    return _initialize_auxiliary_variable_data(model)
 end
-EAGOModel(m::JuMP.Model) = enable_auxillary_variables(m)
+EAGOModel(m::JuMP.Model) = enable_auxiliary_variables(m)
 EAGOModel() = EAGOModel(Model(EAGO.Optimizer))
 
 
@@ -55,7 +55,7 @@ function _getauxdata(model::Model)::_AuxVarData
     if auxvar !== nothing
         return auxvar
     end
-    return enable_auxillary_variables(model)
+    return enable_auxiliary_variables(model)
 end
 
 
@@ -89,7 +89,7 @@ JuMP.set_name(p::AuxiliaryVariableRef, s::String) = _getauxdata(p).names[p] = s
 
 struct AuxVar end
 
-_aux_msg(msg) = "Invalid initialization of auxillary variable. " * msg * " not supported."
+_aux_msg(msg) = "Invalid initialization of auxiliary variable. " * msg * " not supported."
 function JuMP.build_variable(_error::Function, info::JuMP.VariableInfo, ::AuxVar)
     info.has_lb    && _error(_aux_msg("Lower bound"))
     info.has_ub    && _error(_aux_msg("Upper bound"))
@@ -100,7 +100,7 @@ function JuMP.build_variable(_error::Function, info::JuMP.VariableInfo, ::AuxVar
     return AuxVar()
 end
 function JuMP.add_variable(m::JuMP.Model, v::AuxVar, name::String="")
-    vref = _add_auxillary_variable(m)
+    vref = _add_auxiliary_variable(m)
     if !isempty(name)
         JuMP.set_name(vref, name)
     end
@@ -137,13 +137,13 @@ struct MIMOExpr
 end
 
 
-function initialize_auxillary_variables!(m::JuMP.Model)
-    set_optimizer_attribute(m, "_auxillary_variable_info", m.ext[:aux_var])
+function initialize_auxiliary_variables!(m::JuMP.Model)
+    set_optimizer_attribute(m, "_auxiliary_variable_info", m.ext[:aux_var])
     return
 end
 
 function aux_variable_optimize!(m::JuMP.Model)
-    initialize_auxillary_variables!(m)
+    initialize_auxiliary_variables!(m)
     m.optimize_hook = m.ext[:aux_var].last_hook
     optimize!(m)
     m.optimize_hook = aux_variable_optimize!
@@ -167,7 +167,7 @@ end
 m = EAGOModel()
 @variable(m, -2 <= x[i=1:2] <= 2)
 "
-function add_auxillary_variable(m::JuMP.Model, x, l, u)
+function add_auxiliary_variable(m::JuMP.Model, x, l, u)
 end
 
 """

@@ -1,5 +1,5 @@
 """
-$(TYPEDEF)
+    $(TYPEDEF)
 
 A structure used to store information related to the bounds assigned to each
 variable.
@@ -9,17 +9,17 @@ $(TYPEDFIELDS)
 Base.@kwdef struct VariableInfo{T<:AbstractFloat}
     "Is the variable integer valued?"
     is_integer::Bool                                            = false
-    "Boolean indicating whether finite lower bound exists."
+    "Boolean indicating whether a finite lower bound exists."
     has_lower_bound::Bool                                       = false
-    "Boolean indicating whether finite upper bound exists."
+    "Boolean indicating whether a finite upper bound exists."
     has_upper_bound::Bool                                       = false
-    "Boolean indicating variable is fixed to a finite value."
+    "Boolean indicating if variable is fixed to a finite value."
     is_fixed::Bool                                              = false
-    "Indicates that constraints have been set"
+    "Boolean indicating that constraints have been set"
     has_constraints::Bool                                       = false
-    "Lower bounds. May be -Inf."
+    "Lower bound. May be -Inf."
     lower_bound::T                                              = typemin(T)
-    "Upper bounds. May be Inf."
+    "Upper bound. May be Inf."
     upper_bound::T                                              = typemax(T)
 end
 is_integer(x::VariableInfo) = x.is_integer
@@ -63,7 +63,13 @@ function is_zero_one(x::VariableInfo{T}) where {T <: AbstractFloat}
     return flag
 end
 
+"""
+Return the midpoint of a variable (0.5*(upper bound + lower bound)).
+"""
 mid(x::VariableInfo{T}) where {T <: AbstractFloat} = 0.5*(upper_bound(x) + lower_bound(x))
+"""
+Return the diameter of a variable (upper bound - lower bound).
+"""
 diam(x::VariableInfo{T}) where {T <: AbstractFloat} = upper_bound(x) - lower_bound(x)
 empty_variable_info(::Type{T}) where T = VariableInfo{T}(lower_bound = Inf,
                                                          upper_bound = -Inf)

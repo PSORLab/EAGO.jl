@@ -19,8 +19,8 @@ include(joinpath(@__DIR__,"nonconvex","display.jl"))
 include(joinpath(@__DIR__,"nonconvex","configure_subsolver.jl"))
 
 """
-
-Basic parsing for global solutions (no extensive manipulation)
+Basic parsing for global solutions (no extensive manipulation). By default,
+does nothing.
 """
 parse_global!(t::ExtensionType, m::GlobalOptimizer) = nothing
 parse_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}  = parse_global!(_ext(m), m)
@@ -28,8 +28,8 @@ parse_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}  = parse_g
 """
 $(TYPEDSIGNATURES)
 
-Loads variables, linear constraints, and empty storage for first nlp and
-quadratic cut.
+Load variables, linear constraints, and empty storage space for the first NLP
+and quadratic cut into the relaxed optimizer.
 """
 function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
@@ -95,6 +95,17 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
     return
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+Perform any necessary work prior to running branch-and-bound. 
+
+- Set subsolver configs using values in `EAGOParameters`;
+- Load variables, linear constraints, and empty storage space into the relaxed optimizer;
+- Prepare the stack for the start of branch-and-bound;
+- Fill fields of the `GlobalOptimizer` with zeros of the proper dimensions;
+- Pass necessary flags from the `GlobalOptimizer` to the working problem.
+"""
 function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
 
     set_default_config!(m)
@@ -104,26 +115,26 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     wp = m._working_problem
     branch_variable_count = m._branch_variable_count
 
-    m._current_xref             = fill(0.0, branch_variable_count)
-    m._candidate_xref           = fill(0.0, branch_variable_count)
-    m._current_objective_xref   = fill(0.0, branch_variable_count)
-    m._prior_objective_xref     = fill(0.0, branch_variable_count)
+    m._current_xref             = fill(0.0, branch_variable_count) #Note: Unused?
+    m._candidate_xref           = fill(0.0, branch_variable_count) #Note: Unused?
+    m._current_objective_xref   = fill(0.0, branch_variable_count) #Note: Unused?
+    m._prior_objective_xref     = fill(0.0, branch_variable_count) #Note: Unused?
     m._lower_lvd                = fill(0.0, branch_variable_count)
     m._lower_uvd                = fill(0.0, branch_variable_count)
 
-    # populate in full space until local MOI nlp solves support constraint deletion
-    # uses input model for local nlp solves... may adjust this if a convincing reason
-    # to use a reformulated upper problem presents itself
+    # Populate in full space until local MOI NLP solves support constraint deletion.
+    # Uses input model for local NLP solves... may adjust this if there's ever a 
+    # convincing reason to use a reformulated upper problem
     m._lower_solution      = zeros(Float64, wp._variable_count)
     m._continuous_solution = zeros(Float64, wp._variable_count)
     m._upper_solution      = zeros(Float64, wp._variable_count)
     m._upper_variables     = fill(VI(-1), wp._variable_count)
 
-    # add storage for fbbt
+    # Add storage for fbbt
     m._lower_fbbt_buffer   = zeros(Float64, wp._variable_count)
     m._upper_fbbt_buffer   = zeros(Float64, wp._variable_count)
 
-    # add storage for obbt ( perform obbt on all relaxed variables, potentially)
+    # Add storage for obbt (perform obbt on all relaxed variables, potentially)
     m._obbt_working_lower_index = fill(false, branch_variable_count)
     m._obbt_working_upper_index = fill(false, branch_variable_count)
     m._old_low_index            = fill(false, branch_variable_count)
@@ -134,22 +145,27 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     m._upper_indx_diff          = fill(false, branch_variable_count)
     m._obbt_variable_count      = branch_variable_count
 
-    # set subgradient refinement flag
+    # Set subgradient refinement flag
     wp._relaxed_evaluator.is_post = m._parameters.subgrad_tighten
     wp._relaxed_evaluator.subgrad_tighten = m._parameters.subgrad_tighten
     wp._relaxed_evaluator.reverse_subgrad_tighten =  m._parameters.reverse_subgrad_tighten
 
-    m._presolve_time = time() - m._parse_time
+    m._presolve_time = time() - m._parse_time #TODO check that this works as expected. Isn't time() >>> _parse_time?
     return
 end
 presolve_global!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = presolve_global!(_ext(m), m)
 
 """
-$(TYPEDSIGNATURES)
+    termination_check(m::GlobalOptimizer)
+    termination_check(t::ExtensionType, m::GlobalOptimizer) -> Bool
 
-By default, checks for termination of algorithm due to satisfaction of absolute or 
-relative tolerance, infeasibility, or a specified limit, returns `true` if the algorithm 
-should continue and `false` otherwise.
+Check for termination of the branch-and-bound algorithm.
+
+If only the `GlobalOptimizer` is given as an argument, `termination_check` dispatches
+to the other form using the `ExtensionType` given in the `SubSolvers`. If there is no
+user-defined extension, then by default, this will check for satisfaction of absolute
+or relative tolerances, solution infeasibility, and other specified limits. Returns 
+`true` if any conditions are met and branch-and-bound should end, and `false` otherwise.
 """
 function termination_check(t::ExtensionType, m::GlobalOptimizer)
     nlen = length(m._stack)
@@ -186,6 +202,11 @@ const GLOBALEND_TSTATUS = Dict{GlobalEndState, MOI.TerminationStatusCode}(
         GS_TIME_LIMIT => MOI.TIME_LIMIT
         )
 
+"""
+$(TYPEDSIGNATURES)
+
+Convert EAGO's ending status code into an `MOI.TerminationStatusCode`.
+"""
 function set_termination_status!(m::GlobalOptimizer)
     m._termination_status_code = GLOBALEND_TSTATUS[m._end_state]
     return
@@ -201,6 +222,11 @@ const GLOBALEND_PSTATUS = Dict{GlobalEndState, MOI.ResultStatusCode}(
         GS_TIME_LIMIT => MOI.UNKNOWN_RESULT_STATUS
         )
 
+"""
+$(TYPEDSIGNATURES)
+
+Convert EAGO's ending status code into an `MOI.ResultStatusCode`.
+"""
 function set_result_status!(m::GlobalOptimizer)
     m._result_status_code = GLOBALEND_PSTATUS[m._end_state]
     return
@@ -209,7 +235,9 @@ end
 """
 $(TYPEDSIGNATURES)
 
-By default, checks for convergence of algorithm with respect to absolute 
+Check for problem convergence.
+    
+By default, check if the lower and upper bounds have converged to within absolute
 and/or relative tolerances.
 """
 function convergence_check(t::ExtensionType, m::GlobalOptimizer)
@@ -231,13 +259,46 @@ end
 convergence_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = convergence_check(_ext(m), m)
 
 """
-$(SIGNATURES)
+    optimize_hook!(t::ExtensionType, m::Optimizer)
 
-Provides a hook for extensions to EAGO as opposed to standard global, local,
-or linear solvers.
+Provide a hook for extensions to EAGO. 
+
+The user-defined extension of `optimize_hook!` is used in EAGO's overloading of
+`MOI.optimize!` (see `EAGO.jl/src/eago_optimizer/optimize/optimize.jl`). Without
+the `optimize_hook!` specified, EAGO will run `initial_parse!`, `parse_classify_problem!`,
+and then `optimize!` using the parsed problem type. The user-specified `optimize_hook!` 
+should thus take the new extension and `Optimizer` as inputs and will execute when the 
+user writes `optimize!(model)`.
+
+# Example
+Here, `optimize_hook!` is used to bypass EAGO's problem parsing and
+treat every problem using its branch-and-bound routine. This is done
+in this example by telling EAGO to treat the problem as a mixed integer
+non-convex problem, which normally dispatches to branch-and-bound.
+```julia-repl
+struct MyNewExtension <: EAGO.ExtensionType end
+import EAGO: optimize_hook!
+function EAGO.optimize_hook!(t::MyNewExtension, m::Optimizer)
+    initial_parse!(m)
+    optimize!(EAGO.MINCVX(), m)
+end
+```
+
+The same functionality could be accomplished by setting the `EAGOParameter` field
+`force_global_solve` to be true.
 """
-optimize_hook!(t::ExtensionType, m::GlobalOptimizer) = nothing
+optimize_hook!(t::ExtensionType, m::Optimizer) = nothing
 
+"""
+$(TYPEDSIGNATURES)
+
+If the most recent upper problem returned a feasible result, and the upper
+objective value is less than the previous best-known global upper bound,
+set the most recent upper problem result to be the new global upper bound.
+Update the `_feasible_solution_found`, `_first_solution_node`, 
+`_global_upper_bound`, and `_continuous_solution` fields of the `GlobalOptimizer`
+accordingly.
+"""
 function store_candidate_solution!(m::GlobalOptimizer)
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
         m._feasible_solution_found = true
@@ -248,6 +309,13 @@ function store_candidate_solution!(m::GlobalOptimizer)
     return
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+If the previous best-known global lower bound is lower than the lowest
+lower bound in the stack, set the global lower bound equal to the lowest
+lower bound in the stack.
+"""
 function set_global_lower_bound!(m::GlobalOptimizer)
     if !isempty(m._stack)
         n = minimum(m._stack)
@@ -262,69 +330,138 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Solves the branch and bound problem with the input EAGO optimizer object.
+Solves the branch-and-bound problem with the input `EAGO.GlobalOptimizer` object.
+
+Pseudocode description of the algorithm, as implemented here:
+
+-I) Prepare optimizers and stack for branch-and-bound
+
+-II) While no reason to terminate the algorithm has occurred:
+
+---II.A) Fathom nodes from the stack
+
+---II.B) Select the new "current node" from the stack
+
+---II.C) Perform preprocessing on current node
+
+---II.D) If preprocessing result is feasible:
+
+-----II.D.1) Solve lower problem for current node
+
+-----II.D.2) If lower problem result is feasible and lower/upper bounds have not converged:
+
+-------II.D.2.a) Solve upper problem for current node
+
+-------II.D.2.b) Update the global upper bound if necessary
+
+-------II.D.2.c) Perform postprocessing
+
+-------II.D.2.d) If postprocessing result is feasible:
+
+---------II.D.2.d.α) Branch and add the nodes back to the stack
+
+---II.E) Update the global lower bound if necessary
+
+---II.F) Update log information
+
+-III) Set termination and result statuses
+
+-IV) Print solution
+
 """
 function global_solve!(m::GlobalOptimizer)
 
+    # Set counts to 1
     m._iteration_count = 1
     m._node_count = 1
 
+    # Prepare to run branch-and-bound
     parse_global!(m)
     presolve_global!(m)
     print_preamble!(m)
 
-    # terminates when max nodes or iteration is reach, or when node stack is empty
+    # Run branch and bound; terminate when the stack is empty or when some
+    # tolerance or limit is hit
     while !termination_check(m)
 
-        # Selects node, deletes it from stack, prints based on verbosity
+        # Fathom nodes from the stack, then pick a node and temporarily remove
+        # it from the stack
         fathom!(m)
         node_selection!(m)
         print_node!(m)
 
-        # Performs prepocessing and times
+        # Perform prepocessing and log the time
         m._last_preprocess_time += @elapsed preprocess!(m)
 
+        # Continue if the node has not been proven infeasible
         if m._preprocess_feasibility
 
-            # solves & times lower bounding problem
+            # Solve the lower bounding problem and log the time
             m._last_lower_problem_time += @elapsed lower_problem!(m)
             print_results!(m, true)
 
-            # checks for infeasibility stores solution
+            # Continue if lower problem is not infeasible and problem
+            # problem has not yet converged
             if m._lower_feasibility && !convergence_check(m)
 
-                # Solves upper problem
+                # Solve the upper bounding problem and log the time
                 m._last_upper_problem_time += @elapsed upper_problem!(m)
                 print_results!(m, false)
+
+                # Update the global upper bound if necessary
                 store_candidate_solution!(m)
 
-                # Performs post processing
+                # Perform post processing and log the time
                 m._last_postprocessing_time += @elapsed postprocess!(m)
 
-                # Checks to see if the node
+                # Continue if the node is not infeasible after postprocessing
                 if m._postprocess_feasibility
+
+                    # If the node is to be repeatedly evaluated, add it back
+                    # onto the stack. If not, branch on the node and add the
+                    # two new nodes to the stack
                     repeat_check(m) ? single_storage!(m) : branch_node!(m)
                 end
             end
         else
+            # "Disqualify" the node (TODO: Not strictly necessary, since it's
+            # not added back to the stack? This node will simply be overwritten
+            # in `node_selection!`)
             m._lower_objective_value = -Inf
             m._lower_feasibility = false
             m._upper_feasibility = false
         end
+
+        # Update the global lower bound if necessary
         set_global_lower_bound!(m)
+
+        # Adjust algorithm run times
         m._run_time = time() - m._start_time
         m._time_left = m._parameters.time_limit - m._run_time
+
+        # Log and print information as needed and update the iteration counter
         log_iteration!(m)
         print_iteration!(m)
         m._iteration_count += 1
     end
 
+    # Since the algorithm has terminated, convert EAGO's end status into
+    # MOI.TerminationStatusCode and MOI.ResultStatusCode
     set_termination_status!(m)
     set_result_status!(m)
 
+    # Print final information about the solution
     print_solution!(m)
 end
 
+"""
+$(TYPEDSIGNATURES)
+
+If global optimization was performed, much of the work happened within the
+`_global_optimizer::GlobalOptimizer`. The `unpack_global_solution!` function
+extracts results from the `GlobalOptimizer` and puts them in the correct fields
+of the `Optimizer`.
+"""
 function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     g = m._global_optimizer
     
@@ -338,7 +475,7 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     # local solvers that solve to feasibility may result in a slightly lower than true solve...
     # TODO
     
-    # stores objective value and bound 
+    # Store objective value and objective bound 
     if _is_input_min(g)
         m._objective_bound = g._global_lower_bound
         m._objective_value = g._global_upper_bound

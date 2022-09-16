@@ -18,9 +18,9 @@ Base.Broadcast.broadcastable(d::FullVar) = Ref(d)
 Base.Broadcast.broadcastable(d::BranchVar) = Ref(d)
 
 """
-$(TYPEDEF)
+    $(TYPEDEF)
 
-Stores information associated with each node in Branch & Bound tree.
+Store information associated with each node in the branch-and-bound tree.
 
 $(TYPEDFIELDS)
 """
@@ -31,7 +31,7 @@ struct NodeBB
     upper_variable_bounds::Vector{Float64}
     "Is dimension integer valued"
     is_integer::BitVector
-    "Are all dimensions continuous or fixed"
+    "Are all dimensions continuous (or fixed)"
     continuous::Bool
     "Lower bound of problem solution on nodeBB"
     lower_bound::Float64
@@ -41,7 +41,7 @@ struct NodeBB
     depth::Int
     "Depth of first parent in B&B tree that was continuously valued"
     cont_depth::Int
-    "Unique id for each node."
+    "Unique ID for each node."
     id::Int
     "Whether last branch was negative or positive in direction"
     branch_direction::BranchDirection
@@ -106,9 +106,9 @@ function Base.isempty(x::NodeBB)
 end
 
 """
-$(FUNCTIONNAME)
+    $(TYPEDSIGNATURES)
 
-Checks that node `x` and `y` have equal domains withing a tolerance of `atol`.
+Check that node `x` and `y` have equal domains within an absolute tolerance of `r`.
 """
 function same_box(x::NodeBB, y::NodeBB, r::Float64)
     (isempty(x.lower_variable_bounds) ⊻ isempty(y.lower_variable_bounds)) && (return false)
@@ -120,7 +120,7 @@ function same_box(x::NodeBB, y::NodeBB, r::Float64)
     return true
 end
 
-# Compute middle & diameter
+# Compute diameter and midpoint
 @inline diam(x::NodeBB) = upper_variable_bounds(x) - lower_variable_bounds(x)
 @inline diam(x::NodeBB, i::Int) = upper_variable_bounds(x,i) - lower_variable_bounds(x,i)
 @inline mid(x::NodeBB) = 0.5*(upper_variable_bounds(x) + lower_variable_bounds(x))

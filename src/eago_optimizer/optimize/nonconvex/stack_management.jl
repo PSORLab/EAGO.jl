@@ -79,7 +79,13 @@ end
 
 # In the case of diam(X) = Inf variables rel_diam may equal NaN, this should be set to
 # a zero relative diameter to prevent "branching" on these variables for a functionally infinite
-# amount of time 
+# amount of time
+"""
+$(TYPEDSIGNATURES)
+
+Return the relative diameter of a variable. In the case of diam(X)=Inf, `rel_diam`
+returns 0.0 to prevent "branching" on this variable endlessly.
+"""
 function rel_diam(m::GlobalOptimizer, i::Int)
     rd = _diam(BranchVar(), m, i)/diam(_working_variable_info(m, _bvi(m, i)))
     return isnan(rd) ? 0.0 : rd
@@ -91,7 +97,8 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Using a maximum relative with branching rule by default.
+Choose a variable to branch on. A maximum relative width branching rule is used
+by default.
 """
 function select_branch_variable(t::ExtensionType, m::GlobalOptimizer)
     #_branch_pseudocost_on(m) && return _select_branch_variable_cost(m)
@@ -101,11 +108,11 @@ end
 """
 $(TYPEDSIGNATURES)
 
-By default, selects a point `xb` within the domain of the `i` branching variable
-which is a convex combination (parameter: `branch_cvx_factor`) of the solution 
-to the relaxation and the midpoint of the node. If this solution lies within 
-(parameter: `branch_offset`) of a bound then the branch point is moved to a 
-distance of `branch_offset` from the bound.
+Select a point `xb` within the domain of the `i`th branching variable. By default,
+this point is a convex combination of the solution to the relaxation and the midpoint
+of the node (`branch_cvx_factor*xmid + (1-branch_cvx_factor)*xsol`). If the solution
+lies within `branch_offset` of a bound, then the branch point is moved to a distance
+of `branch_offset` from that bound.
 """
 function select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
     l = _lower_bound(BranchVar(), m, i)
@@ -113,13 +120,13 @@ function select_branch_point(t::ExtensionType, m::GlobalOptimizer, i)
     s = _lower_solution(BranchVar(), m, i)
     α = _branch_cvx_α(m)
     b = _branch_offset_β(m)*(u - l)
-    return max(l + b, min(u - b, α*s + (one(Float64) - α)*_mid(BranchVar(), m, i)))
+    return max(l + b, min(u - b, α*_mid(BranchVar(), m, i) + (one(Float64) - α)*s))
 end
 
 """
 $(TYPEDSIGNATURES)
 
-Creates two nodes from `current_node` and stores them to the stack. Calls
+Create two nodes from `current_node` and store them on the stack. Call
 `select_branch_variable(t, m)` and `select_branch_point(t, m, k)` to determine
 the variable that should be branched on and the point at which branching should
 occur, respectively.
@@ -173,7 +180,7 @@ branch_node!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = branch_no
 """
 $(TYPEDSIGNATURES)
 
-By default, stores the current node to the stack after updating lower/upper bounds.
+Store the current node to the stack, without branching, after updating lower/upper bounds.
 """
 function single_storage!(t::ExtensionType, m::GlobalOptimizer)
     y = m._current_node
@@ -190,7 +197,8 @@ single_storage!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = single
 """
 $(TYPEDSIGNATURES)
 
-By default, performs best-first node selection (selects the node with the lowest lower bound in stack).
+Select the next node in the stack to evaluate. By default, perform best-first 
+node selection (select the node with the lowest lower bound in the stack).
 """
 function node_selection!(t::ExtensionType, m::GlobalOptimizer)
     m._node_count -= 1
@@ -202,8 +210,8 @@ node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_s
 """
 $(TYPEDSIGNATURES)
 
-By default, selects and deletes nodes from stack with 
-lower bounds greater than global upper bound.
+Remove nodes from the stack. By default, delete nodes from the stack if their
+lower bounds are greater than the current global upper bound.
 """
 function fathom!(t::ExtensionType, m::GlobalOptimizer)
     u = m._global_upper_bound
@@ -224,7 +232,8 @@ fathom!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = fathom!(_ext(m
 """
 $(TYPEDSIGNATURES)
 
-By default, creates an initial node with initial box constraints and adds it to the stack.
+Prepare the stack for the branch-and-bound routine. By default, create an
+initial node with the variable bounds as box constraints and add it to the stack.
 """
 function initialize_stack!(t::ExtensionType, m::GlobalOptimizer)
     d = _working_variable_info.(m, m._branch_to_sol_map)

@@ -10,9 +10,9 @@
 #############################################################################
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
-Tightens the bounds of the `_current_node` using the current global upper bound
+Tighten the bounds of the `_current_node` using the current global upper bound
 and the duality information obtained from the relaxation.
 """
 function variable_dbbt!(n::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Float64},
@@ -40,7 +40,7 @@ function variable_dbbt!(n::NodeBB, mult_lo::Vector{Float64}, mult_hi::Vector{Flo
             end
          end
     end
-
+    # TODO: Flag for postprocess feasibility?
     return nothing
 end
 
@@ -90,7 +90,7 @@ $(TYPEDSIGNATURES)
 Utility function used to set vector of booleans z to x & ~y. Avoids the
 generation of conversion of the BitArray created by broadcasting logical operators.
 """
-bool_indx_diff!(z::Vector{Bool},x::Vector{Bool}, y::Vector{Bool}) = map!(and_not, z, x, y)
+bool_indx_diff!(z::Vector{Bool}, x::Vector{Bool}, y::Vector{Bool}) = map!(and_not, z, x, y)
 
 """
 $(TYPEDSIGNATURES)
@@ -143,7 +143,7 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
             MOI.set(d, MOI.ObjectiveSense(), MOI.MAX_SENSE)
             MOI.set(d, MOI.ObjectiveFunction{SAF}(), SAF(SAT.(v, m._relaxed_variable_index), 0.0))
 
-            # Optimizes the problem and if successful filter additional bounds
+            # Optimize the problem, and if successful, filter additional bounds
             MOI.optimize!(d)
 
             if set_preprocess_status(m,d) == RRS_OPTIMAL
@@ -169,8 +169,9 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
     return true
 end
 
+#TODO
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 """
 function set_reference_point!(m::GlobalOptimizer)
 
@@ -238,7 +239,7 @@ end
 
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 
 Performs OBBT with filtering and greedy ordering as detailed in:
 Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731.
@@ -365,7 +366,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 end
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 """
 function load_fbbt_buffer!(m::GlobalOptimizer)
     for i = 1:m._working_problem._variable_count
@@ -376,7 +377,7 @@ function load_fbbt_buffer!(m::GlobalOptimizer)
 end
 
 """
-$(FUNCTIONNAME)
+$(TYPEDSIGNATURES)
 """
 function unpack_fbbt_buffer!(m::GlobalOptimizer)
 
@@ -401,10 +402,14 @@ function unpack_fbbt_buffer!(m::GlobalOptimizer)
 end
 
 """
-$(FUNCTIONNAME)
+    fbbt!(m::GlobalOptimizer, f::T)
 
 Performs feasibility-based bound tightening on a back-end constraint and returns `true` if it is feasible or
 `false` if it is infeasible.
+
+# Options for T (all are subtypes of AbstractEAGOConstraint):
+- AffineFunctionIneq
+- AffineFunctionEq
 """
 function fbbt! end
 
@@ -516,6 +521,8 @@ function _propagate_constraint!(d, f::BufferedNonlinearFunction)
     is_feasible && forward_pass!(d, f)
 end
 """
+$(TYPEDSIGNATURES)
+
 Performs bound tightening based on forward/reverse interval and/or McCormick passes. This routine
 resets the current node with new interval bounds.
 """

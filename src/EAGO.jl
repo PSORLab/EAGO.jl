@@ -37,7 +37,6 @@ module EAGO
     @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
 
-    #using IntervalContractors
     using IntervalContractors
     #=
     using IntervalContractors: plus_rev, minus_rev, inv_rev,
@@ -83,7 +82,7 @@ module EAGO
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
            get_iteration_number, get_node_count, get_absolute_gap, get_relative_gap, SubSolvers, 
            EAGOModel, AuxiliaryVariableRef
-    export auxillary_variable, @auxillary_variable, add_mimo_expression, @add_mimo_expression 
+    export auxiliary_variable, @auxiliary_variable, add_mimo_expression, @add_mimo_expression 
 
     export register_eago_operators!
 
