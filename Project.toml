@@ -1,7 +1,7 @@
 name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
 authors = ["Matthew Wilhelm <matthew.wilhelm@uconn.edu>"]
-version = "0.7.2"
+version = "0.7.3"
 
 [deps]
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
@@ -30,7 +30,7 @@ SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Cassette = "0.3.1"
 Cbc = "~1"
 DataStructures = "~0.17, ~0.18"
-DocStringExtensions = "~0.8"
+DocStringExtensions = "~0.8, ~0.9"
 FastRounding = "~0.2, ~0.3"
 ForwardDiff = "~0.10"
 IntervalArithmetic = "~0.20"
