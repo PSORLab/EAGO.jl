@@ -6,7 +6,7 @@ function _precompile_()
     Base.precompile(Tuple{Type{Optimizer}})   # time: 0.5019401
     Base.precompile(Tuple{typeof(MathOptInterface.empty!),Optimizer{Incremental{GLPK.Optimizer}, Incremental{Ipopt.Optimizer}, DefaultExt}})   # time: 0.0625456
     Base.precompile(Tuple{typeof(initialize!),RelaxCache{1, NS},DirectedTree})   # time: 0.0522575
-    Base.precompile(Tuple{Type{BufferedNonlinearFunction},JuMP._FunctionStorage,MathOptInterface.NLPBoundsPair,Dict{Int64, Vector{Int64}},Vector{JuMP._Derivatives.Linearity},OperatorRegistry,Vector{Float64},NS})   # time: 0.030106
+    Base.precompile(Tuple{Type{BufferedNonlinearFunction},MOIRAD._FunctionStorage,MathOptInterface.NLPBoundsPair,Dict{Int64, Vector{Int64}},Vector{MOIRAD.Linearity},OperatorRegistry,Vector{Float64},NS})   # time: 0.030106
     Base.precompile(Tuple{typeof(MathOptInterface.is_empty),Optimizer{Incremental{GLPK.Optimizer}, Incremental{Ipopt.Optimizer}, DefaultExt}})   # time: 0.0280181
     Base.precompile(Tuple{typeof(initialize!),RelaxCache{2, NS},DirectedTree})   # time: 0.0236066
     Base.precompile(Tuple{typeof(_propagate_constraint!),Evaluator,BufferedNonlinearFunction{1, NS}})   # time: 0.0191075

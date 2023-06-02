@@ -10,7 +10,7 @@
 #############################################################################
 
 struct NodeInfo
-    nodetype::NodeType
+    nodetype::MOINL.NodeType
     index::Int64
     children::Vector{Int64}
 end
@@ -18,7 +18,7 @@ children(x::NodeInfo) = x.children
 
 # convert method assumes that the children connectivity using in Tracer has
 # has been converted to an area hold a single parent value as is used in JuMP
-convert(::Type{NodeData}, x::NodeInfo) = NodeData(x.nodetype, x.index, x.children[1])
+convert(::Type{MOINL.Node}, x::NodeInfo) = MOINL.Node(x.type, x.index, x.children[1])
 
 # val = 1..n corresponds to 1..n variable
 struct SetTrace <: Real
@@ -50,7 +50,7 @@ end
 Tape() = Tape(NodeInfo[], Float64[], Dict{Int,Bool}(), 0, 0)
 
 function Tape(n::Int)
-    node_list = [NodeInfo(VARIABLE,i,[-1]) for i = 1:n]
+    node_list = [NodeInfo(MOINL.NODE_VARIABLE,i,[-1]) for i = 1:n]
     num_valued = Dict{Int,Bool}()
     for i = 1:n
         num_valued[i] = false
@@ -60,7 +60,7 @@ end
 
 function add_constant(x::Tape, y)
     x.set_trace_count += 1; x.const_count += 1
-    node = NodeInfo(VALUE, x.const_count,[-2]); push!(x.nd, node)
+    node = NodeInfo(MOINL.NODE_VALUE, x.const_count,[-2]); push!(x.nd, node)
     x.num_valued[x.set_trace_count] = true
     push!(x.const_values, Float64(y))
     x.set_trace_count
@@ -75,53 +75,67 @@ end
 
 @context TraceCtx
 
-# defines primitives for CALLUNIVAR operators
+multivariate_operator_to_id = Dict{Symbol,Int}()
+for i in 1:length(DEFAULT_MULTIVARIATE_OPERATORS)
+    multivariate_operator_to_id[DEFAULT_MULTIVARIATE_OPERATORS[i]] = i
+end
+univariate_operator_to_id = Dict{Symbol,Int}()
+for i in 1:length(DEFAULT_UNIVARIATE_OPERATORS)
+    univariate_operator_to_id[DEFAULT_UNIVARIATE_OPERATORS[i]] = i
+end
+comparison_operators = [:<=, :(==), :>=, :<, :>]
+comparison_operator_to_id = Dict{Symbol,Int}()
+for i in 1:length(comparison_operators)
+    comparison_operator_to_id[comparison_operators[i]] = i
+end
+
+# defines primitives for MOINL.NODE_CALL_UNIVARIATE operators
 for i in (abs, sin, cos, tan, sec, csc, cot, asin, acos, atan, asec, acsc,
           acot, sinh, cosh, tanh, asinh, acosh, atanh, sech, asech, csch,
           acsch, coth, acoth, sqrt, log, log2, log10, log1p, exp, exp2, expm1,
           +, -, inv)
     id = univariate_operator_to_id[Symbol(i)]
     @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace)
-                add_set_node!(ctx.metadata, NodeInfo(CALLUNIVAR, $id, [val(x)]))
+                add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_CALL_UNIVARIATE, $id, [val(x)]))
                 return SetTrace(ctx.metadata.set_trace_count)
           end
     @eval Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::Real) = ($i)(x)
 end
 
-# defines primitives for bivariate CALL operators (NEED TO ADD ^)
+# defines primitives for bivariate MOINL.NODE_CALL_MULTIVARIATE operators (NEED TO ADD ^)
 for i in (+, -, *, ^, /) # TODO ADD :max, :min
-    id = operator_to_id[Symbol(i)]
+    id = multivariate_operator_to_id[Symbol(i)]
     @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
-               add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [val(x), val(y)]))
+               add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_CALL_MULTIVARIATE, $id, [val(x), val(y)]))
                SetTrace(ctx.metadata.set_trace_count)
           end
     for j in (Int16,Int32,Int64,Float16,Float32,Float64,Irrational)
         @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::($j))
-                    add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [val(x), add_constant(ctx.metadata, y)]))
+                    add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_CALL_MULTIVARIATE, $id, [val(x), add_constant(ctx.metadata, y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
         @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::($j), y::SetTrace)
-                    add_set_node!(ctx.metadata, NodeInfo(CALL, $id, [add_constant(ctx.metadata, x),val(y)]))
+                    add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_CALL_MULTIVARIATE, $id, [add_constant(ctx.metadata, x),val(y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
     end
     @eval Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::Real, y::Real) = ($i)(x,y)
 end
 
-# defines primitives for bivariate COMPARISON operators
+# defines primitives for bivariate MOINL.NODE_COMPARISON operators
 for i in (>,<,==,>=,<=)
     id = comparison_operator_to_id[Symbol(i)]
     @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::SetTrace)
-                add_set_node!(ctx.metadata, NodeInfo(COMPARISON, $id, [val(x), val(y)]))
+                add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_COMPARISON, $id, [val(x), val(y)]))
                 SetTrace(ctx.metadata.set_trace_count)
             end
     for j in (Int16,Int32,Int64,Float16,Float32,Float64,Irrational)
         @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::SetTrace, y::($j))
-                    add_set_node!(ctx.metadata, NodeInfo(COMPARISON, $id, [val(x),add_constant(ctx.metadata, y)]))
+                    add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_COMPARISON, $id, [val(x),add_constant(ctx.metadata, y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
         @eval function Cassette.overdub(ctx::TraceCtx, ::typeof($i), x::($j), y::SetTrace)
-                    add_set_node!(ctx.metadata, NodeInfo(COMPARISON, $id, [add_constant(ctx.metadata, x), val(y)]))
+                    add_set_node!(ctx.metadata, NodeInfo(MOINL.NODE_COMPARISON, $id, [add_constant(ctx.metadata, x), val(y)]))
                     SetTrace(ctx.metadata.set_trace_count)
               end
     end

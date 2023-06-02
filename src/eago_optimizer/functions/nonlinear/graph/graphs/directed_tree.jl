@@ -224,12 +224,12 @@ dep_subexpr_count(g::DAT)                = length(g.dependent_subexpressions)
 sparsity(g::DAT, i)                      = g.sparsity
 rev_sparsity(g::DAT, i::Int, k::Int)     = g.rev_sparsity[i]
 
-user_univariate_operator(g::DAT, i) = g.user_operators.univariate_operator_f[i]
-user_multivariate_operator(g::DAT, i) = g.user_operators.multivariate_operator_evaluator[i]
+user_univariate_operator(g::DAT, i) = g.user_operators.registered_univariate_operators[i].f
+user_multivariate_operator(g::DAT, i) = g.user_operators.registered_multivariate_operators[i]
 
 function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
-
-    nd = copy(d.nd)
+    
+    nd = copy(d.nodes)
     adj = copy(d.adj)
     const_values = copy(d.const_values)
 
@@ -243,7 +243,7 @@ function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,
         rev_sparsity[s] = i
     end
 
-    nodes = _convert_node_list(aux_info, d.nd, op)
+    nodes = _convert_node_list(aux_info, d.nodes, op)
     lin = linearity(nd, adj, subexpr_linearity)
     DirectedTree(nodes = nodes,
                     variables = rev_sparsity,

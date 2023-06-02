@@ -1,7 +1,7 @@
 
 function _not_EAGO_error!(m::JuMP.Model)
     if JuMP.solver_name(m) !== "EAGO: Easy Advanced Global Optimization"
-        error("Solve attached to model must be EAGO.Optimizer")
+        error("Solver attached to model must be EAGO.Optimizer")
     end
 end
 

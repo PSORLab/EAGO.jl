@@ -20,27 +20,43 @@ function _variable_count(g::AbstractDG)::Int
     error("Variable count not defined for graph type = $(typeof(g))")
 end
 
-# added id field from JuMP UserOperatorRegistry, expect more extensive changes in future.
+# added id field to MOI OperatorRegistry
 struct OperatorRegistry
-    multivariate_id::Vector{Symbol}
-    multivariate_operator_to_id::Dict{Symbol,Int}
-    multivariate_operator_evaluator::Vector{MOI.AbstractNLPEvaluator}
+    univariate_operators::Vector{Symbol}
     univariate_operator_id::Vector{Symbol}
     univariate_operator_to_id::Dict{Symbol,Int}
-    univariate_operator_f::Vector{Any}
-    univariate_operator_fprime::Vector{Any}
-    univariate_operator_fprimeprime::Vector{Any}
+    univariate_user_operator_start::Int
+    registered_univariate_operators::Vector{MOINL._UnivariateOperator}
+    multivariate_operators::Vector{Symbol}
+    multivariate_id::Vector{Symbol}
+    multivariate_operator_to_id::Dict{Symbol,Int}
+    multivariate_user_operator_start::Int
+    registered_multivariate_operators::Vector{MOINL._MultivariateOperator}
+    logic_operators::Vector{Symbol}
+    logic_operator_id::Vector{Symbol}
+    logic_operator_to_id::Dict{Symbol,Int}
+    comparison_operators::Vector{Symbol}
+    comparison_operator_id::Vector{Symbol}
+    comparison_operator_to_id::Dict{Symbol,Int}
 end
 function OperatorRegistry()
     return OperatorRegistry(
         Symbol[],
-        Dict{Symbol,Int}(),
-        MOI.AbstractNLPEvaluator[],
         Symbol[],
         Dict{Symbol,Int}(),
-        [],
-        [],
-        [],
+        0,
+        MOINL._UnivariateOperator[],
+        Symbol[],
+        Symbol[],
+        Dict{Symbol,Int}(),
+        0,
+        MOINL._MultivariateOperator[],
+        Symbol[],
+        Symbol[],
+        Dict{Symbol,Int}(),
+        Symbol[],
+        Symbol[],
+        Dict{Symbol,Int}()
     )
 end
 

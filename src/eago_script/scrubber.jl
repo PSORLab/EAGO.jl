@@ -79,12 +79,12 @@ function scrub(f::Function, n::Int, inplace = false)
 end
 
 """
-    scrub!(d::_NLPData)
+    scrub!(d::MOI.NLPBlockData)
 
-Applies scrub to every user-defined function in the a `_NLPData` structure.
+Applies scrub to every user-defined function in the a `MOI.NLPBlockData` structure.
 """
-function scrub!(d::_NLPData)
-
+function scrub!(d::MOI.NLPBlockData)
+    error("Function not updated for newest version of EAGO. Please submit an issue.")
     # scrub multivariant
     user_ops = d.user_operators
     mvop_num = length(user_ops.multivariate_operator_evaluator)

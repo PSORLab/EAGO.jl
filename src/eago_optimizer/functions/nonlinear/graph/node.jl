@@ -77,7 +77,7 @@ node_is_class(::Variable, n::Node) = node_class(n) == VARIABLE
 node_is_class(::Parameter, n::Node) = node_class(n) == PARAMETER
 node_is_class(::Constant, n::Node) = node_class(n) == CONSTANT
 
-mv_eago_not_jump = setdiff(JuMP._Derivatives.operators,
+mv_eago_not_jump = setdiff(MOINL.DEFAULT_MULTIVARIATE_OPERATORS,
                            union(Symbol[k for k in keys(REV_BIVARIATE_ATOM_DICT)],
                                  Symbol[k for k in keys(REV_NARITY_ATOM_DICT)]))
 eago_mv_switch = quote end
@@ -100,8 +100,14 @@ end
         return Node(Val(true), Val(DIV), v[c])
     elseif i == 6
         error("If-else currently unsupported...")
-    elseif i >= JuMP._Derivatives.USER_OPERATOR_ID_START
-        i_mv = i - JuMP._Derivatives.USER_OPERATOR_ID_START + 1
+    elseif i == 7
+        return Node(Val(true), Val(ATAN), v[c])
+    elseif i == 8
+        return Node(Val(true), Val(MIN), v[c])
+    elseif i == 9
+        return Node(Val(true), Val(MAX), v[c])
+    elseif i >= length(DEFAULT_MULTIVARIATE_OPERATORS) + 1
+        i_mv = i - length(DEFAULT_MULTIVARIATE_OPERATORS)
         d = op.multivariate_id[i_mv]
         $eago_mv_switch
         return Node(Val(true), Val(USERN), i_mv, v[c])
@@ -126,15 +132,15 @@ end
 
 indx_JuMP = Int[]
 indx_EAGO = AtomType[]
-for k in univariate_operators
-    if haskey(REV_UNIVARIATE_ATOM_DICT, k)
-        k_EAGO = REV_UNIVARIATE_ATOM_DICT[k]
-        push!(indx_JuMP, univariate_operator_to_id[k])
+for (k,j) in enumerate(MOINL.DEFAULT_UNIVARIATE_OPERATORS)
+    if haskey(REV_UNIVARIATE_ATOM_DICT, j)
+        k_EAGO = REV_UNIVARIATE_ATOM_DICT[j]
+        push!(indx_JuMP, k)
         push!(indx_EAGO, k_EAGO)
     end
 end
 
-uni_eago_not_jump = setdiff(univariate_operators, Symbol[k for k in keys(REV_UNIVARIATE_ATOM_DICT)])
+uni_eago_not_jump = setdiff(MOINL.DEFAULT_UNIVARIATE_OPERATORS, Symbol[k for k in keys(REV_UNIVARIATE_ATOM_DICT)])
 uni_eago_not_jump = push!(uni_eago_not_jump, :-)
 eago_uni_switch = quote end
 for s in uni_eago_not_jump
@@ -146,8 +152,8 @@ end
 atom_switch = binary_switch_typ(indx_JuMP, indx_EAGO)
 @eval function _create_call_node_uni(i::Int, v, c::UnitRange{Int}, op::OperatorRegistry)
 
-    if i >= JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START
-        j = i - JuMP._Derivatives.USER_UNIVAR_OPERATOR_ID_START + 1
+    if i >= length(DEFAULT_UNIVARIATE_OPERATORS) + 1
+        j = i - length(DEFAULT_UNIVARIATE_OPERATORS)
         dop = op.univariate_operator_id[j]
         d = op.univariate_operator_to_id[dop]
         $eago_uni_switch

@@ -105,20 +105,28 @@ function register_substitution!(src::Template_Graph, trg::Template_Graph)
     push!(DAG_SPDICT, d)
 end
 
-function matching_info(x::Template_Node, y::NodeData,
+function matching_info(x::Template_Node, y::MOINL.Node,
                        const_values::Vector{Float64}, parameter_values::Vector{Float64})
     match_flag = false
+    multivariate_operator_to_id = Dict{Symbol,Int}()
+    for i in 1:length(DEFAULT_MULTIVARIATE_OPERATORS)
+        multivariate_operator_to_id[DEFAULT_MULTIVARIATE_OPERATORS[i]] = i
+    end
+    univariate_operator_to_id = Dict{Symbol,Int}()
+    for i in 1:length(DEFAULT_UNIVARIATE_OPERATORS)
+        univariate_operator_to_id[DEFAULT_UNIVARIATE_OPERATORS[i]] = i
+    end
     if (x.type == :op)
-        if (y.nodetype == CALL)
-            if haskey(operator_to_id, x.value)
-                @inbounds indx_id = operator_to_id[x.value]
+        if (y.type == MOINL.NODE_CALL_MULTIVARIATE)
+            if haskey(multivariate_operator_to_id, x.value)
+                @inbounds indx_id = multivariate_operator_to_id[x.value]
                 if indx_id == y.index
                     match_flag = true
                 end
             else
                 match_flag = false
             end
-        elseif (y.nodetype == CALLUNIVAR)
+        elseif (y.type == MOINL.NODE_CALL_UNIVARIATE)
             if haskey(univariate_operator_to_id, x.value)
                 @inbounds indx_id = univariate_operator_to_id[x.value]
                 if indx_id == y.index
@@ -129,14 +137,14 @@ function matching_info(x::Template_Node, y::NodeData,
             end
         end
     elseif (x.type == :num)
-        if (y.nodetype == VALUE)
+        if (y.type == MOINL.NODE_VALUE)
             @inbounds num_value = const_values[y.index]
-        elseif (y.nodetype == PARAMETER)
+        elseif (y.type == MOINL.NODE_PARAMETER)
             @inbounds num_value = parameter_values[y.index]
         else
             match_flag = false
         end
-        if (y.nodetype == VALUE) || (y.nodetype == PARAMETER)
+        if (y.type == MOINL.NODE_VALUE) || (y.type == MOINL.NODE_PARAMETER)
             if x.check(num_value)
                 match_flag = true
             else
@@ -149,7 +157,7 @@ function matching_info(x::Template_Node, y::NodeData,
     return match_flag
 end
 
-function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_adj::SparseMatrixCSC{Bool,Int},
+function is_match(pattern::Template_Graph, indx::Int, nd::Vector{MOINL.Node}, dag_adj::SparseMatrixCSC{Bool,Int},
                   const_values::Vector{Float64}, parameter_values::Vector{Float64})
     match_flag = true
     match_dict = Dict{Int,Int}()
@@ -198,7 +206,7 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{NodeData}, dag_
     return match_flag, match_dict
 end
 
-function find_match(indx::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,Int},
+function find_match(indx::Int, nd::Vector{MOINL.Node}, adj::SparseMatrixCSC{Bool,Int},
                     const_values::Vector{Float64}, parameter_values::Vector{Float64})
 
     #println("started find match:")
@@ -227,33 +235,41 @@ Takes a template node and makes the appropriate JuMP node, takes the parent inde
 number of child for a pattern element, constant storage vector and it's length
 =#
 function op_node_to_dag!(x::Template_Node, parent::Int, child_len::Int)
+    multivariate_operator_to_id = Dict{Symbol,Int}()
+    for i in 1:length(DEFAULT_MULTIVARIATE_OPERATORS)
+        multivariate_operator_to_id[DEFAULT_MULTIVARIATE_OPERATORS[i]] = i
+    end
+    univariate_operator_to_id = Dict{Symbol,Int}()
+    for i in 1:length(DEFAULT_UNIVARIATE_OPERATORS)
+        univariate_operator_to_id[DEFAULT_UNIVARIATE_OPERATORS[i]] = i
+    end
     if child_len > 1
-        @inbounds op = operator_to_id[x.value]
-        node = NodeData(CALL, op, parent)
+        @inbounds op = multivariate_operator_to_id[x.value]
+        node = MOINL.Node(MOINL.NODE_CALL_MULTIVARIATE, op, parent)
     else
         @inbounds op = univariate_operator_to_id[x.value]
-        node = NodeData(CALLUNIVAR, op, parent)
+        node = MOINL.Node(MOINL.NODE_CALL_UNIVARIATE, op, parent)
     end
     return node
 end
 
-function bfs_expr_add!(new_nds::Vector{NodeData}, node_count::Int, num_prt::Int,
+function bfs_expr_add!(new_nds::Vector{MOINL.Node}, node_count::Int, num_prt::Int,
                        parent_dict::Dict{Int,Int}, match_dict::Dict{Int,Int},
-                       expr_loc::Int, nd::Vector{NodeData}, adj::SparseMatrixCSC{Bool,Int},
+                       expr_loc::Int, nd::Vector{MOINL.Node}, adj::SparseMatrixCSC{Bool,Int},
                        children_arr::Vector{Int})
     queue = Tuple{Int,Int}[(expr_loc, num_prt)]
     inner_node_count = node_count
     while ~isempty(queue)
         (node_num, prior_prt) = popfirst!(queue) # pop node
         @inbounds active_node = nd[node_num] # store node
-        new_node = NodeData(active_node.nodetype, active_node.index, prior_prt)
+        new_node = MOINL.Node(active_node.type, active_node.index, prior_prt)
         inner_node_count += 1 # update node count
         @inbounds parent_dict[num_prt] = inner_node_count
         push!(new_nds, new_node)
-        if (active_node.nodetype !== SUBEXPRESSION &&
-            active_node.nodetype !== MOIVARIABLE &&
-            active_node.nodetype !== VARIABLE &&
-            active_node.nodetype !== VALUE)
+        if (active_node.type !== MOINL.NODE_SUBEXPRESSION &&
+            active_node.type !== MOINL.NODE_MOI_VARIABLE &&
+            active_node.type !== MOINL.NODE_VARIABLE &&
+            active_node.type !== MOINL.NODE_VALUE)
             @inbounds children_idx = nzrange(adj, node_num)
             if (length(children_idx) > 0)
                 for child in children_idx
@@ -268,10 +284,10 @@ end
 
 # we assume a tree structure, so if we don't load child nodes,
 # then they are effectively deleted
-function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{NodeData},
+function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{MOINL.Node},
                      const_list::Vector{Float64}, const_len::Int, node_count::Int,
                      parent_dict::Dict{Int,Int}, match_dict::Dict{Int,Int},
-                     queue::Vector{Tuple{Int,Int}}, new_nds::Vector{NodeData},
+                     queue::Vector{Tuple{Int,Int}}, new_nds::Vector{MOINL.Node},
                      adj::SparseMatrixCSC{Bool,Int}, children_arr::Vector{Int})
     @inbounds subs_template = DAG_SUBSTITUTIONS[match_num]
     @inbounds subs_patt_dict = DAG_SPDICT[match_num]
@@ -302,14 +318,14 @@ function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{N
                 const_len += 1
                 inner_node_count += 1
                 @inbounds parent_dict[num_prt] = inner_node_count
-                node = NodeData(VALUE, const_len, num_prt)
+                node = MOINL.Node(MOINL.NODE_VALUE, const_len, num_prt)
                 push!(new_nds, node)
             else
                 @inbounds pindx = subs_patt_dict[num_sub]
                 @inbounds expr_loc = match_dict[pindx]
                 inner_node_count += 1
                 @inbounds parent_dict[num_prt] = inner_node_count
-                @inbounds node = NodeData(VALUE, nd[expr_loc].index, num_prt)
+                @inbounds node = MOINL.Node(MOINL.NODE_VALUE, nd[expr_loc].index, num_prt)
                 push!(new_nds, node)
             end
         elseif active_type === :expr # Need to only use
@@ -329,7 +345,7 @@ end
     flatten_expression!
 
 Flattens (usually) the dag by making all registered substitutions for the
-expression `expr::_NonlinearExprData`. Performs a depth-first search through
+expression `expr::MOINL.Expression`. Performs a depth-first search through
 the expression adding the terminal node to the stack, then checking to determine
 if it matches a registered substitution pattern. If it doesn't not then node is
 added to the new expression graph representation and it's children are added to
@@ -337,27 +353,27 @@ the queue. If an expression (node) is identified as a pattern then it is
 substituted and any children expression nodes are then checked for patterns until
 the depth first search is exhausted.
 """
-function flatten_expression!(expr::_NonlinearExprData, parameter_values::Vector{Float64})
+function flatten_expression!(expr::MOINL.Expression, parameter_values::Vector{Float64})
     nd = expr.nd
-    adj = adjmat(nd)
+    adj = MOINL.adjacency_matrix(nd)
     children_arr = rowvals(adj)
     node_count = 0
     const_list = expr.const_values
     const_len = length(const_list)
     parent_dict = Dict{Int,Int}(-1 => -1)
     queue = Tuple{Int,Int}[(1,-1)]
-    new_nds = NodeData[]
+    new_nds = MOINL.Node[]
     while ~isempty(queue)
         (node_num, prior_prt) = popfirst!(queue)
         @inbounds active_node = nd[node_num]
-        if (active_node.nodetype !== SUBEXPRESSION &&
-            active_node.nodetype !== MOIVARIABLE &&
-            active_node.nodetype !== VARIABLE &&
-            active_node.nodetype !== VALUE)
+        if (active_node.type !== MOINL.NODE_SUBEXPRESSION &&
+            active_node.type !== MOINL.NODE_MOI_VARIABLE &&
+            active_node.type !== MOINL.NODE_VARIABLE &&
+            active_node.type !== MOINL.NODE_VALUE)
             is_match, match_num, match_dict = find_match(node_num, nd, adj, const_list, parameter_values)
             if ~is_match
                 @inbounds parent_num = parent_dict[prior_prt]
-                push!(new_nds, NodeData(active_node.nodetype, active_node.index, parent_num))
+                push!(new_nds, MOINL.Node(active_node.type, active_node.index, parent_num))
                 node_count += 1
                 @inbounds parent_dict[node_num] = node_count
                 @inbounds children_idx = nzrange(adj, node_num) # ADD CHILDREN
@@ -375,8 +391,8 @@ function flatten_expression!(expr::_NonlinearExprData, parameter_values::Vector{
             end
         else
             new_parent = parent_dict[prior_prt]
-            push!(new_nds, NodeData(active_node.nodetype, active_node.index, new_parent))
-            #push!(new_nds, NodeData(active_node.nodetype, active_node.index, prior_prt))
+            push!(new_nds, MOINL.Node(active_node.type, active_node.index, new_parent))
+            #push!(new_nds, MOINL.Node(active_node.type, active_node.index, prior_prt))
             node_count += 1
             @inbounds parent_dict[node_num] = node_count
         end
@@ -395,18 +411,18 @@ nonlinear term in the Optimizer.
 function dag_flattening!(x::T) where T <: AbstractOptimizer
 
     if isa(x._nlp_data.evaluator, NLPEvaluator)
-        nlp_data = x._nlp_data.evaluator.m.nlp_data
-        params = nlp_data.nlparamvalues
-        if ~isnothing(nlp_data.nlobj)
-            flatten_expression!(nlp_data.nlobj, params)
+        nlp_model = x._nlp_data.evaluator.m.nlp_model
+        params = nlp_model.parameters
+        if ~isnothing(nlp_model.objective)
+            flatten_expression!(nlp_model.objective, params)
         end
 
-        for i = 1:length(nlp_data.nlconstr)
-            flatten_expression!(nlp_data.nlconstr[i].terms, params)
+        for i = 1:length(nlp_model.constraints)
+            flatten_expression!(nlp_model.constraints[i].terms, params)
         end
 
-        for i = 1:length(nlp_data.nlexpr)
-            flatten_expression!(nlp_data.nlexpr[i], params)
+        for i = 1:length(nlp_model.expressions)
+            flatten_expression!(nlp_model.expressions[i], params)
         end
     end
 

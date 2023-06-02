@@ -26,10 +26,10 @@ add_objective!(m::ParsedProblem, f::SQF) = (m._objective = BufferedQuadraticIneq
 Add an Evaluator structure if nonlinear terms are attached.
 """
 add_nonlinear_evaluator!(m::GlobalOptimizer, evaluator::Nothing) = nothing
-function add_nonlinear_evaluator!(m::GlobalOptimizer, d::JuMP.NLPEvaluator)
+function add_nonlinear_evaluator!(m::GlobalOptimizer, d::MOI.AbstractNLPEvaluator)
     m._working_problem._relaxed_evaluator = Evaluator()
     relax_eval = m._working_problem._relaxed_evaluator
-    relax_eval.user_operators = OperatorRegistry(d.model.nlp_data.user_operators)
+    relax_eval.user_operators = OperatorRegistry(d.model.operators)
     relax_eval.subgrad_tol    = m._parameters.subgrad_tol
     m._nonlinear_evaluator_created = true
     return
@@ -83,7 +83,7 @@ function link_subexpression_dicts!(m::GlobalOptimizer)
 end
 
 add_nonlinear!(m::GlobalOptimizer, evaluator::Nothing) = nothing
-function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
+function add_nonlinear!(m::GlobalOptimizer, evaluator::MOI.AbstractNLPEvaluator)
 
     add_nonlinear_evaluator!(m, m._input_problem._nlp_data.evaluator)
 
@@ -91,7 +91,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
 
     MOI.initialize(evaluator, Symbol[:Grad, :Jac, :ExprGraph])
 
-    user_operator_registry = OperatorRegistry(evaluator.model.nlp_data.user_operators)
+    user_operator_registry = OperatorRegistry(evaluator.model.operators)
 
     # set nlp data structure
     m._working_problem._nlp_data = nlp_data
@@ -127,12 +127,12 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     relax_evaluator = m._working_problem._relaxed_evaluator
     relax_evaluator.relax_type = renum
     dict_sparsity = Dict{Int,Vector{Int}}()
-    if length(evaluator.model.nlp_data.nlexpr) > 0      # should check for nonlinear objective, constraint
-        for i = 1:length(evaluator.subexpressions)
-            subexpr = evaluator.subexpressions[i]
+    if length(evaluator.model.expressions) > 0      # should check for nonlinear objective, constraint
+        for i = 1:length(evaluator.backend.subexpressions)
+            subexpr = evaluator.backend.subexpressions[i]
             nlexpr = NonlinearExpression!(m._auxiliary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
-                                          dict_sparsity, i, evaluator.subexpression_linearity, 
-                                          user_operator_registry, evaluator.model.nlp_data.nlparamvalues,
+                                          dict_sparsity, i, evaluator.backend.subexpression_linearity, 
+                                          user_operator_registry, evaluator.model.parameters,
                                           m._parameters.relax_tag, ruse_apriori; is_sub = true)
             push!(relax_evaluator.subexpressions, nlexpr)
         end
@@ -146,23 +146,23 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::JuMP.NLPEvaluator)
     end
 
     # add nonlinear objective
-    if evaluator.has_nlobj
-        m._working_problem._objective = BufferedNonlinearFunction(m._auxiliary_variable_info, rtype, evaluator.objective, MOI.NLPBoundsPair(-Inf, Inf),
-                                                                 dict_sparsity, evaluator.subexpression_linearity,
+    if evaluator.model.objective !== nothing
+        m._working_problem._objective = BufferedNonlinearFunction(m._auxiliary_variable_info, rtype, evaluator.backend.objective, MOI.NLPBoundsPair(-Inf, Inf),
+                                                                 dict_sparsity, evaluator.backend.subexpression_linearity,
                                                                  user_operator_registry,
-                                                                 evaluator.model.nlp_data.nlparamvalues,
+                                                                 evaluator.model.parameters,
                                                                  m._parameters.relax_tag, ruse_apriori)
     end
 
     # add nonlinear constraints
     constraint_bounds = m._working_problem._nlp_data.constraint_bounds
-    for i = 1:length(evaluator.constraints)
-        constraint = evaluator.constraints[i]
+    for i = 1:length(evaluator.model.constraints)
+        constraint = evaluator.backend.constraints[i]
         bnds = constraint_bounds[i]
         push!(m._working_problem._nonlinear_constr, BufferedNonlinearFunction(m._auxiliary_variable_info, rtype, constraint, bnds, dict_sparsity,
-                                                                              evaluator.subexpression_linearity,
+                                                                              evaluator.backend.subexpression_linearity,
                                                                               user_operator_registry,
-                                                                              evaluator.model.nlp_data.nlparamvalues,
+                                                                              evaluator.model.parameters,
                                                                               m._parameters.relax_tag, ruse_apriori))
     end
 
@@ -222,8 +222,11 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
 
     ηi = add_η!(d)
     if !isnothing(ip._nlp_data)
-        @variable(ip._nlp_data.evaluator.model, η)
-        @objective(ip._nlp_data.evaluator.model, Min, η)
+        # add variable
+        η = MOI.VariableIndex(ip._variable_count + 1)
+        push!(ip._nlp_data.evaluator.backend.ordered_variables, η)
+        # add objective
+        MOINL.set_objective(ip._nlp_data.evaluator.model, :($η))
     end
 
     sqf_obj = copy(m._input_problem._objective)
@@ -258,32 +261,22 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
                                 variable_to_node_map = [i for i in 1:q]) 
    
     ηi = add_η!(d)
-    @variable(ip._nlp_data.evaluator.model, η)
+    η = MOI.VariableIndex(ip._variable_count + 1)
+    push!(ip._nlp_data.evaluator.backend.ordered_variables, η)
+    expr = MOINL.convert_to_expr(ip._nlp_data.evaluator.model,ip._nlp_data.evaluator.model.objective)
+    MOINL.set_objective(ip._nlp_data.evaluator.model, :($η))
     wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
-    nd = ip._nlp_data.evaluator.model.nlp_data.nlobj.nd
+    # check if input problem is min or max
     if !_is_input_min(m)
-        pushfirst!(nd, NodeData(JuMP._Derivatives.CALLUNIVAR, 2, 1))
-        pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
-        nd[3] = NodeData(nd[3].nodetype, nd[3].index, 2)
-        for i = 4:length(nd)
-            @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 2)
-        end
+        cons = MOINL.add_expression(ip._nlp_data.evaluator.model, :(-$expr - $η))
+        MOINL.add_constraint(ip._nlp_data.evaluator.model, :($cons), MOI.LessThan(0.0))
     else
-        pushfirst!(nd, NodeData(JuMP._Derivatives.CALL, 2, -1))
-        nd[2] = NodeData(nd[2].nodetype, nd[2].index, 1)
-        for i = 3:length(nd)
-            @inbounds nd[i] = NodeData(nd[i].nodetype, nd[i].index, nd[i].parent + 1)
-        end
+        cons = MOINL.add_expression(ip._nlp_data.evaluator.model, :($expr - $η))
+        MOINL.add_constraint(ip._nlp_data.evaluator.model, :($cons), MOI.LessThan(0.0))
     end
-    push!(nd, NodeData(JuMP._Derivatives.VARIABLE, ηi, 1))
-    nlobj = ip._nlp_data.evaluator.model.nlp_data.nlobj
-    nlexpr = JuMP._NonlinearExprData(copy(nlobj.nd), copy(nlobj.const_values))
-    nlcons = JuMP._NonlinearConstraint(nlexpr, -Inf, 0.0)
 
-    ip._nlp_data.evaluator.model.nlp_data.nlobj = nothing
-    ip._nlp_data.evaluator.has_nlobj = false
-    push!(ip._nlp_data.evaluator.model.nlp_data.nlconstr, nlcons)
+    ip._nlp_data.evaluator.model.objective = nothing
     constraint_bounds = ip._nlp_data.constraint_bounds
     push!(constraint_bounds, MOI.NLPBoundsPair(-Inf, 0.0))
     ip._nlp_data = MOI.NLPBlockData(constraint_bounds, ip._nlp_data.evaluator, false)

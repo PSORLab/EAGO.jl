@@ -45,10 +45,10 @@ function NonlinearExpression()
 end
 
 relax_info(s::Relax, n::Int, t::T) where T = MC{n,T}
-function NonlinearExpression!(aux_info, rtype::S, sub::Union{JuMP._SubexpressionStorage,JuMP._FunctionStorage},
+function NonlinearExpression!(aux_info, rtype::S, sub::Union{MOIRAD._SubexpressionStorage,MOIRAD._FunctionStorage},
                               b::MOI.NLPBoundsPair, sub_sparsity::Dict{Int,Vector{Int}},
                               subexpr_indx::Int,
-                              subexpr_linearity::Vector{JuMP._Derivatives.Linearity},
+                              subexpr_linearity::Vector{MOIRAD.Linearity},
                               op::OperatorRegistry, parameter_values,
                               tag::T, use_apriori_flag::Bool; is_sub::Bool = false) where {S,T}
     g = DirectedTree(aux_info, sub, op, sub_sparsity, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
@@ -97,9 +97,9 @@ function BufferedNonlinearFunction()
     return BufferedNonlinearFunction{MC{1,NS},1,NS}(ex, saf)
 end
 
-function BufferedNonlinearFunction(aux_info, rtype::RELAX_ATTRIBUTE, f::JuMP._FunctionStorage, b::MOI.NLPBoundsPair,
+function BufferedNonlinearFunction(aux_info, rtype::RELAX_ATTRIBUTE, f::MOIRAD._FunctionStorage, b::MOI.NLPBoundsPair,
                                    sub_sparsity::Dict{Int,Vector{Int}},
-                                   subexpr_lin::Vector{JuMP._Derivatives.Linearity},
+                                   subexpr_lin::Vector{MOIRAD.Linearity},
                                    op::OperatorRegistry, parameter_values,
                                    tag::T, use_apriori_flag::Bool) where T <: RelaxTag
 
@@ -265,17 +265,17 @@ function eliminate_fixed_variables!(f::NonlinearExpression{V,N,T}, v::Vector{Var
     indx_to_const_loc = Dict{Int,Int}()
     for i = 1:length(expr.nd)
         nd = @inbounds expr.nd[i]
-        if nd.nodetype === JuMP._Derivatives.VARIABLE
+        if nd.type === MOINL.NODE_VARIABLE
             indx = nd.index
             if v[indx].is_fixed
                 if haskey(indx_to_const_loc, indx)
                     const_loc = indx_to_const_loc[indx]
-                    expr.nd[i] = NodeData(JuMP._Derivatives.VALUE, const_loc, nd.parent)
+                    expr.nd[i] = MOINL.Node(MOINL.NODE_VALUE, const_loc, nd.parent)
                 else
                     push!(const_values, v[indx].lower_bound)
                     num_constants += 1
                     indx_to_const_loc[indx] = num_constants
-                    expr.nd[i] = NodeData(nd.nodetype, num_constants, nd.parent)
+                    expr.nd[i] = MOINL.Node(nd.type, num_constants, nd.parent)
                 end
                 f.isnumber[i] = true
             end
