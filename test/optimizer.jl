@@ -256,7 +256,7 @@ end
     @test new_node.upper_bound == 0.0
 
     @test_nowarn EAGO.single_storage!(m)
-    @test_nowarn EAGO.optimize_hook!(EAGO.DefaultExt(), m)
+    @test_nowarn EAGO.optimize_hook!(EAGO.DefaultExt(), x)
 end
 #=
 @testset "Fallback Interval Bounds" begin
@@ -640,7 +640,7 @@ end
 
     @NLconstraint(model, c9, softsign(x) <= 0.0)
     @NLconstraint(model, c10, gelu(x) <= 0.0)
-    @NLconstraint(model, c11, swish1(x) <= 0.0)
+    @NLconstraint(model, c11, swish(x) <= 0.0)
 
     @NLconstraint(model, c12, positive(x) <= 0.0)
     @NLconstraint(model, c13, negative(x) <= 0.0)

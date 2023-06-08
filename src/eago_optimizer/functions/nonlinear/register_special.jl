@@ -34,9 +34,9 @@ function register_eago_operators!(m::JuMP.Model)
     JuMP.register(m, :logcosh, 1, xabsx, McCormick.xabsx_deriv, McCormick.xabsx_deriv2)
 
     # register activation functions w/ parameters
-    MOINL.register_operator(m, :param_relu, 2, param_relu, McCormick.param_relu_grad)
-    MOINL.register_operator(m, :elu, 2, elu, McCormick.elu_grad)
-    MOINL.register_operator(m, :selu, 3, selu, McCormick.selu_grad)
+    MOINL.register_operator(m.nlp_model, :param_relu, 2, param_relu, McCormick.param_relu_grad)
+    MOINL.register_operator(m.nlp_model, :elu, 2, elu, McCormick.elu_grad)
+    MOINL.register_operator(m.nlp_model, :selu, 3, selu, McCormick.selu_grad)
 
     # register other functions
     JuMP.register(m, :xlogx, 1, xlogx, McCormick.xlogx_deriv, McCormick.xlogx_deriv2)
@@ -45,13 +45,13 @@ function register_eago_operators!(m::JuMP.Model)
     JuMP.register(m, :f_erfc, 1, x -> erfc(x), McCormick.erfc_deriv, McCormick.erfc_deriv2)
     JuMP.register(m, :f_erfcinv, 1, x -> erfcinv(x), x -> -McCormick.erfinv_deriv(1.0 - x), x -> McCormick.erfinv_deriv2(1.0 - x))
 
-    MOINL.register_operator(m, :arh, 2, arh, McCormick.arh_grad)
-    MOINL.register_operator(m, :xexpax, 2, xexpax, McCormick.xexpax_grad)
+    MOINL.register_operator(m.nlp_model, :arh, 2, arh, McCormick.arh_grad)
+    MOINL.register_operator(m.nlp_model, :xexpax, 2, xexpax, McCormick.xexpax_grad)
 
     # register bounding functions
-    MOINL.register_operator(m, :lower_bnd, 2, lower_bnd, McCormick.lower_bnd_grad)
-    MOINL.register_operator(m, :upper_bnd, 2, upper_bnd, McCormick.upper_bnd_grad)
-    MOINL.register_operator(m, :bnd, 3, bnd, McCormick.bnd_grad)
+    MOINL.register_operator(m.nlp_model, :lower_bnd, 2, lower_bnd, McCormick.d_lower_bnd_grad)
+    MOINL.register_operator(m.nlp_model, :upper_bnd, 2, upper_bnd, McCormick.d_upper_bnd_grad)
+    MOINL.register_operator(m.nlp_model, :bnd, 3, bnd, McCormick.d_bnd_grad)
     JuMP.register(m, :positive, 1, positive, x -> 1.0, x -> 0.0)
     JuMP.register(m, :negative, 1, negative, x -> 1.0, x -> 0.0)
 

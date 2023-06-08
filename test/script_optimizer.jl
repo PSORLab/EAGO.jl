@@ -1,6 +1,6 @@
-function check_node(nd::EAGO.Script.NodeInfo, type::MOINL.Node , indx::Int, child::Vector{Int})
+function check_node(nd::EAGO.Script.NodeInfo, type::MOINL.NodeType , indx::Int, child::Vector{Int})
     flag = true
-    if nd.type != type
+    if nd.nodetype != type
         flag = false
         return flag
     end
