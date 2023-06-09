@@ -313,10 +313,10 @@ function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
         i += 1
     end
     if anysets
-        z = MOI.eval_objective(mv, set_input)::MC{N,T}
+        z = mv.f(set_input)::MC{N,T}
         b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
     else
-        b[k] = MOI.eval_objective(mv, num_input)
+        b[k] = mv.f(num_input)
     end
 end
 

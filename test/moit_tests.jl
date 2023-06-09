@@ -14,7 +14,7 @@ const CONFIG = MOI.Test.Config(atol = 1e-3, rtol = 1e-3, optimal_status = MOI.OP
 """
     runtests()
 
-This function runs all functions in the this Module starting with `test_`.
+This function runs all functions in this Module starting with `test_`.
 """
 function runtests()
     for name in names(@__MODULE__; all = true)
@@ -96,7 +96,20 @@ function test_runtests()
                                 "test_objective_qp_ObjectiveFunction_zero_ofdiag",
 
                                 "test_model_ModelFilter_ListOfConstraintIndices",
-                                "test_model_ModelFilter_ListOfConstraintTypesPresent"
+                                "test_model_ModelFilter_ListOfConstraintTypesPresent",
+
+                                # MOI constraint type exclusions
+                                "test_cpsat_Circuit",
+                                "test_cpsat_CountAtLeast",
+                                "test_cpsat_Table",
+                                "test_linear_Semicontinuous_integration",
+                                "test_linear_Semiinteger_integration",
+
+                                # Remove these tests after MOI 1.17.2
+                                "test_objective_ObjectiveSense_in_ListOfModelAttributesSet",
+                                "test_objective_ScalarAffineFunction_in_ListOfModelAttributesSet",
+                                "test_objective_ScalarQuadraticFunction_in_ListOfModelAttributesSet",
+                                "test_objective_VariableIndex_in_ListOfModelAttributesSet"
 
                                 ],
                       exclude_tests_after = v"0.10.5")

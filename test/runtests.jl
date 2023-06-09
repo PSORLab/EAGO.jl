@@ -6,6 +6,7 @@ const MOI = MathOptInterface
 const MOIT = MOI.Test
 const MOIU = MOI.Utilities
 const MOIB = MOI.Bridges
+const MOINL = MOI.Nonlinear
 
 println("CHECK REVISED TESTS")
 

@@ -1,4 +1,4 @@
-function check_node(nd::EAGO.Script.NodeInfo, type::JuMP._Derivatives.NodeType , indx::Int, child::Vector{Int})
+function check_node(nd::EAGO.Script.NodeInfo, type::MOINL.NodeType , indx::Int, child::Vector{Int})
     flag = true
     if nd.nodetype != type
         flag = false
@@ -22,12 +22,12 @@ end
         return sin(3.0*x[1]) + x[2]
     end
     tape1 = EAGO.Script.trace_script(f1,2)
-    @test check_node(tape1.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])
-    @test check_node(tape1.nd[2], JuMP._Derivatives.VARIABLE, 2, [-1])
-    @test check_node(tape1.nd[3], JuMP._Derivatives.VALUE, 1, [-2])
-    @test check_node(tape1.nd[4], JuMP._Derivatives.CALL, 3, [3,1])
-    @test check_node(tape1.nd[5], JuMP._Derivatives.CALLUNIVAR, 15, [4])
-    @test check_node(tape1.nd[6], JuMP._Derivatives.CALL, 1, [5,2])
+    @test check_node(tape1.nd[1], MOINL.NODE_VARIABLE, 1, [-1])
+    @test check_node(tape1.nd[2], MOINL.NODE_VARIABLE, 2, [-1])
+    @test check_node(tape1.nd[3], MOINL.NODE_VALUE, 1, [-2])
+    @test check_node(tape1.nd[4], MOINL.NODE_CALL_MULTIVARIATE, 3, [3,1])
+    @test check_node(tape1.nd[5], MOINL.NODE_CALL_UNIVARIATE, 15, [4])
+    @test check_node(tape1.nd[6], MOINL.NODE_CALL_MULTIVARIATE, 1, [5,2])
     @test tape1.const_values[1] == 3.0
     @test tape1.num_valued[1] == false
     @test tape1.num_valued[2] == false
@@ -47,20 +47,20 @@ end
         return sin(3.0*x[2]) + y
     end
     tape2 = EAGO.Script.trace_script(f2,2)
-    @test check_node(tape2.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])
-    @test check_node(tape2.nd[2], JuMP._Derivatives.VARIABLE, 2, [-1])
-    @test check_node(tape2.nd[3], JuMP._Derivatives.CALLUNIVAR, 3, [1])
-    @test check_node(tape2.nd[4], JuMP._Derivatives.VALUE, 1, [-2])
-    @test check_node(tape2.nd[5], JuMP._Derivatives.CALL, 3, [4,3])
-    @test check_node(tape2.nd[6], JuMP._Derivatives.VALUE, 2, [-2])
-    @test check_node(tape2.nd[7], JuMP._Derivatives.CALL, 1, [6,5])
-    @test check_node(tape2.nd[8], JuMP._Derivatives.VALUE, 3, [-2])
-    @test check_node(tape2.nd[9], JuMP._Derivatives.CALL, 3, [8,3])
-    @test check_node(tape2.nd[10], JuMP._Derivatives.CALL, 1, [7,9])
-    @test check_node(tape2.nd[11], JuMP._Derivatives.VALUE, 4, [-2])
-    @test check_node(tape2.nd[12], JuMP._Derivatives.CALL, 3, [11,2])
-    @test check_node(tape2.nd[13], JuMP._Derivatives.CALLUNIVAR, 15, [12])
-    @test check_node(tape2.nd[14], JuMP._Derivatives.CALL, 1, [13,10])
+    @test check_node(tape2.nd[1], MOINL.NODE_VARIABLE, 1, [-1])
+    @test check_node(tape2.nd[2], MOINL.NODE_VARIABLE, 2, [-1])
+    @test check_node(tape2.nd[3], MOINL.NODE_CALL_UNIVARIATE, 3, [1])
+    @test check_node(tape2.nd[4], MOINL.NODE_VALUE, 1, [-2])
+    @test check_node(tape2.nd[5], MOINL.NODE_CALL_MULTIVARIATE, 3, [4,3])
+    @test check_node(tape2.nd[6], MOINL.NODE_VALUE, 2, [-2])
+    @test check_node(tape2.nd[7], MOINL.NODE_CALL_MULTIVARIATE, 1, [6,5])
+    @test check_node(tape2.nd[8], MOINL.NODE_VALUE, 3, [-2])
+    @test check_node(tape2.nd[9], MOINL.NODE_CALL_MULTIVARIATE, 3, [8,3])
+    @test check_node(tape2.nd[10], MOINL.NODE_CALL_MULTIVARIATE, 1, [7,9])
+    @test check_node(tape2.nd[11], MOINL.NODE_VALUE, 4, [-2])
+    @test check_node(tape2.nd[12], MOINL.NODE_CALL_MULTIVARIATE, 3, [11,2])
+    @test check_node(tape2.nd[13], MOINL.NODE_CALL_UNIVARIATE, 15, [12])
+    @test check_node(tape2.nd[14], MOINL.NODE_CALL_MULTIVARIATE, 1, [13,10])
     @test tape2.const_values[1] == 1.0
     @test tape2.const_values[2] == 1.3
     @test tape2.const_values[3] == 2.0
@@ -98,8 +98,8 @@ end
     #=
     @test tape3.const_count == 0
     @test tape3.set_trace_count == 3
-    @test check_node(tape3.nd[1], JuMP._Derivatives.VARIABLE, 1, [-1])
-    @test check_node(tape3.nd[2], JuMP._Derivatives.VARIABLE, 2, [-1])
-    @test check_node(tape3.nd[3], JuMP._Derivatives.CALLUNIVAR, 3, [1])
+    @test check_node(tape3.nd[1], MOINL.NODE_VARIABLE, 1, [-1])
+    @test check_node(tape3.nd[2], MOINL.NODE_VARIABLE, 2, [-1])
+    @test check_node(tape3.nd[3], MOINL.NODE_CALL_UNIVARIATE, 3, [1])
     =#
 end

@@ -13,19 +13,14 @@ __precompile__()
 
 module EAGO
 
+    using MathOptInterface
     import MathOptInterface
-
+    import MathOptInterface.Nonlinear: DEFAULT_MULTIVARIATE_OPERATORS, DEFAULT_UNIVARIATE_OPERATORS
     using Reexport, Requires, Cassette, IntervalArithmetic, DocStringExtensions,
           FastRounding, SpecialFunctions, Ipopt, Cbc, Printf, PrettyTables
 
     using JuMP
     import JuMP
-    import JuMP._Derivatives: operators, NodeData
-    using JuMP._Derivatives: univariate_operators,
-                             univariate_operator_to_id
-    import JuMP: _SubexpressionStorage
-    import JuMP._Derivatives: NodeType, UserOperatorRegistry
-    const JuMPOpReg = JuMP._Derivatives.UserOperatorRegistry
 
     using DataStructures: OrderedDict, BinaryMinMaxHeap, popmin!, popmax!, top
     using SparseArrays: SparseMatrixCSC, spzeros, rowvals, nzrange, nonzeros, sparse, findnz
@@ -54,6 +49,8 @@ module EAGO
     const MOI = MathOptInterface
     const MOIU = MOI.Utilities
     const MOIB = MOI.Bridges
+    const MOINL = MOI.Nonlinear
+    const MOIRAD = MOINL.ReverseAD
 
     const SAF = MOI.ScalarAffineFunction{Float64}
     const SQF = MOI.ScalarQuadraticFunction{Float64}
