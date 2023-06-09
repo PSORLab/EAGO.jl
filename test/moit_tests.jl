@@ -103,13 +103,7 @@ function test_runtests()
                                 "test_cpsat_CountAtLeast",
                                 "test_cpsat_Table",
                                 "test_linear_Semicontinuous_integration",
-                                "test_linear_Semiinteger_integration",
-
-                                # MOI model attribute exclusions
-                                "test_objective_ObjectiveSense_in_ListOfModelAttributesSet",
-                                "test_objective_ScalarAffineFunction_in_ListOfModelAttributesSet",
-                                "test_objective_ScalarQuadraticFunction_in_ListOfModelAttributesSet",
-                                "test_objective_VariableIndex_in_ListOfModelAttributesSet"
+                                "test_linear_Semiinteger_integration"
 
                                 ],
                       exclude_tests_after = v"0.10.5")
