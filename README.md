@@ -27,7 +27,7 @@ For each nonlinear term, EAGO makes use of factorable representations to constru
 - *v*<sub>3</sub> = sin(*v*<sub>1</sub>)
 - *v*<sub>4</sub> = *v*<sub>1</sub>*v*<sub>2</sub>
 - *v*<sub>5</sub> = *v*<sub>4</sub>*v*<sub>3</sub>
-- F = *v*<sub>5</sub>
+- f(x) = *v*<sub>5</sub>
 
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/McCormick/Figure_1.png" width="60%" height="60%">
