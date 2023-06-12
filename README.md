@@ -13,16 +13,16 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 ## EAGO's Optimizer Capabilities
 
-EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems, emphasizing nonlinear programs (NLPs), by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern automatic differentiation (AD) packages (e.g. **+**, **sin**, **cosh**) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have a priori variable bounds defined and have differentiable constraints. That is, problems should be specified in the generic form below:
+EAGO is a deterministic global optimizer designed to address a wide variety of optimization problems, emphasizing nonlinear programs (NLPs), by propagating McCormick relaxations along the factorable structure of each expression in the NLP. Most operators supported by modern automatic differentiation (AD) packages (e.g., `+`, `sin`, `cosh`) are supported by EAGO and a number utilities for sanitizing native Julia code and generating relaxations on a wide variety of user-defined functions have been included. Currently, EAGO supports problems that have a priori variable bounds defined and have differentiable constraints. That is, problems should be specified in the generic form below:
 
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/images/OptForm.svg" width="30%" height="30%">
 
 ## EAGO's Relaxations
 
-For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of F = y(y-5)sin(y), a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original Y decision space<sup>1</sup>:
+For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of `f(x) = x(x-5)sin(x)`, a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original `X` decision space<sup>1</sup>:
 
-- *v*<sub>1</sub> = y
+- *v*<sub>1</sub> = x
 - *v*<sub>2</sub> = *v*<sub>1</sub> - 5
 - *v*<sub>3</sub> = sin(*v*<sub>1</sub>)
 - *v*<sub>4</sub> = *v*<sub>1</sub>*v*<sub>2</sub>
@@ -100,7 +100,9 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 ## Recent News
 - 6/12/2023: [EAGO v0.8.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.0).
-  - Updated EAGO to use the `MOI.Nonlinear` submodule instead of `JuMP._Derivatives`.
+  - Updated EAGO for compatibility with the nonlinear expression API changes introduced in JuMP v1.2: https://discourse.julialang.org/t/ann-upcoming-refactoring-of-jumps-nonlinear-api/83052
+    - EAGO now uses the `MOI.Nonlinear` submodule instead of `JuMP._Derivatives`.
+    - Models, nodes, expressions, constraints, and operators are now compatible with MOI.
   - Added logic and comparison operators to `EAGO.OperatorRegistry`.
 
 For a full list of EAGO release news, click [**here**](https://github.com/PSORLab/EAGO.jl/releases).
@@ -108,7 +110,7 @@ For a full list of EAGO release news, click [**here**](https://github.com/PSORLa
 ## Installing EAGO
 
 EAGO is a registered Julia package and it can be installed using the Julia package manager.
-From the Julia REPL, type ] to enter the Pkg REPL mode and run the following command
+From the Julia REPL, type `]` to enter the Package manager (Pkg) mode and run the following command
 
 ```julia
 pkg> add EAGO
