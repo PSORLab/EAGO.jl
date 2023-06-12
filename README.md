@@ -99,17 +99,10 @@ As a global optimization platform, EAGO's solvers can be used to find solutions 
 The EAGO package has numerous features: a solver accessible from JuMP/MathOptInterface, domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available in the [**documentation website**](https://psorlab.github.io/EAGO.jl/dev/). A series of example have been provided in the form of Jupyter notebooks in the separate [**EAGO-notebooks**](https://github.com/PSORLab/EAGO-notebooks) repository.
 
 ## Recent News
-- 2/5/2021: [EAGO v0.6.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.6.0).
-  - License changed from CC BY-NC-SA 4.0 to MIT
-  - Fix deprecated Ipopt constructor
-  - Fix discrepancy between the returned objective value and the objective evaluated at the solution.
-  - Dramatically decrease allocates and first-run performance of SIP routines.
-  - Add two algorithms which modify SIPres detailed in Djelassi, H. and Mitsos A. 2017.
-  - Fix objective interval fallback function.
-  - New SIP interface with extendable subroutines.
-  - Fix x^y relaxation bug.
-  - Add issues template.
-  - Add SIP subroutine documentation.
+- 6/12/2023: [EAGO v0.8.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.0).
+  - Updated EAGO to use the `MathOptInterface.Nonlinear (MOINL)` submodule instead of `JuMP._Derivatives`.
+  - Added logic and comparison operators to `EAGO.OperatorRegistry`.
+  - Updated `reform_epigraph_min!` function to use `MOINL` models instead of `JuMP` models.
 
 For a full list of EAGO release news, see click [**here**](https://github.com/PSORLab/EAGO.jl/releases)
 
@@ -122,27 +115,24 @@ From the Julia REPL, type ] to enter the Pkg REPL mode and run the following com
 pkg> add EAGO
 ```
 
-Currently, EAGO is tied to a 0.19+ or greater version of JuMP. This allows a replication
-of some of the internal features shared by EAGO and JuMP's AD scheme aka
-generation of Wengert Tapes pass evaluators between JuMP and EAGO etc.
+Currently, EAGO is tied to version 1.11 of JuMP. This allows a replication of some of the internal features shared by EAGO and JuMP's AD scheme, e.g., generation of Wergert Tapes, passing evaluators between JuMP and EAGO, etc.
 
 ```julia
 pkg> add JuMP
 ```
 
-EAGO v0.6.0 is the current tagged version and requires Julia 1.2+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.5 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/)
-for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
+EAGO v0.8.0 is the current tagged version and requires Julia 1.6+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.8 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/) for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
-## Bug reporting, support and feature requests
+## Bug Reporting, Support, and Feature Requests
 
 Please report bugs or feature requests by opening an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues). All manners of feedback are encouraged.
 
-## Current limitations
+## Current Limitations
 - Nonlinear handling assumes that box-constraints of nonlinear terms are available or can be inferred from bounds-tightening.
 - Only currently supports continuous functions. Support for mixed-integer problems is forthcoming.
 
-## Work In Progress
+## Work in Progress
 - Extensions for nonconvex dynamic global & robust optimization.
 - Provide support for mixed-integer problems.
 - Update EAGO to support nonsmooth problems (requires: a nonsmooth local nlp optimizer or lexiographic AD, support for relaxations is already included).
