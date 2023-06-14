@@ -359,7 +359,10 @@ function label_branch_variables!(m::GlobalOptimizer)
     for i = 1:wp._variable_count
         if is_fixed(wp._variable_info[i])
             m._branch_variables[i] = false
-        elseif m._branch_variables[i] || wp._variable_info[i].is_integer 
+        elseif m._branch_variables[i]
+            push!(m._branch_to_sol_map, i)
+        elseif wp._variable_info[i].is_integer 
+            m._branch_variables[i] = true
             push!(m._branch_to_sol_map, i)
         elseif i == wp._variable_count
             m._branch_variables[i] = false
