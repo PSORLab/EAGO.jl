@@ -73,7 +73,7 @@ Default routine for relaxing quadratic constraint `func < 0.0` on node `n`.
 Takes affine bounds of convex part at point `x0` and secant line bounds on
 concave parts.
 """
-function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int,Float64}, saf::SAF) where {R,S,Q<:ExtensionType}
+function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int,Float64}, saf::SAF)
 
     quadratic_constant = func.constant
 

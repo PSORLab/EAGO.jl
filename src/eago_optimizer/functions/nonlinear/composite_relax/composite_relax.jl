@@ -284,5 +284,5 @@ function display_table!(g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
     val = [b._is_num[i] ? b._num[i] : b._set[i] for i in 1:nc]
     exr = [display_expr(g, i)  for i in 1:nc]
     data = hcat(exr, b._is_num, val)
-    show(pretty_table(data, header = ["Expr", "Is Num", "Val"]; show_row_number = true))
+    pretty_table(data, header = ["Expr", "Is Num", "Val"]; show_row_number = true)
 end

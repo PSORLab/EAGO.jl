@@ -7,7 +7,7 @@
 #############################################################################
 # src/eago_optimizer/display.jl
 # Functions used to print information about solution routine to console.
-# Printing is done with reference to the input problem is there is any
+# Printing is done with reference to the input problem if there is any
 # ambiguity.
 #############################################################################
 
@@ -44,7 +44,7 @@ function print_solution!(m::GlobalOptimizer)
             println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
             println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         end
-        println("Solution is :")
+        println("Solution is:")
         if m._feasible_solution_found
             for i = 1:m._input_problem._variable_count
                 println("    X[$i] = $(m._continuous_solution[i])")

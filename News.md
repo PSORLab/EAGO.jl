@@ -4,10 +4,10 @@
 - 4/12/2018: Initial release of combined EAGO packages v0.1.1.
 
 ## v0.1.2
-- 6/20/2018: [EAGO v0.1.2 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.1.2). Significant speed and functionality updates.
+- 6/20/2018: [**EAGO v0.1.2 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.1.2). Significant speed and functionality updates.
 
 ## v0.2.0
-- 6/14/2019: [EAGO v0.2.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.0). This update creates a number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
+- 6/14/2019: [**EAGO v0.2.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.2.0). This update creates a number of breaking changes to the EAGO API. Please review the use cases provided in the documentation to update examples.
   - Updated to support Julia 1.0+, MathOptInterface (MOI), and MOI construction of subproblems.
   - Additional domain reduction routines available.
   - Support for specialized handling of linear and quadratic terms.
@@ -60,5 +60,12 @@
       - Drops appveyor CI and Travis CI in favor of Github Actions.
 - 11/18/2020 [**EAGO v0.5.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.1)
      - Support for Julia ~1 (with limited functionality for Julia 1.0, 1.1).
-- 11/18/2020 **EAGO v0.5.2 has been tagged**
+- 11/18/2020 [**EAGO v0.5.2 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.5.2)
      - Fix user specified branching variables.
+
+## v0.8.0
+- 6/12/2023: [**EAGO v0.8.0 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.0).
+  - Updated EAGO for compatibility with the nonlinear expression API changes introduced in JuMP v1.2: https://discourse.julialang.org/t/ann-upcoming-refactoring-of-jumps-nonlinear-api/83052
+    - EAGO now uses the `MOI.Nonlinear` submodule instead of `JuMP._Derivatives`.
+    - Models, nodes, expressions, constraints, and operators are now compatible with MOI.
+  - Added logic and comparison operators to `EAGO.OperatorRegistry`.

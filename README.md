@@ -99,11 +99,11 @@ As a global optimization platform, EAGO's solvers can be used to find solutions 
 The EAGO package has numerous features: a solver accessible from JuMP/MathOptInterface (MOI), domain reduction routines, McCormick relaxations, and specialized non-convex semi-infinite program solvers. A full description of all EAGO features is available on the [**documentation website**](https://psorlab.github.io/EAGO.jl/dev/). A series of example have been provided in the form of Jupyter notebooks in the separate [**EAGO-notebooks**](https://github.com/PSORLab/EAGO-notebooks) repository.
 
 ## Recent News
-- 6/12/2023: [EAGO v0.8.0 has been tagged](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.0).
-  - Updated EAGO for compatibility with the nonlinear expression API changes introduced in JuMP v1.2: https://discourse.julialang.org/t/ann-upcoming-refactoring-of-jumps-nonlinear-api/83052
-    - EAGO now uses the `MOI.Nonlinear` submodule instead of `JuMP._Derivatives`.
-    - Models, nodes, expressions, constraints, and operators are now compatible with MOI.
-  - Added logic and comparison operators to `EAGO.OperatorRegistry`.
+- 6/15/2023: [**EAGO v0.8.1 has been tagged**](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.1).
+  - Resolved an issue where integer and binary variables would sometimes throw an `MathOptInterface.UpperBoundAlreadySet` error.
+  - Added the function `unbounded_check!` which warns users if they are missing variable bounds and sets them to +/- 1E10 by default.
+    - Added an EAGO parameter `unbounded_check` which defaults to `true` and enables `unbounded_check!`.
+  - Bumped requirement for PrettyTables.jl to v2+ to accomodate the latest version of DataFrames.jl.
 
 For a full list of EAGO release news, click [**here**](https://github.com/PSORLab/EAGO.jl/releases).
 

@@ -232,10 +232,43 @@ fathom!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = fathom!(_ext(m
 """
 $(TYPEDSIGNATURES)
 
+Check the optimization problem for unbounded branching variables, which would interfere
+with EAGO's branch-and-bound routine since there are no well-defined branching rules
+for cases where the interval bounds contain `-Inf` or `Inf`. If any branching variables
+are missing bounds, add the missing bound at +/- 1e10 and warn the user.
+"""
+function unbounded_check!(m::GlobalOptimizer)
+    if m._parameters.unbounded_check
+        unbounded_flag = false
+        wp = m._working_problem
+        epigraph_flag = _variable_num(FullVar(), m) != m._input_problem._variable_count
+        for i = 1:_variable_num(BranchVar(), m) - epigraph_flag #Not including epigraph reformulation variable
+            if !wp._variable_info[i].has_lower_bound
+                unbounded_flag = true
+                wp._variable_info[i] = VariableInfo(wp._variable_info[i], GT(-1e10))
+            end
+            if !wp._variable_info[i].has_upper_bound
+                unbounded_flag = true
+                wp._variable_info[i] = VariableInfo(wp._variable_info[i], LT(1e10))
+            end
+        end
+        unbounded_flag && @warn("""
+        At least one branching variable is unbounded. This will interfere with EAGO's global
+        optimization routine and may cause unexpected results. Bounds have been automatically
+        generated at +/- 1e10 for all unbounded variables, but tighter user-defined bounds are
+        highly recommended. To disable this warning and the automatic generation of bounds, use
+        the option `unbounded_check = false`.""")
+    end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
 Prepare the stack for the branch-and-bound routine. By default, create an
 initial node with the variable bounds as box constraints and add it to the stack.
 """
 function initialize_stack!(t::ExtensionType, m::GlobalOptimizer)
+    unbounded_check!(m)
     d = _working_variable_info.(m, m._branch_to_sol_map)
     push!(m._stack, NodeBB(lower_bound.(d), upper_bound.(d), is_integer.(d)))
     m._node_count = 1
