@@ -265,6 +265,7 @@ Prepare the stack for the branch-and-bound routine. By default, create an
 initial node with the variable bounds as box constraints and add it to the stack.
 """
 function initialize_stack!(t::ExtensionType, m::GlobalOptimizer)
+    unbounded_check!(m)
     d = _working_variable_info.(m, m._branch_to_sol_map)
     push!(m._stack, NodeBB(lower_bound.(d), upper_bound.(d), is_integer.(d)))
     m._node_count = 1
