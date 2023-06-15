@@ -44,7 +44,7 @@ function print_solution!(m::GlobalOptimizer)
             println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
             println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
         end
-        println("Solution is :")
+        println("Solution is:")
         if m._feasible_solution_found
             for i = 1:m._input_problem._variable_count
                 println("    X[$i] = $(m._continuous_solution[i])")

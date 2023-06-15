@@ -222,7 +222,7 @@ Base.@kwdef mutable struct EAGOParameters
     cut_safe_b::Float64 = 1E9
 
     "Solve upper problem for every node with depth less than `upper_bounding_depth`,
-    and otherwise solve upper problems with a probability of (1/2)^(depth-upper_bounding_depth)
+    and otherwise solve upper problems with a probability of `(1/2)^(depth-upper_bounding_depth)`
     (default = 8)"
     upper_bounding_depth::Int = 8
 
@@ -241,8 +241,10 @@ Base.@kwdef mutable struct EAGOParameters
     integer_rel_tol::Float64 = 1E-9
 
     # Other forcing options
-    "Ignore EAGO's ability to parse problem types and force it to run global optimization"
+    "Ignore EAGO's ability to parse problem types and force it to run global optimization (default = false)"
     force_global_solve::Bool = false
+    "Check that all branching variables have finite bounds and set them to +/- 1E10 if not (default = true)"
+    unbounded_check::Bool = true
 end
 const EAGO_PARAMETERS = fieldnames(EAGOParameters)
 
