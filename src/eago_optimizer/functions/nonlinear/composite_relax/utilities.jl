@@ -57,7 +57,7 @@ function expand_set(::Type{MC{N2,T}}, x::MC{N1,T}, fsparse::Vector{Int}, subspar
     return MC{N2,T}(x.cv, x.cc, x.Intv, cv_grad, cc_grad, x.cnst)
 end
 
-function set_value_post(z::MC{N,T}, v::VariableValues{Float64}, s::Vector{Int}, ϵ::Float64) where {V,N,T<:RelaxTag}
+function set_value_post(z::MC{N,T}, v::VariableValues{Float64}, s::Vector{Int}, ϵ::Float64) where {N,T<:RelaxTag}
     l = z.cv
     u = z.cc
     lower_refinement = true

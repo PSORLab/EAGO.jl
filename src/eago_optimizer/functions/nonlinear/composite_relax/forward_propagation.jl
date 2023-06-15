@@ -15,7 +15,7 @@ xset_ynum(b, x, y) = !is_num(b, x) && is_num(b, y)
 xy_num(b, x, y) = is_num(b, x) && is_num(b, y)
 xyset(b, x, y) = !(is_num(b, x) || is_num(b, y))
 
-function varset(::Type{MC{N,T}}, i, x_cv, x_cc, l, u) where {V,N,T<:RelaxTag}
+function varset(::Type{MC{N,T}}, i, x_cv, x_cc, l, u) where {N,T<:RelaxTag}
     v = seed_gradient(i, Val(N))
     return MC{N,T}(x_cv, x_cc, Interval{Float64}(l, u), v, v, false)
 end

@@ -248,7 +248,7 @@ end
 MC(x::MCAffPnt{N,T}) where {N,T<:RelaxTag} = x.v
 MC(x::MC{N,T}) where {N, T<:RelaxTag} = x
 
-relax_info(s::RelaxAA, n::Int, t::T) where {N,T} = MCAffPnt{n,T}
+relax_info(s::RelaxAA, n::Int, t::T) where T = MCAffPnt{n,T}
 
 zero(::Type{MCAffPnt{N,T}}) where {N,T} = MCAffPnt{N,T}(zero(MC{N,T}), zero(AffineEAGO{N}))
 zero(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(zero(x.v), zero(x.box))
@@ -297,7 +297,7 @@ function cut(x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Ve
     return x
 end
 
-function varset(::Type{MCAffPnt{N,T}}, i, x_cv, x_cc, l, u) where {V,N,T<:RelaxTag}
+function varset(::Type{MCAffPnt{N,T}}, i, x_cv, x_cc, l, u) where {N,T<:RelaxTag}
     v = seed_gradient(i, Val(N))
     v_Intv = Interval{Float64}(l, u)
     v_mc = MC{N,T}(x_cv, x_cc, v_Intv, v, v, false) 
