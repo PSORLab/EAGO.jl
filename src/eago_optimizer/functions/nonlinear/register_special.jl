@@ -31,7 +31,7 @@ function register_eago_operators!(m::JuMP.Model)
     JuMP.register(m, :gelu, 1, gelu, McCormick.gelu_deriv, McCormick.gelu_deriv2)
     JuMP.register(m, :swish, 1, swish, McCormick.swish_deriv, McCormick.swish_deriv2)
     JuMP.register(m, :xabsx, 1, xabsx, McCormick.xabsx_deriv, McCormick.xabsx_deriv2)
-    JuMP.register(m, :logcosh, 1, xabsx, McCormick.xabsx_deriv, McCormick.xabsx_deriv2)
+    JuMP.register(m, :logcosh, 1, logcosh, McCormick.logcosh_deriv, McCormick.logcosh_deriv2)
 
     # register activation functions w/ parameters
     MOINL.register_operator(m.nlp_model, :param_relu, 2, param_relu, McCormick.param_relu_grad)

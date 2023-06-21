@@ -36,16 +36,29 @@ function print_solution!(m::GlobalOptimizer)
         elseif m._end_state == GS_TIME_LIMIT
             println("Time Limit Exceeded")
         end
-        println("First Solution Found at Node $(m._first_solution_node)") #TODO: Why is this "first solution"?
-        if !_is_input_min(m)
-            println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
-            println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
+        if m._end_state == GS_OPTIMAL || m._end_state == GS_RELATIVE_TOL || m._end_state == GS_ABSOLUTE_TOL
+            println("Optimal Solution Found at Node $(m._first_solution_node)")
+            if !_is_input_min(m)
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            else
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            end
+        elseif m._end_state == GS_INFEASIBLE
+            println("No Solution Found")
         else
-            println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
-            println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
+            println("Best Solution Found at Node $(m._first_solution_node)")
+            if !_is_input_min(m)
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            else
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            end
         end
-        println("Solution is:")
         if m._feasible_solution_found
+            println("Solution:")
             for i = 1:m._input_problem._variable_count
                 println("    X[$i] = $(m._continuous_solution[i])")
             end
@@ -59,15 +72,18 @@ end
 $(FUNCTIONNAME)
 
 Print information about the current node. Includes node ID, lower bound,
-and interval box.
+upper bound, and interval box.
 """
 function print_node!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
         n = m._current_node
-        bound = _is_input_min(m) ? n.lower_bound : -n.lower_bound
+        lower_bound = _is_input_min(m) ? n.lower_bound : -n.lower_bound
+        upper_bound = _is_input_min(m) ? n.upper_bound : -n.upper_bound
         k = length(n) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
-        println("Node ID: $(n.id), Lower Bound: $(bound)")
+        println("Node ID: $(n.id)")
+        println("Lower Bound: $(lower_bound)")
+        println("Upper Bound: $(upper_bound)")
         println("Lower Variable Bounds: $(n.lower_variable_bounds[1:k])")
         println("Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
         println(" ")
@@ -172,23 +188,26 @@ function print_results!(m::GlobalOptimizer, lower_flag::Bool)
         println(" ")
         if lower_flag
             if _is_input_min(m)
-                print("Lower Bound (First Iteration): $(m._lower_objective_value),")
+                println("Lower Bound (First Iteration): $(m._lower_objective_value)")
             else
-                print("Upper Bound (First Iteration): $(m._lower_objective_value),")
+                println("Upper Bound (First Iteration): $(m._lower_objective_value)")
             end
-            print(" Solution: $(m._lower_solution[1:k]), Feasibility: $(m._lower_feasibility)\n")
+            println("Solution: $(m._lower_solution[1:k])")
+            println("Feasibility: $(m._lower_feasibility)")
             println("Termination Status Code: $(m._lower_termination_status)")
             println("Result Code: $(m._lower_primal_status)")
         else
             if _is_input_min(m)
-                print("Upper Bound: $(m._upper_objective_value), ")
+                println("Upper Bound: $(m._upper_objective_value)")
             else
-                print("Lower Bound: $(m._upper_objective_value), ")
+                println("Lower Bound: $(m._upper_objective_value)")
             end
-            print(" Solution: $(m._upper_solution[1:k]), Feasibility: $(m._upper_feasibility)\n")
+            println("Solution: $(m._upper_solution[1:k])")
+            println("Feasibility: $(m._upper_feasibility)")
             println("Termination Status Code: $(m._upper_termination_status)")
             println("Result Code: $(m._upper_result_status)")
         end
+        println(" ")
     end
     return
 end

@@ -20,9 +20,9 @@ EAGO is a deterministic global optimizer designed to address a wide variety of o
 
 ## EAGO's Relaxations
 
-For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of `f(x) = x(x-5)sin(x)`, a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original `X` decision space<sup>1</sup>:
+For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of `f(x) = x(x-5)sin(x)`, a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original decision space, *X*<sup>1</sup>:
 
-- *v*<sub>1</sub> = x
+- *v*<sub>1</sub> = *x*
 - *v*<sub>2</sub> = *v*<sub>1</sub> - 5
 - *v*<sub>3</sub> = sin(*v*<sub>1</sub>)
 - *v*<sub>4</sub> = *v*<sub>1</sub>*v*<sub>2</sub>
@@ -110,19 +110,19 @@ For a full list of EAGO release news, click [**here**](https://github.com/PSORLa
 ## Installing EAGO
 
 EAGO is a registered Julia package and it can be installed using the Julia package manager.
-From the Julia REPL, type `]` to enter the Package manager (Pkg) mode and run the following command
+From the Julia REPL, type `]` to enter the Package manager (Pkg) mode and run the following command:
 
 ```julia
 pkg> add EAGO
 ```
 
-Currently, EAGO is tied to version 1.11 of JuMP. This allows a replication of some of the internal features shared by EAGO and JuMP's AD scheme, e.g., generation of Wergert Tapes, passing evaluators between JuMP and EAGO, etc.
+Currently, EAGO is compatible with version 1.11+ of JuMP. This allows a replication of some of the internal features shared by EAGO and JuMP's AD scheme, e.g., generation of Wergert Tapes, passing evaluators between JuMP and EAGO, etc.
 
 ```julia
 pkg> add JuMP
 ```
 
-EAGO v0.8.0 is the current tagged version and requires Julia 1.6+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.8 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/) for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
+EAGO v0.8.1 is the current tagged version and requires Julia 1.6+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.8 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [**High-Performance Configuration**](https://psorlab.github.io/EAGO.jl/Optimizer/high_performance/) for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
 If any issues are encountered when loading EAGO (or when using it), please submit an issue using the Github [**issue tracker**](https://github.com/PSORLab/EAGO.jl/issues).
 
 ## Bug Reporting, Support, and Feature Requests
@@ -144,18 +144,20 @@ Please report bugs or feature requests by opening an issue using the Github [**i
 
 Please cite the following paper when using EAGO. In plain text form this is:
 ```
- M. E. Wilhelm & M. D. Stuber (2020) EAGO.jl: easy advanced global optimization in Julia,
- Optimization Methods and Software, DOI: 10.1080/10556788.2020.1786566
+M. E. Wilhelm & M. D. Stuber (2022) EAGO.jl: easy advanced global optimization in Julia,
+Optimization Methods and Software, 37:2, 425-450, DOI: 10.1080/10556788.2020.1786566
 ```
 
-A corresponding bibtex entry text is given below and a corresponding .bib file is given in citation.bib.
+A BibTeX entry is given below and a corresponding .bib file is given in citation.bib.
 ```
 @article{doi:10.1080/10556788.2020.1786566,
-author = { M. E.   Wilhelm  and  M. D.   Stuber },
+author = {M. E. Wilhelm and M. D. Stuber},
 title = {EAGO.jl: easy advanced global optimization in Julia},
 journal = {Optimization Methods and Software},
-pages = {1-26},
-year  = {2020},
+volume = {37},
+number = {2},
+pages = {425-450},
+year  = {2022},
 publisher = {Taylor & Francis},
 doi = {10.1080/10556788.2020.1786566},
 URL = {https://doi.org/10.1080/10556788.2020.1786566},
@@ -165,7 +167,7 @@ eprint = {https://doi.org/10.1080/10556788.2020.1786566}
 
 ## Related Packages
 
-- [**ValidatedNumerics.jl**](https://github.com/JuliaIntervals/ValidatedNumerics.jl):A Julia library for validated interval calculations, including basic interval extensions, constraint programming, and interval contactors   
+- [**ValidatedNumerics.jl**](https://github.com/JuliaIntervals/ValidatedNumerics.jl): A Julia library for validated interval calculations, including basic interval extensions, constraint programming, and interval contactors   
 - [**MAiNGO**](http://swmath.org/software/27878): An open-source mixed-integer nonlinear programming package in C++ that utilizes MC++ for relaxations.
 - [**MC++**](https://omega-icl.github.io/mcpp/): A mature McCormick relaxation package in C++ that also includes McCormick-Taylor, Chebyshev
 Polyhedral and Ellipsoidal arithmetics.

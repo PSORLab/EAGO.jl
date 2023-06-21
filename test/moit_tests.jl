@@ -63,18 +63,18 @@ function test_runtests()
                                 "test_linear_integration_delete_variables",
 
                                 # EAGO Exclusions to Resolve (by adding conic support later and fixing twice solve issues)
-                                "conic_NormOneCone_VectorAffineFunction",
-                                "conic_NormOneCone_VectorOfVariables",
-                                "conic_NormInfinityCone_VectorOfVariables",
-                                "conic_NormInfinityCone_VectorAffineFunction",
+                                "test_conic_NormOneCone_VectorAffineFunction",
+                                "test_conic_NormOneCone_VectorOfVariables",
+                                "test_conic_NormInfinityCone_VectorOfVariables",
+                                "test_conic_NormInfinityCone_VectorAffineFunction",
                                 "test_conic_NormInfinityCone_3",
-                                "test_conic_NormOneCone",
-                                "test_conic_linear_VectorOfVariables",
-                                "conic_linear_VectorAffineFunction",
-                                "conic_linear_VectorAffineFunction_2",
+                               r"^test_conic_NormOneCone$",
+                               r"^test_conic_linear_VectorOfVariables$",
+                               r"^test_conic_linear_VectorAffineFunction$",
+                                "test_conic_linear_VectorAffineFunction_2",
 
-                                "linear_integer_solve_twice",
-                                "linear_integration",
+                                "test_linear_integer_solve_twice",
+                               r"^test_linear_integration$",
 
                                 "test_quadratic_SecondOrderCone_basic",
                                 "test_quadratic_constraint_GreaterThan",
@@ -109,10 +109,14 @@ function test_runtests()
                                 "test_objective_ObjectiveSense_in_ListOfModelAttributesSet",
                                 "test_objective_ScalarAffineFunction_in_ListOfModelAttributesSet",
                                 "test_objective_ScalarQuadraticFunction_in_ListOfModelAttributesSet",
-                                "test_objective_VariableIndex_in_ListOfModelAttributesSet"
+                                "test_objective_VariableIndex_in_ListOfModelAttributesSet",
+
+                                # EAGO B&B handles interval bounds internally
+                                "test_linear_open_intervals",
+                                "test_linear_variable_open_intervals"
 
                                 ],
-                      exclude_tests_after = v"0.10.5")
+                      exclude_tests_after = v"1.17.1")
 end
 
 end

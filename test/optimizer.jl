@@ -703,11 +703,19 @@ end
 end
 
 @testset "Display Testset" begin
-    m = EAGO.Optimizer()
-    MOI.set(m, MOI.RawOptimizerAttribute("verbosity"), 2)
-    @test_nowarn EAGO.print_solution!(m._global_optimizer)
-    @test_nowarn EAGO.print_results!(m._global_optimizer, true)
-    @test_nowarn EAGO.print_results!(m._global_optimizer, false)
-    @test_nowarn EAGO.print_iteration!(m._global_optimizer)
-    @test_nowarn EAGO.print_node!(m._global_optimizer)
+    x = EAGO.Optimizer()
+    m = x._global_optimizer
+    d = EAGO._relaxed_optimizer(m)
+    MOI.set(x, MOI.RawOptimizerAttribute("verbosity"), 3)
+    MOI.set(x, MOI.RawOptimizerAttribute("log_on"), true)
+    END_STATES = instances(EAGO.GlobalEndState)
+    for i in eachindex(END_STATES)
+        m._end_state = END_STATES[i]
+        @test_nowarn EAGO.print_solution!(m)
+    end
+    @test_nowarn EAGO.print_results!(m, true)
+    @test_nowarn EAGO.print_results!(m, false)
+    @test_nowarn EAGO.print_iteration!(m)
+    @test_nowarn EAGO.print_node!(m)
+    @test_nowarn EAGO.print_problem_summary!(d, "Display Test")
 end
