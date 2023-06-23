@@ -105,18 +105,12 @@ function test_runtests()
                                 "test_linear_Semicontinuous_integration",
                                 "test_linear_Semiinteger_integration",
 
-                                # Remove these tests after MOI 1.17.2
-                                "test_objective_ObjectiveSense_in_ListOfModelAttributesSet",
-                                "test_objective_ScalarAffineFunction_in_ListOfModelAttributesSet",
-                                "test_objective_ScalarQuadraticFunction_in_ListOfModelAttributesSet",
-                                "test_objective_VariableIndex_in_ListOfModelAttributesSet",
-
                                 # EAGO B&B handles interval bounds internally
                                 "test_linear_open_intervals",
                                 "test_linear_variable_open_intervals"
 
                                 ],
-                      exclude_tests_after = v"1.17.1")
+                      exclude_tests_after = v"1.18.0")
 end
 
 end
