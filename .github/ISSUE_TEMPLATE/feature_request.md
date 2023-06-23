@@ -4,7 +4,7 @@ about: Suggest how we can improve EAGO
 
 ---
 
-Thanks for your interest in EAGO! You can use this Github issue to suggest new
+Thanks for your interest in EAGO! You can use this GitHub issue to suggest new
 features or make recommendations on additional documentation for EAGO.
 
 **If your feature request is related to a problem, please describe the problem.**

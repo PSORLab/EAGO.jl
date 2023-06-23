@@ -43,7 +43,6 @@ end
 
 # Access gradient sparsity of MOI storage.
 sparsity(d::MOIRAD._FunctionStorage) = d.grad_sparsity
-#sparsity(d::MOIRAD._SubexpressionStorage) = d.sparsity
 
 # Compute gradient sparsity from MOI storage.
 function _compute_sparsity(d::MOIRAD._FunctionStorage, sparse_dict::Dict{Int,Vector{Int}}, is_sub, subexpr_indx)

@@ -29,7 +29,7 @@ end
 """
     SIPResult
 
-Structure storing the results of the SIPres algorithm.
+Structure storing the results of the `SIPRes` algorithm.
 """
 mutable struct SIPResult
     iteration_number::Int64

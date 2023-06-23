@@ -217,12 +217,13 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                 zv = z*x
                 wIntv = zv.Intv
                 if (u1max < z.Intv.hi) || (u2max < x.Intv.hi)
-                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(zr, xr, s, dp, dP)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(0, 0, zr, xr, s, dp, dP, 0, 0)
+                    #u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
                     za_l = McCormick.mult_apriori_kernel(z, x, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
                     zv = zv ∩ za_l
                 end
                 if (v1nmax > -z.Intv.lo) || (v2nmax > -x.Intv.lo)
-                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(zr, xr, s, dp, dP)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(0, 0, zr, xr, s, dp, dP, 0, 0)
                     za_u = McCormick.mult_apriori_kernel(-z, -x, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
                     zv = zv ∩ za_u
                 end

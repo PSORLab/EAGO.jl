@@ -226,7 +226,7 @@ end
 function Δxl(m, i)
     _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
 end
-function Δux(m, i) 
+function Δxu(m, i) 
     _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
 end
 
@@ -281,7 +281,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
               # min of xLP - yL and xU - xLP for potential directions
             lower_indx, lower_value = active_argmin(i -> Δxl(m, i), m._obbt_working_lower_index, obbt_variable_count)
-            upper_indx, upper_value = active_argmin(i -> Δux(m, i), m._obbt_working_upper_index, obbt_variable_count)
+            upper_indx, upper_value = active_argmin(i -> Δxu(m, i), m._obbt_working_upper_index, obbt_variable_count)
  
             # default to upper bound if no lower bound is found, use maximum distance otherwise
             if lower_value <= upper_value && lower_indx > 0

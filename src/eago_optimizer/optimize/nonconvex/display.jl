@@ -102,68 +102,69 @@ function print_iteration!(m::GlobalOptimizer)
 
     if _verbosity(m) > 0
 
-        # Print header line every `header_iterations` times
-        if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
-            println("-----------------------------------------------------------------------------------------------------------------------------")
-            println("|  Iteration #  |     Nodes    | Lower Bound  |  Upper Bound  |      Gap     |     Ratio    |     Time     |    Time Left   |")
-            println("-----------------------------------------------------------------------------------------------------------------------------")
-        end
-
-        # Print iteration summary every `output_iterations` times
+        # Print header line every `header_iterations` times and print iteration summary every `output_iterations` times
         if mod(m._iteration_count, m._parameters.output_iterations) === 0
+            if m._iteration_count == m._parameters.output_iterations || mod(m._iteration_count, m._parameters.header_iterations) < m._parameters.output_iterations
+                println("---------------------------------------------------------------------------------------------------------------------------------")
+                println("|  Iteration #  |     Nodes     |  Lower Bound  |  Upper Bound  |      Gap      |     Ratio     |     Timer     |   Time Left   |")
+                println("---------------------------------------------------------------------------------------------------------------------------------")
+            end
+            # Print start
+            print_str = "|  "
 
-            print_str = "| "
-
+            # Print iteration number
             max_len = 12
             temp_str = string(m._iteration_count)
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*"  | "
+            print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
+            # Print node count
+            max_len = 13
             temp_str = string(m._node_count)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
+            # Determine lower and upper bound
             if _is_input_min(m)
                 lower = m._global_lower_bound
                 upper = m._global_upper_bound
             else
-                lower = m._global_lower_bound #TODO: Shouldn't these be negated?
+                lower = m._global_lower_bound
                 upper = m._global_upper_bound
             end
-            #temp_str = string(round(lower, sigdigits = 5))
-            #temp_str = string(lower, sigdigits = 3))
+
+            # Print lower bound
+            max_len = 13
             temp_str = @sprintf "%.3E" lower
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            #temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
-            #temp_str = string(upper, sigdigits = 3))
+            # Print upper bound
+            max_len = 13
             temp_str = @sprintf "%.3E" upper
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" |"
+            print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
+            # Print absolute gap between lower and upper bound
+            max_len = 13
             temp_str = @sprintf "%.3E" abs(m._global_upper_bound - m._global_lower_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
+            # Print relative gap between lower and upper bound
+            max_len = 13
             temp_str = @sprintf "%.3E" relative_gap(m._global_lower_bound, m._global_upper_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(x._run_time, sigdigits = 3))
+            # Print run time
+            max_len = 13
             temp_str = @sprintf "%.3E" m._run_time
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(x._time_left, sigdigits = 4))
+            # Print time remaining
+            max_len = 13
             temp_str = @sprintf "%.3E" m._time_left
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |"

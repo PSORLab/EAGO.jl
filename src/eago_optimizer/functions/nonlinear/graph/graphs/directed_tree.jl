@@ -9,7 +9,7 @@ abstract type AbstractCache end
 $(TYPEDSIGNATURES)
 
 Function used to initialize the storage cache `d::AbstractCache` 
-for a given type of directed acycle graph `g::AbstractDirectedGraph`.
+for a given type of directed acyclic graph `g::AbstractDirectedGraph`.
 """
 function initialize!(::AbstractCache, ::AbstractDirectedGraph)
     error("Initialization method not defined for this combination 

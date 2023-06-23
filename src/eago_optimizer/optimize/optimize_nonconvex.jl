@@ -274,7 +274,7 @@ user writes `optimize!(model)`.
 Here, `optimize_hook!` is used to bypass EAGO's problem parsing and
 treat every problem using its branch-and-bound routine. This is done
 in this example by telling EAGO to treat the problem as a mixed integer
-non-convex problem, which normally dispatches to branch-and-bound.
+nonconvex problem, which normally dispatches to branch-and-bound.
 ```julia-repl
 struct MyNewExtension <: EAGO.ExtensionType end
 import EAGO: optimize_hook!

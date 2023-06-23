@@ -7,7 +7,7 @@ using Test
 const MOI = MathOptInterface
 const OPTIMIZER = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true))
 const BRIDGED = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true), with_bridge_type = Float64)
-const CONFIG = MOI.Test.Config(atol = 1e-3, rtol = 1e-3, optimal_status = MOI.OPTIMAL, 
+const CONFIG = MOI.Test.Config(atol = 1E-3, rtol = 1E-3, optimal_status = MOI.OPTIMAL, 
                                exclude = Any[MOI.DualObjectiveValue, MOI.ConstraintBasisStatus, MOI.VariableName, MOI.ConstraintName, MOI.delete,
                                              MOI.ConstraintDual, MOI.ListOfModelAttributesSet, MOI.add_constrained_variables])
 
