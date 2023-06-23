@@ -1,13 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_semiinfinite/algorithms/sip_hybrid.jl
-# Defines the SIP-res algorithm which implements Algorithm #1 of XXX.
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_semiinfinite/nonconvex_algorithms/sip_hybrid.jl
+# Defines the SIP-res algorithm which implements Algorithm #1 of XXX.           #TODO: Find the citation for this.
+################################################################################
 
 """
     SIPRes

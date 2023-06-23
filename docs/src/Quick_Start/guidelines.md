@@ -20,6 +20,7 @@ struct MyNewStruct <: EAGO.ExtensionType end
 To let EAGO know that you would like to use this extension (and any functions you
 overload), when you create the JuMP model, declare your new type in the SubSolvers
 field of EAGO's optimizer as follows:
+
 ```julia
 using JuMP
 
@@ -55,9 +56,9 @@ The user-defined preprocessing step can be as simple or complex as desired, but
 if `_preprocess_feasibility` is not set to `true`, EAGO will assume each node
 is infeasible.
 
-## 3) Lower problem
+## 3) Lower Problem
 
-By default, EAGO applies Kelley's cutting-plane algorithm[1] to solve the lower bounding
+By default, EAGO applies Kelley's cutting-plane algorithm<sup>1</sup> to solve the lower bounding
 problem. This can be overloaded using the same syntax as for the other functions.
 Necessary changes to the `EAGO.GlobalOptimizer` that occur within the lower problem
 are changing the `_lower_objective_value` and `_lower_feasibility` fields. If the
@@ -81,7 +82,7 @@ an algorithm that also calculates an upper objective value, the necessary fields
 to update in `upper_problem!` can simply be updated here, and the `upper_problem!`
 can be overloaded by a function that does `nothing`.
 
-## 4) Upper problem
+## 4) Upper Problem
 
 By default, the upper bounding problem is run on every node up to depth
 `upper_bounding_depth`, and is triggered with a probability of `0.5^(depth - upper_bounding_depth)`
@@ -119,7 +120,7 @@ definition for the `lower_problem!`, the `_upper_feasibility` flag must be set
 to `true`. If this is not done, the change to the `_upper_objective_value` will
 be discarded.
 
-## 5) Convergence check
+## 5) Convergence Check
 
 By default, EAGO checks to see if the lower and upper bounds have converged to
 within either the absolute or relative tolerance. This method of checking convergence
@@ -157,7 +158,7 @@ end
 
 If `_postprocess_feasibility` is not set to `true`, no nodes will be branched on.
 
-## 7) Termination check
+## 7) Termination Check
 
 This is the check that occurs on each iteration of the branch-and-bound algorithm
 that determines whether the algorithm continues or not. By default, several
@@ -189,8 +190,7 @@ function EAGO.termination_check(t::MyNewStruct, x::EAGO.GlobalOptimizer)
 end
 ```
 
+## References
 
-
-## References:
 1. Kelley, J. E. “The Cutting-Plane Method for Solving Convex Programs.” *Journal of the Society for Industrial and Applied Mathematics*, vol. 8, no. 4, pp. 703–12 (1960). 
 2. Tawarmalani, M., Sahinidis, N. V. "Global optimization of mixed-integer nonlinear programs: A theoretical and computational study." *Math. Program., Ser. A*, 99, pp. 563-591 (2004).

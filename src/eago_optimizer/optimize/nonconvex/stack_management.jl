@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/optimize/nonconvex_branch/stack_management.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/optimize/nonconvex/stack_management.jl
 # Contains the subroutines used for stack management. Namely, initialize_stack!
 # select_branch_variable!, select_branch_point!, branch_node!, and fathom!.
-#############################################################################
+################################################################################
 #=
 function _variable_infeasibility(m::GlobalOptimizer, i::Int)
     tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)

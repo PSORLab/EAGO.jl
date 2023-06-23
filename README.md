@@ -1,4 +1,4 @@
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/full_Logo1.png" width="75%" height="75%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/Logo.png" width="75%" height="75%">
 
 # EAGO - Easy Advanced Global Optimization
 
@@ -115,7 +115,7 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
   - Models, nodes, expressions, constraints, and operators are now compatible with MOI.
 - Added logic and comparison operators to `EAGO.OperatorRegistry`.
 
-For a full list of EAGO release news, click [here](https://github.com/PSORLab/EAGO.jl/releases).
+For a full list of EAGO release news, click [here](https://psorlab.github.io/EAGO.jl/stable/news/).
 
 ## Installing EAGO
 

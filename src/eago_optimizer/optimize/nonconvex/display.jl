@@ -1,15 +1,16 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/display.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/optimize/nonconvex/display.jl
 # Functions used to print information about solution routine to console.
 # Printing is done with reference to the input problem if there is any
 # ambiguity.
-#############################################################################
+################################################################################
 
 """
 $(FUNCTIONNAME)
@@ -37,7 +38,7 @@ function print_solution!(m::GlobalOptimizer)
             println("Time Limit Exceeded")
         end
         if m._end_state == GS_OPTIMAL || m._end_state == GS_RELATIVE_TOL || m._end_state == GS_ABSOLUTE_TOL
-            println("Optimal Solution Found at Node $(m._first_solution_node)")
+            println("Optimal Solution Found at Node $(m._solution_node)")
             if !_is_input_min(m)
                 println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
                 println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
@@ -48,7 +49,7 @@ function print_solution!(m::GlobalOptimizer)
         elseif m._end_state == GS_INFEASIBLE
             println("No Solution Found")
         else
-            println("Best Solution Found at Node $(m._first_solution_node)")
+            println("Best Solution Found at Node $(m._solution_node)")
             if !_is_input_min(m)
                 println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
                 println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")

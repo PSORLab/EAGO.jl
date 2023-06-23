@@ -1,16 +1,18 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/functions/nonlinear/nonlinear.jl
 # Defines the NonlinearExpression, BufferedNonlinearFunction used in
 # constructing relaxations of nonlinear functions along with a number of
 # helper functions including an Evaluator structure and: set_node_flag!
 # set_node!, set_reference_point!, retrieve_node, prior_eval
 # copy_subexpression_value!, eliminate_fixed_variables!
-#############################################################################
+################################################################################
 
 const DEBUG_NL = false
 

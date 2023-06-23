@@ -1,6 +1,6 @@
 name = "EAGO"
 uuid = "bb8be931-2a91-5aca-9f87-79e1cb69959a"
-authors = ["Matthew Wilhelm <matthew.wilhelm@uconn.edu>"]
+authors = ["Matthew Wilhelm <matthew.wilhelm@uconn.edu>, Robert Gottlieb <robert.x.gottlieb@uconn.edu>, Dimitri Alston <dimitri.alston@uconn.edu>, and Matthew Stuber <matthew.stuber@uconn.edu>"]
 version = "0.8.1"
 
 [deps]

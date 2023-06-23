@@ -1,16 +1,17 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/types/incremental.jl
 # A type-stable wrapper for optimizers used by EAGO to enable bridging and
 # incremental loading. This is tailored to the internal routines used by EAGO.jl
 # so methods may be specialized by optimizer types and error checking is often
 # avoided.
-#############################################################################
+################################################################################
 
 #=
 mutable struct IncrementalCache{S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer}

@@ -2,7 +2,7 @@
 
 ## Graphs, Caches, Forward and Reverse Propagation
 
-EAGO makes use of a specialized tape structure for each function in order to compute valid composite bounds and relaxations. Each variable, constant, and expression is respresented by a node in a directed graph structure. 
+EAGO makes use of a specialized tape structure for each function in order to compute valid composite bounds and relaxations. Each variable, constant, and expression is represented by a node in a directed graph structure. 
 
 ```@docs
     EAGO.Node
@@ -62,7 +62,8 @@ Forward and reverse subroutines are overloaded for individual operators using th
 `fprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)` and
 `rprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)`. 
 
-## Other routines
+## Other Routines
+
 ```@docs
     EAGO.is_safe_cut!(m::GlobalOptimizer, f::MathOptInterface.ScalarAffineFunction{Float64}) 
 ```

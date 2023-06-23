@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/evaluator/passes.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/functions/nonlinear/composite_relax/forward_propagation.jl
 # Functions used to compute forward pass of nonlinear functions which include:
-# set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
-#############################################################################
+# varset, fprop!, fprop_2!, fprop_n!, f_init!
+################################################################################
 
 xnum_yset(b, x, y) = is_num(b, x) && !is_num(b, y)
 xset_ynum(b, x, y) = !is_num(b, x) && is_num(b, y)

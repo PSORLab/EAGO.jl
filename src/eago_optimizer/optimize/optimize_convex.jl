@@ -1,16 +1,17 @@
-# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/optimize/optimize_convex.jl
 # Contains the solve_local_nlp! routine which computes the optimal value
 # of a convex function. This is used to compute the upper bound in the
 # branch and bound routine. A number of utility functions required for
 # solve_local_nlp! are also included.
-#############################################################################
+################################################################################
 
 """
 $(TYPEDSIGNATURES)

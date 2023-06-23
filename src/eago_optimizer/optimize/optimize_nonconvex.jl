@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/optimize/optimize_nonconvex.jl
 # Contains the optimize! routine and subroutines needed in the branch and
 # bound routine called by EAGO.
-#############################################################################
+################################################################################
 
 include(joinpath(@__DIR__,"nonconvex","stack_management.jl"))
 include(joinpath(@__DIR__,"nonconvex","lower_problem.jl"))
@@ -171,9 +172,9 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
     nlen = length(m._stack)
     L = m._global_lower_bound
     U = m._global_upper_bound
-    if nlen == 0 && m._first_solution_node > 0
+    if nlen == 0 && m._solution_node > 0
         m._end_state = GS_OPTIMAL
-    elseif nlen == 0 && !(m._first_solution_node > 0)
+    elseif nlen == 0 && !(m._solution_node > 0)
         m._end_state = GS_INFEASIBLE
     elseif nlen >= m._parameters.node_limit
         m._end_state = GS_NODE_LIMIT
@@ -295,14 +296,14 @@ $(TYPEDSIGNATURES)
 If the most recent upper problem returned a feasible result, and the upper
 objective value is less than the previous best-known global upper bound,
 set the most recent upper problem result to be the new global upper bound.
-Update the `_feasible_solution_found`, `_first_solution_node`, 
+Update the `_feasible_solution_found`, `_solution_node`, 
 `_global_upper_bound`, and `_continuous_solution` fields of the `GlobalOptimizer`
 accordingly.
 """
 function store_candidate_solution!(m::GlobalOptimizer)
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
         m._feasible_solution_found = true
-        m._first_solution_node = m._maximum_node_id
+        m._solution_node = m._maximum_node_id
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
     end

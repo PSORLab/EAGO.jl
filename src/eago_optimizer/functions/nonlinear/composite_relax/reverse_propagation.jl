@@ -1,13 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/functions/nonlinear/reverse_pass.jl
-# Functions used to compute reverse pass of nonlinear functions.
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/functions/nonlinear/composite_relax/reverse_propagation.jl
+# Functions used to compute reverse pass of nonlinear functions which include:
+# r_init!, rprop!, rprop_2!, rprop_n!
+################################################################################
 
 function r_init!(t::Relax, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
     if !is_num(b, 1)

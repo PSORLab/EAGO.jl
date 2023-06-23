@@ -1,6 +1,6 @@
 # Definitions borrow from https://github.com/FluxML/NNlib.jl (names used to
-# standardize package). TODO: Decide how/if to incorporate NNlib depedency into
-# McCormick.jl/EAGO.jl.
+# standardize package).
+#TODO: Decide how/if to incorporate NNlib depedency into McCormick.jl/EAGO.jl.
 oftf(x, y) = oftype(float(x), y)
 leakyrelu(x, a=oftf(x, 0.01)) = max(a * x, x)
 swish1(x) = x * sigmoid(x)

@@ -1,15 +1,16 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/subsolver_config/config.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/optimize/nonconvex/configure_subsolver.jl
 # Contains subroutines used to set default configuration for select supported
 # solvers along with routines needed to adjust tolerances to mirror tolerance
 # adjustments in the global solve.
-#############################################################################
+################################################################################
 
 function set_default_config_udf!(s, m::MOI.AbstractOptimizer, verbosity::Int)
     if verbosity > 0

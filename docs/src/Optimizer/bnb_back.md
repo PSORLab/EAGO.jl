@@ -4,6 +4,7 @@ This component is meant to provide a flexible framework for implementing spatial
 All components of the branch-and-bound routine can be customized by the individual user: lower bounding problem, upper bounding problem.
 
 ## Branch and Bound Node Storage
+
 ```@docs
     EAGO.NodeBB
 ```
@@ -14,9 +15,10 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.GlobalOptimizer
 ```
 
-# Customizable subroutines
+# Customizable Subroutines
 
-## Stack management subroutines
+## Stack Management Subroutines
+
 ```@docs
     EAGO.branch_node!(t::ExtensionType, m::GlobalOptimizer)
     EAGO.select_branch_variable(t::ExtensionType, m::GlobalOptimizer)
@@ -27,7 +29,8 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.single_storage!(t::ExtensionType, m::GlobalOptimizer)
 ```
 
-## Internal Subproblem Status Codes & Subsolver Management
+## Internal Subproblem Status Codes and Subsolver Management
+
 ```@docs
     EAGO.RelaxResultStatus
     EAGO.LocalResultStatus
@@ -36,7 +39,8 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.set_default_config!(t::ExtensionType, m::GlobalOptimizer)
 ```
 
-## Main subproblem and termination subroutines
+## Main Subproblem and Termination Subroutines
+
 ```@docs
     EAGO.convergence_check(t::ExtensionType, m::GlobalOptimizer)
     EAGO.cut_condition(t::ExtensionType, m::GlobalOptimizer)
@@ -51,6 +55,7 @@ The global optimizer structure holds all information relevant to branch-and-boun
 ```
 
 ## Internal Subroutines
+
 ```@docs
     EAGO.is_integer_subproblem(m)
     EAGO.is_integer_feasible_local(m::GlobalOptimizer, d)
@@ -69,7 +74,8 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.local_problem_status!(t::MathOptInterface.TerminationStatusCode, r::MathOptInterface.ResultStatusCode)
 ```
 
-## Functions for generating console output
+## Functions for Generating Console Output
+
 ```@docs
     EAGO.print_iteration!
     EAGO.print_node!
@@ -77,13 +83,15 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.print_solution!
 ```
 
-## Support for log output at each iteration
+## Support for Log Output at Each Iteration
+
 ```@docs
     EAGO.Log
     EAGO.log_iteration!(x::GlobalOptimizer)
 ```
 
 ## Interval Representations of Expressions
+
 ```@docs
     EAGO.AbstractEAGOConstraint
     EAGO.AffineFunctionEq

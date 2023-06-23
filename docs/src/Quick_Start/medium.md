@@ -1,9 +1,9 @@
-# Simple Example
+# Medium-Difficulty Example
 
-(This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb))
+This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb)
 
 In this example, we'll adapt EAGO to implement the bisection-based algorithm used to solve
-the quasiconvex optimization problem presented in [1]:
+a quasiconvex optimization problem<sup>1</sup:
 
 ![Equation 1](qc_Equation_1.png)
 
@@ -17,16 +17,13 @@ problem to be formulated as:
 
 ![Equation 3](qc_Equation_3.png)
 
-Let $ϕ_τ(y) = f(y) - τ$ such that $\tai = (t^L + t^U)/2$. We solve for $y$ subject to
+Let $ϕ_τ(y) = f(y) - τ$ such that $\tau = (t^L + t^U)/2$. We solve for $y$ subject to
 constraints (24)-(27) where $ϕ_τ (y) ≤ 0$. If this is feasible, $t^*∈ [t^L,τ]$, else
 $t^*∈ [τ, t^U]$. The interval containing $t^*$ is kept and the other is fathomed. This
 manner of bisection is repeated until an interval containing a feasible solution with a
-width of at most ϵ is located [2].
-
+width of at most ϵ is located<sup>2</sup>.
 
 ## EAGO Implementation
-
-
 
 In the first block, we input parameters values supplied in the paper for $W_1$, $W_2$, 
 $B_1$, and $B_2$ into Julia as simple array objects. We also input bounds for the variables
@@ -55,11 +52,11 @@ xLBD = [0.623, 0.093, 0.259, 6.56, 1114,  0.013, 0.127, 0.004]
 xUBD = [5.89,  0.5,   1.0,   90,   25000, 0.149, 0.889, 0.049];
 ```
 
-## Construct the JuMP model and optimize
+## Construct the JuMP Model and Optimize
 
-We now formulate the problem using standard JuMP[3] syntax and optimize it. Note that 
+We now formulate the problem using standard JuMP<sup>3</sup> syntax and optimize it. Note that 
 we are forming an NLexpression object to handle the summation term to keep the code 
-visually simple, but this could be placed directly in the JuMP @NLobjective expression
+visually simple, but this could be placed directly in the JuMP `@NLobjective` expression
 instead.
 
 ```julia
@@ -73,7 +70,7 @@ model = Model(optimizer_with_attributes(EAGO.Optimizer, "absolute_tolerance" => 
 optimize!(model)
 ```
 
-## Retrieve results
+## Retrieve Results
 
 We then recover the objective value, the solution value, and termination status codes 
 using standard JuMP syntax. The optimal value and solution values are then rescaled 
@@ -98,6 +95,8 @@ println("The rescaled optimal value is: $(round(rescaled_fval,digits=4))")
 println("The rescaled solution is $(round.(rescaled_xsol,digits=3)).")
 ```
 
-## Reference:
+## References
+
 1. C. Jansson, Quasiconvex relaxations based on interval arithmetic, Linear Algebra and its Applications, 324 (2001), pp. 27–53.
 2. S. Boyd and L. Vandenberghe, Convex optimization, Cambridge University Press, 2004.
+3. Iain Dunning and Joey Huchette and Miles Lubin. JuMP: A Modeling Language for Mathematical Optimization, *SIAM Review*, 59 (2017), pp. 295-320.
