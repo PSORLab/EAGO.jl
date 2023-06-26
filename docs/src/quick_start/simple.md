@@ -1,14 +1,14 @@
 # Simple Example
 
-(This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/nlpopt_explicit_ann.ipynb))
+This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/nlpopt_explicit_ann.ipynb)
 
-In [1,2], a surrogate ANN model of bioreactor productivity was constructed by fitting 
-results from computationally expensive CFD simulations. The author then optimized this 
+A surrogate ANN model of bioreactor productivity was constructed by fitting 
+results from computationally expensive CFD simulations<sup>1,2</sup>. The authors then optimized this 
 surrogate model to obtain ideal processing conditions. The optimization problem is given by:
 
 ![Equation 1](Equation_1.png)
 
-## Input parameters
+## Input Parameters
 
 In the first block, we input parameters values supplied in the paper for $W_1$, $W_2$, 
 $B_1$, and $B_2$ into Julia as simple array objects. We also input bounds for the variables
@@ -37,11 +37,11 @@ xLBD = [0.623, 0.093, 0.259, 6.56, 1114,  0.013, 0.127, 0.004]
 xUBD = [5.89,  0.5,   1.0,   90,   25000, 0.149, 0.889, 0.049];
 ```
 
-## Construct the JuMP model and optimize
+## Construct the JuMP Model and Optimize
 
-We now formulate the problem using standard JuMP[3] syntax and optimize it. Note that 
+We now formulate the problem using standard JuMP<sup>3</sup> syntax and optimize it. Note that 
 we are forming an NLexpression object to handle the summation term to keep the code 
-visually simple, but this could be placed directly in the JuMP @NLobjective expression
+visually simple, but this could be placed directly in the JuMP `@NLobjective` expression
 instead.
 
 ```julia
@@ -55,7 +55,7 @@ model = Model(optimizer_with_attributes(EAGO.Optimizer, "absolute_tolerance" => 
 optimize!(model)
 ```
 
-## Retrieve results
+## Retrieve Results
 
 We then recover the objective value, the solution value, and termination status codes 
 using standard JuMP syntax. The optimal value and solution values are then rescaled 
@@ -80,7 +80,8 @@ println("The rescaled optimal value is: $(round(rescaled_fval,digits=4))")
 println("The rescaled solution is $(round.(rescaled_xsol,digits=3)).")
 ```
 
-## Reference:
-1. J. D. Smith, A. A. Neto, S. Cremaschi, and D. W. Crunkleton, CFD-based optimization of a flooded bed algae bioreactor, *Industrial & Engineering Chemistry Research*, 52 (2012), pp. 7181–7188
-2. A. M. Schweidtmann and A. Mitsos. Global Deterministic Optimization with Artificial Neural Networks Embedded [https://arxiv.org/pdf/1801.07114.pdf](https://arxiv.org/pdf/1801.07114.pdf)
+## References
+
+1. J. D. Smith, A. A. Neto, S. Cremaschi, and D. W. Crunkleton, CFD-based optimization of a flooded bed algae bioreactor, *Industrial & Engineering Chemistry Research*, 52 (2012), pp. 7181–7188.
+2. A. M. Schweidtmann and A. Mitsos. Global Deterministic Optimization with Artificial Neural Networks Embedded [https://arxiv.org/pdf/1801.07114.pdf](https://arxiv.org/pdf/1801.07114.pdf).
 3. Iain Dunning and Joey Huchette and Miles Lubin. JuMP: A Modeling Language for Mathematical Optimization, *SIAM Review*, 59 (2017), pp. 295-320.

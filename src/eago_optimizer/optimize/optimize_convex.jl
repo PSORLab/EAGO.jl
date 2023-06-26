@@ -1,16 +1,17 @@
-# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/optimize/optimize_convex.jl
 # Contains the solve_local_nlp! routine which computes the optimal value
 # of a convex function. This is used to compute the upper bound in the
 # branch and bound routine. A number of utility functions required for
 # solve_local_nlp! are also included.
-#############################################################################
+################################################################################
 
 """
 $(TYPEDSIGNATURES)
@@ -116,10 +117,10 @@ function local_problem_status(t::MOI.TerminationStatusCode, r::MOI.ResultStatusC
         return LRS_FEASIBLE
     elseif (t == MOI.LOCALLY_SOLVED) && (r == MOI.FEASIBLE_POINT)
         return LRS_FEASIBLE
-    # This is default solver specific... the acceptable constraint tolerances
+    # This is default solver specific. The acceptable constraint tolerances
     # are set to the same values as the basic tolerance. As a result, an
     # acceptably solved solution is feasible but non necessarily optimal
-    # so it should be treated as a feasible point
+    # so it should be treated as a feasible point.
     elseif (t == MOI.ALMOST_LOCALLY_SOLVED) && (r == MOI.NEARLY_FEASIBLE_POINT)
         return LRS_FEASIBLE
     end
@@ -169,7 +170,7 @@ function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType
     _update_upper_variables!(upper_optimizer, m)
     _set_starting_point!(upper_optimizer, m)
 
-    # add constraints
+    # Add constraints
     ip = m._input_problem
     _add_constraint_store_ci_linear!(upper_optimizer, ip)
     _add_constraint_store_ci_quadratic!(upper_optimizer, ip)

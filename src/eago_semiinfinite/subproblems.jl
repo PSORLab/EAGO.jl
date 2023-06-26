@@ -1,13 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_semiinfinite/sub_problems.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_semiinfinite/subproblems.jl
 # Defines utilities for generic SIP subroutines.
-#############################################################################
+################################################################################
 
 """
     build_model
@@ -115,11 +116,11 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
                   sr::SIPSubResult, prob::SIPProblem, cb::SIPCallback,
                   i::Int64, tol::Float64 = -Inf) where {A <: AbstractSIPAlgo, S <: AbstractSubproblemType}
 
-    # build the model
+    # Build the model
     m, p = build_model(t, alg, s, prob)
     set_tolerance!(t, alg, s, m, sr, i)
 
-    # define the objective
+    # Define the objective
     xbar = get_xbar(t, alg, s, sr)
     g(p...) = cb.gSIP[i](xbar, p)
     register(m, :g, prob.np, g, autodiff=true)
@@ -134,16 +135,16 @@ function sip_llp!(t::DefaultExt, alg::A, s::S, result::SIPResult,
     end
     set_nonlinear_objective(m, MOI.MAX_SENSE, nl_obj)
 
-    # add uncertainty constraints
+    # Add uncertainty constraints
     add_uncertainty_constraint!(m, prob)
 
-    # optimize model and check status
+    # Optimize model and check status
     JuMP.optimize!(m)
     tstatus = JuMP.termination_status(m)
     rstatus = JuMP.primal_status(m)
     feas = llp_check(prob.local_solver, tstatus, rstatus)
 
-    # fill buffer with subproblem result info
+    # Fill buffer with subproblem result info
     psol = JuMP.value.(p)
     load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), psol)
     result.solution_time += MOI.get(m, MOI.SolveTimeSec())
@@ -172,7 +173,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo,
                                                             S <: AbstractSubproblemType}
 
-    # create JuMP model
+    # Create JuMP model
     m, x = build_model(t, alg, s, prob)
 
     for i = 1:prob.nSIP
@@ -191,7 +192,7 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
         end
     end
 
-    # define the objective
+    # Define the objective
     obj(x...) = cb.f(x)
     register(m, :obj, prob.nx, obj, autodiff=true)
     if isone(prob.nx)
@@ -205,13 +206,13 @@ function sip_bnd!(t::DefaultExt, alg::A, s::S, sr::SIPSubResult, result::SIPResu
     end
     set_nonlinear_objective(m, MOI.MIN_SENSE, nl_obj)
 
-    # optimize model and check status
+    # Optimize model and check status
     JuMP.optimize!(m)
     t_status = JuMP.termination_status(m)
     r_status = JuMP.primal_status(m)
     feas = bnd_check(prob.local_solver, t_status, r_status)
 
-    # fill buffer with subproblem result info
+    # Fill buffer with subproblem result info
     load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), JuMP.value.(x))
     result.solution_time += MOI.get(m, MOI.SolveTimeSec())
 
@@ -232,12 +233,12 @@ end
 function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
                   prob::SIPProblem, cb::SIPCallback) where {A <: AbstractSIPAlgo}
 
-    # create JuMP model & variables
+    # Create JuMP model and variables
     s = ResProblem()
     m, x = build_model(t, alg, s, prob)
     @variable(m, η)
 
-    # add discretized semi-infinite constraint
+    # Add discretized semi-infinite constraint
     for i = 1:prob.nSIP
         disc_set = get_disc_set(t, alg, s, sr, i)
         for j = 1:length(disc_set)
@@ -257,7 +258,7 @@ function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
         end
     end
 
-    # add epigraph reformulated objective
+    # Add epigraph reformulated objective
     obj(x...) = cb.f(x)
     register(m, :f, prob.nx, obj, autodiff=true)
     if isfinite(sr.fRes)
@@ -273,23 +274,23 @@ function sip_res!(t::DefaultExt, alg::A, sr::SIPSubResult, result::SIPResult,
         JuMP.add_nonlinear_constraint(m, :($nl_obj + $(sr.fRes) <= 0))
     end
 
-    # define the objective
+    # Define the objective
     @objective(m, Min, -η)
 
-    # optimize model and check status
+    # Optimize model and check status
     JuMP.optimize!(m)
     t_status = JuMP.termination_status(m)
     r_status = JuMP.primal_status(m)
     feas = llp_check(prob.local_solver, t_status, r_status)
 
-    # fill buffer with subproblem result info
+    # Fill buffer with subproblem result info
     load!(s, sr, feas, JuMP.objective_value(m), JuMP.objective_bound(m), JuMP.value.(x))
     result.solution_time += MOI.get(m, MOI.SolveTimeSec())
 
     return nothing
 end
 
-# get optimizer for use in subproblems
+# Get optimizer for use in subproblems
 function get_sip_optimizer(t::DefaultExt, alg::A, s::S) where {A<:AbstractSIPAlgo, S<:AbstractSubproblemType}
     return EAGO.Optimizer
 end
@@ -314,12 +315,12 @@ function print_int!(verb::Int, prob::SIPProblem, result::SIPResult, r::Float64)
 
     if (prob.verbosity == 1 || prob.verbosity == 2)
 
-        # prints header line every hdr_intv times
+        # Prints header line every hdr_intv times
         if (mod(k, prob.header_interval) == 0 || k == 1)
             println("| Iteration | Lower Bound | Upper Bound |   r   |  Gap  |  Ratio  |")
         end
 
-        # prints iteration summary every prnt_intv times
+        # Prints iteration summary every prnt_intv times
         if mod(k, prob.print_interval) == 0
 
             print_str = "| "

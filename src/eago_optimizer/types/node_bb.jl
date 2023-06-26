@@ -1,17 +1,18 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/node_bb.jl
-# Defines storage for a node in the B&B tree & utilities functions
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/types/node_bb.jl
+# Defines storage for a node in the B&B tree and utilities functions.
+################################################################################
 
 @enum(BranchDirection, BD_NONE, BD_NEG, BD_POS)
 
-# Used internally to set & get variables in full problem space or just branch variables
+# Used internally to set and get variables in full problem space or just branch variables
 struct FullVar end
 struct BranchVar end
 Base.Broadcast.broadcastable(d::FullVar) = Ref(d)
@@ -65,7 +66,7 @@ Base.copy(x::NodeBB) = NodeBB(copy(x.lower_variable_bounds), copy(x.upper_variab
                               x.continuous, x.lower_bound, x.upper_bound, x.depth, x.cont_depth, x.id,
                               x.branch_direction, x.last_branch, x.branch_extent)
 
-# using alternative name as to not interfere with ordering...
+# Using alternative name as to not interfere with ordering
 function uninitialized(x::NodeBB)
     flag = isempty(x.lower_variable_bounds)
     flag &= isempty(x.upper_variable_bounds)
@@ -93,7 +94,7 @@ end
 @inline depth(x::NodeBB) = x.depth
 @inline cont_depth(x::NodeBB) = x.cont_depth
 
-# Iterations Functions
+# Iterations functions
 Base.isless(x::NodeBB, y::NodeBB) = x.lower_bound < y.lower_bound
 Base.length(x::NodeBB) = length(x.lower_variable_bounds)
 function Base.isempty(x::NodeBB)

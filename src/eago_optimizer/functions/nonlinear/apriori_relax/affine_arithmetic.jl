@@ -2,9 +2,9 @@
 const USE_MIN_RANGE = true
 
 struct AffineEAGO{N}
-    c::Float64               # mid-point
-    γ::SVector{N,Float64}    # affine terms
-    Δ::Float64               # error term
+    c::Float64               # Mid-point
+    γ::SVector{N,Float64}    # Affine terms
+    Δ::Float64               # Error term
 end
 
 function AffineEAGO(x::AffineEAGO{N}, p::Float64, q::Float64, δ::Float64) where N

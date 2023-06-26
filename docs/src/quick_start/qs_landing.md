@@ -10,7 +10,7 @@ EAGO is designed to be easily extensible. Some of the examples that follow inclu
 cases where the standard EAGO functionality is overloaded and readily incorporated into
 the main optimization routine. Information on how to extend the main branch-and-bound
 functions (including lower and upper bounding routines) can be found in the
-**Customization Guidelines** section.
+[Customization Guidelines](https://psorlab.github.io/EAGO.jl/dev/quick_start/guidelines/) section.
 
 ## Examples
 
@@ -18,7 +18,6 @@ The following pages in this section include several representative examples of h
 can be used. Additional (and in some cases, shortened) examples can be found in the
 [EAGO-notebooks repository](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks).
 Examples and instructional pages in this section include:
-* **Simple Example**: A base-case optimization problem solved using the EAGO optimizer. No extensions or function overloading required.
-* **Medium-Difficulty Example** A quasiconvex optimization problem solved by overloading some of EAGO's functionality to implement a bisection-based algorithm instead of typical branch-and-bound. (TODO, but see the [Jupyter Notebook version](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb))
-* **Difficult/Developer Example** Overloading the branch-and-bound algorithm with a custom extension type. (TODO)
-
+- [Simple Example](https://psorlab.github.io/EAGO.jl/dev/quick_start/simple/): A base-case optimization problem solved using the EAGO optimizer. No extensions or function overloading required.
+- [Medium-Difficulty Example](https://psorlab.github.io/EAGO.jl/dev/quick_start/medium/): A quasiconvex optimization problem solved by overloading some of EAGO's functionality to implement a bisection-based algorithm instead of typical branch-and-bound. (TODO, but see the [Jupyter Notebook version](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb))
+- [Difficult/Developer Example](https://psorlab.github.io/EAGO.jl/dev/quick_start/difficult/): Overloading the branch-and-bound algorithm with a custom extension type. (TODO)

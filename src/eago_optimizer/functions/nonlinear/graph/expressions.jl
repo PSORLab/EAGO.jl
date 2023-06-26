@@ -1,6 +1,6 @@
 # Definitions borrow from https://github.com/FluxML/NNlib.jl (names used to
-# standardize package). TODO: Decide how/if to incorporate NNlib depedency into
-# McCormick.jl/EAGO.jl.
+# standardize package).
+#TODO: Decide how/if to incorporate NNlib depedency into McCormick.jl/EAGO.jl.
 oftf(x, y) = oftype(float(x), y)
 leakyrelu(x, a=oftf(x, 0.01)) = max(a * x, x)
 swish1(x) = x * sigmoid(x)
@@ -126,7 +126,7 @@ foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), UNIVARIATE_ATOM_DICT)
 foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), BIVARIATE_ATOM_DICT)
 foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), NARITY_ATOM_DICT)
 
-# A functions that may be 1 to n-arity functions that correspond to the AtomType
+# Functions that may be 1 to n-arity functions that correspond to the AtomType
 ALL_ATOM_DICT[BND]       = :bnd
 #ATM_EVAL[QUAD1]     = :quad1
 #ATM_EVAL[QUAD2]     = :quad2

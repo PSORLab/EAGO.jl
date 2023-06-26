@@ -1,17 +1,18 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_semiinfinite/algorithms/sip_hybrid.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_semiinfinite/nonconvex_algorithms/sip_hybrid.jl
 # FUTURE FEATURE... NOT CURRENTLY FUNCTIONAL
 # Defines the SIP-hybrid algorithm which implements Algorithm #2 of Djelassi,
 # Hatim, and Alexander Mitsos. "A hybrid discretization algorithm with guaranteed
 # feasibility for the global solution of semi-infinite programs."
 # Journal of Global Optimization 68.2 (2017): 227-253.
-#############################################################################
+################################################################################
 
 """
     SIPHybrid
@@ -46,10 +47,10 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
 
     verb = prob.verbosity
 
-    # begin main solution loop
+    # Begin main solution loop
     @label main_iteration
 
-    # solve lower bounding problem and check feasibility
+    # Solve lower bounding problem and check feasibility
     sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)
     result.lower_bound = buffer.lbd.obj_val
     if !buffer.lbd.feas
@@ -59,7 +60,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
     end
     print_summary!(LowerProblem(), verb, buffer)
 
-    # solve inner program and update lower discretization set
+    # Solve inner program and update lower discretization set
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
         sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
@@ -76,7 +77,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
         end
     end
 
-    # if the lower problem is feasible then it's solution is the optimal value
+    # If the lower problem is feasible, then it's solution is the optimal value
     if is_llp1_nonpositive
         result.upper_bound = buffer.lbd.obj_val
         result.xsol .= buffer.lbd.sol
@@ -85,7 +86,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
     end
 
 
-    # solve upper bounding problem, if feasible solve lower level problem,
+    # Solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
     @label upper_problem
     sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
@@ -115,7 +116,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
     end
     check_convergence(result, prob.abs_tolerance, verb) && @goto main_end
 
-    # solve restriction problem updating lower and upper bound as appropriate
+    # Solve restriction problem updating lower and upper bound as appropriate
     @label res_problem
     sip_res!(t, alg, buffer, result, prob, cb)
     if buffer.res.obj_bnd < 0
@@ -157,7 +158,7 @@ function sip_solve!(t::ExtensionType, alg::SIPHybrid, buffer::SIPSubResult, prob
         @goto main_iteration
     end
 
-    # print iteration information and advance
+    # Print iteration information and advance
     print_int!(verb, prob, result, buffer.r_g)
     result.iteration_number += 1
     result.iteration_number < prob.iteration_limit && @goto main_iteration

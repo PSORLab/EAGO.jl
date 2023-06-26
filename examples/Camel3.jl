@@ -8,7 +8,7 @@ set_optimizer_attribute(m, "iteration_limit", 1000)
 set_optimizer_attribute(m, "cut_max_iterations", 2)
 set_optimizer_attribute(m, "subgrad_tighten", false)
 
-# OBBT depth 0 -> 20... increases number of iterations...
+# OBBT depth 0 -> 20, increases number of iterations
 set_optimizer_attribute(m, "obbt_depth", 8)
 set_optimizer_attribute(m, "obbt_repetitions", 2)
 

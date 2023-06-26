@@ -725,8 +725,8 @@ Base.@kwdef mutable struct GlobalOptimizer{Q,S,T<:ExtensionType} <: MOI.Abstract
     "A flag for if a feasible solution was identified. Updated if preprocessing,
     lower problem, and upper problem all return feasible values"
     _feasible_solution_found::Bool = false
-    "The node ID of the best-known feasible upper problem solution"
-    _first_solution_node::Int = -1 #TODO: Why is this called "First" solution node? Isn't it just the location of the current best solution?
+    "The node ID of the best-known feasible upper problem solution (default = -1, if no feasible solution is found)"
+    _solution_node::Int = -1
     "The best-known upper bound"
     _best_upper_value::Float64 = Inf #TODO: Duplicate of _global_upper_bound? Why is this ever used instead?
 

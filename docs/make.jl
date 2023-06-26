@@ -29,35 +29,36 @@ makedocs(modules = [EAGO, McCormick],
                 canonical = "https://PSORLab.github.io/EAGO.jl/stable/",
                 collapselevel = 1,
          ),
-         authors = "Matthew E. Wilhelm",
+         authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, and Matthew Stuber",
          #repo = "https://github.com/PSORLab/EAGO.jl/blob/{commit}{path}#L{line}",
-         sitename = "EAGO.jl: Easy Advanced Global Optimization",
+         sitename = "EAGO",
          pages = Any["Introduction" => "index.md",
-                     "Quick Start" => Any["Quick_Start/qs_landing.md",
-                                          "Quick_Start/guidelines.md",
-                                          "Quick_Start/starting.md",
-                                          "Quick_Start/medium.md",
-                                          "Quick_Start/custom.md"
+                     "Quick Start" => Any["quick_start/qs_landing.md",
+                                          "quick_start/guidelines.md",
+                                          "quick_start/simple.md",
+                                          "quick_start/medium.md",
+                                          "quick_start/difficult.md"
                                           ],
-                     "McCormick Operator Library" => Any["McCormick/overview.md",
-                                                         "McCormick/usage.md",
-                                                         "McCormick/operators.md",
-                                                         "McCormick/type.md",
-                                                         "McCormick/implicit.md"
+                     "McCormick Operator Library" => Any["mccormick/overview.md",
+                                                         "mccormick/usage.md",
+                                                         "mccormick/operators.md",
+                                                         "mccormick/type.md",
+                                                         "mccormick/implicit.md"
                                                         ],
-                     "Global Optimizer" => Any["Optimizer/optimizer.md",
-                                               "Optimizer/bnb_back.md",
-                                               "Optimizer/relax_back.md",
-                                               "Optimizer/domain_reduction.md",
-                                               "Optimizer/high_performance.md",
-                                               "Optimizer/udf_utilities.md"
+                     "Optimizer" => Any["optimizer/optimizer.md",
+                                        "optimizer/bnb_back.md",
+                                        "optimizer/relax_back.md",
+                                        "optimizer/domain_reduction.md",
+                                        "optimizer/high_performance.md",
+                                        "optimizer/udf_utilities.md"
                                                ],
-                     "Semi-Infinite Programming" => "SemiInfinite/semiinfinite.md",
-                     "Contributing to EAGO"      => Any["Dev/contributing.md",
-                                                        "Dev/future.md"
+                     "Semi-Infinite Programming" => "semiinfinite/semiinfinite.md",
+                     "Contributing to EAGO"      => Any["dev/contributing.md",
+                                                        "dev/future.md"
                                                         ],
                      "References"  => "ref.md",
-                     "Citing EAGO" => "cite.md"]
+                     "Citing EAGO" => "cite.md",
+                     "News"        => "news.md"]
 )
 
 @info "Deploying documentation..."

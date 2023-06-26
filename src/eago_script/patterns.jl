@@ -1,15 +1,16 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_script/patterns.jl
 # Patterns to use in transormations that flatten expressions.
-#############################################################################
+################################################################################
 
-# (1) register log(a^x) = x*log(a) DONE
+# (1) Register log(a^x) = x*log(a) DONE
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :log),
                                    2 => Template_Node(:op, :^),
                                    3 => Template_Node(:num, :a; check = a -> a >= 0.0),
@@ -24,7 +25,7 @@ dest_dag = [4 => 3, 3 => 1, 2 => 1]
 dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
-# (2) register exp(x)*exp(y) -> exp(x+y)  DONE
+# (2) Register exp(x)*exp(y) -> exp(x+y) DONE
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :*),
                                    2 => Template_Node(:op, :exp),
                                    3 => Template_Node(:op, :exp),
@@ -40,7 +41,7 @@ dest_dag = [4 => 2, 3 => 2, 2 => 1]
 dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
-# (3) register (a^{x})^{b} = (a^{b})^{x} # DONE
+# (3) Register (a^{x})^{b} = (a^{b})^{x} DONE
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :^),
                                    2 => Template_Node(:op, :^),
                                    3 => Template_Node(:num, :b),
@@ -57,7 +58,7 @@ dest_dag = [5 => 2, 4 => 2, 3 => 1, 2 => 1]
 dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
-# (4) register (x^{a})^{b} = x^{(ab)}
+# (4) Register (x^{a})^{b} = x^{(ab)}
 #=
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :^),
                                    2 => Template_Node(:op, :^),
@@ -76,7 +77,7 @@ dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 =#
 
-# (5) register a^{\log(x)} = x^{\log(a)} DONE
+# (5) Register a^{\log(x)} = x^{\log(a)} DONE
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :^),
                                    2 => Template_Node(:num, :a),
                                    3 => Template_Node(:op, :log),
@@ -91,7 +92,7 @@ dest_dag = [4 => 3, 3 => 1, 2 => 1]
 dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
-# (6) register \log(xy) = \log(x) + \log(y) DONE
+# (6) Register \log(xy) = \log(x) + \log(y) DONE
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :log),
                                    2 => Template_Node(:op, :*),
                                    3 => Template_Node(:expr, :x),
@@ -107,7 +108,7 @@ dest_dag = [5 => 3, 4 => 2, 3 => 1, 2 => 1]
 dest = Template_Graph(dest_nds, dest_dag)
 register_substitution!(src, dest)
 
-# (7) register \log(x/y) = \log(x) - \log(y)  DONE
+# (7) Register \log(x/y) = \log(x) - \log(y) DONE
 src_nds = Dict{Int, Template_Node}(1 => Template_Node(:op, :log),
                                    2 => Template_Node(:op, :/),
                                    3 => Template_Node(:expr, :x),

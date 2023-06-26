@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/evaluator/passes.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/functions/nonlinear/composite_relax/forward_propagation.jl
 # Functions used to compute forward pass of nonlinear functions which include:
-# set_value_post, overwrite_or_intersect, forward_pass_kernel, associated blocks
-#############################################################################
+# varset, fprop!, fprop_2!, fprop_n!, f_init!
+################################################################################
 
 xnum_yset(b, x, y) = is_num(b, x) && !is_num(b, y)
 xset_ynum(b, x, y) = !is_num(b, x) && is_num(b, y)
@@ -217,12 +218,13 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                 zv = z*x
                 wIntv = zv.Intv
                 if (u1max < z.Intv.hi) || (u2max < x.Intv.hi)
-                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(zr, xr, s, dp, dP)
+                    u1cv, u2cv, u1cvg, u2cvg = estimator_under(0, 0, zr, xr, s, dp, dP, 0, 0)
+                    #u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
                     za_l = McCormick.mult_apriori_kernel(z, x, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
                     zv = zv ∩ za_l
                 end
                 if (v1nmax > -z.Intv.lo) || (v2nmax > -x.Intv.lo)
-                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(zr, xr, s, dp, dP)
+                    v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(0, 0, zr, xr, s, dp, dP, 0, 0)
                     za_u = McCormick.mult_apriori_kernel(-z, -x, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
                     zv = zv ∩ za_u
                 end

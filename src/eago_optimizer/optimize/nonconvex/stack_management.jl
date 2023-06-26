@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/optimize/nonconvex_branch/stack_management.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/optimize/nonconvex/stack_management.jl
 # Contains the subroutines used for stack management. Namely, initialize_stack!
 # select_branch_variable!, select_branch_point!, branch_node!, and fathom!.
-#############################################################################
+################################################################################
 #=
 function _variable_infeasibility(m::GlobalOptimizer, i::Int)
     tsum = zero(Float64); tmin = typemax(Float64); tmax = typemin(Float64)
@@ -235,7 +236,7 @@ $(TYPEDSIGNATURES)
 Check the optimization problem for unbounded branching variables, which would interfere
 with EAGO's branch-and-bound routine since there are no well-defined branching rules
 for cases where the interval bounds contain `-Inf` or `Inf`. If any branching variables
-are missing bounds, add the missing bound at +/- 1e10 and warn the user.
+are missing bounds, add the missing bound at +/- 1E10 and warn the user.
 """
 function unbounded_check!(m::GlobalOptimizer)
     if m._parameters.unbounded_check
@@ -245,17 +246,17 @@ function unbounded_check!(m::GlobalOptimizer)
         for i = 1:_variable_num(BranchVar(), m) - epigraph_flag #Not including epigraph reformulation variable
             if !wp._variable_info[i].has_lower_bound
                 unbounded_flag = true
-                wp._variable_info[i] = VariableInfo(wp._variable_info[i], GT(-1e10))
+                wp._variable_info[i] = VariableInfo(wp._variable_info[i], GT(-1E10))
             end
             if !wp._variable_info[i].has_upper_bound
                 unbounded_flag = true
-                wp._variable_info[i] = VariableInfo(wp._variable_info[i], LT(1e10))
+                wp._variable_info[i] = VariableInfo(wp._variable_info[i], LT(1E10))
             end
         end
         unbounded_flag && @warn("""
         At least one branching variable is unbounded. This will interfere with EAGO's global
         optimization routine and may cause unexpected results. Bounds have been automatically
-        generated at +/- 1e10 for all unbounded variables, but tighter user-defined bounds are
+        generated at +/- 1E10 for all unbounded variables, but tighter user-defined bounds are
         highly recommended. To disable this warning and the automatic generation of bounds, use
         the option `unbounded_check = false`.""")
     end

@@ -1,15 +1,16 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/display.jl
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/optimize/nonconvex/display.jl
 # Functions used to print information about solution routine to console.
 # Printing is done with reference to the input problem if there is any
 # ambiguity.
-#############################################################################
+################################################################################
 
 """
 $(FUNCTIONNAME)
@@ -36,16 +37,29 @@ function print_solution!(m::GlobalOptimizer)
         elseif m._end_state == GS_TIME_LIMIT
             println("Time Limit Exceeded")
         end
-        println("First Solution Found at Node $(m._first_solution_node)") #TODO: Why is this "first solution"?
-        if !_is_input_min(m)
-            println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
-            println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
+        if m._end_state == GS_OPTIMAL || m._end_state == GS_RELATIVE_TOL || m._end_state == GS_ABSOLUTE_TOL
+            println("Optimal Solution Found at Node $(m._solution_node)")
+            if !_is_input_min(m)
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            else
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            end
+        elseif m._end_state == GS_INFEASIBLE
+            println("No Solution Found")
         else
-            println("LBD = $(MOI.get(m, MOI.ObjectiveBound()))")
-            println("UBD = $(MOI.get(m, MOI.ObjectiveValue()))")
+            println("Best Solution Found at Node $(m._solution_node)")
+            if !_is_input_min(m)
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            else
+                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
+            end
         end
-        println("Solution is:")
         if m._feasible_solution_found
+            println("Solution:")
             for i = 1:m._input_problem._variable_count
                 println("    X[$i] = $(m._continuous_solution[i])")
             end
@@ -59,15 +73,18 @@ end
 $(FUNCTIONNAME)
 
 Print information about the current node. Includes node ID, lower bound,
-and interval box.
+upper bound, and interval box.
 """
 function print_node!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
         n = m._current_node
-        bound = _is_input_min(m) ? n.lower_bound : -n.lower_bound
+        lower_bound = _is_input_min(m) ? n.lower_bound : -n.lower_bound
+        upper_bound = _is_input_min(m) ? n.upper_bound : -n.upper_bound
         k = length(n) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
-        println("Node ID: $(n.id), Lower Bound: $(bound)")
+        println("Node ID: $(n.id)")
+        println("Lower Bound: $(lower_bound)")
+        println("Upper Bound: $(upper_bound)")
         println("Lower Variable Bounds: $(n.lower_variable_bounds[1:k])")
         println("Upper Variable Bounds: $(n.upper_variable_bounds[1:k])")
         println(" ")
@@ -86,68 +103,69 @@ function print_iteration!(m::GlobalOptimizer)
 
     if _verbosity(m) > 0
 
-        # Print header line every `header_iterations` times
-        if mod(m._iteration_count, m._parameters.header_iterations) === 0 || m._iteration_count === 1
-            println("-----------------------------------------------------------------------------------------------------------------------------")
-            println("|  Iteration #  |     Nodes    | Lower Bound  |  Upper Bound  |      Gap     |     Ratio    |     Time     |    Time Left   |")
-            println("-----------------------------------------------------------------------------------------------------------------------------")
-        end
-
-        # Print iteration summary every `output_iterations` times
+        # Print header line every `header_iterations` times and print iteration summary every `output_iterations` times
         if mod(m._iteration_count, m._parameters.output_iterations) === 0
+            if m._iteration_count == m._parameters.output_iterations || mod(m._iteration_count, m._parameters.header_iterations) < m._parameters.output_iterations
+                println("---------------------------------------------------------------------------------------------------------------------------------")
+                println("|  Iteration #  |     Nodes     |  Lower Bound  |  Upper Bound  |      Gap      |     Ratio     |     Timer     |   Time Left   |")
+                println("---------------------------------------------------------------------------------------------------------------------------------")
+            end
+            # Print start
+            print_str = "|  "
 
-            print_str = "| "
-
+            # Print iteration number
             max_len = 12
             temp_str = string(m._iteration_count)
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*"  | "
+            print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
+            # Print node count
+            max_len = 13
             temp_str = string(m._node_count)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
+            # Determine lower and upper bound
             if _is_input_min(m)
                 lower = m._global_lower_bound
                 upper = m._global_upper_bound
             else
-                lower = m._global_lower_bound #TODO: Shouldn't these be negated?
+                lower = m._global_lower_bound
                 upper = m._global_upper_bound
             end
-            #temp_str = string(round(lower, sigdigits = 5))
-            #temp_str = string(lower, sigdigits = 3))
+
+            # Print lower bound
+            max_len = 13
             temp_str = @sprintf "%.3E" lower
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            #temp_str = formatted(upper, PRINTING_IOFORMAT, ndigits=4, charset=PRINTING_CHARSET)
-            #temp_str = string(upper, sigdigits = 3))
+            # Print upper bound
+            max_len = 13
             temp_str = @sprintf "%.3E" upper
             len_str = length(temp_str)
-            print_str *= (" "^(max_len - len_str))*temp_str*" |"
+            print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(abs(x._global_upper_bound - x._global_lower_bound), sigdigits = 3))
+            # Print absolute gap between lower and upper bound
+            max_len = 13
             temp_str = @sprintf "%.3E" abs(m._global_upper_bound - m._global_lower_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(relative_gap(x._global_lower_bound, x._global_upper_bound), sigdigits = 3))
+            # Print relative gap between lower and upper bound
+            max_len = 13
             temp_str = @sprintf "%.3E" relative_gap(m._global_lower_bound, m._global_upper_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(x._run_time, sigdigits = 3))
+            # Print run time
+            max_len = 13
             temp_str = @sprintf "%.3E" m._run_time
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            max_len = 12
-            #temp_str = string(round(x._time_left, sigdigits = 4))
+            # Print time remaining
+            max_len = 13
             temp_str = @sprintf "%.3E" m._time_left
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |"
@@ -172,23 +190,26 @@ function print_results!(m::GlobalOptimizer, lower_flag::Bool)
         println(" ")
         if lower_flag
             if _is_input_min(m)
-                print("Lower Bound (First Iteration): $(m._lower_objective_value),")
+                println("Lower Bound (First Iteration): $(m._lower_objective_value)")
             else
-                print("Upper Bound (First Iteration): $(m._lower_objective_value),")
+                println("Upper Bound (First Iteration): $(m._lower_objective_value)")
             end
-            print(" Solution: $(m._lower_solution[1:k]), Feasibility: $(m._lower_feasibility)\n")
+            println("Solution: $(m._lower_solution[1:k])")
+            println("Feasibility: $(m._lower_feasibility)")
             println("Termination Status Code: $(m._lower_termination_status)")
             println("Result Code: $(m._lower_primal_status)")
         else
             if _is_input_min(m)
-                print("Upper Bound: $(m._upper_objective_value), ")
+                println("Upper Bound: $(m._upper_objective_value)")
             else
-                print("Lower Bound: $(m._upper_objective_value), ")
+                println("Lower Bound: $(m._upper_objective_value)")
             end
-            print(" Solution: $(m._upper_solution[1:k]), Feasibility: $(m._upper_feasibility)\n")
+            println("Solution: $(m._upper_solution[1:k])")
+            println("Feasibility: $(m._upper_feasibility)")
             println("Termination Status Code: $(m._upper_termination_status)")
             println("Result Code: $(m._upper_result_status)")
         end
+        println(" ")
     end
     return
 end

@@ -1,7 +1,7 @@
 """
 print_problem_summary
 
-Internal script used to display all constraints, objectives in a linear program.
+Internal script used to display all constraints and objectives in a linear program.
 Added to functions for debug purposes while writing code.
 """
 

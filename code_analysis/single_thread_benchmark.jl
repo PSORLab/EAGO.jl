@@ -3,7 +3,7 @@ using MINLPLib, JuMP, SCIP
 
 new_lib = "ImprovedCompMult"
 
-# build library
+# Build library
 build_lib = false
 instance_names = ["bearing", "ex6_2_10", "ex6_2_10", "ex6_2_11", "ex6_2_12", "ex6_2_13", "ex7_2_4", "ex7_3_1", "ex7_3_2", "ex14_1_8", "ex14_1_9"]
 if build_lib
@@ -13,7 +13,7 @@ if build_lib
     end
 end
 
-# solution handler
+# Solution handler
 struct TrialSummary
     was_error::Bool
     solver_name::String
@@ -50,8 +50,8 @@ trial_summaries = TrialSummary[]
 
 # Need to assign tolerance here (since tolerances aren't standardized among solvers)
 function build_scip()
-    m = SCIP.Optimizer(limits_gap=1E-3,    # absolute tolerance
-                       limits_absgap=1E-3  # relative tolerance
+    m = SCIP.Optimizer(limits_gap=1E-3,    # Absolute tolerance
+                       limits_absgap=1E-3  # Relative tolerance
                        )
     return m
 end

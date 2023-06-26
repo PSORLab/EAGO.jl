@@ -1,13 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+## Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
-# src/eago_optimizer/constraints.jl
-# Defines constraints supported by optimizer and how to store them.
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/moi_wrapper.jl
+# MOI wrapper to pass information to the optimizer.
+################################################################################
 
 # Sets used in general constraints
 const INEQ_SETS = Union{LT, GT, ET}
@@ -106,7 +107,7 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     flag &= m._termination_status_code == MOI.OPTIMIZE_NOT_CALLED
     flag &= m._result_status_code == MOI.OTHER_RESULT_STATUS
 
-    # set constructor reset on empty! and to zero in initial_parse! in parse.jl
+    # Set constructor reset on empty! and to zero in initial_parse! in parse.jl
     flag &= iszero(m._run_time)
     flag &= iszero(m._iteration_count)
     flag &= iszero(m._node_count)
@@ -121,7 +122,7 @@ MOI.supports_incremental_interface(m::Optimizer) = true
 MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, src)
 
 #####
-##### Set & get attributes of model
+##### Set and get attributes of model
 #####
 MOI.supports(::Optimizer, ::MOI.Silent) = true
 

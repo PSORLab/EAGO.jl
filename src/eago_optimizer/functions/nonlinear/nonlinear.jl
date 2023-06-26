@@ -1,16 +1,18 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# src/eago_optimizer/functions/nonlinear/nonlinear.jl
 # Defines the NonlinearExpression, BufferedNonlinearFunction used in
 # constructing relaxations of nonlinear functions along with a number of
 # helper functions including an Evaluator structure and: set_node_flag!
 # set_node!, set_reference_point!, retrieve_node, prior_eval
 # copy_subexpression_value!, eliminate_fixed_variables!
-#############################################################################
+################################################################################
 
 const DEBUG_NL = false
 
@@ -158,7 +160,7 @@ num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)
 lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
 upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
 
-# returns the interval bounds associated with the set
+# Returns the interval bounds associated with the set
 interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
 is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
 
@@ -170,7 +172,7 @@ mc_type(rc::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
 
 MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
 
-Checks that the resulting value should be a number...
+Checks that the resulting value should be a number.
 
 $(TYPEDFIELDS)
 """
@@ -226,15 +228,13 @@ end
 end
 prior_eval(d::Evaluator, i::Int) = d.subexpressions_eval[i]
 
-#=
-Assumes the sparsities are sorted...
-=#
+# Assumes the sparsities are sorted
 function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpression{V,MC{N1,T}},
                                    numvalued::Vector{Bool}, numberstorage::Vector{S}, setstorage::Vector{MC{N2,T}},
                                    cv_buffer::Vector{S}, cc_buffer::Vector{S},
                                    func_sparsity::Vector{Int}) where {V, N1, N2, S, T <: RelaxTag}
 
-    # fill cv_grad/cc_grad buffers
+    # Fill cv_grad/cc_grad buffers
     sub_sparsity = subexpression.grad_sparsity
     sset = subexpression.setstorage[1]
     fill!(cv_buffer, zero(S))

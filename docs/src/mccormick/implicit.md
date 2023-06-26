@@ -1,11 +1,13 @@
 # Relaxation of Implicit Functions
 
-## High-level functions
+## High-Level Functions
+
 ```@docs
 implicit_relax_h!
 ```
 
-## DataStructures
+## Data Structures
+
 ```@docs
 McCormick.AbstractContractorMC
 NewtonGS
@@ -17,6 +19,7 @@ MCCallback
 ```
 
 ## Subroutines
+
 ```@docs
 preconditioner_storage
 affine_exp!

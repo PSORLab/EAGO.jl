@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/optimize/optimize_nonconvex.jl
 # Contains the optimize! routine and subroutines needed in the branch and
 # bound routine called by EAGO.
-#############################################################################
+################################################################################
 
 include(joinpath(@__DIR__,"nonconvex","stack_management.jl"))
 include(joinpath(@__DIR__,"nonconvex","lower_problem.jl"))
@@ -34,7 +35,7 @@ and quadratic cut into the relaxed optimizer.
 function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
 
-    # add variables and indices and constraints
+    # Add variables, variable indices, and constraints
     wp = m._working_problem
     branch_variable_count = 0
 
@@ -73,10 +74,10 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
     MOI.add_constraint(d, issue_var, ET(0.0))
 
 
-    # set number of variables to branch on
+    # Set number of variables to branch on
     m._branch_variable_count = branch_variable_count
 
-    # add linear constraints
+    # Add linear constraints
     for (f, s) in collect(values(m._input_problem._linear_leq_constraints))
         MOI.add_constraint(d, f, s)
     end
@@ -87,7 +88,7 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
         MOI.add_constraint(d, f, s)
     end
 
-    # sets relaxed problem objective sense to Min as all problems
+    # Sets relaxed problem objective sense to Min as all problems
     # are internally converted in Min problems in EAGO
     MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
@@ -123,8 +124,8 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     m._lower_uvd                = fill(0.0, branch_variable_count)
 
     # Populate in full space until local MOI NLP solves support constraint deletion.
-    # Uses input model for local NLP solves... may adjust this if there's ever a 
-    # convincing reason to use a reformulated upper problem
+    # Uses input model for local NLP solves. May adjust this if there's ever a 
+    # convincing reason to use a reformulated upper problem.
     m._lower_solution      = zeros(Float64, wp._variable_count)
     m._continuous_solution = zeros(Float64, wp._variable_count)
     m._upper_solution      = zeros(Float64, wp._variable_count)
@@ -171,9 +172,9 @@ function termination_check(t::ExtensionType, m::GlobalOptimizer)
     nlen = length(m._stack)
     L = m._global_lower_bound
     U = m._global_upper_bound
-    if nlen == 0 && m._first_solution_node > 0
+    if nlen == 0 && m._solution_node > 0
         m._end_state = GS_OPTIMAL
-    elseif nlen == 0 && !(m._first_solution_node > 0)
+    elseif nlen == 0 && !(m._solution_node > 0)
         m._end_state = GS_INFEASIBLE
     elseif nlen >= m._parameters.node_limit
         m._end_state = GS_NODE_LIMIT
@@ -214,7 +215,7 @@ end
 
 const GLOBALEND_PSTATUS = Dict{GlobalEndState, MOI.ResultStatusCode}(
         GS_OPTIMAL => MOI.FEASIBLE_POINT,
-        GS_INFEASIBLE => MOI.NO_SOLUTION,                 # Proof of infeasibility implies not solution found
+        GS_INFEASIBLE => MOI.NO_SOLUTION,                 # Proof of infeasibility implies no solution found
         GS_NODE_LIMIT => MOI.UNKNOWN_RESULT_STATUS,
         GS_ITERATION_LIMIT => MOI.UNKNOWN_RESULT_STATUS,
         GS_RELATIVE_TOL => MOI.FEASIBLE_POINT,
@@ -274,7 +275,7 @@ user writes `optimize!(model)`.
 Here, `optimize_hook!` is used to bypass EAGO's problem parsing and
 treat every problem using its branch-and-bound routine. This is done
 in this example by telling EAGO to treat the problem as a mixed integer
-non-convex problem, which normally dispatches to branch-and-bound.
+nonconvex problem, which normally dispatches to branch-and-bound.
 ```julia-repl
 struct MyNewExtension <: EAGO.ExtensionType end
 import EAGO: optimize_hook!
@@ -295,14 +296,14 @@ $(TYPEDSIGNATURES)
 If the most recent upper problem returned a feasible result, and the upper
 objective value is less than the previous best-known global upper bound,
 set the most recent upper problem result to be the new global upper bound.
-Update the `_feasible_solution_found`, `_first_solution_node`, 
+Update the `_feasible_solution_found`, `_solution_node`, 
 `_global_upper_bound`, and `_continuous_solution` fields of the `GlobalOptimizer`
 accordingly.
 """
 function store_candidate_solution!(m::GlobalOptimizer)
     if m._upper_feasibility && (m._upper_objective_value < m._global_upper_bound)
         m._feasible_solution_found = true
-        m._first_solution_node = m._maximum_node_id
+        m._solution_node = m._maximum_node_id
         m._global_upper_bound = m._upper_objective_value
         @__dot__ m._continuous_solution = m._upper_solution
     end
@@ -471,8 +472,8 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     m._run_time = g._run_time
     m._node_count = g._maximum_node_id
 
-    # evaluate objective (so there isn't a small difference in f(x) and objective_value)
-    # local solvers that solve to feasibility may result in a slightly lower than true solve...
+    # Evaluate objective (so there isn't a small difference in f(x) and objective_value)
+    # local solvers that solve to feasibility may result in a slightly lower than true solve.
     # TODO
     
     # Store objective value and objective bound 

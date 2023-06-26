@@ -1,16 +1,17 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/types/incremental.jl
 # A type-stable wrapper for optimizers used by EAGO to enable bridging and
 # incremental loading. This is tailored to the internal routines used by EAGO.jl
 # so methods may be specialized by optimizer types and error checking is often
 # avoided.
-#############################################################################
+################################################################################
 
 #=
 mutable struct IncrementalCache{S <: MOI.AbstractOptimizer} <: MOI.AbstractOptimizer}
@@ -116,49 +117,57 @@ function MOI.set(d::Incremental, ::MOI.ConstraintSet, ci::CI{VI,T}, s::T) where 
      return
 end
 
-# Get attributes
-MOI.get(d::Incremental{S}, ::MOI.TerminationStatus) where S = MOI.get(d.optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
-MOI.get(d::Incremental{S}, ::MOI.PrimalStatus) where S = MOI.get(d.optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
+# Get optimizer attributes
 MOI.get(d::Incremental{S}, ::MOI.DualStatus) where S = MOI.get(d.optimizer, MOI.DualStatus())::MOI.ResultStatusCode
+MOI.get(d::Incremental{S}, ::MOI.PrimalStatus) where S = MOI.get(d.optimizer, MOI.PrimalStatus())::MOI.ResultStatusCode
 MOI.get(d::Incremental{S}, ::MOI.RawStatusString) where S = MOI.get(d.optimizer, MOI.RawStatusString())::MOI.String
+MOI.get(d::Incremental{S}, ::MOI.ResultCount) where S = MOI.get(d.optimizer, MOI.ResultCount())::Int
+MOI.get(d::Incremental{S}, ::MOI.TerminationStatus) where S = MOI.get(d.optimizer, MOI.TerminationStatus())::MOI.TerminationStatusCode
 
-for T in (MOI.ObjectiveBound, MOI.ObjectiveValue, MOI.DualObjectiveValue)
-    @eval MOI.get(d::Incremental{S}, ::$T) where S = MOI.get(d.optimizer, ($T)())::Float64
-end
-MOI.get(d::Incremental{S}, ::MOI.ObjectiveSense) where S = MOI.get(d.optimizer, MOI.ObjectiveSense())
-MOI.get(d::Incremental{S}, ::MOI.ObjectiveFunctionType) where S = MOI.get(_get_storage(d), MOI.ObjectiveFunctionType())
-MOI.get(d::Incremental{S}, ::MOI.ObjectiveFunction{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ObjectiveFunction{T}())
+MOI.get(d::Incremental{S}, ::MOI.DualObjectiveValue) where S = MOI.get(d.optimizer, MOI.DualObjectiveValue())::Float64
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveBound) where S = MOI.get(d.optimizer, MOI.ObjectiveBound())::Float64
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveValue) where S = MOI.get(d.optimizer, MOI.ObjectiveValue())::Float64
 
-MOI.get(d::Incremental{S}, ::MOI.VariableName, vi::VI) where S = MOI.get(_get_storage(d), MOI.VariableName(), vi)
+MOI.get(d::Incremental{S}, ::MOI.Silent) where S = MOI.get(d.optimizer, MOI.Silent())::Bool
+MOI.get(d::Incremental{S}, n::MOI.SolverName) where S = MOI.get(d.optimizer, n)::String
+MOI.get(d::Incremental{S}, ::MOI.SolverVersion) where S = MOI.get(d.optimizer, MOI.SolverVersion())::String
+MOI.get(d::Incremental{S}, ::MOI.SolveTimeSec) where S = MOI.get(d.optimizer, MOI.SolveTimeSec())::Float64
+MOI.get(d::Incremental{S}, ::MOI.TimeLimitSec) where S = MOI.get(d.optimizer, MOI.TimeLimitSec())
+
+# Get model attributes
+MOI.get(d::Incremental{S}, x::MOI.ListOfConstraintAttributesSet{T}) where {S,T} = MOI.get(_get_storage(d), x)
 MOI.get(d::Incremental{S}, x::MOI.ListOfConstraintIndices{T}) where {S,T} = MOI.get(_get_storage(d), x)
+MOI.get(d::Incremental{S}, n::MOI.ListOfConstraintTypesPresent) where S = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, n::MOI.ListOfModelAttributesSet) where S = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, n::MOI.ListOfVariableAttributesSet) where S = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, n::MOI.ListOfVariableIndices) where S = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, n::MOI.NumberOfConstraints{T}) where {S,T} = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, n::MOI.NumberOfVariables) where S = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, n::MOI.Name) where S = MOI.get(_get_storage(d), n)
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveFunction{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ObjectiveFunction{T}())
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveFunctionType) where S = MOI.get(_get_storage(d), MOI.ObjectiveFunctionType())
+MOI.get(d::Incremental{S}, ::MOI.ObjectiveSense) where S = MOI.get(d.optimizer, MOI.ObjectiveSense())
 
-MOI.get(d::Incremental{S}, ::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ConstraintFunction(), ci)
-MOI.get(d::Incremental{S}, ::MOI.ConstraintSet, ci::MOI.ConstraintIndex{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ConstraintSet(), ci)
-
+# Get variable attributes
+MOI.get(d::Incremental{S}, ::MOI.VariableName, vi::VI) where S = MOI.get(_get_storage(d), MOI.VariableName(), vi)
 MOI.get(d::Incremental{S}, ::MOI.VariablePrimal, vi::VI) where S = MOI.get(d.optimizer, MOI.VariablePrimal(), vi)::Float64
 
+# Get constraint attributes
+MOI.get(d::Incremental{S}, ::MOI.ConstraintFunction, ci::MOI.ConstraintIndex{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ConstraintFunction(), ci)
+MOI.get(d::Incremental{S}, ::MOI.ConstraintSet, ci::MOI.ConstraintIndex{T}) where {S,T} = MOI.get(_get_storage(d), MOI.ConstraintSet(), ci)
 const SAF_CI_TYPES = Union{CI{SAF,LT},CI{SAF,GT},CI{SAF,ET}}
 function MOI.get(d::Incremental{S}, ::MOI.ConstraintPrimal, ci::SAF_CI_TYPES) where S
     MOI.get(d.optimizer, MOI.ConstraintPrimal(), ci)::Float64
 end
-
 const SQF_CI_TYPES = Union{CI{SQF,LT},CI{SQF,GT},CI{SQF,ET}}
 function MOI.get(d::Incremental{S}, ::MOI.ConstraintPrimal, ci::SQF_CI_TYPES) where S
     MOI.get(d.optimizer, MOI.ConstraintPrimal(), ci)::Float64
 end
-
 function MOI.get(d::Incremental{S}, ::MOI.ConstraintDual, ci::Union{CI{VI,LT},CI{VI,GT}}) where S
     MOI.get(d.optimizer, MOI.ConstraintDual(), ci)::Float64
 end
-function MOI.get(d::Incremental{S}, ::MOI.ResultCount) where S
-    MOI.get(d.optimizer, MOI.ResultCount())::Int
-end
-function MOI.get(d::Incremental{S}, n::MOI.SolverName) where S
-    MOI.get(d.optimizer, n)::String
-end
-MOI.get(d::Incremental{S}, n::MOI.ListOfConstraintTypesPresent) where S = MOI.get(_get_storage(d), n)
 
-# define optimize!
+# Define optimize!
 MOI.optimize!(d::Incremental{S}) where S = MOI.optimize!(S, d)
 MOI.optimize!(x, d::Incremental{S}) where S = MOI.optimize!(_get_storage(d))
 

@@ -1,15 +1,12 @@
 # Solving Semi-Infinite Programming
 
-[Matthew Wilhelm](https://psor.uconn.edu/person/matthew-wilhelm/)  
-Department of Chemical and Biomolecular Engineering, University of Connecticut
+## Using EAGO to Solve a Semi-Infinite Program (SIP)
 
-## Using EAGO to solve a SIP
-
-Semi-infinite programming remains an active area of research. In general, the solution of semi-infinite programs with nonconvex semi-infinite constraints of the below form are extremely challenging:
+Semi-infinite programming remains an active area of research. In general, the solutions of SIPs with nonconvex semi-infinite constraints of the following form are extremely challenging:
 
 ![SipProbForm](SIPProbFormulation.png)
 
-EAGO implements three different algorithm detailed in [1,2] to determine a globally optimal solution to problems of the above form. This accomplished using the `sip_solve` function which returns the optimal value, the solution, and a boolean feasibility value. To illustrate the functions use, a simple example is presented here which solves the below problem:
+EAGO implements three different algorithms<sup>1,2</sup> to determine a globally optimal solution to these problems. This is accomplished using the `sip_solve` function which returns the optimal value, the solution, and a boolean feasibility flag. To illustrate the use of this function, a simple example is presented here which solves the problem:
 
 ![SipForm](SIPformulation.png)
 
@@ -32,7 +29,8 @@ println("The global minimum is attained at: x = $(sip_result.xsol).")
 println("Is the problem feasible? $(sip_result.feasibility).")
 ```
 
-## Semi-infinite solver
+## Semi-Infinite Solver
+
 ```@docs
     SIPProblem
     SIPResult
@@ -46,6 +44,8 @@ println("Is the problem feasible? $(sip_result.feasibility).")
     sip_res!
     sip_solve
 ```
+
+## References
 
 1. **Mitsos A (2009).** Global optimization of semi-infinite programs via restriction of the right-hand side. *Optimization*, 60(10-11):1291-1308.
 2. **Djelassi, Hatim, and Alexander Mitsos.** A hybrid discretization algorithm with guaranteed feasibility for the global solution of semi-infinite programs. *Journal of Global Optimization*, 68.2 (2017): 227-253 should be used.

@@ -1,13 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/EAGO.jl
 # The main file for EAGO.
-#############################################################################
+################################################################################
 
 __precompile__()
 
@@ -83,11 +84,11 @@ module EAGO
 
     export register_eago_operators!
 
-    # map/reduce nonallocating no bounds checking map-reduce like utilities
+    # Map/reduce nonallocating no bounds checking map-reduce like utilities
     include(joinpath(@__DIR__, "eago_optimizer", "debug_tools.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "utilities.jl"))
 
-    # creates a context that removes domain violations when constructing bounds
+    # Creates a context that removes domain violations when constructing bounds
     #include("eago_optimizer/guarded_context.jl")
 
     include(joinpath(@__DIR__, "eago_optimizer", "types", "log.jl"))
@@ -97,15 +98,15 @@ module EAGO
     include(joinpath(@__DIR__, "eago_optimizer", "types", "incremental.jl"))
     include(joinpath(@__DIR__, "eago_optimizer", "types", "subsolver_block.jl"))
 
-    # load internal storage functions
+    # Loads internal storage functions
     include(joinpath(@__DIR__, "eago_optimizer", "functions", "functions.jl"))
 
     include(joinpath(@__DIR__, "eago_optimizer", "types", "global_optimizer.jl"))
 
-    # defines the optimizer structures
+    # Defines the optimizer structures
     include(joinpath(@__DIR__, "eago_optimizer", "optimizer.jl"))
 
-    # defines routines to add variable, saf, sqf, and nlp block constraints
+    # Defines routines to add variable, saf, sqf, and nlp block constraints
     include(joinpath(@__DIR__, "eago_optimizer", "moi_wrapper.jl"))
 
     #
@@ -121,10 +122,10 @@ module EAGO
     #
     include(joinpath(@__DIR__, "eago_optimizer", "optimize", "optimize.jl"))
 
-    # import the script solving utilities
+    # Imports the script solving utilities
     include(joinpath(@__DIR__, "eago_script", "script.jl"))
 
-    # routines for solving SIPs
+    # Routines for solving SIPs
     export SIPResult, SIPProblem, SIPCallback, SIPSubResult,
            sip_solve, SIPRes, SIPResRev, SIPHybrid,
            build_model, set_tolerance_inner!, set_tolerance!, get_disc_set,

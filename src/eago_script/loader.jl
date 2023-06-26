@@ -1,13 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_script/loader.jl
 # Utilities used to load user-defined functions into JuMP tapes.
-#############################################################################
+################################################################################
 
 """
 """
@@ -17,7 +18,7 @@ function tape_to_list(tape::Tape)
     new_nds = MOINL.Node[MOINL.Node(last_node.type, last_node.index, -1)]
 
     queue = Tuple{Int,Int}[(len, -1)]
-    parent_dict = Dict{Int,Int}(len => 1) # starting node is 1
+    parent_dict = Dict{Int,Int}(len => 1) # Starting node is 1
     node_count = 1
 
     while !isempty(queue)
@@ -66,7 +67,7 @@ function remove_subexpr_children!(expr::MOINL.Expression)
             active_node.type !== MOINL.NODE_VARIABLE &&
             active_node.type !== MOINL.NODE_VALUE)
             @inbounds children_idx = nzrange(adj, node_num)
-            if (length(children_idx) > 0) # has any children
+            if (length(children_idx) > 0) # Has any children
                 for child in children_idx
                     @inbounds idx = children_arr[child]
                     @inbounds cn = nd[idx]
@@ -129,7 +130,7 @@ function udf_loader!(x::AbstractOptimizer)
     nlp_model = evaluator.m.nlp_model
     user_registry = nlp_model.operators
 
-    # extracts tape from multivariate udf functions and creates subexpressions
+    # Extracts tape from multivariate udf functions and creates subexpressions
     multi_op_eval = user_registry.multivariate_operator_evaluator
     for mul_eval in multi_op_eval
         tape = trace_script(mul_eval.f, mul_eval.len)
@@ -143,8 +144,8 @@ function udf_loader!(x::AbstractOptimizer)
         add_subexpr_from_tape!(tape, nlp_model)
     end
 
-    # replaces references in expressions to udfs with reference to subexpr
-    # and remove any children of subexpressions (since subexpressions are terminal nodes)
+    # Replaces references in expressions to udfs with reference to subexpr
+    # and removes any children of subexpressions (since subexpressions are terminal nodes)
     nlexpr = nlp_model.expressions
     nlexpr_count = length(nlexpr)
     for i = 1:nlexpr_count
@@ -169,13 +170,13 @@ function udf_loader!(x::AbstractOptimizer)
         x.presolve_flatten_flag && flatten_expression!(constr.terms, parameter_values)
     end
 
-    # void previously defined udfs
+    # Void previously defined udfs
     nlp_model.operators = OperatorRegistry()
     evaluator.m.nlp_model = nlp_model
     evaluator.eval_objective_timer = 0.0
     x._nlp_data = NLPBlockData(x._nlp_data.constraint_bounds, evaluator, x._nlp_data.has_objective)
 
-    # reinitialize evaluator
+    # Reinitialize evaluator
     init_feat = Symbol[:Grad, :Hess]
     num_nlp_constraints = length(x._nlp_data.constraint_bounds)
     num_nlp_constraints > 0 && push!(init_feat, :Jac)

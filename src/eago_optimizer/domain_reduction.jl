@@ -1,13 +1,14 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/domain_reduction.jl
 # Contains subroutines used for domain reduction.
-#############################################################################
+################################################################################
 
 """
 $(TYPEDSIGNATURES)
@@ -131,7 +132,7 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
                 end
             end
 
-            # Termination Condition
+            # Termination condition
             ((~any(m._new_low_index) & ~any(m._new_upp_index)) || (iszero(v))) && break
             if k >= 2
                 if (count(m._lower_indx_diff) + count(m._upper_indx_diff)) < m._parameters.obbt_aggressive_min_dimension
@@ -226,7 +227,7 @@ end
 function Δxl(m, i)
     _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
 end
-function Δux(m, i) 
+function Δxu(m, i) 
     _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
 end
 
@@ -275,15 +276,15 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
             return false
         end
 
-        # continue tightening bounds by optimization until all indices have been checked
+        # Continue tightening bounds by optimization until all indices have been checked
         # or the node is empty and the problem is thus proven infeasible
         while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
 
-              # min of xLP - yL and xU - xLP for potential directions
+              # Determine min of xLP - yL and xU - xLP for potential directions
             lower_indx, lower_value = active_argmin(i -> Δxl(m, i), m._obbt_working_lower_index, obbt_variable_count)
-            upper_indx, upper_value = active_argmin(i -> Δux(m, i), m._obbt_working_upper_index, obbt_variable_count)
+            upper_indx, upper_value = active_argmin(i -> Δxu(m, i), m._obbt_working_upper_index, obbt_variable_count)
  
-            # default to upper bound if no lower bound is found, use maximum distance otherwise
+            # Default to upper bound if no lower bound is found, use maximum distance otherwise
             if lower_value <= upper_value && lower_indx > 0
                 m._obbt_working_lower_index[lower_indx] = false
                 MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
@@ -295,9 +296,9 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                     updated_value = MOI.get(d, MOI.ObjectiveValue()) # xLP[_bvi(m, lower_indx)]
                     previous_value = n.lower_variable_bounds[lower_indx]
 
-                    # if bound is improved update node and corresponding constraint update
-                    # the node bounds and the single variable bound in the relaxation
-                    # we assume branching does not occur on fixed variables and interval
+                    # If bound is improved, update node and corresponding constraint. Update
+                    # the node bounds and the single variable bound in the relaxation.
+                    # We assume branching does not occur on fixed variables and interval
                     # constraints are internally bridged by EAGO. So the only L <= x
                     # constraint in the model is a GreaterThan.
                     if updated_value > previous_value && (updated_value - previous_value) > 1E-6
@@ -331,9 +332,9 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                     updated_value = MOI.get(d, MOI.ObjectiveValue()) # xLP[_bvi(m, upper_indx)]
                     previous_value = n.upper_variable_bounds[upper_indx]
 
-                    # if bound is improved update node and corresponding constraint update
-                    # the node bounds and the single variable bound in the relaxation
-                    # we assume branching does not occur on fixed variables and interval
+                    # If bound is improved, update node and corresponding constraint. Update
+                    # the node bounds and the single variable bound in the relaxation.
+                    # We assume branching does not occur on fixed variables and interval
                     # constraints are internally bridged by EAGO. So the only U => x
                     # constraint in the model is a LessThan.
                     if updated_value < previous_value && (previous_value - updated_value) > 1E-6
@@ -415,7 +416,7 @@ function fbbt! end
 
 function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
 
-    # compute full sum
+    # Compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
     terms = f.terms
@@ -429,8 +430,8 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
         end
     end
 
-    # subtract extra term, check to see if implied bound is better, if so update the node and
-    # the working sum if the node is now empty then break
+    # Subtract extra term and check to see if implied bound is better. If so,
+    # update the node and the working sum. If the node is now empty, then break.
     for k = 1:f.len
         aik, i = @inbounds terms[k]
         if !iszero(aik)
@@ -459,7 +460,7 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
 end
 
 function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
-    # compute full sum
+    # Compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
     terms = f.terms
@@ -476,8 +477,8 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
         end
     end
 
-    # subtract extra term, check to see if implied bound is better, if so update the node and
-    # the working sum if the node is now empty then break
+    # Subtract extra term and check to see if implied bound is better. If so,
+    # update the node and the working sum. If the node is now empty, then break.
     for k = 1:f.len
         aik, i = @inbounds terms[k]
         if !iszero(aik)

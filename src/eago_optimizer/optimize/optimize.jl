@@ -1,14 +1,15 @@
-# Copyright (c) 2018: Matthew Wilhelm & Matthew Stuber.
-# This code is licensed under MIT license (see LICENSE.md for full details)
-#############################################################################
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Matthew Stuber, and the University of Connecticut (UConn).
+# This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
 # EAGO
-# A development environment for robust and global optimization
-# See https://github.com/PSORLab/EAGO.jl
-#############################################################################
+# A development environment for robust and global optimization.
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
 # src/eago_optimizer/optimize/optimize.jl
-# Load subproblem type optimization routines and define general optimize!
-# throw_optimize_hook!.
-#############################################################################
+# Load subproblem type optimization routines and define general optimize! and
+# throw_optimize_hook! functions.
+################################################################################
 
 include("optimize_lp.jl")
 include("optimize_conic.jl")
@@ -39,7 +40,7 @@ function MOI.optimize!(m::Optimizer{Q,S,T}) where {Q,S,T}
         optimize!(m._working_problem._problem_type, m)
     else
 
-        # throws to user-defined optimization hook
+        # Throws to user-defined optimization hook
         throw_optimize_hook!(m)
     end
 
