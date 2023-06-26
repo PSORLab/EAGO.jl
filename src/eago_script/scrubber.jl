@@ -39,7 +39,7 @@ function Cassette.overdub(ctx::ScrubCtx, ::typeof(vcat), A...)
     return vR
 end
 
-# scrub type assertion from definition of udf
+# Scrub type assertion from definition of udf
 function generated_scrubbed_method(f::Function, n::Int, inplace = false)
     ci = code_lowered(f)
     @assert(length(ci) == 1)
@@ -86,7 +86,7 @@ Applies scrub to every user-defined function in the a `MOI.NLPBlockData` structu
 """
 function scrub!(d::MOI.NLPBlockData)
     error("Function not updated for newest version of EAGO. Please submit an issue.")
-    # scrub multivariant
+    # Scrub multivariant
     user_ops = d.user_operators
     mvop_num = length(user_ops.multivariate_operator_evaluator)
     for i in 1:mvop_num
@@ -100,7 +100,7 @@ function scrub!(d::MOI.NLPBlockData)
         user_ops.multivariate_operator_evaluator[i] = evalr
     end
 
-    # scrub univariants
+    # Scrub univariants
     svop_num = length(user_ops.univariate_operator_f)
 
     for i in 1:svop_num
@@ -119,6 +119,6 @@ function scrub!(d::MOI.NLPBlockData)
         user_ops.univariate_operator_fprimeprime[i] = fnew
     end
 
-    # reassign evaluator
+    # Reassign evaluator
     d.user_operators = user_ops
 end

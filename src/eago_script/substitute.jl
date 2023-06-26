@@ -69,11 +69,9 @@ const DAG_SUBSTITUTIONS = Template_Graph[]
 const DAG_SPDICT = Dict{Int,Int}[]
 const DAG_LENGTHS = Int[0,0]
 
-#=
-conventions for substition, the expression to be checked always appears at key 1
-in the Template_Graph and operations are ordered from low value to high value left to right
-so if 1 is a -, and 4 => 1, 3 => 1 then the expression is 4 - 3
-=#
+# Conventions for substition. The expression to be checked always appears at key 1
+# in the Template_Graph and operations are ordered from lowest to highest value, from
+# left to right, so if 1 is a -, and 4 => 1, 3 => 1 then the expression is 4 - 3
 """
     register_substitution!
 
@@ -166,8 +164,8 @@ function is_match(pattern::Template_Graph, indx::Int, nd::Vector{MOINL.Node}, da
     pat_children_arr = rowvals(pattern_adj)
     dag_children_arr = rowvals(dag_adj)
 
-    # do a breadth first search with paired template, nd data,
-    # if any pair of children fail then
+    # Do a breadth first search with paired template and nd data.
+    # If any pair of children fail, then
     pindx_initial = 1
     queue = Tuple{Int,Int}[(pindx_initial, indx)]
     while (~isempty(queue) && (match_flag == true))
@@ -231,10 +229,8 @@ function find_match(indx::Int, nd::Vector{MOINL.Node}, adj::SparseMatrixCSC{Bool
     return flag, pattern_number, match_dict
 end
 
-#=
-Takes a template node and makes the appropriate JuMP node, takes the parent index,
-number of child for a pattern element, constant storage vector and it's length
-=#
+# Takes a template node and makes the appropriate JuMP node, takes the parent index,
+# number of child for a pattern element, constant storage vector and it's length
 function op_node_to_dag!(x::Template_Node, parent::Int, child_len::Int)
     multivariate_operator_to_id = Dict{Symbol,Int}()
     for i in 1:length(DEFAULT_MULTIVARIATE_OPERATORS)
@@ -261,10 +257,10 @@ function bfs_expr_add!(new_nds::Vector{MOINL.Node}, node_count::Int, num_prt::In
     queue = Tuple{Int,Int}[(expr_loc, num_prt)]
     inner_node_count = node_count
     while ~isempty(queue)
-        (node_num, prior_prt) = popfirst!(queue) # pop node
-        @inbounds active_node = nd[node_num] # store node
+        (node_num, prior_prt) = popfirst!(queue) # Pop node
+        @inbounds active_node = nd[node_num] # Store node
         new_node = MOINL.Node(active_node.type, active_node.index, prior_prt)
-        inner_node_count += 1 # update node count
+        inner_node_count += 1 # Update node count
         @inbounds parent_dict[num_prt] = inner_node_count
         push!(new_nds, new_node)
         if (active_node.type !== MOINL.NODE_SUBEXPRESSION &&
@@ -283,7 +279,7 @@ function bfs_expr_add!(new_nds::Vector{MOINL.Node}, node_count::Int, num_prt::In
     inner_node_count
 end
 
-# we assume a tree structure, so if we don't load child nodes,
+# We assume a tree structure, so if we don't load child nodes,
 # then they are effectively deleted
 function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{MOINL.Node},
                      const_list::Vector{Float64}, const_len::Int, node_count::Int,
@@ -341,7 +337,7 @@ function substitute!(match_num::Int, node_num::Int, prior_prt::Int, nd::Vector{M
     return inner_node_count, const_len
 end
 
-# searchs through expression breadth first search that short-cirucits
+# Searchs through expression breadth first search that short-cirucits
 """
     flatten_expression!
 

@@ -28,15 +28,15 @@ function is_safe_cut!(m::GlobalOptimizer, f::SAF)
     safe_u = m._parameters.cut_safe_u
     safe_b = m._parameters.cut_safe_b
 
-    (abs(f.constant) > safe_b) && return false # violates |b| <= safe_b
+    (abs(f.constant) > safe_b) && return false # Violates |b| <= safe_b
     term_count = length(f.terms)
     @inbounds for i = 1:term_count
         ai = f.terms[i].coefficient
         if ai !== 0.0
-            if !(safe_l <= abs(ai) <= safe_u)  # violates safe_l <= abs(ai) <= safe_u
+            if !(safe_l <= abs(ai) <= safe_u)  # Violates safe_l <= abs(ai) <= safe_u
                 return false
             end
-            @inbounds for j = i:term_count     # violates safe_l <= abs(ai/aj) <= safe_u
+            @inbounds for j = i:term_count     # Violates safe_l <= abs(ai/aj) <= safe_u
                 aj = f.terms[j].coefficient
                 if aj !== 0.0
                     if !(safe_l <= abs(ai/aj) <= safe_u)
@@ -204,7 +204,7 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
     else
         v = set(f)
         if !isempty(v)
-            # if has less than or equal to bound (<=)
+            # If has less than or equal to bound (<=)
             if isfinite(upper_bound(f))
                 lower_cut_valid = !isnan(v.cv) && isfinite(v.cv)
                 if lower_cut_valid
@@ -217,7 +217,7 @@ function relax!(m::GlobalOptimizer{R,S,Q}, f::BufferedNonlinearFunction{V,N,T}, 
                     valid_cut_flag = check_set_affine_nl!(m, f, lower_cut_valid, check_safe)
                 end
             end
-            # if has greater than or equal to bound (>=)
+            # If has greater than or equal to bound (>=)
             if isfinite(lower_bound(f))
                 upper_cut_valid = !isnan(v.cc) && isfinite(v.cc)
                 if upper_cut_valid

@@ -15,8 +15,8 @@ function rprop!(t::RelaxInterval, v::Subexpression, g::DAT, c::IntervalCache{T},
     return true
 end
 
-# needed for O(n) reverse interval propagation of +
-# returns q for x = q + y 
+# Needed for O(n) reverse interval propagation of +
+# Returns q for x = q + y 
 function hukuhara_diff(x::Interval{T}, y::Interval{T}) where T<:Real
     isempty(x) && return x
     isempty(y) && return y
@@ -41,8 +41,8 @@ function rprop!(t::RelaxInterval, v::Val{PLUS}, g::DAT, c::IntervalCache{T}, k::
     return true
 end
 
-# needed for close to O(n) reverse interval propagation of *
-# returns q for x = q*y 
+# Needed for close to O(n) reverse interval propagation of *
+# Returns q for x = q*y 
 function hukuhara_div(x::Interval{T}, y::Interval{T}) where T<:Real
     isempty(x) && return x
     isempty(y) && return y

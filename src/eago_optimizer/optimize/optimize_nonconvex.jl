@@ -35,7 +35,7 @@ and quadratic cut into the relaxed optimizer.
 function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     d = _relaxed_optimizer(m)
 
-    # add variables and indices and constraints
+    # Add variables, variable indices, and constraints
     wp = m._working_problem
     branch_variable_count = 0
 
@@ -74,10 +74,10 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
     MOI.add_constraint(d, issue_var, ET(0.0))
 
 
-    # set number of variables to branch on
+    # Set number of variables to branch on
     m._branch_variable_count = branch_variable_count
 
-    # add linear constraints
+    # Add linear constraints
     for (f, s) in collect(values(m._input_problem._linear_leq_constraints))
         MOI.add_constraint(d, f, s)
     end
@@ -88,7 +88,7 @@ function load_relaxed_problem!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Extensio
         MOI.add_constraint(d, f, s)
     end
 
-    # sets relaxed problem objective sense to Min as all problems
+    # Sets relaxed problem objective sense to Min as all problems
     # are internally converted in Min problems in EAGO
     MOI.set(d, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     MOI.set(d, MOI.ObjectiveFunction{SAF}(), wp._objective_saf)
@@ -124,8 +124,8 @@ function presolve_global!(t::ExtensionType, m::GlobalOptimizer)
     m._lower_uvd                = fill(0.0, branch_variable_count)
 
     # Populate in full space until local MOI NLP solves support constraint deletion.
-    # Uses input model for local NLP solves... may adjust this if there's ever a 
-    # convincing reason to use a reformulated upper problem
+    # Uses input model for local NLP solves. May adjust this if there's ever a 
+    # convincing reason to use a reformulated upper problem.
     m._lower_solution      = zeros(Float64, wp._variable_count)
     m._continuous_solution = zeros(Float64, wp._variable_count)
     m._upper_solution      = zeros(Float64, wp._variable_count)
@@ -472,8 +472,8 @@ function unpack_global_solution!(m::Optimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     m._run_time = g._run_time
     m._node_count = g._maximum_node_id
 
-    # evaluate objective (so there isn't a small difference in f(x) and objective_value)
-    # local solvers that solve to feasibility may result in a slightly lower than true solve...
+    # Evaluate objective (so there isn't a small difference in f(x) and objective_value)
+    # local solvers that solve to feasibility may result in a slightly lower than true solve.
     # TODO
     
     # Store objective value and objective bound 

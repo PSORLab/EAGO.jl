@@ -5,9 +5,7 @@ function _not_EAGO_error!(m::JuMP.Model)
     end
 end
 
-#=
-Reference for auxiliary variables
-=#
+# Reference for auxiliary variables
 struct AuxiliaryVariableRef <: JuMP.AbstractVariableRef
     idx::Int
     model::JuMP.Model

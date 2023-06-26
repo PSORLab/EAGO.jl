@@ -3,7 +3,7 @@ using MINLPTests
 solver = JuMP.optimizer_with_attributes(EAGO.Optimizer, "relative_tolerance" => 1E-9)
  
 minlp_nlp_exclude = String[
-    "001_010", # Unbounded box, check solution bad if not gradient-based....
+    "001_010", # Unbounded box, check solution bad if not gradient-based
     "002_010", # Unbounded box
    # "003_010",
    # "003_011",
@@ -27,10 +27,10 @@ MINLPTests.test_nlp(solver, exclude = minlp_nlp_exclude,
 
 minlp_nlp_cvx_exclude = String[
     "001_010",
-    "001_011", # convex quadratic objective... (linear unbounded...)
+    "001_011", # Convex quadratic objective (linear unbounded)
     "002_010",
-    "002_011", # unbounded linear problem & convex quadratic objective
-    "101_010", # convex quadratic nl constraints...
+    "002_011", # Unbounded linear problem and convex quadratic objective
+    "101_010", # Convex quadratic nonlinear constraints
     "101_011", 
     "101_012",
     "102_010",
@@ -48,8 +48,8 @@ minlp_nlp_cvx_exclude = String[
     "105_011",
     "105_012",
     "105_013",
-    "106_010", # simple bounded domain
-    "106_011", #
+    "106_010", # Simple bounded domain
+    "106_011",
     "107_010",
     "107_011",
     "107_012",
@@ -88,15 +88,15 @@ MINLPTests.test_nlp_cvx(solver, exclude = minlp_nlp_cvx_exclude,
                                 primal_target = MINLPTests.PRIMAL_TARGET_GLOBAL)
 
 minlp_nlp_mi_exclude = String[
-    "001_010",  # no box constraints
+    "001_010",  # No box constraints
     "002_010",
 
-    "003_010",   # TODO: Fix 003_010 - 003_016
+    "003_010",  # TODO: Fix 003_010 - 003_016
     "003_011",  # FAIL
     "003_012",  # FAIL
     "003_013",  # FAIL
-    "003_014",  # FAIL Never converges...
-    "003_015",  #FAIL
+    "003_014",  # FAIL (ever converges)
+    "003_015",  # FAIL
     "003_016",
 
     "004_010",
@@ -106,7 +106,7 @@ minlp_nlp_mi_exclude = String[
     "005_011",   # \ operator not in JuMP
     "006_010",
     "007_010",
-    "007_020"    # no way of specifying 
+    "007_020"    # No way of specifying 
 ]
 MINLPTests.test_nlp_mi(solver, exclude = minlp_nlp_mi_exclude, 
 objective_tol = 1E-3, primal_tol = 1E-3,

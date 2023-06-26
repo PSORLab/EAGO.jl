@@ -160,7 +160,7 @@ num(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = num(d.ex)
 lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.lower_bound
 upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
 
-# returns the interval bounds associated with the set
+# Returns the interval bounds associated with the set
 interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
 is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
 
@@ -172,7 +172,7 @@ mc_type(rc::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
 
 MOI.AbstractNLPEvaluator for calculating relaxations of nonlinear terms.
 
-Checks that the resulting value should be a number...
+Checks that the resulting value should be a number.
 
 $(TYPEDFIELDS)
 """
@@ -228,15 +228,13 @@ end
 end
 prior_eval(d::Evaluator, i::Int) = d.subexpressions_eval[i]
 
-#=
-Assumes the sparsities are sorted...
-=#
+# Assumes the sparsities are sorted
 function copy_subexpression_value!(k::Int, op::Int, subexpression::NonlinearExpression{V,MC{N1,T}},
                                    numvalued::Vector{Bool}, numberstorage::Vector{S}, setstorage::Vector{MC{N2,T}},
                                    cv_buffer::Vector{S}, cc_buffer::Vector{S},
                                    func_sparsity::Vector{Int}) where {V, N1, N2, S, T <: RelaxTag}
 
-    # fill cv_grad/cc_grad buffers
+    # Fill cv_grad/cc_grad buffers
     sub_sparsity = subexpression.grad_sparsity
     sset = subexpression.setstorage[1]
     fill!(cv_buffer, zero(S))

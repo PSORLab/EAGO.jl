@@ -39,7 +39,7 @@ end
 
     model = EAGO.Optimizer()
 
-    # Termination Status Code Checks
+    # Termination status code checks
     model._termination_status_code = MOI.OPTIMAL
     status = @inferred MOI.get(model, MOI.TerminationStatus())
     @test status == MOI.OPTIMAL
@@ -709,6 +709,7 @@ end
     MOI.set(x, MOI.RawOptimizerAttribute("verbosity"), 3)
     MOI.set(x, MOI.RawOptimizerAttribute("log_on"), true)
     END_STATES = instances(EAGO.GlobalEndState)
+    # Test print statement for every possible end state
     for i in eachindex(END_STATES)
         m._end_state = END_STATES[i]
         @test_nowarn EAGO.print_solution!(m)

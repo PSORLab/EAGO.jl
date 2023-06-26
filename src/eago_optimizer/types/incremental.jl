@@ -167,7 +167,7 @@ function MOI.get(d::Incremental{S}, ::MOI.ConstraintDual, ci::Union{CI{VI,LT},CI
     MOI.get(d.optimizer, MOI.ConstraintDual(), ci)::Float64
 end
 
-# define optimize!
+# Define optimize!
 MOI.optimize!(d::Incremental{S}) where S = MOI.optimize!(S, d)
 MOI.optimize!(x, d::Incremental{S}) where S = MOI.optimize!(_get_storage(d))
 

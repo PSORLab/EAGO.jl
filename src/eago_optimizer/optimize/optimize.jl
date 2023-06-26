@@ -40,7 +40,7 @@ function MOI.optimize!(m::Optimizer{Q,S,T}) where {Q,S,T}
         optimize!(m._working_problem._problem_type, m)
     else
 
-        # throws to user-defined optimization hook
+        # Throws to user-defined optimization hook
         throw_optimize_hook!(m)
     end
 

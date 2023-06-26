@@ -34,11 +34,11 @@ function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::S
 
     verb = prob.verbosity
 
-    # initializes solution
+    # Initializes solution
     @label main_iteration
     check_convergence(result, prob.abs_tolerance, verb) && @goto main_end
 
-    # solve lower bounding problem and check feasibility
+    # Solve lower bounding problem and check feasibility
     sip_bnd!(t, alg, LowerProblem(), buffer, result, prob, cb)
     result.lower_bound = buffer.lbd.obj_val
     if !buffer.lbd.feas
@@ -48,7 +48,7 @@ function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::S
     end
     print_summary!(LowerProblem(), verb, buffer)
 
-    # solve inner program and update lower discretization set
+    # Solve inner program and update lower discretization set
     is_llp1_nonpositive = true
     for i = 1:prob.nSIP
         sip_llp!(t, alg, LowerLevel1(), result, buffer, prob, cb, i)
@@ -62,7 +62,7 @@ function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::S
         end
     end
 
-    # if the lower problem is feasible then it's solution is the optimal value
+    # If the lower problem is feasible, then it's solution is the optimal value
     if is_llp1_nonpositive
         result.upper_bound = buffer.lbd.obj_val
         result.xsol .= buffer.lbd.sol
@@ -70,7 +70,7 @@ function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::S
         @goto main_end
     end
 
-    # solve upper bounding problem, if feasible solve lower level problem,
+    # Solve upper bounding problem, if feasible solve lower level problem,
     # and potentially update upper discretization set
     sip_bnd!(t, alg, UpperProblem(), buffer, result, prob, cb)
     print_summary!(UpperProblem(), verb, buffer)
@@ -98,9 +98,9 @@ function sip_solve!(t::ExtensionType, alg::SIPRes, buffer::SIPSubResult, prob::S
         buffer.eps_g ./= buffer.r_g
     end
 
-    @show "FINISHED ONE ITERATION..."
+    println("FINISHED ONE ITERATION")
 
-    # print iteration information and advance
+    # Print iteration information and advance
     print_int!(verb, prob, result, buffer.r_g)
     result.iteration_number += 1
     result.iteration_number < prob.iteration_limit && @goto main_iteration

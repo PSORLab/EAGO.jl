@@ -164,7 +164,7 @@ Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
     nodes::Vector{Node}                         = Node[]
     "List of index of variables in this tree"
     variables::Dict{Int,Int}                    = Dict{Int,Int}()
-    "Information on all variables..."
+    "Information on all variables"
     v::VariableValues{Float64}                  = VariableValues{Float64}()
     "List of constant values"
     constant_values::Vector{Float64}            = Float64[]
@@ -193,7 +193,7 @@ end
 #DirectedTree(n::Int) = DirectedTree(children = spzeros(Bool,n,n), parents=spzeros(Bool,n,n))
 const DAT = DirectedTree
 
-# node property access functions that can be defined at abstract type
+# Node property access functions that can be defined at abstract type
 node(g::DAT, i)            = g.nodes[i]
 nodes(g::DAT)              = g.nodes
 

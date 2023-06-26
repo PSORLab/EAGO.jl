@@ -39,7 +39,7 @@ const MAX_ASSOCIATIVE_REVERSE = 6
 """
 $(FUNCTIONNAME)
 
-Updates storage tapes with reverse evalution of node representing `n = x + y` which updates x & y.
+Updates storage tapes with reverse evalution of node representing `n = x + y` which updates x and y.
 """
 function rprop_2!(t::Relax, v::Val{PLUS}, g::DAT, c::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
     is_num(c, k) && return true
@@ -69,12 +69,12 @@ $(FUNCTIONNAME)
 Updates storage tapes with reverse evalution of node representing `n = +(x,y,z...)` which updates x, y, z and so on.
 """
 function rprop_n!(t::Relax, v::Val{PLUS}, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    # out loops makes a temporary sum (minus one argument)
-    # a reverse is then compute with respect to this argument
+    # Outer loop makes a temporary sum (minus one argument)
+    # A reverse is then computed with respect to this argument
     count = 0
     children_idx = children(g, k)
     for i in children_idx
-        is_num(c, i) && continue                     # don't contract a number valued argument
+        is_num(c, i) && continue                     # Don't contract a number valued argument
         (count >= MAX_ASSOCIATIVE_REVERSE) && break
         tsum = zero(MC{N,T})
         count += 1
@@ -97,7 +97,7 @@ end
 """
 $(FUNCTIONNAME)
 
-Updates storage tapes with reverse evalution of node representing `n = x * y` which updates x & y.
+Updates storage tapes with reverse evalution of node representing `n = x * y` which updates x and y.
 """
 function rprop_2!(t::Relax, v::Val{MULT}, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
 
@@ -130,11 +130,12 @@ $(FUNCTIONNAME)
 Updates storage tapes with reverse evalution of node representing `n = *(x,y,z...)` which updates x, y, z and so on.
 """
 function rprop_n!(t::Relax, v::Val{MULT}, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    # a reverse is then compute with respect to this argument
+    # Outer loop makes a temporary sum (minus one argument)
+    # A reverse is then computed with respect to this argument
     count = 0
     children_idx = children(g, k)
     for i in children_idx
-        is_num(b, i) && continue                     # don't contract a number valued argument
+        is_num(b, i) && continue                     # Don't contract a number valued argument
         (count >= MAX_ASSOCIATIVE_REVERSE) && break
         tmul = one(MC{N,T})
         count += 1

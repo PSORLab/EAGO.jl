@@ -107,7 +107,7 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     flag &= m._termination_status_code == MOI.OPTIMIZE_NOT_CALLED
     flag &= m._result_status_code == MOI.OTHER_RESULT_STATUS
 
-    # set constructor reset on empty! and to zero in initial_parse! in parse.jl
+    # Set constructor reset on empty! and to zero in initial_parse! in parse.jl
     flag &= iszero(m._run_time)
     flag &= iszero(m._iteration_count)
     flag &= iszero(m._node_count)
@@ -122,7 +122,7 @@ MOI.supports_incremental_interface(m::Optimizer) = true
 MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, src)
 
 #####
-##### Set & get attributes of model
+##### Set and get attributes of model
 #####
 MOI.supports(::Optimizer, ::MOI.Silent) = true
 

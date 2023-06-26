@@ -6,7 +6,7 @@
 # A development environment for robust and global optimization.
 # https://github.com/PSORLab/EAGO.jl
 ################################################################################
-# # src/eago_semiinfinite/types.jl
+# src/eago_semiinfinite/types.jl
 # Defines intermediate types used by SIP routines.
 ################################################################################
 

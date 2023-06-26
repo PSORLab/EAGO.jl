@@ -1,5 +1,5 @@
 
-# Defines the Vrev object which holds a value and an reverse function...
+# Defines the Vrev object which holds a value and a reverse function
 """
     Vrev{T<:Number,F}
 

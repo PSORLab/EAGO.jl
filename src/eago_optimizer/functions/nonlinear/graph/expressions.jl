@@ -126,7 +126,7 @@ foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), UNIVARIATE_ATOM_DICT)
 foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), BIVARIATE_ATOM_DICT)
 foreach(x -> setindex!(ALL_ATOM_DICT, x[2], x[1]), NARITY_ATOM_DICT)
 
-# A functions that may be 1 to n-arity functions that correspond to the AtomType
+# Functions that may be 1 to n-arity functions that correspond to the AtomType
 ALL_ATOM_DICT[BND]       = :bnd
 #ATM_EVAL[QUAD1]     = :quad1
 #ATM_EVAL[QUAD2]     = :quad2

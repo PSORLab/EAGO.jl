@@ -1,7 +1,6 @@
-#=
-Temporary copy of resources from experimental code transformation package
-https://github.com/perrutquist/CodeTransformation.jl until it becomes tagged.
-=#
+# Temporary copy of resources from experimental code transformation package
+# https://github.com/perrutquist/CodeTransformation.jl until it becomes tagged.
+
 
 import Core: SimpleVector, svec, CodeInfo
 import Base: uncompressed_ast, unwrap_unionall
@@ -12,7 +11,7 @@ jl_method_def(argdata::SimpleVector, ci::CodeInfo, mod::Module) =
 typevars(T::UnionAll) = (T.var, typevars(T.body)...)
 typevars(T::DataType) = ()
 
-@nospecialize # the below functions need not specialize on arguments
+@nospecialize # The functions below need not specialize on arguments
 
 getmodule(F::Type{<:Function}) = F.name.mt.module
 getmodule(f::Function) = getmodule(typeof(f))

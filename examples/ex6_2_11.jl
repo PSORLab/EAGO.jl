@@ -10,7 +10,7 @@ set_optimizer_attribute(m, "output_iterations", 1000)
 set_optimizer_attribute(m, "iteration_limit", 10000000)
 set_optimizer_attribute(m, "cut_max_iterations", 2)
 
-# OBBT depth 0 -> 20... increases number of iterations...
+# OBBT depth 0 -> 20, increases number of iterations
 set_optimizer_attribute(m, "obbt_depth", 8)
 set_optimizer_attribute(m, "obbt_repetitions", 2)
 
@@ -40,7 +40,7 @@ s = time()
 @NLobjective(m, Min, x[2]*x[3]*x[4] + x[2]*x[4])
 @constraint(m, e2, x[2]+x[3]+x[4] == 1.0)
 
-m = m 		 # model get returned when including this script. 
+m = m 		 # Model gets returned when including this script
 
 optimize!(m)
 @show termination_status(m)

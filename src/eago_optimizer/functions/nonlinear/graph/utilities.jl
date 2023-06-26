@@ -102,7 +102,7 @@ function linearity(d::MOIRAD.Linearity)
     (d == MOIRAD.LINEAR)            && return LIN_LINEAR
     (d == MOIRAD.PIECEWISE_LINEAR)  && return LIN_PIECEWISE_LINEAR
     (d == MOIRAD.NONLINEAR)         && return LIN_NONLINEAR
-    LIN_CONSTANT                   # assumes d is then MOINL.CONSTANT
+    LIN_CONSTANT                   # Assumes d is then MOINL.CONSTANT
 end
 
 function linearity(nd::Vector{MOINL.Node}, adj::SparseMatrixCSC{Bool,Int}, d::Vector{MOIRAD.Linearity})

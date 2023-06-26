@@ -12,26 +12,26 @@ are calculated at `x = 2` on the interval `[1,4]`.
 ```julia
 using McCormick
 
-# create MC object for x = 2.0 on [1.0,4.0] for relaxing
+# Create MC object for x = 2.0 on [1.0,4.0] for relaxing
 # a function f(x) on the interval Intv
 
 f(x) = x*(x-5.0)*sin(x)
 
-x = 2.0                          # value of independent variable x
-Intv = Interval(1.0,4.0)         # define interval to relax over
+x = 2.0                          # Value of independent variable x
+Intv = Interval(1.0,4.0)         # Define interval to relax over
                                  # Note that McCormick.jl reexports IntervalArithmetic.jl
                                  # and StaticArrays. So no using statement for these is
                                  # necessary.
-# create McCormick object
+# Create McCormick object
 xMC = MC{1,NS}(x,Intv,1)
 
-fMC = f(xMC)             # relax the function
+fMC = f(xMC)             # Relax the function
 
-cv = fMC.cv              # convex relaxation
-cc = fMC.cc              # concave relaxation
-cvgrad = fMC.cv_grad     # subgradient/gradient of convex relaxation
-ccgrad = fMC.cc_grad     # subgradient/gradient of concave relaxation
-Iv = fMC.Intv            # retrieve interval bounds of f(x) on Intv
+cv = fMC.cv              # Convex relaxation
+cc = fMC.cc              # Concave relaxation
+cvgrad = fMC.cv_grad     # Subgradient/gradient of convex relaxation
+ccgrad = fMC.cc_grad     # Subgradient/gradient of concave relaxation
+Iv = fMC.Intv            # Retrieve interval bounds of f(x) on Intv
 ```
 
 By plotting the results we can easily visualize the convex and concave
@@ -51,27 +51,27 @@ This can readily be extended to multivariate functions, for example, `f(x,y) = (
 ```julia
 using McCormick
 
-# initialize function
+# Define function
 f(x,y) = (4.0 - 2.1*x^2 + (x^4)/6.0)*x^2 + x*y + (-4.0 + 4.0*y^2)*y^2
 
-# intervals for independent variables
+# Define intervals for independent variables
 n = 30
 X = Interval{Float64}(-2,0)
 Y = Interval{Float64}(-0.5,0.5)
 xrange = range(X.lo,stop=X.hi,length=n)
 yrange = range(Y.lo,stop=Y.hi,length=n)
 
-# differentiable McCormick relaxation
+# Calculate differentiable McCormick relaxation
 for (i,x) in enumerate(xrange)
     for (j,y) in enumerate(yrange)
-        z = f(x,y)                  # calculate function values
-        xMC = MC{1,Diff}(x,X,1)     # differentiable relaxation for x
-        yMC = MC{1,Diff}(y,Y,2)     # differentiable relaxation for y
-        fMC = f(xMC,yMC)            # relax the function
-        cv = fMC.cv                 # convex relaxation
-        cc = fMC.cc                 # concave relaxation
+        z = f(x,y)                  # Calculate function values
+        xMC = MC{1,Diff}(x,X,1)     # Differentiable relaxation for x
+        yMC = MC{1,Diff}(y,Y,2)     # Differentiable relaxation for y
+        fMC = f(xMC,yMC)            # Relax the function
+        cv = fMC.cv                 # Convex relaxation
+        cc = fMC.cc                 # Concave relaxation
     end
 end
 ```
 
-![Figure_4](Figure_4.png)
+![Figure_3](Figure_3.png)

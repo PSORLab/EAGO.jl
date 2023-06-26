@@ -95,7 +95,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::MOI.AbstractNLPEvaluator)
 
     user_operator_registry = OperatorRegistry(evaluator.model.operators)
 
-    # set nlp data structure
+    # Set nlp data structure
     m._working_problem._nlp_data = nlp_data
     mul_relax = m._parameters.mul_relax_style
     if mul_relax == 1
@@ -116,20 +116,20 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::MOI.AbstractNLPEvaluator)
         ruse_apriori = false
     end
 
-    # add subexpressions (assumes they are already ordered by JuMP)
-    # creates a dictionary that lists the subexpression sparsity
-    # by search each node for variables dict[2] = [2,3] indicates
-    # that subexpression 2 depends on variables 2 and 3
-    # this is referenced when subexpressions are called by other
-    # subexpressions or functions to determine overall sparsity
-    # the sparsity of a function is the collection of indices
+    # Add subexpressions (assumes they are already ordered by JuMP)
+    # Creates a dictionary that lists the subexpression sparsity
+    # by searching each node for variables dict[2] = [2,3]. Indicates
+    # that subexpression 2 depends on variables 2 and 3.
+    # This is referenced when subexpressions are called by other
+    # subexpressions or functions to determine overall sparsity.
+    # The sparsity of a function is the collection of indices
     # in all participating subexpressions and the function itself
-    # it is necessary to define this as such to enable reverse
-    # McCormick constraint propagation
+    # is necessary to define this as such to enable reverse
+    # McCormick constraint propagation.
     relax_evaluator = m._working_problem._relaxed_evaluator
     relax_evaluator.relax_type = renum
     dict_sparsity = Dict{Int,Vector{Int}}()
-    if length(evaluator.model.expressions) > 0      # should check for nonlinear objective, constraint
+    if length(evaluator.model.expressions) > 0      # Should check for nonlinear objective/constraint
         for i = 1:length(evaluator.backend.subexpressions)
             subexpr = evaluator.backend.subexpressions[i]
             nlexpr = NonlinearExpression!(m._auxiliary_variable_info, rtype, subexpr, MOI.NLPBoundsPair(-Inf, Inf),
@@ -140,14 +140,14 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::MOI.AbstractNLPEvaluator)
         end
     end
 
-    # scrubs udf functions using Cassette to remove odd data structures...
-    # alternatively convert udfs to JuMP scripts...
+    # Scrubs udf functions using Cassette to remove odd data structures
+    # Alternatively, convert udfs to JuMP scripts
     m._parameters.presolve_scrubber_flag && Script.scrub!(m._working_problem._nlp_data)
     if m._parameters.presolve_to_JuMP_flag
         Script.udf_loader!(m)
     end
 
-    # add nonlinear objective
+    # Add nonlinear objective
     if evaluator.model.objective !== nothing
         m._working_problem._objective = BufferedNonlinearFunction(m._auxiliary_variable_info, rtype, evaluator.backend.objective, MOI.NLPBoundsPair(-Inf, Inf),
                                                                  dict_sparsity, evaluator.backend.subexpression_linearity,
@@ -156,7 +156,7 @@ function add_nonlinear!(m::GlobalOptimizer, evaluator::MOI.AbstractNLPEvaluator)
                                                                  m._parameters.relax_tag, ruse_apriori)
     end
 
-    # add nonlinear constraints
+    # Add nonlinear constraints
     constraint_bounds = m._working_problem._nlp_data.constraint_bounds
     for i = 1:length(evaluator.model.constraints)
         constraint = evaluator.backend.constraints[i]
@@ -224,10 +224,10 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
 
     ηi = add_η!(d)
     if !isnothing(ip._nlp_data)
-        # add variable
+        # Add variable
         η = MOI.VariableIndex(ip._variable_count + 1)
         push!(ip._nlp_data.evaluator.backend.ordered_variables, η)
-        # add objective
+        # Add objective
         MOINL.set_objective(ip._nlp_data.evaluator.model, :($η))
     end
 
@@ -269,7 +269,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     MOINL.set_objective(ip._nlp_data.evaluator.model, :($η))
     wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
 
-    # check if input problem is min or max
+    # Check if input problem is min or max
     if !_is_input_min(m)
         cons = MOINL.add_expression(ip._nlp_data.evaluator.model, :(-$expr - $η))
         MOINL.add_constraint(ip._nlp_data.evaluator.model, :($cons), MOI.LessThan(0.0))
@@ -328,8 +328,7 @@ function label_branch_variables!(m::GlobalOptimizer)
     m._user_branch_variables = !isempty(m._parameters.branch_variable)
     if m._user_branch_variables
         m._branch_variables = m._parameters.branch_variable
-        if length(wp._variable_info) > length(m._branch_variables) #Should only need 1
-            push!(m._parameters.branch_variable, true)
+        if length(wp._variable_info) > length(m._branch_variables) # Should only need 1
             push!(m._branch_variables, true)
         end
     else
@@ -357,7 +356,7 @@ function label_branch_variables!(m::GlobalOptimizer)
         end
     end
 
-    # add a map of branch/node index to variables in the continuous solution
+    # Add a map of branch/node index to variables in the continuous solution
     for i = 1:wp._variable_count
         if is_fixed(wp._variable_info[i])
             m._branch_variables[i] = false
@@ -371,14 +370,14 @@ function label_branch_variables!(m::GlobalOptimizer)
         end
     end
 
-    # creates reverse map
+    # Creates reverse map
     m._sol_to_branch_map = zeros(wp._variable_count)
     for i = 1:length(m._branch_to_sol_map)
         j = m._branch_to_sol_map[i]
         m._sol_to_branch_map[j] = i
     end
 
-    # adds branch solution to branch map to evaluator
+    # Adds branch solution to branch map to evaluator
     vnum = wp._variable_count
     initialize!(m._branch_cost, length(m._branch_to_sol_map))
     l = lower_bound.(m._working_problem._variable_info)

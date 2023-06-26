@@ -125,11 +125,11 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     m._new_eval_objective = true
     m._new_eval_constraint = true
 
-    # delete added affine constraints
+    # Delete added affine constraints
     foreach(c -> MOI.delete(d, c), m._affine_relax_ci)
     empty!(m._affine_relax_ci)
 
-    # delete variable    
+    # Delete variable    
     foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_et)
     foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_lt)
     foreach(c -> MOI.delete(d, c[1]), m._relaxed_variable_gt)
@@ -139,7 +139,7 @@ function reset_relaxation!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionTyp
     empty!(m._relaxed_variable_gt)
     empty!(m._relaxed_variable_integer)
 
-    # delete objective cut
+    # Delete objective cut
     !isnothing(m._affine_objective_cut_ci) && MOI.delete(d, m._affine_objective_cut_ci)
     return
 end
@@ -307,9 +307,9 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
         unpack_fbbt_buffer!(m)
     end
 
-    # done after cp to prevent using cp specific flags in cut generation
+    # Done after cp to prevent using cp specific flags in cut generation
     set_first_relax_point!(m)
-    # nonlinear CP can detect infeasibility and bound objective even if
+    # Nonlinear cp can detect infeasibility and bound objective even if
     # the relaxation is ill-posed, so one is always used to mitigate numerical issues 
     cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 1
     for _ = 1:_cp_repetitions(m)
@@ -419,7 +419,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         status = RRS_INFEASIBLE
     end
 
-    # activate integrality conditions for MIP & solve MIP subproblem
+    # Activate integrality conditions for MIP and solve MIP subproblem
     if is_integer_subproblem(m) && (status !== RRS_INFEASIBLE)
         m._last_cut_objective = m._lower_objective_value
         for i = 1:_variable_num(BranchVar(), m)
@@ -440,7 +440,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         end
     end
 
-    # check status -- if not feasible/infeasible then fallback to interval bounds
+    # Check status, if not feasible/infeasible then fallback to interval bounds
     if status == RRS_OPTIMAL
         m._lower_objective_value = MOI.get(d, MOI.ObjectiveValue())
     end
@@ -458,7 +458,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         return
     end
 
-    # set dual values
+    # Set dual values
     set_dual!(m)
     m._lower_feasibility = true
     store_lower_solution!(m, d)
