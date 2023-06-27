@@ -89,7 +89,7 @@ MOI.add_constraint(d::Incremental, f::VI, s::GT) = MOI.add_constraint(_get_stora
 MOI.add_constraint(d::Incremental, f::VI, s::ET) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,ET}
 MOI.add_constraint(d::Incremental, f::VI, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,IT}
 MOI.add_constraint(d::Incremental, f::VI, s::ZO) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,ZO}
-MOI.add_constraint(d::Incremental, f::VI, s::MOI.Integer) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,MOI.Integer}
+MOI.add_constraint(d::Incremental, f::VI, s::INT) = MOI.add_constraint(_get_storage(d), f, s)::CI{VI,INT}
 
 MOI.add_constraint(d::Incremental, f::SAF, s::LT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,LT}
 MOI.add_constraint(d::Incremental, f::SAF, s::GT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SAF,GT}
@@ -102,7 +102,7 @@ MOI.add_constraint(d::Incremental, f::SQF, s::ET) = MOI.add_constraint(_get_stor
 MOI.add_constraint(d::Incremental, f::SQF, s::IT) = MOI.add_constraint(_get_storage(d), f, s)::CI{SQF,IT}
 
 # Delete
-function MOI.delete(d::Incremental, ci::CI{VI,T}) where T <: Union{LT,GT,ET,IT,MOI.Integer}
+function MOI.delete(d::Incremental, ci::CI{VI,T}) where T <: Union{LT,GT,ET,IT,INT}
     MOI.delete(_get_storage(d), ci)
     return
 end

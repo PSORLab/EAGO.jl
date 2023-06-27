@@ -20,7 +20,7 @@ end
 function MOI.optimize!(::Type{Cbc.Optimizer}, d::Incremental{Cbc.Optimizer})
     continuous_problem = true
     for (F,S) in MOI.get(d, MOI.ListOfConstraintTypesPresent())
-        if S isa Union{MOI.Integer, MOI.SOS1, MOI.SOS2, ZO}
+        if S isa Union{INT, MOI.SOS1, MOI.SOS2, ZO}
             continuous_problem = false
             break
         end 

@@ -113,7 +113,7 @@ _constraints(m::Optimizer, ::Type{VI}, ::Type{GT}) = m._input_problem._vi_geq_co
 _constraints(m::Optimizer, ::Type{VI}, ::Type{ET}) = m._input_problem._vi_eq_constraints
 _constraints(m::Optimizer, ::Type{VI}, ::Type{IT}) = m._input_problem._vi_it_constraints
 _constraints(m::Optimizer, ::Type{VI}, ::Type{ZO}) = m._input_problem._vi_zo_constraints
-_constraints(m::Optimizer, ::Type{VI}, ::Type{MOI.Integer}) = m._input_problem._vi_int_constraints
+_constraints(m::Optimizer, ::Type{VI}, ::Type{INT}) = m._input_problem._vi_int_constraints
 
 _constraints(m::Optimizer, ::Type{SAF}, ::Type{LT}) = _constraints(m._input_problem, SAF, LT)
 _constraints(m::Optimizer, ::Type{SAF}, ::Type{GT}) = _constraints(m._input_problem, SAF, GT)

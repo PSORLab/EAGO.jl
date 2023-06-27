@@ -12,7 +12,7 @@
 
 # Sets used in general constraints
 const INEQ_SETS = Union{LT, GT, ET}
-const VAR_SETS = Union{LT, GT, ET, ZO, MOI.Integer}
+const VAR_SETS = Union{LT, GT, ET, ZO, INT}
 
 ##### Utilities for checking that JuMP model contains variables used in expression
 function check_inbounds!(m::Optimizer, vi::VI)
@@ -158,7 +158,7 @@ MOI.get(m::Optimizer, ::MOI.ListOfOptimizerAttributesSet) = m._optimizer_attribu
 
 function MOI.get(m::Optimizer, ::MOI.ListOfConstraintTypesPresent)
     constraint_types = []
-    for S in (ZO, MOI.Integer)
+    for S in (ZO, INT)
         if MOI.get(m, MOI.NumberOfConstraints{VI,S}()) > 0
             push!(constraint_types, (VI,S))
         end

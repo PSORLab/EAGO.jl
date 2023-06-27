@@ -177,7 +177,7 @@ function VariableInfo(v::VariableInfo{T}, lt::MOI.LessThan{T}) where {T <: Abstr
                         upper_bound = u)
 end
 
-function VariableInfo(v::VariableInfo{T}, s::MOI.Integer) where {T <: AbstractFloat}
+function VariableInfo(v::VariableInfo{T}, s::INT) where {T <: AbstractFloat}
     isempty(v) && return v
     l = lower_bound(v)
     u = upper_bound(v)

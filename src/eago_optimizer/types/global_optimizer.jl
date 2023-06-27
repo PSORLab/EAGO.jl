@@ -274,7 +274,7 @@ Base.@kwdef mutable struct InputProblem
     _vi_eq_constraints::Dict{CI{VI,ET}, Tuple{VI,ET}} = Dict{CI{VI,ET}, Tuple{VI,ET}}()
     _vi_it_constraints::Dict{CI{VI,IT}, Tuple{VI,IT}} = Dict{CI{VI,IT}, Tuple{VI,IT}}()
     _vi_zo_constraints::Dict{CI{VI,ZO}, Tuple{VI,ZO}} = Dict{CI{VI,ZO}, Tuple{VI,ZO}}()
-    _vi_int_constraints::Dict{CI{VI,MOI.Integer}, Tuple{VI,MOI.Integer}} = Dict{CI{VI,MOI.Integer}, Tuple{VI,MOI.Integer}}()
+    _vi_int_constraints::Dict{CI{VI,INT}, Tuple{VI,INT}} = Dict{CI{VI,INT}, Tuple{VI,INT}}()
 
     _linear_leq_constraints::Dict{CI{SAF,LT}, Tuple{SAF,LT}} = Dict{CI{SAF,LT}, Tuple{SAF,LT}}()
     _linear_geq_constraints::Dict{CI{SAF,GT}, Tuple{SAF,GT}} = Dict{CI{SAF,GT}, Tuple{SAF,GT}}()
@@ -364,7 +364,7 @@ _constraints(m::InputProblem, ::Type{VI}, ::Type{GT}) = m._vi_geq_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{ET}) = m._vi_eq_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{IT}) = m._vi_it_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{ZO}) = m._vi_zo_constraints
-_constraints(m::InputProblem, ::Type{VI}, ::Type{MOI.Integer}) = m._vi_int_constraints
+_constraints(m::InputProblem, ::Type{VI}, ::Type{INT}) = m._vi_int_constraints
 
 _constraints(m::InputProblem, ::Type{SAF}, ::Type{LT}) = m._linear_leq_constraints
 _constraints(m::InputProblem, ::Type{SAF}, ::Type{GT}) = m._linear_geq_constraints
@@ -792,8 +792,8 @@ Base.@kwdef mutable struct GlobalOptimizer{Q,S,T<:ExtensionType} <: MOI.Abstract
     _relaxed_variable_lt::Vector{Tuple{CI{VI, LT}, Int}} = Tuple{CI{VI, LT}, Int}[]
     "Stored GreaterThan constraints"
     _relaxed_variable_gt::Vector{Tuple{CI{VI, GT}, Int}} = Tuple{CI{VI, GT}, Int}[]
-    "Stored integer constraints"
-    _relaxed_variable_integer::Vector{CI{VI, MOI.Integer}} = CI{VI, MOI.Integer}[]
+    "Stored Integer constraints"
+    _relaxed_variable_integer::Vector{CI{VI, INT}} = CI{VI, INT}[]
 
     "List of variables that can be branched on. If not user-specified, branch variables
     are identified in `label_branch_variables!`"

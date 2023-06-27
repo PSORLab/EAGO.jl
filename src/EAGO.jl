@@ -65,6 +65,7 @@ module EAGO
     const ET = MOI.EqualTo{Float64}
     const IT = MOI.Interval{Float64}
     const ZO = MOI.ZeroOne
+    const INT = MOI.Integer
     const SOC = MOI.SecondOrderCone
 
     const VI = MOI.VariableIndex

@@ -426,7 +426,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
             l = _lower_bound(BranchVar(), m, i)
             u = _upper_bound(BranchVar(), m, i)
             if is_integer(BranchVar(), m, i) && (l != u)
-                c_integer = MOI.add_constraint(d, VI(_bvi(m, i)), MOI.Integer())
+                c_integer = MOI.add_constraint(d, VI(_bvi(m, i)), INT())
                 push!(m._relaxed_variable_integer, c_integer)
             end
         end
