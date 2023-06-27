@@ -307,9 +307,9 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
         unpack_fbbt_buffer!(m)
     end
 
-    # Done after cp to prevent using cp specific flags in cut generation
+    # Done after CP to prevent using CP specific flags in cut generation
     set_first_relax_point!(m)
-    # Nonlinear cp can detect infeasibility and bound objective even if
+    # Nonlinear CP can detect infeasibility and bound objective even if
     # the relaxation is ill-posed, so one is always used to mitigate numerical issues 
     cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 1
     for _ = 1:_cp_repetitions(m)

@@ -61,10 +61,10 @@ function MOI.add_constraint(m::Optimizer, f::VI, s::S) where S<:VAR_SETS
 end
 
 result_index_1_error(v::T) where T = throw(MOI.ResultIndexBoundsError{T}(v, 1))
-function MOI.get(model::Optimizer, v::MOI.VariablePrimal, vi::MOI.VariableIndex)
-    check_inbounds!(model, vi)
+function MOI.get(m::Optimizer, v::MOI.VariablePrimal, vi::MOI.VariableIndex)
+    check_inbounds!(m, vi)
     (v.result_index != 1) && result_index_1_error(v)
-    return model._global_optimizer._continuous_solution[vi.value]
+    return m._global_optimizer._continuous_solution[vi.value]
 end
 function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{VI,<:Any}) where {R,S,T}
     (v.result_index != 1) && result_index_1_error(v)
@@ -90,7 +90,7 @@ function MOI.empty!(m::Optimizer{R,S,T}) where {R,S,T}
     m._run_time = 0.0
     m._objective_value  = -Inf
     m._objective_bound  =  Inf
-    m. _relative_gap     = Inf
+    m._relative_gap     =  Inf
     m._iteration_count  = 0
     m._node_count       = 0
 
@@ -113,13 +113,13 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     flag &= iszero(m._node_count)
     flag &= m._objective_value == -Inf
     flag &= m._objective_bound ==  Inf
-    flag &= m. _relative_gap   == Inf
+    flag &= m._relative_gap    ==  Inf
 
     return flag
 end
 
 MOI.supports_incremental_interface(m::Optimizer) = true
-MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, src)
+MOI.copy_to(m::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(m, src)
 
 #####
 ##### Set and get attributes of model
@@ -176,7 +176,7 @@ MOI.get(m::Optimizer, v::MOI.PrimalStatus) = !isone(v.result_index) ? MOI.NO_SOL
 MOI.get(m::Optimizer, ::MOI.DualStatus) = MOI.NO_SOLUTION
 MOI.get(m::Optimizer, ::MOI.ObjectiveBound) = m._objective_bound
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
-MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
+MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO - Easy Advanced Global Optimization"
 MOI.get(m::Optimizer, ::MOI.SolverVersion) = "0.8.1"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTimeSec) = m._run_time

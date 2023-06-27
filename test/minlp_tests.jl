@@ -5,8 +5,8 @@ solver = JuMP.optimizer_with_attributes(EAGO.Optimizer, "relative_tolerance" => 
 minlp_nlp_exclude = String[
     "001_010", # Unbounded box, check solution bad if not gradient-based
     "002_010", # Unbounded box
-   # "003_010",
-   # "003_011",
+    #"003_010",
+    #"003_011",
     #"003_013",
     #"003_015",   
     "004_010", # Unbounded box
@@ -95,7 +95,7 @@ minlp_nlp_mi_exclude = String[
     "003_011",  # FAIL
     "003_012",  # FAIL
     "003_013",  # FAIL
-    "003_014",  # FAIL (ever converges)
+    "003_014",  # FAIL (never converges)
     "003_015",  # FAIL
     "003_016",
 

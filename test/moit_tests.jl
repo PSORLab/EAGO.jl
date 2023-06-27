@@ -36,7 +36,7 @@ implemented or that your solver doesn't support.
 """
 function test_runtests()
     MOI.Test.runtests(BRIDGED, CONFIG, 
-                      exclude = [# IPOPT Inherited test exclusions
+                      exclude = [# Ipopt inherited test exclusions
                                 "test_model_ScalarFunctionConstantNotZero",
                                 "test_solve_TerminationStatus_DUAL_INFEASIBLE",
                                 "test_linear_VectorAffineFunction_empty_row",
@@ -62,7 +62,7 @@ function test_runtests()
                                 "test_modification_",
                                 "test_linear_integration_delete_variables",
 
-                                # EAGO Exclusions to Resolve (by adding conic support later and fixing twice solve issues)
+                                # EAGO exclusions to resolve (by adding conic support later and fixing twice solve issues)
                                 "test_conic_NormOneCone_VectorAffineFunction",
                                 "test_conic_NormOneCone_VectorOfVariables",
                                 "test_conic_NormInfinityCone_VectorOfVariables",

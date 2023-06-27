@@ -38,8 +38,8 @@ function Incremental(m::S) where {S <: MOI.AbstractOptimizer}
     return Incremental{S}(b, cache)
 end
 
-function MOI.copy_to(model::Incremental{S}, src::MOI.ModelLike) where S <: MOI.AbstractOptimizer
-    return MOI.Utilities.default_copy_to(model, src, copy_names)
+function MOI.copy_to(d::Incremental{S}, src::MOI.ModelLike) where S <: MOI.AbstractOptimizer
+    return MOIU.default_copy_to(d, src, copy_names)
 end
 
 _is_incremental(x) = false

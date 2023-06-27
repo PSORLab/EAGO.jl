@@ -1,4 +1,4 @@
-# Solving Semi-Infinite Programming
+# Solving Semi-Infinite Programs
 
 ## Using EAGO to Solve a Semi-Infinite Program (SIP)
 
