@@ -18,7 +18,7 @@ function _variable_count(g::AbstractDG)::Int
     error("Variable count not defined for graph type = $(typeof(g))")
 end
 
-# Added id field to MOI OperatorRegistry
+# Added ID field to MOI OperatorRegistry
 struct OperatorRegistry
     univariate_operators::Vector{Symbol}
     univariate_operator_id::Vector{Symbol}

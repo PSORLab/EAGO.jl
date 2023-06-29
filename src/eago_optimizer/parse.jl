@@ -432,7 +432,7 @@ function initial_parse!(m::Optimizer{R,S,T}) where {R,S,T}
     variable_load_parse!(m, VI, GT)
     variable_load_parse!(m, VI, ET)
     variable_load_parse!(m, VI, ZO)
-    variable_load_parse!(m, VI, MOI.Integer)
+    variable_load_parse!(m, VI, INT)
     wp._variable_count = ip._variable_count
 
     # Copy all constraint dictionaries from the input problem to the working problem

@@ -1,5 +1,5 @@
 
-![Logo](Logo.png)
+![logo](logo.png)
 
 # EAGO - Easy Advanced Global Optimization in Julia
 
@@ -28,7 +28,7 @@ From the Julia REPL, type `]` to enter the Package manager (Pkg) mode and run th
 pkg> add EAGO
 ```
 
-Currently, EAGO is compatible with version 1.12+ of JuMP. This allows a replication of some of the internal features shared by EAGO and JuMP's automatic differentiation scheme, e.g., generation of Wengert Tapes, passing evaluators between JuMP and EAGO, etc.
+Currently, EAGO is compatible with version 1.12 of JuMP. This allows a replication of some of the internal features shared by EAGO and JuMP's automatic differentiation scheme, e.g., generation of Wengert Tapes, passing evaluators between JuMP and EAGO, etc.
 
 ```jldoctest
 pkg> add JuMP

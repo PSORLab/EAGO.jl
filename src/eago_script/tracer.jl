@@ -38,7 +38,7 @@ iterate(v::SetTraceSto, i=1) = (length(v.storage) < i ? nothing : (v.storage[i],
 export Tape
 
 # JuMP convention is to store child from function (function call = -1).
-# Next highest call is has parent 1 and so on. This is a forward tape recording
+# Next highest call is parent 1 and so on. This is a forward tape recording
 # architecture, so we'll store children then invert.
 mutable struct Tape
     nd::Vector{NodeInfo}

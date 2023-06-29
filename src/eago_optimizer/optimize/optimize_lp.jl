@@ -28,7 +28,7 @@ function add_variables(m::GlobalOptimizer, d)
             MOI.add_constraint(d, z[i], LT(vi))
         end
         if is_integer(vi)
-            MOI.add_constraint(d, z[i], MOI.Integer())
+            MOI.add_constraint(d, z[i], INT())
         end
     end
     return z

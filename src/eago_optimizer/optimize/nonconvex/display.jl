@@ -60,8 +60,15 @@ function print_solution!(m::GlobalOptimizer)
         end
         if m._feasible_solution_found
             println("Solution:")
+            variable_names = String[]
             for i = 1:m._input_problem._variable_count
-                println("    X[$i] = $(m._continuous_solution[i])")
+                push!(variable_names, string(m._input_problem._variable_names[MOI.VariableIndex(i)]))
+            end
+            maxlen = maximum(length.(variable_names))
+            addlen = maxlen .- length.(variable_names)
+            print_list = " ".^addlen.*variable_names
+            for i = 1:m._input_problem._variable_count
+            println("  $(print_list[i]) = $(m._continuous_solution[i])")
             end
         end
         println(" ")

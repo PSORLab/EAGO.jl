@@ -60,12 +60,12 @@ require(['jquery', 'highlight', 'highlight-julia', 'highlight-julia-repl'], func
 
 })
 
-// update the version selector with info from the siteinfo.js and ../versions.js files
+// Update the version selector with info from the siteinfo.js and ../versions.js files
 require(['jquery'], function($) {
     $(document).ready(function() {
         var version_selector = $("#version-selector");
 
-        // add the current version to the selector based on siteinfo.js, but only if the selector is empty
+        // Add the current version to the selector based on siteinfo.js, but only if the selector is empty
         if (typeof DOCUMENTER_CURRENT_VERSION !== 'undefined' && $('#version-selector > option').length == 0) {
             var option = $("<option value='#' selected='selected'>" + DOCUMENTER_CURRENT_VERSION + "</option>");
             version_selector.append(option);
@@ -77,7 +77,7 @@ require(['jquery'], function($) {
             DOC_VERSIONS.forEach(function(each) {
                 var version_url = documenterBaseURL + "/../" + each;
                 var existing_id = $.inArray(each, existing_versions_texts);
-                // if not already in the version selector, add it as a new option,
+                // If not already in the version selector, add it as a new option,
                 // otherwise update the old option with the URL and enable it
                 if (existing_id == -1) {
                     var option = $("<option value='" + version_url + "'>" + each + "</option>");
@@ -90,7 +90,7 @@ require(['jquery'], function($) {
             });
         }
 
-        // only show the version selector if the selector has been populated
+        // Only show the version selector if the selector has been populated
         if ($('#version-selector > option').length > 0) {
             version_selector.css("visibility", "visible");
         }
@@ -101,7 +101,7 @@ require(['jquery'], function($) {
 
 })
 
-// mobile
+// Mobile
 require(['jquery', 'headroom'], function($, Headroom) {
     $(document).ready(function() {
         var navtoc = $("nav.toc");

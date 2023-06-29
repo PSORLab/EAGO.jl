@@ -30,14 +30,14 @@ makedocs(modules = [EAGO, McCormick],
                 collapselevel = 1,
          ),
          authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, and Matthew Stuber",
-         #repo = "https://github.com/PSORLab/EAGO.jl/blob/{commit}{path}#L{line}",
-         sitename = "EAGO",
+         sitename = "EAGO.jl",
          pages = Any["Introduction" => "index.md",
                      "Quick Start" => Any["quick_start/qs_landing.md",
                                           "quick_start/guidelines.md",
                                           "quick_start/simple.md",
                                           "quick_start/medium.md",
-                                          "quick_start/difficult.md"
+                                          "quick_start/difficult.md",
+                                          "quick_start/alpha_bb.md"
                                           ],
                      "McCormick Operator Library" => Any["mccormick/overview.md",
                                                          "mccormick/usage.md",
@@ -56,9 +56,9 @@ makedocs(modules = [EAGO, McCormick],
                      "Contributing to EAGO"      => Any["dev/contributing.md",
                                                         "dev/future.md"
                                                         ],
-                     "References"  => "ref.md",
                      "Citing EAGO" => "cite.md",
-                     "News"        => "news.md"]
+                     "News"        => "news.md",
+                     "References"  => "ref.md"]
 )
 
 @info "Deploying documentation..."

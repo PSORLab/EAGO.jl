@@ -1,4 +1,4 @@
-## Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
 # Matthew Stuber, and the University of Connecticut (UConn).
 # This code is licensed under the MIT license (see LICENSE.md for full details).
 ################################################################################
@@ -12,7 +12,7 @@
 
 # Sets used in general constraints
 const INEQ_SETS = Union{LT, GT, ET}
-const VAR_SETS = Union{LT, GT, ET, ZO, MOI.Integer}
+const VAR_SETS = Union{LT, GT, ET, ZO, INT}
 
 ##### Utilities for checking that JuMP model contains variables used in expression
 function check_inbounds!(m::Optimizer, vi::VI)
@@ -45,7 +45,17 @@ MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F<:Union{SAF,SQF},S
 MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{VI,S}) where S<:VAR_SETS = collect(keys(_constraints(m,VI,S)))
 MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{F,S}) where {F<:Union{SAF,SQF},S<:INEQ_SETS} = collect(keys(_constraints(m,F,S)))
 
-MOI.add_variable(m::Optimizer) = VI(m._input_problem._variable_count += 1)
+function MOI.add_variable(m::Optimizer)
+    vi = VI(m._input_problem._variable_count += 1)
+    m._input_problem._variable_names[vi] = "" 
+    return vi
+end
+
+function MOI.add_variable(m::Optimizer, name::String)
+    vi = VI(m._input_problem._variable_count += 1)
+    m._input_problem._variable_names[vi] = name 
+    return vi
+end
 
 function MOI.add_constraint(m::Optimizer, f::F, s::S) where {F<:Union{SAF,SQF},S<:INEQ_SETS}
     check_inbounds!(m, f)
@@ -61,10 +71,10 @@ function MOI.add_constraint(m::Optimizer, f::VI, s::S) where S<:VAR_SETS
 end
 
 result_index_1_error(v::T) where T = throw(MOI.ResultIndexBoundsError{T}(v, 1))
-function MOI.get(model::Optimizer, v::MOI.VariablePrimal, vi::MOI.VariableIndex)
-    check_inbounds!(model, vi)
+function MOI.get(m::Optimizer, v::MOI.VariablePrimal, vi::MOI.VariableIndex)
+    check_inbounds!(m, vi)
     (v.result_index != 1) && result_index_1_error(v)
-    return model._global_optimizer._continuous_solution[vi.value]
+    return m._global_optimizer._continuous_solution[vi.value]
 end
 function MOI.get(m::Optimizer{R,S,T}, v::MOI.ConstraintPrimal, c::CI{VI,<:Any}) where {R,S,T}
     (v.result_index != 1) && result_index_1_error(v)
@@ -90,7 +100,7 @@ function MOI.empty!(m::Optimizer{R,S,T}) where {R,S,T}
     m._run_time = 0.0
     m._objective_value  = -Inf
     m._objective_bound  =  Inf
-    m. _relative_gap     = Inf
+    m._relative_gap     =  Inf
     m._iteration_count  = 0
     m._node_count       = 0
 
@@ -113,13 +123,13 @@ function MOI.is_empty(m::Optimizer{R,S,T}) where {R,S,T}
     flag &= iszero(m._node_count)
     flag &= m._objective_value == -Inf
     flag &= m._objective_bound ==  Inf
-    flag &= m. _relative_gap   == Inf
+    flag &= m._relative_gap    ==  Inf
 
     return flag
 end
 
 MOI.supports_incremental_interface(m::Optimizer) = true
-MOI.copy_to(model::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(model, src)
+MOI.copy_to(m::Optimizer, src::MOI.ModelLike) = MOIU.default_copy_to(m, src)
 
 #####
 ##### Set and get attributes of model
@@ -158,7 +168,7 @@ MOI.get(m::Optimizer, ::MOI.ListOfOptimizerAttributesSet) = m._optimizer_attribu
 
 function MOI.get(m::Optimizer, ::MOI.ListOfConstraintTypesPresent)
     constraint_types = []
-    for S in (ZO, MOI.Integer)
+    for S in (ZO, INT)
         if MOI.get(m, MOI.NumberOfConstraints{VI,S}()) > 0
             push!(constraint_types, (VI,S))
         end
@@ -176,7 +186,7 @@ MOI.get(m::Optimizer, v::MOI.PrimalStatus) = !isone(v.result_index) ? MOI.NO_SOL
 MOI.get(m::Optimizer, ::MOI.DualStatus) = MOI.NO_SOLUTION
 MOI.get(m::Optimizer, ::MOI.ObjectiveBound) = m._objective_bound
 MOI.get(m::Optimizer, ::MOI.NumberOfVariables) = m._input_problem._variable_count
-MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO: Easy Advanced Global Optimization"
+MOI.get(m::Optimizer, ::MOI.SolverName) = "EAGO - Easy Advanced Global Optimization"
 MOI.get(m::Optimizer, ::MOI.SolverVersion) = "0.8.1"
 MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTimeSec) = m._run_time
@@ -238,3 +248,33 @@ MOI.get(m::Optimizer, ::MOI.ObjectiveFunctionType) = typeof(m._input_problem._ob
 
 MOI.set(m::Optimizer, ::MOI.ObjectiveSense, s::MOI.OptimizationSense) = m._input_problem._optimization_sense = s
 MOI.get(m::Optimizer, ::MOI.ObjectiveSense) = m._input_problem._optimization_sense
+
+#####
+##### Support, set, and get variable names
+#####
+MOI.supports(m::Optimizer, ::MOI.VariableName, ::Type{VI}) = true
+
+MOI.set(m::Optimizer, ::MOI.VariableName, vi::VI, name::String) = m._input_problem._variable_names[vi] = name
+MOI.get(m::Optimizer, ::MOI.VariableName, vi::VI) = m._input_problem._variable_names[vi]
+
+function MOI.get(m::Optimizer, ::Type{VI}, name::String)
+    duplicate_flag = false
+    index_storage = nothing
+    for (key,val) in m._input_problem._variable_names
+        if val == name
+            if !duplicate_flag 
+                duplicate_flag = true
+                index_storage = key
+            else
+                # Only throw an error if attempting to access a duplicated name
+                error("""Duplicate variable name found. Please rename your variables to access them.
+                         Duplicated name: \"$name\"""")
+            end
+        end
+    end
+    if isnothing(index_storage)
+        return
+    else
+        return index_storage
+    end
+end

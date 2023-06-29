@@ -58,7 +58,7 @@ is infeasible.
 
 ## 3) Lower Problem
 
-By default, EAGO applies Kelley's cutting-plane algorithm<sup>1</sup> to solve the lower bounding
+By default, EAGO applies Kelley's cutting-plane algorithm [[1](#references)] to solve the lower bounding
 problem. This can be overloaded using the same syntax as for the other functions.
 Necessary changes to the `EAGO.GlobalOptimizer` that occur within the lower problem
 are changing the `_lower_objective_value` and `_lower_feasibility` fields. If the

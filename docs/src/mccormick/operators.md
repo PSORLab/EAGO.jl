@@ -28,9 +28,9 @@ Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported for
                                        `gelu`, `elu`, `selu`, `swish`)
 - **Special Functions** (`erf`)
 
-## Bivariate Operators: McCormick & McCormick
+## Bivariate McCormick Operators
 
-The following bivariate operators are supported for two `MC` objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
+The following bivariate operators are supported for two [`McCormick.MC`](@ref) objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
 
 - **Multiplication** (`*`)
 - **Division** (`/`)

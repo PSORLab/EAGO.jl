@@ -8,7 +8,7 @@ end
 @testset "Set/Get Attributes" begin
 
     m = EAGO.Optimizer()
-    @test MOI.get(m, MOI.SolverName()) === "EAGO: Easy Advanced Global Optimization"
+    @test MOI.get(m, MOI.SolverName()) === "EAGO - Easy Advanced Global Optimization"
 
     m._node_count = 55
     @test MOI.get(m, MOI.NodeCount()) === 55
@@ -59,7 +59,7 @@ end
     @test nVar == 1
 
     # Add second variable
-    MOI.add_variables(model,3)
+    MOI.add_variables(model, 3)
     nVar = @inferred MOI.get(model, MOI.NumberOfVariables())
     @test nVar == 4
 
@@ -79,7 +79,7 @@ end
     @test MOI.supports_constraint(model, MOI.VariableIndex, MOI.GreaterThan{Float64})
     @test MOI.supports_constraint(model, MOI.VariableIndex, MOI.EqualTo{Float64})
 
-    x = MOI.add_variables(model,3)
+    x = MOI.add_variables(model, 3)
     z = MOI.add_variable(model)
 
     ci1 = @inferred MOI.add_constraint(model, x[1], MOI.GreaterThan(-1.0))
@@ -121,7 +121,7 @@ end
     @test MOI.supports_constraint(model, MOI.ScalarAffineFunction{Float64}, MOI.GreaterThan{Float64})
     @test MOI.supports_constraint(model, MOI.ScalarAffineFunction{Float64}, MOI.EqualTo{Float64})
 
-    x = MOI.add_variables(model,3)
+    x = MOI.add_variables(model, 3)
 
     func1 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[5.0,-2.3],[x[1],x[2]]),2.0)
     func2 = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm.(Float64[4.0,-2.2],[x[2],x[3]]),2.1)
@@ -166,7 +166,7 @@ end
     @test MOI.supports_constraint(model, MOI.ScalarQuadraticFunction{Float64}, MOI.GreaterThan{Float64})
     @test MOI.supports_constraint(model, MOI.ScalarQuadraticFunction{Float64}, MOI.EqualTo{Float64})
 
-    x = MOI.add_variables(model,3)
+    x = MOI.add_variables(model, 3)
 
     func1 = MOI.ScalarQuadraticFunction{Float64}([MOI.ScalarQuadraticTerm{Float64}(2.5,x[2],x[2])],
                                                  [MOI.ScalarAffineTerm{Float64}(5.0,x[1])], 2.0)
@@ -212,7 +212,7 @@ end
 @testset "Set Objective" begin
     model = @inferred EAGO.Optimizer()
 
-    x = MOI.add_variables(model,3)
+    x = MOI.add_variables(model, 3)
 
     @inferred MOI.set(model, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     @test model._input_problem._optimization_sense == MOI.MIN_SENSE
@@ -227,7 +227,7 @@ end
     @test MOI.supports(model, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}())
     @test MOI.supports(model, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}())
 
-    x = MOI.add_variables(model,3)
+    x = MOI.add_variables(model, 3)
 
     MOI.set(model, MOI.ObjectiveFunction{MOI.VariableIndex}(), MOI.VariableIndex(2))
     @test model._input_problem._objective == MOI.VariableIndex(2)
@@ -620,7 +620,7 @@ end
     @test isapprox(JuMP.objective_value(m), 0.0018, atol=1E-3)
 end
 
-@testset "Register special expressions" begin
+@testset "Register Special Expressions" begin
     raw_index(v::MOI.VariableIndex) = v.value
 
     model = Model()
