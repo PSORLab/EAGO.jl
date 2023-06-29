@@ -1,4 +1,4 @@
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/Logo.png" width="75%" height="75%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/assets/logo.png" width="75%" height="75%">
 
 # EAGO - Easy Advanced Global Optimization
 
@@ -21,7 +21,7 @@ EAGO is a deterministic global optimizer designed to address a wide variety of o
 
 ## EAGO's Relaxations
 
-For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of `f(x) = x(x-5)sin(x)`, a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original decision space, *X*<sup>1</sup>:
+For each nonlinear term, EAGO makes use of factorable representations to construct bounds and relaxations. In the case of `f(x) = x(x-5)sin(x)`, a list is generated and rules for constructing McCormick relaxations are used to formulate relaxations in the original decision space, *X* [[1](#references)]:
 
 - *v*<sub>1</sub> = *x*
 - *v*<sub>2</sub> = *v*<sub>1</sub> - 5
@@ -31,13 +31,13 @@ For each nonlinear term, EAGO makes use of factorable representations to constru
 - f(x) = *v*<sub>5</sub>
 
 <p align="center">
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/McCormick/Figure_1.png" width="60%" height="60%">
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/mccormick/Figure_1.png" width="60%" height="60%">
 
-Either these original relaxations, differentiable McCormick relaxations<sup>2</sup>, or affine relaxations thereof can be used to construct relaxations of optimization problems useful in branch and bound routines for global optimization. Utilities are included to combine these with algorithms for relaxing implicit functions<sup>3</sup> and forward-reverse propagation of McCormick arithmetic<sup>4</sup>.
+Either these original relaxations, differentiable McCormick relaxations [[2](#references)], or affine relaxations thereof can be used to construct relaxations of optimization problems useful in branch and bound routines for global optimization. Utilities are included to combine these with algorithms for relaxing implicit functions [[3](#references)] and forward-reverse propagation of McCormick arithmetic [[4](#references)].
 
 ## Sample Usage
 
-EAGO makes use of the JuMP algebraic modeling language to improve the user's experience in setting up optimization models. Consider the familiar "process" problem instance<sup>5</sup>:
+EAGO makes use of the JuMP algebraic modeling language to improve the user's experience in setting up optimization models. Consider the familiar "process" problem instance [[5](#references)]:
 
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/images/ProcessFormulation.svg" width="60%" height="60%">

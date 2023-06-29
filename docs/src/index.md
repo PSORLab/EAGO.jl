@@ -1,5 +1,5 @@
 
-![Logo](Logo.png)
+![logo](logo.png)
 
 # EAGO - Easy Advanced Global Optimization in Julia
 

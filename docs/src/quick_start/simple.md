@@ -1,10 +1,9 @@
 # Simple Example
 
-This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/nlpopt_explicit_ann.ipynb)
+This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/nlpopt_explicit_ann.ipynb).
 
-A surrogate ANN model of bioreactor productivity was constructed by fitting 
-results from computationally expensive CFD simulations<sup>1,2</sup>. The authors then optimized this 
-surrogate model to obtain ideal processing conditions. The optimization problem is given by:
+In [[1](#references),[2](#references)], a surrogate ANN model of bioreactor productivity was constructed by fitting results from computationally expensive CFD simulations.
+The authors then optimized this surrogate model to obtain ideal processing conditions. The optimization problem is given by:
 
 ![Equation 1](Equation_1.png)
 
@@ -39,7 +38,7 @@ xUBD = [5.89,  0.5,   1.0,   90,   25000, 0.149, 0.889, 0.049];
 
 ## Construct the JuMP Model and Optimize
 
-We now formulate the problem using standard JuMP<sup>3</sup> syntax and optimize it. Note that 
+We now formulate the problem using standard JuMP [[3](#references)] syntax and optimize it. Note that 
 we are forming an NLexpression object to handle the summation term to keep the code 
 visually simple, but this could be placed directly in the JuMP `@NLobjective` expression
 instead.

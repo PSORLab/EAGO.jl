@@ -6,7 +6,7 @@ Semi-infinite programming remains an active area of research. In general, the so
 
 ![SipProbForm](SIPProbFormulation.png)
 
-EAGO implements three different algorithms<sup>1,2</sup> to determine a globally optimal solution to these problems. This is accomplished using the `sip_solve` function which returns the optimal value, the solution, and a boolean feasibility flag. To illustrate the use of this function, a simple example is presented here which solves the problem:
+EAGO implements three different algorithm detailed in [[1](#references),[2](#references)] to determine a globally optimal solution to problems of the above form. This is accomplished using the `sip_solve` function which returns the optimal value, the solution, and a boolean feasibility flag. To illustrate the use of this function, a simple example is presented here which solves the problem:
 
 ![SipForm](SIPformulation.png)
 

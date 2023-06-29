@@ -1,9 +1,9 @@
 # Medium-Difficulty Example
 
-This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb)
+This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb).
 
 In this example, we'll adapt EAGO to implement the bisection-based algorithm used to solve
-a quasiconvex optimization problem<sup>1</sup:
+a quasiconvex optimization problem presented in [[1](#references)]:
 
 ![Equation 1](qc_Equation_1.png)
 
@@ -21,7 +21,7 @@ Let $ϕ_τ(y) = f(y) - τ$ such that $\tau = (t^L + t^U)/2$. We solve for $y$ su
 constraints (24)-(27) where $ϕ_τ (y) ≤ 0$. If this is feasible, $t^*∈ [t^L,τ]$, else
 $t^*∈ [τ, t^U]$. The interval containing $t^*$ is kept and the other is fathomed. This
 manner of bisection is repeated until an interval containing a feasible solution with a
-width of at most ϵ is located<sup>2</sup>.
+width of at most ϵ is located [[2](#references)].
 
 ## EAGO Implementation
 
@@ -54,7 +54,7 @@ xUBD = [5.89,  0.5,   1.0,   90,   25000, 0.149, 0.889, 0.049];
 
 ## Construct the JuMP Model and Optimize
 
-We now formulate the problem using standard JuMP<sup>3</sup> syntax and optimize it. Note that 
+We now formulate the problem using standard JuMP [[3](#references)] syntax and optimize it. Note that 
 we are forming an NLexpression object to handle the summation term to keep the code 
 visually simple, but this could be placed directly in the JuMP `@NLobjective` expression
 instead.

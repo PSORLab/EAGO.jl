@@ -12,7 +12,7 @@
  * License: MIT
  */
 
-/* fonts */
+/* Fonts */
 body, input {
   font-family: 'Lato', 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
@@ -50,7 +50,7 @@ h1 {
     font-size: 1.75em;
 }
 
-/* Unless the <h1> the is very first thing on the page (i.e. the second element
+/* Unless the <h1> is the very first thing on the page (i.e. the second element
  * in the <article>, * after the <header>, we add some additional styling to it
  * to make it stand out a bit more. This way we get a reasonable fallback if CSS3
  * selectors are not supported in the browser.
@@ -114,7 +114,8 @@ hr {
 
 code {
     padding: 0.1em;
-    background-color: rgba(0,0,0,.04);
+    background-color: rgba(255, 255, 255, 0.05);
+    color: #ececec;
     border-radius: 3px;
 }
 
@@ -344,8 +345,6 @@ article {
     padding: 2em;
 }
 
-article > header {}
-
 article > header div#topbar {
     display: none;
 }
@@ -370,8 +369,6 @@ article > header nav li:before {
 article > header .edit-page {
     float: right;
 }
-
-article > footer {}
 
 article > footer a.prev {
     float: left;
@@ -423,9 +420,9 @@ article section.docstring a.source-link {
  * Admonitions
  *
  * Colors (title, body)
- * warning: #f0b37e #ffedcc (orange)
- * note:    #6ab0de #e7f2fa (blue)
- * tip:     #1abc9c #dbfaf4 (green)
+ * Warning: #f0b37e #ffedcc (orange)
+ * Note:    #6ab0de #e7f2fa (blue)
+ * Tip:     #1abc9c #dbfaf4 (green)
 */
 .admonition {
     border-radius: 3px;
@@ -482,7 +479,7 @@ article section.docstring a.source-link {
 }
 
 
-/* footnotes */
+/* Footnotes */
 .footnote {
     padding-left: 0.8em;
     border-left: 2px solid #ccc;
@@ -493,7 +490,7 @@ article section.docstring a.source-link {
     font-size: smaller;
 }
 
-/* Overriding the <code> block style of highligh.js.
+/* Overriding the <code> block style of highlight.js.
  * We have to override the padding and the background-color, since we style this
  * part ourselves. Specifically, we style the <pre> surrounding the <code>, while
  * highlight.js applies the .hljs style directly to the <code> tag.
