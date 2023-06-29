@@ -1,4 +1,4 @@
-## Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
 # Matthew Stuber, and the University of Connecticut (UConn).
 # This code is licensed under the MIT license (see LICENSE.md for full details).
 ################################################################################
@@ -45,7 +45,17 @@ MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F<:Union{SAF,SQF},S
 MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{VI,S}) where S<:VAR_SETS = collect(keys(_constraints(m,VI,S)))
 MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{F,S}) where {F<:Union{SAF,SQF},S<:INEQ_SETS} = collect(keys(_constraints(m,F,S)))
 
-MOI.add_variable(m::Optimizer) = VI(m._input_problem._variable_count += 1)
+function MOI.add_variable(m::Optimizer)
+    vi = VI(m._input_problem._variable_count += 1)
+    m._input_problem._variable_names[vi] = "" 
+    return vi
+end
+
+function MOI.add_variable(m::Optimizer, name::String)
+    vi = VI(m._input_problem._variable_count += 1)
+    m._input_problem._variable_names[vi] = name 
+    return vi
+end
 
 function MOI.add_constraint(m::Optimizer, f::F, s::S) where {F<:Union{SAF,SQF},S<:INEQ_SETS}
     check_inbounds!(m, f)
@@ -238,3 +248,33 @@ MOI.get(m::Optimizer, ::MOI.ObjectiveFunctionType) = typeof(m._input_problem._ob
 
 MOI.set(m::Optimizer, ::MOI.ObjectiveSense, s::MOI.OptimizationSense) = m._input_problem._optimization_sense = s
 MOI.get(m::Optimizer, ::MOI.ObjectiveSense) = m._input_problem._optimization_sense
+
+#####
+##### Support, set, and get variable names
+#####
+MOI.supports(m::Optimizer, ::MOI.VariableName, ::Type{VI}) = true
+
+MOI.set(m::Optimizer, ::MOI.VariableName, vi::VI, name::String) = m._input_problem._variable_names[vi] = name
+MOI.get(m::Optimizer, ::MOI.VariableName, vi::VI) = m._input_problem._variable_names[vi]
+
+function MOI.get(m::Optimizer, ::Type{VI}, name::String)
+    duplicate_flag = false
+    index_storage = nothing
+    for (key,val) in m._input_problem._variable_names
+        if val == name
+            if !duplicate_flag 
+                duplicate_flag = true
+                index_storage = key
+            else
+                # Only throw an error if attempting to access a duplicated name
+                error("""Duplicate variable name found. Please rename your variables to access them.
+                         Duplicated name: \"$name\"""")
+            end
+        end
+    end
+    if isnothing(index_storage)
+        return
+    else
+        return index_storage
+    end
+end

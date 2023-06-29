@@ -263,6 +263,8 @@ Base.@kwdef mutable struct InputProblem
 
     "Count for the number of variables"
     _variable_count::Int = 0
+    "Dictionary containing variable indices and their names"
+    _variable_names::Dict{VI, String} = Dict{VI, String}()
     "Count for the number of constraints"
     _constraint_count::Int = 0
 

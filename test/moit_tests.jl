@@ -8,7 +8,7 @@ const MOI = MathOptInterface
 const OPTIMIZER = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true))
 const BRIDGED = MOI.instantiate(MOI.OptimizerWithAttributes(EAGO.Optimizer, MOI.Silent() => true), with_bridge_type = Float64)
 const CONFIG = MOI.Test.Config(atol = 1E-3, rtol = 1E-3, optimal_status = MOI.OPTIMAL, 
-                               exclude = Any[MOI.DualObjectiveValue, MOI.ConstraintBasisStatus, MOI.VariableName, MOI.ConstraintName, MOI.delete,
+                               exclude = Any[MOI.DualObjectiveValue, MOI.ConstraintBasisStatus, MOI.ConstraintName, MOI.delete,
                                              MOI.ConstraintDual, MOI.ListOfModelAttributesSet, MOI.add_constrained_variables])
 
 """
@@ -107,7 +107,10 @@ function test_runtests()
 
                                 # EAGO B&B handles interval bounds internally
                                 "test_linear_open_intervals",
-                                "test_linear_variable_open_intervals"
+                                "test_linear_variable_open_intervals",
+
+                                # EAGO does not have constraint names
+                                "test_model_Name_VariableName_ConstraintName"
 
                                 ],
                       exclude_tests_after = v"1.18.0")
