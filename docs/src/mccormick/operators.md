@@ -30,7 +30,7 @@ Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported for
 
 ## Bivariate McCormick Operators
 
-The following bivariate operators are supported for two [`McCormick.MC`](@ref) objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
+The following bivariate operators are supported for two [`MC`](@ref) objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
 
 - **Multiplication** (`*`)
 - **Division** (`/`)

@@ -1,17 +1,23 @@
-# Difficult/Developer Example
+# Standard-Use Example 1
 
 This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/nlpopt_explicit_ann.ipynb).
 
-In [[1](#references),[2](#references)], a surrogate ANN model of bioreactor productivity was constructed by fitting results from computationally expensive CFD simulations.
+### Solving an ANN to Optimality in EAGO
+
+In [[1](#references),[2](#references)], a surrogate artificial neural network (ANN) model of bioreactor productivity was constructed by fitting results from computationally expensive computational fluid dynamics (CFD) simulations.
 The authors then optimized this surrogate model to obtain ideal processing conditions. The optimization problem is given by:
 
-![Equation 1](Equation_1.png)
+```math
+\begin{aligned}
+\max_{\mathbf x \in X} B_{2} + \sum_{r = 1}^{3} W_{2,r} \frac{2}{1 + \exp (-2y_{r} + B_{1,r})} \;\; \text{where} \;\; y_{r} = \sum_{i = 1}^{8} W_{1,ir} x_{i}
+\end{aligned}
+```
 
 ## Input Parameters
 
-In the first block, we input parameters values supplied in the paper for $W_1$, $W_2$, 
-$B_1$, and $B_2$ into Julia as simple array objects. We also input bounds for the variables
-which are used to scale the values obtained from optimization from [-1, 1] back into the
+In the first block, we input parameters values supplied in the paper for ``W_1``, ``W_2``, 
+``B_1``, and ``B_2`` into Julia as simple array objects. We also input bounds for the variables
+which are used to scale the values obtained from optimization from ``[-1, 1]`` back into the
 design values.
 
 ```julia
@@ -81,6 +87,6 @@ println("The rescaled solution is $(round.(rescaled_xsol,digits=3)).")
 
 ## References
 
-1. J. D. Smith, A. A. Neto, S. Cremaschi, and D. W. Crunkleton, CFD-based optimization of a flooded bed algae bioreactor, *Industrial & Engineering Chemistry Research*, 52 (2012), pp. 7181–7188
-2. A. M. Schweidtmann and A. Mitsos. Global Deterministic Optimization with Artificial Neural Networks Embedded [https://arxiv.org/pdf/1801.07114.pdf](https://arxiv.org/pdf/1801.07114.pdf)
+1. J. D. Smith, A. A. Neto, S. Cremaschi, and D. W. Crunkleton, CFD-based optimization of a flooded bed algae bioreactor, *Industrial & Engineering Chemistry Research*, 52 (2012), pp. 7181–7188.
+2. A. M. Schweidtmann and A. Mitsos. Global Deterministic Optimization with Artificial Neural Networks Embedded [https://arxiv.org/pdf/1801.07114.pdf](https://arxiv.org/pdf/1801.07114.pdf).
 3. Iain Dunning and Joey Huchette and Miles Lubin. JuMP: A Modeling Language for Mathematical Optimization, *SIAM Review*, 59 (2017), pp. 295-320.

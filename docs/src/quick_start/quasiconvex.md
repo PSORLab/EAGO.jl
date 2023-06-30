@@ -1,13 +1,32 @@
-# Simple Example
+# Advanced-Use Example 1
 
-This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/nlpopt_explicit_ann.ipynb).
+This example still needs to be updated.
+This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb).
 
-In [[1](#references),[2](#references)], a surrogate ANN model of bioreactor productivity was constructed by fitting results from computationally expensive CFD simulations.
-The authors then optimized this surrogate model to obtain ideal processing conditions. The optimization problem is given by:
+### Customizing EAGO to Solve a Quasiconvex Problem
 
-![Equation 1](Equation_1.png)
+In this example, we'll adapt EAGO to implement the bisection-based algorithm used to solve
+a quasiconvex optimization problem presented in [[1](#references)]:
 
-## Input Parameters
+![Equation 1](qc_Equation_1.png)
+
+where:
+
+![Equation 2](qc_Equation_2.png)
+
+Interval analysis shows that the objective value is bounded by the interval **F** such that
+$f^*∈ F = [f^L, f^U] = [-5, 0]$. Introducing an auxiliary variable $t∈ T = F$ allows the
+problem to be formulated as:
+
+![Equation 3](qc_Equation_3.png)
+
+Let $ϕ_τ(y) = f(y) - τ$ such that $\tau = (t^L + t^U)/2$. We solve for $y$ subject to
+constraints (24)-(27) where $ϕ_τ (y) ≤ 0$. If this is feasible, $t^*∈ [t^L,τ]$, else
+$t^*∈ [τ, t^U]$. The interval containing $t^*$ is kept and the other is fathomed. This
+manner of bisection is repeated until an interval containing a feasible solution with a
+width of at most ϵ is located [[2](#references)].
+
+## EAGO Implementation
 
 In the first block, we input parameters values supplied in the paper for $W_1$, $W_2$, 
 $B_1$, and $B_2$ into Julia as simple array objects. We also input bounds for the variables
@@ -81,6 +100,6 @@ println("The rescaled solution is $(round.(rescaled_xsol,digits=3)).")
 
 ## References
 
-1. J. D. Smith, A. A. Neto, S. Cremaschi, and D. W. Crunkleton, CFD-based optimization of a flooded bed algae bioreactor, *Industrial & Engineering Chemistry Research*, 52 (2012), pp. 7181–7188.
-2. A. M. Schweidtmann and A. Mitsos. Global Deterministic Optimization with Artificial Neural Networks Embedded [https://arxiv.org/pdf/1801.07114.pdf](https://arxiv.org/pdf/1801.07114.pdf).
+1. C. Jansson, Quasiconvex relaxations based on interval arithmetic, Linear Algebra and its Applications, 324 (2001), pp. 27–53.
+2. S. Boyd and L. Vandenberghe, Convex optimization, Cambridge University Press, 2004.
 3. Iain Dunning and Joey Huchette and Miles Lubin. JuMP: A Modeling Language for Mathematical Optimization, *SIAM Review*, 59 (2017), pp. 295-320.

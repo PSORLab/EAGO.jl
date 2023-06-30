@@ -1,7 +1,7 @@
 # Types
 
 ```@docs
-McCormick.MC
+MC
 McCormick.RelaxTag
 ```
 
