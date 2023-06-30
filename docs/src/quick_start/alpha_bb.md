@@ -1,8 +1,10 @@
 # Advanced-Use Example 2
 
-## An ``\alpha``BB Example for a QCQP.
+This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_aBB_QCQP.ipynb).
 
-In this example, we will demonstrate the use of a user-defined lower-bounding problem that uses ``\alpha``BB convex relaxations. In this example, we wish to solve the (nonconvex) QCQP:
+### An ``\alpha``BB Example for a QCQP.
+
+In this example, we will demonstrate the use of a user-defined lower-bounding problem that uses ``\alpha``BB convex relaxations. In this example, we wish to solve the *nonconvex* quadratically constrained quadratic program (QCQP):
 
 ```math
 \begin{aligned}
@@ -38,11 +40,11 @@ function QCQP_setup()
 end
 ```
 
-The next function we'll define will take as input data for a particular quadratic function and the interval bounds on the decision variables, and construct an ``\alpha``BB convex relaxation of that function. Since we're solving a QCQP, we'll use the `verb|eigvals` function to directly compute the eigenvalues of the input ``\mathbf Q_i`` matrix.
+The next function we'll define will take as input data for a particular quadratic function and the interval bounds on the decision variables, and construct an ``\alpha``BB convex relaxation of that function. Since we're solving a QCQP, we'll use the `eigvals` function to directly compute the eigenvalues of the input ``\mathbf Q_i`` matrix.
 
 ```julia
-function αBB_relax(Q::Matrix{T},c::Vector{T},xL::Vector{T},xU::Vector{T},x::Real...) where {T<:Float64}
-    α=max(0,-minimum(eigvals(Q))/2)
+function αBB_relax(Q::Matrix{T}, c::Vector{T}, xL::Vector{T}, xU::Vector{T}, x::Real...) where {T<:Float64}
+    α = max(0,-minimum(eigvals(Q))/2)
     y = [x[1];x[2]]
     cv = 1/2*y'*Q*y+c'*y+α*(xL-y)'*(xU-y)
     return cv
@@ -115,12 +117,12 @@ end
 
 !!! note 
 
-    By default, EAGO solves the epigraph reformulation of your original problem, which increases the original problem dimensionality by +1 with the introduction of an auxiliary variable. When defining custom routines (such as the lower-bounding problem here) that are intended to work nicely with default EAGO routines (such as preprocessing), the user must account for the *new* dimensionality of the problem. In the code above, we wish to access the information of the specific B&B node and define an optimization problem based on that information. However, in this example, the node has information for 3 variables (the original 2 plus 1 for the auxiliary variable appended to the original variable vector) as ``(x_1,x_2,\eta)``. The lower-bounding problem was defined to optimize the relaxed problem with respect to the original 2 decision variables. When storing the results of this subproblem to the current B&B node, it is important to take care to store the information at the appropriate indices and not inadvertently redefine the problem dimensionality (i.e., by simply storing the optimization solution as the `lower_solution` of the current node). For problems that are defined to only branch on a subset of the original variables, the optimizer has a member `_sol_to_branch_map` that carries the mapping between the indices of the original variables to those of the variables being branched on. See the custom_quasiconvex example to see how this is done.
+    By default, EAGO solves the epigraph reformulation of your original problem, which increases the original problem dimensionality by +1 with the introduction of an auxiliary variable. When defining custom routines (such as the lower-bounding problem here) that are intended to work nicely with default EAGO routines (such as preprocessing), the user must account for the *new* dimensionality of the problem. In the code above, we wish to access the information of the specific B&B node and define an optimization problem based on that information. However, in this example, the node has information for 3 variables (the original 2 plus 1 for the auxiliary variable appended to the original variable vector) as ``(x_1,x_2,\eta)``. The lower-bounding problem was defined to optimize the relaxed problem with respect to the original 2 decision variables. When storing the results of this subproblem to the current B&B node, it is important to take care to store the information at the appropriate indices and not inadvertently redefine the problem dimensionality (i.e., by simply storing the optimization solution as the `lower_solution` of the current node). For problems that are defined to only branch on a subset of the original variables, the optimizer has a member `_sol_to_branch_map` that carries the mapping between the indices of the original variables to those of the variables being branched on. See the [Advanced-Use Example 1](@ref) to see how this is done.
 
 
-## Turn Off Preprocessing and Postprocessing Routines
+## (Optional) Turn Off Processing Routines
 
-(Optional) Turn off (short circuit) preprocessing routines if you don't want to use them as defined in EAGO. 
+Turn off preprocessing routines if you don't want to use them as defined in EAGO. 
 
 ```julia
 import EAGO: preprocess!
@@ -130,7 +132,7 @@ function EAGO.preprocess!(t::αBB_Convex, x::GlobalOptimizer)
 end
 ```
 
-(Optional) Turn off (short circuit) postprocessing routines if you don't want to use them as defined in EAGO. 
+Turn off postprocessing routines if you don't want to use them as defined in EAGO. 
 
 ```julia
 import EAGO: postprocess!
