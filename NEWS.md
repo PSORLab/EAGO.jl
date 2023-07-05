@@ -44,7 +44,7 @@
 ## [v0.7.0](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.7.0) (March 28, 2022)
 
 - Added envelopes of activation functions: `xabsx`, `logcosh`
-- Added `estimator_extrema`, `estimator_under`, and `estimator_over` functions for McCormick relaxations.
+- Added variations of `estimator_extrema`, `estimator_under`, and `estimator_over` functions to EAGO for bilinear relaxations.
 - Moved various functions and related structures to new files.
 - Added `RelaxCache` structure to hold relaxed problem information.
 - Updated forward and reverse propagation.
