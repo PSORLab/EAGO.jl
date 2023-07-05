@@ -1,10 +1,8 @@
 # How to Contribute
 
-We're always happy to welcome work with additional collaborators and contributors. One
-of the easy ways for newcomers to contribute is by adding additional relaxations.
+We're always happy to welcome work with additional collaborators and contributors. One of the easy ways for newcomers to contribute is by adding additional McCormick relaxations.
 
-If you have any requests for additional functionality, bug fixes, or comments,
-please feel free to open a new issue using the GitHub [issue tracker](https://github.com/PSORLab/EAGO.jl/issues) or reach out to us.
+If you have any requests for additional functionality, bug fixes, or comments, please feel free to open a new issue using the GitHub [issue tracker](https://github.com/PSORLab/EAGO.jl/issues) or reach out to us.
 
 ## Contact Us
 

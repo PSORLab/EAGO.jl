@@ -1,7 +1,6 @@
 # EAGO's Branch and Bound Routine
 
-This component is meant to provide a flexible framework for implementing spatial branch-and-bound based optimization routines in Julia.
-All components of the branch-and-bound routine can be customized by the individual user: lower bounding problem, upper bounding problem.
+This component is meant to provide a flexible framework for implementing spatial branch-and-bound based optimization routines in Julia. All components of the branch-and-bound routine can be customized by the individual user: lower-bounding problem, upper-bounding problem.
 
 ## Branch and Bound Node Storage
 
@@ -9,7 +8,7 @@ All components of the branch-and-bound routine can be customized by the individu
     EAGO.NodeBB
 ```
 
-The global optimizer structure holds all information relevant to branch-and-bound.
+The `GlobalOptimizer` structure holds all information relevant to branch-and-bound.
 
 ```@docs
     EAGO.GlobalOptimizer
@@ -51,7 +50,7 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.termination_check(t::ExtensionType, m::GlobalOptimizer)
     EAGO.upper_problem!(t::ExtensionType, m::GlobalOptimizer)
     EAGO.parse_global!(t::ExtensionType, m::GlobalOptimizer)
-    EAGO.optimize_hook!(t::ExtensionType, m::GlobalOptimizer)
+    EAGO.optimize_hook!(t::ExtensionType, m::Optimizer)
 ```
 
 ## Internal Subroutines
@@ -59,7 +58,7 @@ The global optimizer structure holds all information relevant to branch-and-boun
 ```@docs
     EAGO.is_integer_subproblem(m)
     EAGO.is_integer_feasible_local(m::GlobalOptimizer, d)
-│   EAGO.is_integer_feasible_relaxed(m::GlobalOptimizer)
+    EAGO.is_integer_feasible_relaxed(m::GlobalOptimizer)
     EAGO.interval_bound
     EAGO.lower_interval_bound
     EAGO.same_box(x::NodeBB,y::NodeBB, atol::Float64)
@@ -71,7 +70,7 @@ The global optimizer structure holds all information relevant to branch-and-boun
     EAGO.label_branch_variables!(m::GlobalOptimizer)
     EAGO.add_nonlinear!(m::GlobalOptimizer)
     EAGO.parse_classify_problem!(m::GlobalOptimizer)
-    EAGO.local_problem_status!(t::MathOptInterface.TerminationStatusCode, r::MathOptInterface.ResultStatusCode)
+    EAGO.local_problem_status(t::MathOptInterface.TerminationStatusCode, r::MathOptInterface.ResultStatusCode)
 ```
 
 ## Functions for Generating Console Output

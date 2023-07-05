@@ -7,9 +7,9 @@ import McCormick: final_cut, mid3v, precond_and_contract!, AbstractMCCallback, p
                   dline_seg, correct_exp!, cut, mid_grad, preconditioner_storage, newton, secant,
                   MCCallback, contract!, affine_exp!
 
-import EAGO: ExtensionType, Evaluator, variable_dbbt!, set_current_node!,
+import EAGO: ExtensionType, Evaluator, variable_dbbt!,
              VariableInfo, Log, aggressive_filtering!,
-             bool_indx_diff, trivial_filtering!, SIPResult, SIPProblem, 
+             bool_indx_diff!, trivial_filtering!, SIPResult, SIPProblem, 
              GlobalOptimizer, InputProblem, ParsedProblem, is_integer_feasible_relaxed, 
              local_problem_status, default_upper_heuristic, label_branch_variables!,
              label_fixed_variables!, AbstractDirectedGraph, AbstractCache, 
@@ -28,6 +28,7 @@ makedocs(modules = [EAGO, McCormick],
                   prettyurls = get(ENV, "CI", nothing) == "true",
                   canonical = "https://PSORLab.github.io/EAGO.jl/stable/",
                   collapselevel = 1,
+                  assets = ["assets/favicon.ico"]
          ),
          authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, and Matthew Stuber",
          sitename = "EAGO.jl",
@@ -35,7 +36,7 @@ makedocs(modules = [EAGO, McCormick],
                      "Quick Start" => Any["quick_start/qs_landing.md",
                                           "quick_start/guidelines.md",
                                           "quick_start/explicit_ann.md",
-                                          "quick_start/ex2.md",
+                                          "quick_start/interval_bb.md",
                                           "quick_start/quasiconvex.md",
                                           "quick_start/alpha_bb.md"
                                           ],

@@ -1,10 +1,6 @@
 # Currently Supported Operators
 
-The operators currently supported are listed below. The operators with a check box
-have been subject to a large degree of scrutiny and have been implemented for
-both forward and reverse McCormick relaxations ([Wechsung2015](https://link.springer.com/article/10.1007/s10898-015-0303-6)). Each McCormick object is associated with a
-parameter `T <: RelaxTag` which is either `NS` for nonsmooth relaxations ([Mitsos2009](https://epubs.siam.org/doi/abs/10.1137/080717341), [Scott2011](https://link.springer.com/article/10.1007/s10898-011-9664-7)), `MV` for multivariate relaxations ([Tsoukalas2014](https://link.springer.com/article/10.1007/s10898-014-0176-0), [Najman2017](https://link.springer.com/article/10.1007/s10898-016-0470-0)),
-or `Diff` for differentiable relaxations ([Khan2016](https://link.springer.com/article/10.1007/s10898-016-0440-6), [Khan2018](https://link.springer.com/article/10.1007/s10898-017-0601-2), [Khan2019](https://www.tandfonline.com/doi/abs/10.1080/02331934.2018.1534108)). Conversion between `NS`, `MV`, and `Diff` relax tags is not currently supported. Convex and concave envelopes are used to compute relaxations of univariate functions.
+The operators currently supported are listed below. The operators with a check box have been subject to a large degree of scrutiny and have been implemented for both forward and reverse McCormick relaxations ([Wechsung2015](https://link.springer.com/article/10.1007/s10898-015-0303-6)). Each McCormick object is associated with a parameter `T <: RelaxTag` which is either `NS` for nonsmooth relaxations ([Mitsos2009](https://epubs.siam.org/doi/abs/10.1137/080717341), [Scott2011](https://link.springer.com/article/10.1007/s10898-011-9664-7)), `MV` for multivariate relaxations ([Tsoukalas2014](https://link.springer.com/article/10.1007/s10898-014-0176-0), [Najman2017](https://link.springer.com/article/10.1007/s10898-016-0470-0)), or `Diff` for differentiable relaxations ([Khan2016](https://link.springer.com/article/10.1007/s10898-016-0440-6), [Khan2018](https://link.springer.com/article/10.1007/s10898-017-0601-2), [Khan2019](https://www.tandfonline.com/doi/abs/10.1080/02331934.2018.1534108)). Conversion between `NS`, `MV`, and `Diff` relax tags is not currently supported. Convex and concave envelopes are used to compute relaxations of univariate functions.
 
 ## Univariate McCormick Operators
 
@@ -30,7 +26,7 @@ Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported for
 
 ## Bivariate McCormick Operators
 
-The following bivariate operators are supported for two [`MC`](@ref) objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
+The following bivariate operators are supported for two [`MC`](@ref McCormick.MC) objects. Both nonsmooth and Whitney-1 (once differentiable) relaxations are supported.
 
 - **Multiplication** (`*`)
 - **Division** (`/`)
@@ -44,9 +40,8 @@ Arbitrarily differentiable relaxations can be constructed for the following oper
 
 ## Common Subexpressions
 
-The following functions can be used in place of common subexpressions encountered
-in optimization and will result in improved performance (in each case, the standard
-McCormick composition rules are often more expansive).
+The following functions can be used in place of common subexpressions encountered in optimization and will result in improved performance (in each case, the standard McCormick composition rules are often more expansive).
+
 ```@docs
 xexpax
 arh
@@ -56,12 +51,8 @@ mm
 
 ## Bound Setting Functions
 
-The following functions are used to specify that known bounds on a subexpression
-exist and that the relaxation/interval bounds propagated should make use of this
-information. The utility functions can be helpful in avoiding domain violations 
-that arise due to the overly expansive nature of composite relaxations. Improper use
-of these functions may lead to cases in which the resulting relaxations are empty, 
-so the user is encouraged to use discretion.
+The following functions are used to specify that known bounds on a subexpression exist and that the relaxation/interval bounds propagated should make use of this information. The utility functions can be helpful in avoiding domain violations that arise due to the overly expansive nature of composite relaxations. Improper use of these functions may lead to cases in which the resulting relaxations are empty, so the user is encouraged to use discretion.
+
 ```@docs
 positive
 negative

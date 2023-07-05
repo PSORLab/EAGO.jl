@@ -1,101 +1,151 @@
 # Advanced-Use Example 1
 
-This example still needs to be updated.
 This example is also provided [here as a Jupyter Notebook](https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_quasiconvex.ipynb).
 
 ### Customizing EAGO to Solve a Quasiconvex Problem
 
-In this example, we'll adapt EAGO to implement the bisection-based algorithm used to solve
-a quasiconvex optimization problem presented in [[1](#references)]:
+In this example, we'll adapt EAGO to implement the bisection-based algorithm used to solve a quasiconvex optimization problem presented in [[1](#References)]:
 
-![Equation 1](qc_Equation_1.png)
+```math
+\begin{aligned}
+f^{*} = & \min_{\mathbf y \in Y} f(\mathbf y)\\
+{\rm s.t.} \;\; & \sum_{i = 1}^{5} i \cdot y_{i} - 5 = 0\\
+& \sum_{i = 1}^{5} y_{i}^{2} - 0.5\pi \leq 0\\
+& -\bigg(\frac{1}{2} y_{1}^{2} + \frac{1}{2} y_{2}^{2} + 2 y_{1} y_{2} + 4 y_{1} y_{3} + 2 y_{2} y_{3} \bigg) \leq 0\\
+& -y_{1}^{2} - 6 y_{1} y_{2} - 2 y_{2}^{2} + \cos (y_{1}) + \pi \leq 0\\
+& Y = [0,5]^{5}
+\end{aligned}
+```
 
-where:
+where
 
-![Equation 2](qc_Equation_2.png)
+```math
+\begin{aligned}
+f(\mathbf y) = -\frac{\ln ((5 + y_{1})^{2} + \sum_{i = 1}^{5} y_{i})}{1 + \sum_{i = 1}^{5} y_{i}^{2}}.
+\end{aligned}
+```
 
-Interval analysis shows that the objective value is bounded by the interval **F** such that
-$f^*∈ F = [f^L, f^U] = [-5, 0]$. Introducing an auxiliary variable $t∈ T = F$ allows the
-problem to be formulated as:
+Interval analysis shows that the objective value is bounded by the interval ``F`` such that ``f^{*} \in F = [f^{L}, f^{U}] = [-5, 0]``. Introducing an auxiliary variable ``t \in T = F`` allows the problem to be formulated as:
 
-![Equation 3](qc_Equation_3.png)
+```math
+\begin{aligned}
+t^{*} = & \min_{\mathbf y \in Y, t \in T} t\\
+{\rm s.t.} \;\; & (24) - (27)\\
+& f(\mathbf y) - t \leq 0\\
+& Y = [0,5]^{2}, \;\; T = [-5,0].
+\end{aligned}
+```
 
-Let $ϕ_τ(y) = f(y) - τ$ such that $\tau = (t^L + t^U)/2$. We solve for $y$ subject to
-constraints (24)-(27) where $ϕ_τ (y) ≤ 0$. If this is feasible, $t^*∈ [t^L,τ]$, else
-$t^*∈ [τ, t^U]$. The interval containing $t^*$ is kept and the other is fathomed. This
-manner of bisection is repeated until an interval containing a feasible solution with a
-width of at most ϵ is located [[2](#references)].
+Let ``\phi_{\tau}(\mathbf y) = f(\mathbf y) - \tau`` such that ``\tau = (t^{L} + t^{U})/2``. We solve for ``\mathbf y`` subject to constraints ``(24) - (27)`` where ``\phi_{\tau} (\mathbf y) \leq 0``. If this is feasible, ``t^{*} \in [t^{L},\tau]``, else ``t^{*} \in [τ, t^{U}]``. The interval containing ``t^{*}`` is kept and the other is fathomed. This manner of bisection is repeated until an interval containing a feasible solution with a width of at most ``\epsilon`` is located [[2](#References)].
 
-## EAGO Implementation
+## Customizing EAGO's Script
 
-In the first block, we input parameters values supplied in the paper for $W_1$, $W_2$, 
-$B_1$, and $B_2$ into Julia as simple array objects. We also input bounds for the variables
-which are used to scale the values obtained from optimization from [-1, 1] back into the
-design values.
+First, the preprocessing step, upper problem, and postprocessing routines are short-circuited as only a single optimization problem needs to be solved at each iteration.
 
 ```julia
-using JuMP, EAGO
+using MathOptInterface, EAGO, JuMP
+import EAGO: Optimizer, GlobalOptimizer
 
-# Weights associated with the hidden layer
-W1 = [ 0.54  -1.97  0.09  -2.14  1.01  -0.58  0.45  0.26;
-     -0.81  -0.74  0.63  -1.60 -0.56  -1.05  1.23  0.93;
-     -0.11  -0.38 -1.19   0.43  1.21   2.78 -0.06  0.40]
+struct QuasiConvex <: EAGO.ExtensionType end
+import EAGO: preprocess!, upper_problem!, postprocess!
+function EAGO.preprocess!(t::QuasiConvex, x::GlobalOptimizer)
+    x._preprocess_feasibility = true
+end
+function EAGO.upper_problem!(t::QuasiConvex, x::GlobalOptimizer)
+    x._upper_feasibility = true
+end
+function EAGO.postprocess!(t::QuasiConvex, x::GlobalOptimizer)
+    x._postprocess_feasibility = true
+end
+```
 
-# Weights associated with the output layer
-W2 = [-0.91 0.11 0.52]
+Next, we specify that only an absolute tolerance should be checked for convergence and termination.
 
-# Bias associated with the hidden layer
-B1 = [-2.698 0.012 2.926]
+```julia
+import EAGO: convergence_check, termination_check
+function EAGO.convergence_check(t::QuasiConvex, x::GlobalOptimizer)
+    gap = (x._upper_objective_value - x._lower_objective_value)
+    return (gap <= x._parameters.absolute_tolerance)
+end
+function EAGO.termination_check(t::QuasiConvex, x::GlobalOptimizer)
+    flag = EAGO.convergence_check(t, x)
+    if flag
+        x._end_state = EAGO.GS_OPTIMAL
+        x._termination_status_code = MathOptInterface.OPTIMAL
+        x._result_status_code = MathOptInterface.FEASIBLE_POINT
+    end
+    return flag
+end
+```
 
-# Bias associated with the output layer
-B2 = -0.46
+We then indicate that only the sixth variable, representing ``t``, should be branched on. Since we will apply our knowledge about which ``t^{*}`` should be kept in the lower problem definition, we also short-circuit the [`EAGO.repeat_check`](@ref) function here to tell EAGO not to branch this node, but instead to repeatedly evaluate it.
 
-# Variable bounds (Used to scale variables after optimization)
-xLBD = [0.623, 0.093, 0.259, 6.56, 1114,  0.013, 0.127, 0.004]
-xUBD = [5.89,  0.5,   1.0,   90,   25000, 0.149, 0.889, 0.049];
+```julia
+import EAGO: repeat_check
+branch_variable = [i == 6 for i=1:6]
+EAGO.repeat_check(t::QuasiConvex, x::GlobalOptimizer) = true
+```
+
+In the lower problem, we then specify that the problem is to be solved locally for a fixed ``t`` value. The objective value is then updated and the problem is contracted in order to discard the region which is known to not contain the optimal value.
+
+```julia
+import EAGO: lower_problem!
+function EAGO.lower_problem!(t::QuasiConvex, x::GlobalOptimizer)
+    y = x._current_node
+    indx = x._sol_to_branch_map[6]
+    lower = y.lower_variable_bounds[indx]
+    upper = y.upper_variable_bounds[indx]
+    midy = (lower + upper)/2.0
+    y.lower_variable_bounds[indx] = midy
+    y.upper_variable_bounds[indx] = midy
+    EAGO.solve_local_nlp!(x)
+    feas = x._upper_feasibility
+    y.lower_variable_bounds[indx] = feas ? lower : midy
+    y.upper_variable_bounds[indx] = feas ? midy : upper
+    x._lower_objective_value = y.lower_variable_bounds[indx]
+    x._upper_objective_value = y.upper_variable_bounds[indx]
+    x._lower_feasibility = true
+    return
+end
+```
+
+We now define the optimizer factory to extend the core EAGO optimizer for this special problem. The [`SubSolvers`](@ref) constructor is used to set the extension type (`t`), as well as the relaxed optimizer (`r`) and upper-bounding optimizer (`u`), if necessary. In this case, we will use the default solvers and only set the extension type.
+
+```julia
+factory = () -> Optimizer(SubSolvers(; t = QuasiConvex()))
 ```
 
 ## Construct the JuMP Model and Optimize
 
-We now formulate the problem using standard JuMP [[3](#references)] syntax and optimize it. Note that 
-we are forming an NLexpression object to handle the summation term to keep the code 
-visually simple, but this could be placed directly in the JuMP `@NLobjective` expression
-instead.
+We now build the JuMP [[3](#References)] model representing this problem, solve it, and retrieve the solution.
 
 ```julia
-# Model construction
-model = Model(optimizer_with_attributes(EAGO.Optimizer, "absolute_tolerance" => 0.001))
-@variable(model, -1.0 <= x[i=1:8] <= 1.0)
-@NLexpression(model, y[r=1:3], sum(W1[r,i]*x[i] for i in 1:8))
-@NLobjective(model, Max, B2 + sum(W2[r]*(2/(1+exp(-2*y[r]+B1[r]))) for r=1:3))
+opt = optimizer_with_attributes(factory, 
+                                "absolute_tolerance" => 1E-8, 
+                                "branch_variable" => branch_variable,
+                                "iteration_limit" => 1000)
+m = Model(opt)
+@variable(m, ((i<6) ? 0.0 : -5.0) <= y[i=1:6] <= ((i<6) ? 5.0 : 0.0))
+@constraint(m, sum(i*y[i] for i=1:5) - 5.0 == 0.0)
+@constraint(m, sum(y[i]^2 for i=1:5) - 0.5*pi^2 <= 0.0)
+@expression(m, expr1, 2.0*y[1]*y[2] + 4.0*y[1]*y[3] + 2.0*y[2]*y[3])
+@constraint(m, -(0.5*y[1]^2 + 0.5*y[2]^2 + y[3]^2 + expr1) <= 0.0)
+@NLexpression(m, expr2, log((5.0 + y[1])^2 + sum(y[i] for i=1:5)))
+@NLconstraint(m, -y[1]^2 - 6.0*y[1]*y[2] - 2.0*y[2]^2 + cos(y[1]) + pi <= 0.0)
+@NLconstraint(m, -expr2/(1.0 + sum(y[i]^2 for i=1:5)) - y[6] <= 0.0)
+@objective(m, Min, y[6])
 
-# Solve the model
-optimize!(model)
+JuMP.optimize!(m)
 ```
 
 ## Retrieve Results
 
-We then recover the objective value, the solution value, and termination status codes 
-using standard JuMP syntax. The optimal value and solution values are then rescaled 
-using the variable bounds to obtain their physical interpretations.
+We then recover the solution values and the objective value using standard JuMP syntax.
 
 ```julia
-# Access calculated values
-fval = JuMP.objective_value(model)
-xsol = JuMP.value.(x)
-status_term = JuMP.termination_status(model)
-status_prim = JuMP.primal_status(model)
-println("EAGO terminated with a status of $status_term and a result code of $status_prim.")
-println("The optimal value is: $(round(fval,digits=5)).")
-println("The solution found is $(round.(xsol,digits=3)).")
-println("")
-
-# Rescale values back to physical space
-rescaled_fval = ((fval+1)/2)*0.07
-rescaled_xsol = ((xsol.+1.0)./2).*(xUBD-xLBD).+xLBD
-println("Rescaled optimal value and solution values:")
-println("The rescaled optimal value is: $(round(rescaled_fval,digits=4))")
-println("The rescaled solution is $(round.(rescaled_xsol,digits=3)).")
+solution = JuMP.value.(y[1:5])
+global_obj_value = JuMP.value.(y[6])
+print("Global solution at y*=$solution with a value of f*=$global_obj_value")
 ```
 
 ## References

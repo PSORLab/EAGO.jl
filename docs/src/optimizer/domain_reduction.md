@@ -10,8 +10,7 @@ variable_dbbt!
 
 ## Special Forms
 
-Bound tightening for linear forms, univariate quadratic forms, and
-bivariate quadratic forms are also supported.
+Bound tightening for linear forms, univariate quadratic forms, and bivariate quadratic forms are also supported.
 
 ```@docs
 EAGO.fbbt!
@@ -19,10 +18,7 @@ EAGO.fbbt!
 
 ## Constraint Propagation
 
-EAGO contains a constraint propagation architecture that supported forward and
-reverse evaluation of set-valued functions on the directed acyclic graph.
-The interval contractor and reverse McCormick relaxation-based contractors are
-currently available.
+EAGO contains a constraint propagation architecture that supported forward and reverse evaluation of set-valued functions on the directed acyclic graph. The interval contractor and reverse McCormick relaxation-based contractors are currently available.
 
 ```@docs
 EAGO.set_constraint_propagation_fbbt!
@@ -30,9 +26,7 @@ EAGO.set_constraint_propagation_fbbt!
 
 ## Optimization-Based Bound Tightening
 
-EAGO makes use of an optimization-based bound tightening scheme using filtering
-and greedy ordering as detailed in: Gleixner, A.M., Berthold, T., Müller, B.
-et al. J Glob Optim (2017) 67: 731. [https://doi.org/10.1007/s10898-016-0450-](https://doi.org/10.1007/s10898-016-0450-4).
+EAGO makes use of an optimization-based bound tightening scheme using filtering and greedy ordering as detailed in [[1](#References)].
 
 ```@docs
 EAGO.obbt!
@@ -40,3 +34,7 @@ EAGO.trivial_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:Exte
 EAGO.aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,Q<:ExtensionType}
 EAGO.bool_indx_diff!(z::Vector{Bool},x::Vector{Bool}, y::Vector{Bool})
 ```
+
+## References
+
+1. Gleixner, A.M., Berthold, T., Müller, B. et al. J Glob Optim (2017) 67: 731. [https://doi.org/10.1007/s10898-016-0450-4](https://doi.org/10.1007/s10898-016-0450-4)

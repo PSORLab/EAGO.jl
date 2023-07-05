@@ -21,8 +21,7 @@ EAGO is a global and robust optimization platform based on McCormick relaxations
 
 ## Installing EAGO
 
-EAGO is a registered Julia package and it can be installed using the Julia package manager.
-From the Julia REPL, type `]` to enter the Package manager (Pkg) mode and run the following command:
+EAGO is a registered Julia package and it can be installed using the Julia package manager. From the Julia REPL, type `]` to enter the Package manager (Pkg) mode and run the following command:
 
 ```jldoctest
 pkg> add EAGO
@@ -34,8 +33,7 @@ Currently, EAGO is compatible with version 1.12 of JuMP. This allows a replicati
 pkg> add JuMP
 ```
 
-EAGO v0.8.1 is the current tagged version and requires Julia 1.6+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.8 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [High-Performance Configuration](https://psorlab.github.io/EAGO.jl/optimizer/high_performance/) for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version).
-If any issues are encountered when loading EAGO (or when using it), please submit an issue using the GitHub [issue tracker](https://github.com/PSORLab/EAGO.jl/issues).
+EAGO v0.8.1 is the current tagged version and requires Julia 1.6+ for full functionality (however Julia 1.0+ versions support partial functionality). Use with version 1.8 is recommended as the majority of in-house testing has occurred using this version of Julia. The user is directed to the [High-Performance Configuration](https://psorlab.github.io/EAGO.jl/optimizer/high_performance/) for instructions on how to install a high performance version of EAGO (rather than the basic entirely open-source version). If any issues are encountered when loading EAGO (or when using it), please submit an issue using the GitHub [issue tracker](https://github.com/PSORLab/EAGO.jl/issues).
 
 ## Examples
 
