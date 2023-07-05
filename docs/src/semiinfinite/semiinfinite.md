@@ -31,7 +31,7 @@ using EAGO, JuMP
 
 # Define semi-infinite program
 f(x) = (1/3)*x[1]^2 + x[2]^2 + x[1]/2
-gSIP(x,p) = (1.0 - (x[1]^2)*(p[1]^2))^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
+gSIP(x, p) = (1.0 - (x[1]^2)*(p[1]^2))^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
 
 x_l = Float64[-1000.0, -1000.0]
 x_u = Float64[1000.0, 1000.0]
