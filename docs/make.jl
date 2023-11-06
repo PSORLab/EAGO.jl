@@ -7,9 +7,9 @@ import McCormick: final_cut, mid3v, precond_and_contract!, AbstractMCCallback, p
                   dline_seg, correct_exp!, cut, mid_grad, preconditioner_storage, newton, secant,
                   MCCallback, contract!, affine_exp!
 
-import EAGO: ExtensionType, Evaluator, variable_dbbt!, set_current_node!,
+import EAGO: ExtensionType, Evaluator, variable_dbbt!,
              VariableInfo, Log, aggressive_filtering!,
-             bool_indx_diff, trivial_filtering!, SIPResult, SIPProblem, 
+             bool_indx_diff!, trivial_filtering!, SIPResult, SIPProblem, 
              GlobalOptimizer, InputProblem, ParsedProblem, is_integer_feasible_relaxed, 
              local_problem_status, default_upper_heuristic, label_branch_variables!,
              label_fixed_variables!, AbstractDirectedGraph, AbstractCache, 
@@ -19,46 +19,48 @@ import EAGO: ExtensionType, Evaluator, variable_dbbt!, set_current_node!,
 import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
                     Template_Node, scrub, scrub!, flatten_expression!
 
-const MOI = MathOptInterface
-
 @info "Making documentation..."
 makedocs(modules = [EAGO, McCormick],
          doctest = false,
+         warnonly = [:docs_block, :missing_docs],
          format = Documenter.HTML(
                   prettyurls = get(ENV, "CI", nothing) == "true",
                   canonical = "https://PSORLab.github.io/EAGO.jl/stable/",
                   collapselevel = 1,
+                  assets = ["assets/favicon.ico"]
          ),
          authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, and Matthew Stuber",
          sitename = "EAGO.jl",
          pages = Any["Introduction" => "index.md",
-                     "Quick Start" => Any["quick_start/qs_landing.md",
-                                          "quick_start/guidelines.md",
-                                          "quick_start/explicit_ann.md",
-                                          "quick_start/ex2.md",
-                                          "quick_start/quasiconvex.md",
-                                          "quick_start/alpha_bb.md"
-                                          ],
-                     "McCormick Operator Library" => Any["mccormick/overview.md",
-                                                         "mccormick/usage.md",
-                                                         "mccormick/operators.md",
-                                                         "mccormick/type.md",
-                                                         "mccormick/implicit.md"
+                     "Manual" => Any["Optimizer" => Any["optimizer/optimizer.md",
+                                                        "optimizer/bnb_back.md",
+                                                        "optimizer/relax_back.md",
+                                                        "optimizer/domain_reduction.md",
+                                                        "optimizer/high_performance.md",
+                                                        "optimizer/udf_utilities.md"
                                                         ],
-                     "Optimizer" => Any["optimizer/optimizer.md",
-                                        "optimizer/bnb_back.md",
-                                        "optimizer/relax_back.md",
-                                        "optimizer/domain_reduction.md",
-                                        "optimizer/high_performance.md",
-                                        "optimizer/udf_utilities.md"
-                                               ],
-                     "Semi-Infinite Programming" => "semiinfinite/semiinfinite.md",
-                     "Contributing to EAGO"      => Any["dev/contributing.md",
-                                                        "dev/future.md"
-                                                        ],
+                                      "McCormick.jl" => Any["mccormick/overview.md",
+                                                            "mccormick/usage.md",
+                                                            "mccormick/operators.md",
+                                                            "mccormick/type.md",
+                                                            "mccormick/implicit.md"
+                                                            ],
+                                      "Semi-Infinite Programming" => "semiinfinite/semiinfinite.md",
+                                     ],
+                     "Customization" => "custom_guidelines.md",
+                     "Examples" => Any["examples/explicit_ann.md",
+                                       "examples/interval_bb.md",
+                                       "examples/quasiconvex.md",
+                                       "examples/alpha_bb.md"
+                                       ],
+                     "API Reference" => Any["dev/api_types.md",
+                                            "dev/api_functions.md"
+                                            ],
+                     "Contributing" => "dev/contributing.md",
+                     "News" => "news.md",
                      "Citing EAGO" => "cite.md",
-                     "News"        => "news.md",
-                     "References"  => "ref.md"]
+                     "References" => "ref.md"
+                     ]
 )
 
 @info "Deploying documentation..."

@@ -192,7 +192,7 @@ MOI.get(m::Optimizer, ::MOI.TerminationStatus) = m._termination_status_code
 MOI.get(m::Optimizer, ::MOI.SolveTimeSec) = m._run_time
 MOI.get(m::Optimizer, ::MOI.NodeCount) = m._node_count
 MOI.get(m::Optimizer, ::MOI.ResultCount) = (m._result_status_code === MOI.FEASIBLE_POINT) ? 1 : 0
-MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = m._parameters.time_limit
+MOI.get(m::Optimizer, ::MOI.TimeLimitSec) = isinf(m._parameters.time_limit) ? nothing : m._parameters.time_limit
 MOI.get(m::Optimizer, ::MOI.Silent) = m._parameters.verbosity == 0
 MOI.get(m::Optimizer, ::MOI.ListOfVariableIndices) = [VI(i) for i = 1:m._input_problem._variable_count]
 

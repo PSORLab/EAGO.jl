@@ -3,7 +3,7 @@
 
 An abstract type the subtypes of which are associated with functions method
 overloaded for new extensions. An instance of this is the `DefaultExt <: ExtensionType`
-structure in the EAGO `Optimizer` in the `ext_type` field.
+structure in the `ext_type` field of the [`Optimizer`](@ref).
 """
 abstract type ExtensionType end
 struct DefaultExt <: ExtensionType end

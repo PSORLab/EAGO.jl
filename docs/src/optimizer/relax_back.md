@@ -24,8 +24,7 @@ EAGO organizes information associated with each node in a given graph structure 
     EAGO.initialize!(::AbstractCache, ::AbstractDirectedGraph)
 ```
 
-Information in a given `EAGO.AbstractCache` is populated by performing a series of forward and reverse passes of the graph structure which dispatch off of an
-`EAGO.AbstractCacheAttribute` which indicates what particular information is desired.
+Information in a given `EAGO.AbstractCache` is populated by performing a series of forward and reverse passes of the graph structure which dispatch off of an `EAGO.AbstractCacheAttribute` which indicates what particular information is desired.
 
 ```@docs
     EAGO.AbstractCacheAttribute
@@ -58,9 +57,7 @@ The forward and reverse routines are overloaded as follows:
     EAGO.rprop!(t::AbstractCacheAttribute, v::Constant, g::AbstractDirectedGraph, c::AbstractCache, k::Int)
 ```
 
-Forward and reverse subroutines are overloaded for individual operators using through functions of the forms 
-`fprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)` and
-`rprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)`. 
+Forward and reverse subroutines are overloaded for individual operators using through functions of the forms  `fprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)` and `rprop!(t::AbstractCacheAttribute, v::Val{AtomType}, g::AbstractDirectedGraph, b::AbstractCache, k::Int)`. 
 
 ## Other Routines
 

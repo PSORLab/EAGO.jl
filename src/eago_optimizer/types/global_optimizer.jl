@@ -48,7 +48,7 @@ $(TYPEDEF)
 
 An Enum of possible values for EAGO's termination status. This attribute is used
 by EAGO to explain why the optimizer stopped executing in the most recent call
-to `optimize!`. See also [`MathOptInterface.TerminationStatusCode`](@ref).
+to `optimize!`. See also [`MathOptInterface.TerminationStatusCode`](https://jump.dev/MathOptInterface.jl/stable/reference/models/#MathOptInterface.TerminationStatusCode).
 
 If no call has been made to `optimize!`, the `GlobalEndState` value is:
 - `GS_UNSET`: The optimization algorithm has not stated.
@@ -585,7 +585,7 @@ Base.@kwdef mutable struct GlobalOptimizer{Q,S,T<:ExtensionType} <: MOI.Abstract
     _auxiliary_variable_info::Union{Nothing,_AuxVarData} = nothing
     "Variables to perform OBBT on (default: all variables in nonlinear expressions)"
     obbt_variable_values::Vector{Bool} = Bool[]
-    "Specifies that the optimize_hook! function should be called rather than throw the
+    "Specifies that the [`optimize_hook!`](@ref) function should be called rather than throw the
     problem to the standard routine"
     enable_optimize_hook::Bool = false
     "(Deprecated, use _subsolvers instead) Storage for custom extension types" 
