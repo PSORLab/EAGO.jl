@@ -19,11 +19,10 @@ import EAGO: ExtensionType, Evaluator, variable_dbbt!,
 import EAGO.Script: dag_flattening!, register_substitution!, Template_Graph,
                     Template_Node, scrub, scrub!, flatten_expression!
 
-const MOI = MathOptInterface
-
 @info "Making documentation..."
 makedocs(modules = [EAGO, McCormick],
          doctest = false,
+         warnonly = [:docs_block, :missing_docs],
          format = Documenter.HTML(
                   prettyurls = get(ENV, "CI", nothing) == "true",
                   canonical = "https://PSORLab.github.io/EAGO.jl/stable/",
@@ -33,33 +32,35 @@ makedocs(modules = [EAGO, McCormick],
          authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, and Matthew Stuber",
          sitename = "EAGO.jl",
          pages = Any["Introduction" => "index.md",
-                     "Quick Start" => Any["quick_start/qs_landing.md",
-                                          "quick_start/guidelines.md",
-                                          "quick_start/explicit_ann.md",
-                                          "quick_start/interval_bb.md",
-                                          "quick_start/quasiconvex.md",
-                                          "quick_start/alpha_bb.md"
-                                          ],
-                     "McCormick Operator Library" => Any["mccormick/overview.md",
-                                                         "mccormick/usage.md",
-                                                         "mccormick/operators.md",
-                                                         "mccormick/type.md",
-                                                         "mccormick/implicit.md"
+                     "Manual" => Any["Optimizer" => Any["optimizer/optimizer.md",
+                                                        "optimizer/bnb_back.md",
+                                                        "optimizer/relax_back.md",
+                                                        "optimizer/domain_reduction.md",
+                                                        "optimizer/high_performance.md",
+                                                        "optimizer/udf_utilities.md"
                                                         ],
-                     "Optimizer" => Any["optimizer/optimizer.md",
-                                        "optimizer/bnb_back.md",
-                                        "optimizer/relax_back.md",
-                                        "optimizer/domain_reduction.md",
-                                        "optimizer/high_performance.md",
-                                        "optimizer/udf_utilities.md"
-                                               ],
-                     "Semi-Infinite Programming" => "semiinfinite/semiinfinite.md",
-                     "Contributing to EAGO"      => Any["dev/contributing.md",
-                                                        "dev/future.md"
-                                                        ],
+                                      "McCormick.jl" => Any["mccormick/overview.md",
+                                                            "mccormick/usage.md",
+                                                            "mccormick/operators.md",
+                                                            "mccormick/type.md",
+                                                            "mccormick/implicit.md"
+                                                            ],
+                                      "Semi-Infinite Programming" => "semiinfinite/semiinfinite.md",
+                                     ],
+                     "Customization" => "custom_guidelines.md",
+                     "Examples" => Any["examples/explicit_ann.md",
+                                       "examples/interval_bb.md",
+                                       "examples/quasiconvex.md",
+                                       "examples/alpha_bb.md"
+                                       ],
+                     "API Reference" => Any["dev/api_types.md",
+                                            "dev/api_functions.md"
+                                            ],
+                     "Contributing" => "dev/contributing.md",
+                     "News" => "news.md",
                      "Citing EAGO" => "cite.md",
-                     "News"        => "news.md",
-                     "References"  => "ref.md"]
+                     "References" => "ref.md"
+                     ]
 )
 
 @info "Deploying documentation..."

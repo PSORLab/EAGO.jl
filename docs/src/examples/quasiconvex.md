@@ -8,11 +8,11 @@ In this example, we'll adapt EAGO to implement the bisection-based algorithm use
 
 ```math
 \begin{aligned}
-f^{*} = & \min_{\mathbf y \in Y} f(\mathbf y)\\
-{\rm s.t.} \;\; & \sum_{i = 1}^{5} i \cdot y_{i} - 5 = 0\\
-& \sum_{i = 1}^{5} y_{i}^{2} - 0.5\pi \leq 0\\
-& -\bigg(\frac{1}{2} y_{1}^{2} + \frac{1}{2} y_{2}^{2} + 2 y_{1} y_{2} + 4 y_{1} y_{3} + 2 y_{2} y_{3} \bigg) \leq 0\\
-& -y_{1}^{2} - 6 y_{1} y_{2} - 2 y_{2}^{2} + \cos (y_{1}) + \pi \leq 0\\
+f^{*} = & \min_{\mathbf y \in Y} f(\mathbf y) \\
+{\rm s.t.} \; \; & \sum_{i = 1}^{5} i \cdot y_{i} - 5 = 0 \\
+& \sum_{i = 1}^{5} y_{i}^{2} - 0.5 \pi \leq 0 \\
+& -\bigg(\frac{1}{2} y_{1}^{2} + \frac{1}{2} y_{2}^{2} + 2 y_{1} y_{2} + 4 y_{1} y_{3} + 2 y_{2} y_{3} \bigg) \leq 0 \\
+& -y_{1}^{2} - 6 y_{1} y_{2} - 2 y_{2}^{2} + \cos (y_{1}) + \pi \leq 0 \\
 & Y = [0, 5]^{5}
 \end{aligned}
 ```
@@ -29,10 +29,10 @@ Interval analysis shows that the objective value is bounded by the interval ``F`
 
 ```math
 \begin{aligned}
-t^{*} = & \min_{\mathbf y \in Y, t \in T} t\\
-{\rm s.t.} \;\; & (24) - (27)\\
-& f(\mathbf y) - t \leq 0\\
-& Y = [0,5]^{2}, \;\; T = [-5,0].
+t^{*} = & \min_{\mathbf y \in Y, t \in T} t \\
+{\rm s.t.} \; \; & (24) - (27) \\
+& f(\mathbf y) - t \leq 0 \\
+& Y = [0,5]^{2}, \; \; T = [-5,0].
 \end{aligned}
 ```
 

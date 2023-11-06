@@ -8,21 +8,21 @@ Semi-infinite programming remains an active area of research. In general, the so
 
 ```math
 \begin{aligned}
-f^{*} = & \min_{\mathbf x \in X} f(\mathbf x)\\
-{\rm s.t.} \;\; & \max_{\mathbf p \in P} g(\mathbf x, \mathbf p) \leq 0\\
-& \mathbf x \in X = \{ x \in \mathbb R : \mathbf x^{\mathbf L} \leq \mathbf x \leq \mathbf x^{\mathbf U} \}\\
-& \mathbf p \in P = \{ p \in \mathbb R : \mathbf p^{\mathbf L} \leq \mathbf p \leq \mathbf p^{\mathbf U} \}
+f^{*} = & \min_{\mathbf x \in X} f(\mathbf x) \\
+{\rm s.t.} \; \; & g(\mathbf x, \mathbf p) \leq 0, \; \; \; \; \forall \mathbf p \in P \\
+& \mathbf x \in X = \{ \mathbf x \in \mathbb R^{n_{x}} : \mathbf x^{L} \leq \mathbf x \leq \mathbf x^{U} \} \\
+& P = \{ \mathbf p \in \mathbb R^{n_{p}} : \mathbf p^{L} \leq \mathbf p \leq \mathbf p^{U} \}
 \end{aligned}
 ```
 
-EAGO implements three different algorithms detailed in [[1](#References),[2](#References)] to determine a globally optimal solution to problems of the above form. This is accomplished using the [`sip_solve`](@ref) function which returns the optimal value, the solution, and a boolean feasibility flag. To illustrate the use of this function, a simple example is presented here which solves the problem:
+EAGO implements three different algorithms detailed in [[1](#References), [2](#References)] to determine a globally optimal solution to problems of the above form. This is accomplished using the [`sip_solve`](@ref) function which returns the optimal value, the solution, and a boolean feasibility flag. To illustrate the use of this function, a simple example is presented here which solves the problem:
 
 ```math
 \begin{aligned}
-f(\mathbf x) & = \frac{1}{3} x_{1}^{2} + x_{2}^{2} + \frac{x_{1}}{2}\\
-g(\mathbf x, p) & = (1 - x_{1}^{2} p^{2})^{2} - x_{1} p^{2} - x_{2}^{2} + x_{2} \leq 0\\
-& \mathbf x \in X = [-1000, 1000]^{2}\\
-& p \in P = [0, 1]\\
+f(\mathbf x) & = \frac{1}{3} x_{1}^{2} + x_{2}^{2} + \frac{x_{1}}{2} \\
+g(\mathbf x, p) & = (1 - x_{1}^{2} p^{2})^{2} - x_{1} p^{2} - x_{2}^{2} + x_{2} \leq 0 \\
+& \mathbf x \in X = [-1000, 1000]^{2} \\
+& p \in P = [0, 1]
 \end{aligned}
 ```
 
@@ -31,18 +31,14 @@ using EAGO, JuMP
 
 # Define semi-infinite program
 f(x) = (1/3)*x[1]^2 + x[2]^2 + x[1]/2
-gSIP(x, p) = (1.0 - (x[1]^2)*(p[1]^2))^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
+gSIP(x, p) = (1.0 - x[1]^2*p[1]^2)^2 - x[1]*p[1]^2 - x[2]^2 + x[2]
 
 x_l = Float64[-1000.0, -1000.0]
 x_u = Float64[1000.0, 1000.0]
 p_l = Float64[0.0]
 p_u = Float64[1.0]
 
-sip_result = sip_solve(SIPRes(), x_l, x_u, p_l, p_u, f, Any[gSIP], abs_tolerance = 1E-3)
-
-println("The global minimum of the semi-infinite program is between: $(sip_result.lower_bound) and $(sip_result.upper_bound).")
-println("The global minimum is attained at: x = $(sip_result.xsol).")
-println("Is the problem feasible? $(sip_result.feasibility).")
+sip_result = sip_solve(SIPRes(), x_l, x_u, p_l, p_u, f, Any[gSIP], res_sip_absolute_tolerance = 1E-3);
 ```
 
 ## Semi-Infinite Solver

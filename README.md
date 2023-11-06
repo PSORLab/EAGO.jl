@@ -22,10 +22,10 @@ EAGO is a deterministic global optimizer designed to address a wide variety of o
 
 $$
 \begin{align*}
-f^{\*} = & \min_{\mathbf y \in Y \subset \mathbb R^{n_{y}}} f(\mathbf y)\\
-{\rm s.t.} \\;\\; & \mathbf h(\mathbf y) = \mathbf 0\\
-& \mathbf g(\mathbf y) \leq \mathbf 0\\
-& Y = [\mathbf y^{\mathbf L}, \mathbf y^{\mathbf U}] \in \mathbb I \mathbb R^{n}\\
+f^{\*} = & \min_{\mathbf y \in Y \subset \mathbb R^{n_{y}}} f(\mathbf y) \\
+{\rm s.t.} \\;\\; & \mathbf h(\mathbf y) = \mathbf 0 \\
+& \mathbf g(\mathbf y) \leq \mathbf 0 \\
+& Y = [\mathbf y^{\mathbf L}, \mathbf y^{\mathbf U}] \in \mathbb{IR}^{n} \\
 & \qquad \mathbf y^{\mathbf L}, \mathbf y^{\mathbf U} \in \mathbb R^{n}
 \end{align*}
 $$
@@ -52,15 +52,15 @@ EAGO makes use of the JuMP algebraic modeling language to improve the user's exp
 
 $$
 \begin{align*}
-& \max_{\mathbf x \in X} 0.063 x_{4} x_{7} - 5.04 x_{1} - 0.035 x_{2} - 10 x_{3} - 3.36 x_{2}\\
-{\rm s.t.} \\;\\; & x_{1} (1.12 + 0.13167 x_{8} - 0.00667 x_{8}^{2}) + x_{4} = 0\\
-& -0.001 x_{4} x_{9} x_{6} / (98 - x_{6}) + x_{3} = 0\\
-&-(1.098 x_{8} - 0.038 x_{8}^{2}) - 0.325 x_{6} + x_{7} = 0\\
-&-(x_{2} + x_{5}) / x_{1} + x_{8} = 0\\
-&-x_{1} + 1.22 x_{4} - x_{5} = 0\\
-&x_{9} + 0.222 x_{10} - 35.82 = 0\\
-&-3.0 x_{7} + x_{10} + 133.0 = 0\\
-& X = [10, 2000] \times [0, 16000] \times [0, 120] \times [0, 5000]\\
+& \max_{\mathbf x \in X} 0.063 x_{4} x_{7} - 5.04 x_{1} - 0.035 x_{2} - 10 x_{3} - 3.36 x_{2} \\
+{\rm s.t.} \\;\\; & x_{1} (1.12 + 0.13167 x_{8} - 0.00667 x_{8}^{2}) + x_{4} = 0 \\
+& -0.001 x_{4} x_{9} x_{6} / (98 - x_{6}) + x_{3} = 0 \\
+& -(1.098 x_{8} - 0.038 x_{8}^{2}) - 0.325 x_{6} + x_{7} = 0 \\
+& -(x_{2} + x_{5}) / x_{1} + x_{8} = 0 \\
+& -x_{1} + 1.22 x_{4} - x_{5} = 0 \\
+& x_{9} + 0.222 x_{10} - 35.82 = 0 \\
+& -3.0 x_{7} + x_{10} + 133.0 = 0 \\
+& X = [10, 2000] \times [0, 16000] \times [0, 120] \times [0, 5000] \\
 & \qquad \times [0, 2000] \times [85, 93] \times [90,9 5] \times [3, 12] \times [1.2, 4] \times [145, 162]
 \end{align*}
 $$
@@ -162,15 +162,15 @@ Please report bugs or feature requests by opening an issue using the GitHub [iss
 Please cite the following paper when using EAGO. In plain text form this is:
 
 ```
-M. E. Wilhelm & M. D. Stuber (2022) EAGO.jl: easy advanced global optimization in Julia,
-Optimization Methods and Software, 37:2, 425-450, DOI: 10.1080/10556788.2020.1786566
+Wilhelm, M.E. and Stuber, M.D. EAGO.jl: easy advanced global optimization in Julia.
+Optimization Methods and Software. 37(2): 425-450 (2022). DOI: 10.1080/10556788.2020.1786566
 ```
 
 A BibTeX entry is given below and a corresponding .bib file is given in citation.bib.
 
 ```bibtex
 @article{doi:10.1080/10556788.2020.1786566,
-author = {M. E. Wilhelm and M. D. Stuber},
+author = {Wilhelm, M.E. and Stuber, M.D.},
 title = {EAGO.jl: easy advanced global optimization in Julia},
 journal = {Optimization Methods and Software},
 volume = {37},
@@ -186,14 +186,14 @@ eprint = {https://doi.org/10.1080/10556788.2020.1786566}
 
 ## Related Packages
 
-- [ValidatedNumerics.jl](https://github.com/JuliaIntervals/ValidatedNumerics.jl): A Julia library for validated interval calculations, including basic interval extensions, constraint programming, and interval contractors.
-- [MAiNGO](http://swmath.org/software/27878): An open-source mixed-integer nonlinear programming package in C++ that utilizes MC++ for relaxations.
-- [MC++](https://github.com/coin-or/MCpp): A mature McCormick relaxation package in C++ that also includes McCormick-Taylor, Chebyshev Polyhedral, and Ellipsoidal arithmetics.
+- [ValidatedNumerics.jl](https://github.com/JuliaIntervals/ValidatedNumerics.jl): A Julia library for validated interval calculations, including basic interval extensions, constraint programming, and interval contractors
+- [MAiNGO](https://avt-svt.pages.rwth-aachen.de/public/maingo/): An open-source mixed-integer nonlinear programming package in C++ that utilizes MC++ for relaxations
+- [MC++](https://github.com/coin-or/MCpp): A mature McCormick relaxation package in C++ that also includes McCormick-Taylor, Chebyshev Polyhedral, and Ellipsoidal arithmetics
 
 ## References
 
-1. A. Mitsos, B. Chachuat, and P. I. Barton. **McCormick-based relaxations of algorithms.** *SIAM Journal on Optimization*, 20(2):573–601, 2009.
-2. K.A. Khan, HAJ Watson, P.I. Barton. **Differentiable McCormick relaxations.** *Journal of Global Optimization*, 67(4):687-729 (2017).
-3. Stuber, M.D., Scott, J.K., Barton, P.I.: **Convex and concave relaxations of implicit functions.** *Optim. Methods Softw.* 30(3), 424–460 (2015)
-4. A., Wechsung JK Scott, HAJ Watson, and PI Barton. **Reverse propagation of McCormick relaxations.** *Journal of Global Optimization* 63(1):1-36 (2015).
-5. Bracken, Jerome and McCormick, Garth P. **Selected Applications of Nonlinear Programming**, John Wiley and Sons, New York, 1968.
+1. Mitsos, A., Chachuat, B., and Barton, P.I. **McCormick-based relaxations of algorithms.** *SIAM Journal on Optimization*. 20(2): 573–601 (2009).
+2. Khan, K.A., Watson, H.A.J., and Barton, P.I. **Differentiable McCormick relaxations.** *Journal of Global Optimization*. 67(4): 687-729 (2017).
+3. Stuber, M.D., Scott, J.K., and Barton, P.I.: **Convex and concave relaxations of implicit functions.** *Optimization Methods and Software* 30(3): 424–460 (2015).
+4. Wechsung, A., Scott, J.K., Watson, H.A.J., and Barton, P.I. **Reverse propagation of McCormick relaxations.** *Journal of Global Optimization* 63(1): 1-36 (2015).
+5. Bracken, J., and McCormick, G.P. *Selected Applications of Nonlinear Programming.* John Wiley and Sons, New York (1968).

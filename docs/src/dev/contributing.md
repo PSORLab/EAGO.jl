@@ -1,4 +1,4 @@
-# How to Contribute
+# How to Contribute to EAGO
 
 We're always happy to welcome work with additional collaborators and contributors. One of the easy ways for newcomers to contribute is by adding additional McCormick relaxations.
 
@@ -10,4 +10,4 @@ Please direct technical issues and/or bugs to the active developers:
 - [Robert Gottlieb](https://psor.uconn.edu/person/robert-gottlieb/)
 - [Dimitri Alston](https://psor.uconn.edu/person/dimitri-alston/)
 
-All other questions should be directed to [Prof. Stuber](https://chemical-biomolecular.engr.uconn.edu/person/matthew-stuber/).
+All other questions should be directed to [Prof. Stuber](https://chemical-biomolecular.engr.uconn.edu/people/faculty/stuber-matthew/).

@@ -10,7 +10,7 @@ In this example, we'll forgo extensive integration into the [`Optimizer`](@ref) 
 
 ```math
 \begin{aligned}
-& \min_{\mathbf x \in X} \;\; \sin(x_{1}) x_{2}^{2} - \cos(x_{3}) / x_{4}\\
+& \min_{\mathbf x \in X} \; \; \sin(x_{1}) x_{2}^{2} - \cos(x_{3}) / x_{4} \\
 & X = [-10, 10] \times [-1, 1] \times [-10, 10] \times [2, 20].
 \end{aligned}
 ```

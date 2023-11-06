@@ -1,8 +1,8 @@
 # Overview
 
 EAGO provides a library of McCormick relaxations in native Julia code. The EAGO optimizer supports relaxing functions using **nonsmooth McCormick relaxations** ([Mitsos2009](https://epubs.siam.org/doi/abs/10.1137/080717341), [Scott2011](https://link.springer.com/article/10.1007/s10898-011-9664-7)), **smooth McCormick relaxations** ([Khan2016](https://link.springer.com/article/10.1007/s10898-016-0440-6), [Khan2018](https://link.springer.com/article/10.1007/s10898-017-0601-2), [Khan2019](https://www.tandfonline.com/doi/abs/10.1080/02331934.2018.1534108)), and **multi-variant McCormick relaxations** ([Tsoukalas2014](https://link.springer.com/article/10.1007/s10898-014-0176-0); a variant of **subgradient-based interval refinement** ([Najman2017](https://link.springer.com/article/10.1007/s10898-016-0470-0))). For functions with arbitrarily differentiable relaxations, the differentiable constant μ can be modified by adjusting a constant value in the package. Additionally, validated and nonvalidated interval bounds are supported via [IntervalArithmetic.jl](https://github.com/JuliaIntervals/IntervalArithmetic.jl) which is reexported. The basic McCormick operator and reverse McCormick operator ([Wechsung2015](https://link.springer.com/article/10.1007/s10898-015-0303-6)) libraries are included in two dependent subpackages which can loaded and used independently:
-- [McCormick.jl](https://github.com/PSORLab/McCormick.jl): A library of forward-mode and implicit McCormick operators.
-- [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl): A reverse-mode McCormick operator library.
+- [McCormick.jl](https://github.com/PSORLab/McCormick.jl): A forward McCormick operator library
+- [ReverseMcCormick.jl](https://github.com/PSORLab/ReverseMcCormick.jl): A reverse McCormick operator library
 
 ## NaN Numerics
 

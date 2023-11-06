@@ -48,7 +48,7 @@ $(TYPEDEF)
 
 An Enum of possible values for EAGO's termination status. This attribute is used
 by EAGO to explain why the optimizer stopped executing in the most recent call
-to `optimize!`. See also [`MathOptInterface.TerminationStatusCode`](@ref).
+to `optimize!`. See also [`MathOptInterface.TerminationStatusCode`](https://jump.dev/MathOptInterface.jl/stable/reference/models/#MathOptInterface.TerminationStatusCode).
 
 If no call has been made to `optimize!`, the `GlobalEndState` value is:
 - `GS_UNSET`: The optimization algorithm has not stated.

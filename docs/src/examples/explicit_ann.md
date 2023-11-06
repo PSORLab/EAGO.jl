@@ -4,11 +4,11 @@ This example is also provided [here as a Jupyter Notebook](https://github.com/PS
 
 ### Solving an ANN to Optimality in EAGO
 
-In [[1](#References),[2](#References)], a surrogate artificial neural network (ANN) model of bioreactor productivity was constructed by fitting results from computationally expensive computational fluid dynamics (CFD) simulations. The authors then optimized this surrogate model to obtain ideal processing conditions. The optimization problem is given by:
+In [[1](#References), [2](#References)], a surrogate artificial neural network (ANN) model of bioreactor productivity was constructed by fitting results from computationally expensive computational fluid dynamics (CFD) simulations. The authors then optimized this surrogate model to obtain ideal processing conditions. The optimization problem is given by:
 
 ```math
 \begin{aligned}
-\max_{\mathbf x \in X} B_{2} + \sum_{r = 1}^{3} W_{2,r} \frac{2}{1 + \exp (-2y_{r} + B_{1,r})} \;\; {\rm where} \;\; y_{r} = \sum_{i = 1}^{8} W_{1,ir} x_{i}
+\max_{\mathbf x \in X} B_{2} + \sum_{r = 1}^{3} W_{2,r} \frac{2}{1 + \exp (-2y_{r} + B_{1,r})} \; \; {\rm where} \; \; y_{r} = \sum_{i = 1}^{8} W_{1,ir} x_{i}
 \end{aligned}
 ```
 
@@ -35,12 +35,12 @@ B2 = -0.46
 
 # Variable bounds (Used to scale variables after optimization)
 xLBD = [0.623, 0.093, 0.259, 6.56, 1114.0, 0.013, 0.127, 0.004]
-xUBD = [5.89, 0.5, 1.0, 90.0, 25000.0, 0.149, 0.889, 0.049];
+xUBD = [5.89, 0.5, 1.0, 90.0, 25000.0, 0.149, 0.889, 0.049]
 ```
 
 ## Construct the JuMP Model and Optimize
 
-We now formulate the problem using standard JuMP [[3](#References)] syntax and optimize it. Note that  we are forming an NLexpression object to handle the summation term to keep the code  visually simple, but this could be placed directly in the JuMP [`@NLobjective`](https://jump.dev/JuMP.jl/stable/api/JuMP/#@NLobjective) expression instead.
+We now formulate the problem using standard JuMP [[3](#References)] syntax and optimize it. Note that we are using the [`@NLexpression`](https://jump.dev/JuMP.jl/stable/api/JuMP/#JuMP.@NLexpression) macro to handle the summation term to keep the code visually simple, but this could be placed directly in the [`@NLobjective`](https://jump.dev/JuMP.jl/stable/api/JuMP/#JuMP.@NLobjective) macro instead.
 
 ```julia
 # Model construction
@@ -66,7 +66,7 @@ status_prim = JuMP.primal_status(model)
 println("EAGO terminated with a status of $status_term and a result code of $status_prim.")
 println("The optimal value is: $(round(fval, digits=5)).")
 println("The solution found is $(round.(xsol, digits=3)).")
-println("")
+println(" ")
 
 # Rescale values back to physical space
 rescaled_fval = ((fval + 1.0)/2.0)*0.07
