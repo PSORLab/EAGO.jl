@@ -1,5 +1,5 @@
 ```@raw html
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/assets/logo.png" width="75%" height="75%"/>
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/assets/logo.png?raw=true" width="75%" height="75%"/>
 ```
 
 # EAGO - Easy Advanced Global Optimization
@@ -57,7 +57,7 @@ f(x) & = v_{5} \\
 
 ```@raw html
 <p align="center">
-<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/mccormick/Figure_1.png" width="60%" height="60%"/>
+<img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/mccormick/Figure_1.png?raw=true" width="60%" height="60%"/>
 </p>
 ```
 
@@ -88,7 +88,7 @@ optimization models. Consider the "process" problem instance from [5]:
 
 ```math
 \begin{aligned}
-& \max_{\mathbf x \in X} 0.063 x_{4} x_{7} - 5.04 x_{1} - 0.035 x_{2} - 10 x_{3} - 3.36 x_{2} \\
+\max_{\mathbf x \in X} & 0.063 x_{4} x_{7} - 5.04 x_{1} - 0.035 x_{2} - 10 x_{3} - 3.36 x_{2} \\
 {\rm s.t.} \; \; & x_{1} (1.12 + 0.13167 x_{8} - 0.00667 x_{8}^{2}) + x_{4} = 0 \\
 & -0.001 x_{4} x_{9} x_{6} / (98 - x_{6}) + x_{3} = 0 \\
 & -(1.098 x_{8} - 0.038 x_{8}^{2}) - 0.325 x_{6} + x_{7} = 0 \\
@@ -163,7 +163,7 @@ Please cite the following paper when using EAGO. In plain text form this is:
 
 ```
 Wilhelm, M.E. and Stuber, M.D. EAGO.jl: easy advanced global optimization in Julia.
-Optimization Methods and Software. 37(2): 425-450 (2022). DOI: 10.1080/10556788.2020.1786566
+Optimization Methods and Software. 37(2): 425—450 (2022). DOI: 10.1080/10556788.2020.1786566
 ```
 
 As a BibTeX entry:
@@ -186,8 +186,8 @@ As a BibTeX entry:
 
 ## References
 
-1. Mitsos, A., Chachuat, B., and Barton, P.I. **McCormick-based relaxations of algorithms.** *SIAM Journal on Optimization*. 20(2): 573–601 (2009).
-2. Khan, K.A., Watson, H.A.J., and Barton, P.I. **Differentiable McCormick relaxations.** *Journal of Global Optimization*. 67(4): 687–729 (2017).
-3. Stuber, M.D., Scott, J.K., and Barton, P.I.: **Convex and concave relaxations of implicit functions.** *Optimization Methods and Software* 30(3): 424–460 (2015).
-4. Wechsung, A., Scott, J.K., Watson, H.A.J., and Barton, P.I. **Reverse propagation of McCormick relaxations.** *Journal of Global Optimization* 63(1): 1–36 (2015).
+1. Mitsos, A., Chachuat, B., and Barton, P.I. **McCormick-based relaxations of algorithms.** *SIAM Journal on Optimization*. 20(2): 573—601 (2009).
+2. Khan, K.A., Watson, H.A.J., and Barton, P.I. **Differentiable McCormick relaxations.** *Journal of Global Optimization*. 67(4): 687—729 (2017).
+3. Stuber, M.D., Scott, J.K., and Barton, P.I.: **Convex and concave relaxations of implicit functions.** *Optimization Methods and Software* 30(3): 424—460 (2015).
+4. Wechsung, A., Scott, J.K., Watson, H.A.J., and Barton, P.I. **Reverse propagation of McCormick relaxations.** *Journal of Global Optimization* 63(1): 1—36 (2015).
 5. Bracken, J., and McCormick, G.P. *Selected Applications of Nonlinear Programming.* John Wiley and Sons, New York (1968).
