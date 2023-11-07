@@ -20,27 +20,31 @@ included. Currently, EAGO supports problems that have a priori variable bounds
 defined and have differentiable constraints. That is, problems should be
 specified in the generic form below:
 
-$$
-\begin{align*}
-f^{\*} = \min_{\mathbf y \in Y \subset \mathbb R^{n_{y}}} & f(\mathbf y) \\
-{\rm s.t.} \\;\\; & \mathbf h(\mathbf y) = \mathbf 0 \\
+```math
+\begin{aligned}
+f^{*} = & \min_{\mathbf y \in Y \subset \mathbb R^{n_{y}}} f(\mathbf y) \\
+{\rm s.t.} \; \; & \mathbf h(\mathbf y) = \mathbf 0 \\
 & \mathbf g(\mathbf y) \leq \mathbf 0 \\
-& Y = [\mathbf y^{\mathbf L}, \mathbf y^{\mathbf U}] \in \mathbb{IR}^{n} \\
-& \qquad \mathbf y^{\mathbf L}, \mathbf y^{\mathbf U} \in \mathbb R^{n}
-\end{align*}
-$$
+& Y = [\mathbf y^{L}, \mathbf y^{U}] \in \mathbb{IR}^{n} \\
+& \qquad \mathbf y^{L}, \mathbf y^{U} \in \mathbb R^{n}
+\end{aligned}
+```
 
 For each nonlinear term, EAGO makes use of factorable representations to
 construct bounds and relaxations. In the case of $f(x) = x (x - 5) \sin(x)$, a
 list is generated and rules for constructing McCormick relaxations are used to
 formulate relaxations in the original decision space, $X$ [1]:
 
-- $v_{1} = x$
-- $v_{2} = v_{1} - 5$
-- $v_{3} = \sin(v_{1})$
-- $v_{4} = v_{1} v_{2}$
-- $v_{5} = v_{4} v_{3}$
-- $f(x) = v_{5}$
+```math
+\begin{aligned}
+v_{1} & = x \\
+v_{2} & = v_{1} - 5 \\
+v_{3} & = \sin(v_{1}) \\
+v_{4} & = v_{1} v_{2} \\
+v_{5} & = v_{4} v_{3} \\
+f(x) & = v_{5} \\
+\end{aligned}
+```
 
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/mccormick/Figure_1.png" width="60%" height="60%"/>
@@ -58,7 +62,7 @@ EAGO is licensed under the [MIT License](https://github.com/PSORLab/EAGO.jl/blob
 
 ## Installation
 
-EAGO is a registered Julia package and it can be installed using the Julia
+EAGO is a registered Julia package that can be installed using the Julia
 package manager:
 
 ```julia
@@ -71,10 +75,10 @@ Pkg.add("EAGO")
 EAGO makes use of JuMP to improve the user's experience in setting up
 optimization models. Consider the "process" problem instance from [5]:
 
-$$
-\begin{align*}
-\max_{\mathbf x \in X} & 0.063 x_{4} x_{7} - 5.04 x_{1} - 0.035 x_{2} - 10 x_{3} - 3.36 x_{2} \\
-{\rm s.t.} \\;\\; & x_{1} (1.12 + 0.13167 x_{8} - 0.00667 x_{8}^{2}) + x_{4} = 0 \\
+```math
+\begin{aligned}
+& \max_{\mathbf x \in X} 0.063 x_{4} x_{7} - 5.04 x_{1} - 0.035 x_{2} - 10 x_{3} - 3.36 x_{2} \\
+{\rm s.t.} \; \; & x_{1} (1.12 + 0.13167 x_{8} - 0.00667 x_{8}^{2}) + x_{4} = 0 \\
 & -0.001 x_{4} x_{9} x_{6} / (98 - x_{6}) + x_{3} = 0 \\
 & -(1.098 x_{8} - 0.038 x_{8}^{2}) - 0.325 x_{6} + x_{7} = 0 \\
 & -(x_{2} + x_{5}) / x_{1} + x_{8} = 0 \\
@@ -83,8 +87,8 @@ $$
 & -3.0 x_{7} + x_{10} + 133.0 = 0 \\
 & X = [10, 2000] \times [0, 16000] \times [0, 120] \times [0, 5000] \\
 & \qquad \times [0, 2000] \times [85, 93] \times [90,9 5] \times [3, 12] \times [1.2, 4] \times [145, 162]
-\end{align*}
-$$
+\end{aligned}
+```
 
 This model can be formulated in Julia as:
 
