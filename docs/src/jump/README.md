@@ -33,7 +33,7 @@ $$
 For each nonlinear term, EAGO makes use of factorable representations to
 construct bounds and relaxations. In the case of $f(x) = x (x - 5) \sin(x)$, a
 list is generated and rules for constructing McCormick relaxations are used to
-formulate relaxations in the original decision space, $X$ [[1](#references)]:
+formulate relaxations in the original decision space, $X$ [1]:
 
 - $v_{1} = x$
 - $v_{2} = v_{1} - 5$
@@ -46,12 +46,11 @@ formulate relaxations in the original decision space, $X$ [[1](#references)]:
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/mccormick/Figure_1.png" width="60%" height="60%"/>
 </p>
 
-Either these original relaxations, differentiable McCormick relaxations
-[[2](#references)], or affine relaxations thereof can be used to construct
-relaxations of optimization problems useful in branch and bound routines for
-global optimization. Utilities are included to combine these with algorithms for
-relaxing implicit functions [[3](#references)] and forward-reverse propagation
-of McCormick arithmetic [[4](#references)].
+Either these original relaxations, differentiable McCormick relaxations [2], or
+affine relaxations thereof can be used to construct relaxations of optimization
+problems useful in branch and bound routines for global optimization. Utilities
+are included to combine these with algorithms for relaxing implicit functions
+[3] and forward-reverse propagation of McCormick arithmetic [4].
 
 ## License
 
@@ -70,8 +69,7 @@ Pkg.add("EAGO")
 ## Use with JuMP
 
 EAGO makes use of JuMP to improve the user's experience in setting up
-optimization models. Consider the "process" problem instance from
-[[5](#references)]:
+optimization models. Consider the "process" problem instance from [5]:
 
 $$
 \begin{align*}
