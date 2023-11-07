@@ -1,4 +1,6 @@
+```@raw html
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/assets/logo.png" width="75%" height="75%"/>
+```
 
 # EAGO - Easy Advanced Global Optimization
 
@@ -31,9 +33,16 @@ f^{*} = & \min_{\mathbf y \in Y \subset \mathbb R^{n_{y}}} f(\mathbf y) \\
 ```
 
 For each nonlinear term, EAGO makes use of factorable representations to
-construct bounds and relaxations. In the case of $f(x) = x (x - 5) \sin(x)$, a
-list is generated and rules for constructing McCormick relaxations are used to
-formulate relaxations in the original decision space, $X$ [1]:
+construct bounds and relaxations.
+
+For example, given the function
+
+```math
+f(x) = x (x - 5) \sin(x),
+```
+
+a list is generated and rules for constructing McCormick relaxations are used 
+to formulate relaxations in the original decision space, $X$ [1]:
 
 ```math
 \begin{aligned}
@@ -46,9 +55,11 @@ f(x) & = v_{5} \\
 \end{aligned}
 ```
 
+```@raw html
 <p align="center">
 <img src="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/mccormick/Figure_1.png" width="60%" height="60%"/>
 </p>
+```
 
 Either these original relaxations, differentiable McCormick relaxations [2], or
 affine relaxations thereof can be used to construct relaxations of optimization
