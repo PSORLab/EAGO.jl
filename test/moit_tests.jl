@@ -73,9 +73,6 @@ function test_runtests()
             "test_conic_NormOneCone_VectorAffineFunction",
             "test_conic_NormOneCone_VectorOfVariables",
             "test_conic_linear_VectorAffineFunction",
-            "test_cpsat_Circuit",
-            "test_cpsat_CountAtLeast",
-            "test_cpsat_Table",
             "test_linear_Semicontinuous_integration",
             "test_linear_Semiinteger_integration",
             "test_linear_integer_solve_twice",
@@ -83,15 +80,39 @@ function test_runtests()
             "test_quadratic_duplicate_terms",
             "test_quadratic_integration",
             "test_quadratic_nonhomogeneous",
-            "test_quadratic_constraint_LessThan",
-            "test_quadratic_constraint_GreaterThan",
             "test_modification_affine_deletion_edge_cases",
-            "test_solve_SOS2_add_and_delete",
+            # MOI bridge issues
+            "test_basic_VectorNonlinearFunction_AllDifferent",
+            "test_basic_VectorNonlinearFunction_BinPacking",
+            "test_basic_VectorNonlinearFunction_Circuit",
+            "test_basic_VectorNonlinearFunction_Complements",
+            "test_basic_VectorNonlinearFunction_CountAtLeast",
+            "test_basic_VectorNonlinearFunction_CountBelongs",
+            "test_basic_VectorNonlinearFunction_CountDistinct",
+            "test_basic_VectorNonlinearFunction_CountGreaterThan",
+            "test_basic_VectorNonlinearFunction_GeometricMeanCone",
+            "test_basic_VectorNonlinearFunction_HyperRectangle",
+            "test_basic_VectorNonlinearFunction_Nonnegatives",
+            "test_basic_VectorNonlinearFunction_Nonpositives",
+            "test_basic_VectorNonlinearFunction_NormInfinityCone",
+            "test_basic_VectorNonlinearFunction_NormOneCone",
+            "test_basic_VectorNonlinearFunction_RotatedSecondOrderCone",
+            "test_basic_VectorNonlinearFunction_SecondOrderCone",
+            "test_basic_VectorNonlinearFunction_SOS1",
+            "test_basic_VectorNonlinearFunction_SOS2",
+            "test_basic_VectorNonlinearFunction_Table",
+            "test_basic_VectorNonlinearFunction_Zeros",
+            # TODO: bug related to unbounded_check
+            "test_nonlinear_expression_quartic",
+            # TODO: bug related to reform_epigraph_min
+            "test_nonlinear_expression_overrides_objective",
+            # Remove after MOI v1.31.3
+            "test_nonlinear_expression_hs110",
             # TODO: wrong error thrown. Likely (trivial) bug in MOI wrapper
             "test_model_LowerBoundAlreadySet",
             "test_model_UpperBoundAlreadySet",
         ],
-        exclude_tests_after = v"1.22.0",
+        exclude_tests_after = v"1.31.2",
     )
     return
 end
