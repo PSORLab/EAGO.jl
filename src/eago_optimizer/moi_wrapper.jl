@@ -21,6 +21,7 @@ function check_inbounds!(m::Optimizer, vi::VI)
     end
     return nothing
 end
+check_inbounds!(m::Optimizer, f::Number) = nothing
 check_inbounds!(m::Optimizer, f::SAF) = foreach(x -> check_inbounds!(m, x.variable), f.terms)
 check_inbounds!(m::Optimizer, f::VECOFVAR) = foreach(x -> check_inbounds!(m, x), f.variables)
 function check_inbounds!(m::Optimizer, f::SQF)
@@ -31,19 +32,23 @@ function check_inbounds!(m::Optimizer, f::SQF)
     end
     return nothing
 end
+function check_inbounds!(m::Optimizer, f::MOI.ScalarNonlinearFunction)
+    foreach(x -> check_inbounds!(m, x), f.args)
+    return nothing
+end
 
 MOI.supports_constraint(::Optimizer, ::Type{VI}, ::Type{S}) where S <: VAR_SETS = true
-MOI.supports_constraint(::Optimizer,::Type{T},::Type{S}) where {T<:Union{SAF,SQF},S<:INEQ_SETS} = true
+MOI.supports_constraint(::Optimizer,::Type{T},::Type{S}) where {T<:Union{SAF,SQF,MOI.ScalarNonlinearFunction},S<:INEQ_SETS} = true
 
 MOI.is_valid(m::Optimizer, v::VI) = (1 <= v.value <= m._input_problem._variable_count)
 MOI.is_valid(m::Optimizer, c::CI{VI,S}) where S <: VAR_SETS = (1 <= c.value <= m._input_problem._variable_count)
-MOI.is_valid(m::Optimizer, c::CI{F,S}) where {F<:Union{SAF,SQF}, S<:INEQ_SETS} = (1 <= c.value <= length(_constraints(m,F,S)))
+MOI.is_valid(m::Optimizer, c::CI{F,S}) where {F<:Union{SAF,SQF,MOI.ScalarNonlinearFunction}, S<:INEQ_SETS} = (1 <= c.value <= length(_constraints(m,F,S)))
 
 MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{VI,S}) where S<:VAR_SETS = length(_constraints(m,VI,S))
-MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F<:Union{SAF,SQF},S<:INEQ_SETS} = length(_constraints(m,F,S))
+MOI.get(m::Optimizer, ::MOI.NumberOfConstraints{F,S}) where {F<:Union{SAF,SQF,MOI.ScalarNonlinearFunction},S<:INEQ_SETS} = length(_constraints(m,F,S))
 
 MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{VI,S}) where S<:VAR_SETS = collect(keys(_constraints(m,VI,S)))
-MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{F,S}) where {F<:Union{SAF,SQF},S<:INEQ_SETS} = collect(keys(_constraints(m,F,S)))
+MOI.get(m::Optimizer, ::MOI.ListOfConstraintIndices{F,S}) where {F<:Union{SAF,SQF,MOI.ScalarNonlinearFunction},S<:INEQ_SETS} = collect(keys(_constraints(m,F,S)))
 
 function MOI.add_variable(m::Optimizer)
     vi = VI(m._input_problem._variable_count += 1)
@@ -57,10 +62,31 @@ function MOI.add_variable(m::Optimizer, name::String)
     return vi
 end
 
-function MOI.add_constraint(m::Optimizer, f::F, s::S) where {F<:Union{SAF,SQF},S<:INEQ_SETS}
+function MOI.add_constraint(m::Optimizer, f::F, s::S) where {F<:Union{SAF,SQF,MOI.ScalarNonlinearFunction},S<:INEQ_SETS}
     check_inbounds!(m, f)
     ci = CI{F, S}(m._input_problem._constraint_count += 1)
-    _constraints(m, F, S)[ci] = (f, s)
+    if f isa MOI.ScalarNonlinearFunction
+        if isnothing(m._input_problem._nlp_data)
+            model = MOI.Nonlinear.Model()
+            backend = MOI.Nonlinear.SparseReverseMode()
+            vars = MOI.get(m, MOI.ListOfVariableIndices())
+            evaluator = MOI.Nonlinear.Evaluator(model, backend, vars) 
+            m._input_problem._nlp_data = MOI.NLPBlockData(evaluator)
+        end
+        MOI.Nonlinear.add_constraint(m._input_problem._nlp_data.evaluator.model, f, s)
+        constraint_bounds = m._input_problem._nlp_data.constraint_bounds
+        has_objective = m._input_problem._nlp_data.has_objective
+        if s isa MOI.LessThan
+            push!(constraint_bounds, MOI.NLPBoundsPair(-Inf, s.upper))
+        elseif s isa MOI.GreaterThan
+            push!(constraint_bounds, MOI.NLPBoundsPair(s.lower, Inf))
+        else
+            push!(constraint_bounds, MOI.NLPBoundsPair(s.value, s.value))
+        end
+        m._input_problem._nlp_data = MOI.NLPBlockData(constraint_bounds, m._input_problem._nlp_data.evaluator, has_objective)
+    else
+        _constraints(m, F, S)[ci] = (f, s)
+    end
     return ci
 end
 function MOI.add_constraint(m::Optimizer, f::VI, s::S) where S<:VAR_SETS
@@ -230,7 +256,7 @@ MOI.get(m::Optimizer, p::MOI.RawStatusString) = string(m._global_optimizer._end_
 #####
 MOI.supports(::Optimizer, ::MOI.TimeLimitSec) = true
 MOI.supports(::Optimizer, ::MOI.ObjectiveSense) = true
-MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{VI, SAF, SQF}} = true
+MOI.supports(::Optimizer, ::MOI.ObjectiveFunction{F}) where {F <: Union{VI, SAF, SQF, MOI.ScalarNonlinearFunction}} = true
 
 function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     if nlp_data.has_objective
@@ -239,9 +265,20 @@ function MOI.set(m::Optimizer, ::MOI.NLPBlock, nlp_data::MOI.NLPBlockData)
     m._input_problem._nlp_data = nlp_data
 end
 
-function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Union{VI,SAF,SQF}
+function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Union{VI,SAF,SQF,MOI.ScalarNonlinearFunction}
     check_inbounds!(m, f)
-    m._input_problem._objective = f
+    if f isa MOI.ScalarNonlinearFunction
+        if isnothing(m._input_problem._nlp_data)
+            model = MOI.Nonlinear.Model()
+            backend = MOI.Nonlinear.SparseReverseMode()
+            vars = MOI.get(m, MOI.ListOfVariableIndices())
+            evaluator = MOI.Nonlinear.Evaluator(model, backend, vars) 
+            m._input_problem._nlp_data = MOI.NLPBlockData(evaluator)
+        end
+        MOI.Nonlinear.set_objective(m._input_problem._nlp_data.evaluator.model, f)
+    else
+        m._input_problem._objective = f
+    end
 end
 MOI.get(m::Optimizer, ::MOI.ObjectiveFunction{T}) where T <: Union{VI,SAF,SQF} = m._input_problem._objective
 MOI.get(m::Optimizer, ::MOI.ObjectiveFunctionType) = typeof(m._input_problem._objective)

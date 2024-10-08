@@ -71,32 +71,28 @@ This model can be formulated using JuMP code as:
 ```julia
 using JuMP, EAGO
 
-m = Model(EAGO.Optimizer)
+model = Model(EAGO.Optimizer)
 
 # Define bounded variables
 xL = [10.0; 0.0; 0.0; 0.0; 0.0; 85.0; 90.0; 3.0; 1.2; 145.0]
 xU = [2000.0; 16000.0; 120.0; 5000.0; 2000.0; 93.0; 95.0; 12.0; 4.0; 162.0]
-@variable(m, xL[i] <= x[i=1:10] <= xU[i])
+@variable(model, xL[i] <= x[i=1:10] <= xU[i])
 
-# Define nonlinear constraints
-@NLconstraint(m, e1, -x[1]*(1.12 + 0.13167*x[8] - 0.00667*(x[8])^2) + x[4] == 0.0)
-@NLconstraint(m, e3, -0.001*x[4]*x[9]*x[6]/(98.0 - x[6]) + x[3] == 0.0)
-@NLconstraint(m, e4, -(1.098*x[8] - 0.038*(x[8])^2) - 0.325*x[6] + x[7] == 57.425)
-@NLconstraint(m, e5, -(x[2] + x[5])/x[1] + x[8] == 0.0)
+# Define constraints
+@constraint(model, e1, -x[1]*(1.12 + 0.13167*x[8] - 0.00667*(x[8])^2) + x[4] == 0.0)
+@constraint(model, e2, -x[1] + 1.22*x[4] - x[5] == 0.0)
+@constraint(model, e3, -0.001*x[4]*x[9]*x[6]/(98.0 - x[6]) + x[3] == 0.0)
+@constraint(model, e4, -(1.098*x[8] - 0.038*(x[8])^2) - 0.325*x[6] + x[7] == 57.425)
+@constraint(model, e5, -(x[2] + x[5])/x[1] + x[8] == 0.0)
+@constraint(model, e6, x[9] + 0.222*x[10] == 35.82)
+@constraint(model, e7, -3.0*x[7] + x[10] == -133.0)
 
-# Define linear constraints
-@constraint(m, e2, -x[1] + 1.22*x[4] - x[5] == 0.0)
-@constraint(m, e6, x[9] + 0.222*x[10] == 35.82)
-@constraint(m, e7, -3.0*x[7] + x[10] == -133.0)
-
-# Define nonlinear objective
-@NLobjective(m, Max, 0.063*x[4]*x[7] - 5.04*x[1] - 0.035*x[2] - 10*x[3] - 3.36*x[5])
+# Define objective
+@objective(model, Max, 0.063*x[4]*x[7] - 5.04*x[1] - 0.035*x[2] - 10*x[3] - 3.36*x[5])
 
 # Solve the optimization problem
-JuMP.optimize!(m)
+JuMP.optimize!(model)
 ```
-
-Special handling has been included for linear/quadratic functions defined using the `@constraint` macro in JuMP and these can generally be expected to perform better than specifying quadratic or linear terms with the `@NLconstraint` macro.
 
 ## A Cautionary Note on Global Optimization
 
