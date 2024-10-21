@@ -81,27 +81,12 @@ function test_runtests()
             "test_quadratic_integration",
             "test_quadratic_nonhomogeneous",
             "test_modification_affine_deletion_edge_cases",
-            # MOI bridge issues
-            "test_basic_VectorNonlinearFunction_AllDifferent",
-            "test_basic_VectorNonlinearFunction_BinPacking",
-            "test_basic_VectorNonlinearFunction_Circuit",
-            "test_basic_VectorNonlinearFunction_Complements",
-            "test_basic_VectorNonlinearFunction_CountAtLeast",
-            "test_basic_VectorNonlinearFunction_CountBelongs",
-            "test_basic_VectorNonlinearFunction_CountDistinct",
-            "test_basic_VectorNonlinearFunction_CountGreaterThan",
-            "test_basic_VectorNonlinearFunction_GeometricMeanCone",
+            # These test check `isapprox` between the `VectorNonlinearFunction`
+            # and another one that was modified by bridges so they fail
+            # See https://github.com/jump-dev/MathOptInterface.jl/issues/2553
             "test_basic_VectorNonlinearFunction_HyperRectangle",
-            "test_basic_VectorNonlinearFunction_Nonnegatives",
-            "test_basic_VectorNonlinearFunction_Nonpositives",
             "test_basic_VectorNonlinearFunction_NormInfinityCone",
             "test_basic_VectorNonlinearFunction_NormOneCone",
-            "test_basic_VectorNonlinearFunction_RotatedSecondOrderCone",
-            "test_basic_VectorNonlinearFunction_SecondOrderCone",
-            "test_basic_VectorNonlinearFunction_SOS1",
-            "test_basic_VectorNonlinearFunction_SOS2",
-            "test_basic_VectorNonlinearFunction_Table",
-            "test_basic_VectorNonlinearFunction_Zeros",
             # TODO: bug related to unbounded_check
             "test_nonlinear_expression_quartic",
             # TODO: bug related to reform_epigraph_min
