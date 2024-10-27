@@ -19,7 +19,7 @@ The system of interest is derived from an example originally presented by [[2](#
 
 where the rate constants ``k_{1}`` and ``k_{2}`` ``[h^{-1}]`` are known and the reactor volume ``V`` ``[m^{3}]`` and feed flow rate ``F_{1}`` ``[kmol/h]`` are considered free design variables. The CSTR is followed by a separation train for product purification and reactant recycle.
 
-![mtk_pfd](assets/mtk_pfd.png)
+![mtk_pfd](../assets/mtk_pfd.png)
 
 For simplicity, the reactions will be first-order (no dependence on ``\text{Cl}_{2}``) with respect to benzene (A) and chlorobenzene (B). The molar volumes of each species are: ``V_{A} = 8.937 \times 10^{-2} \; m^{3}/kmol``, ``V_{B} = 1.018 \times 10^{-1} \;  m^{3}/kmol``, and ``V_{C} = 1.13 \times 10^{-1} \; m^{3}/kmol`` with dichlorobenzene as C. The feed is considered to be pure A (ignoring ``\text{Cl}_{2}``). The rate constants are ``k_{1} = 0.40 \; h^{-1}`` and ``k_{2} = 0.055 \; h^{-1}``. The steady-state model equations are:
 
