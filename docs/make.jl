@@ -51,7 +51,8 @@ makedocs(modules = [EAGO, McCormick],
                      "Examples" => Any["examples/explicit_ann.md",
                                        "examples/interval_bb.md",
                                        "examples/quasiconvex.md",
-                                       "examples/alpha_bb.md"
+                                       "examples/alpha_bb.md",
+                                       "examples/modelingtoolkit.md"
                                        ],
                      "API Reference" => Any["dev/api_types.md",
                                             "dev/api_functions.md"
