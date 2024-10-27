@@ -716,7 +716,8 @@ end
     end
     @test_nowarn EAGO.print_results!(m, true)
     @test_nowarn EAGO.print_results!(m, false)
-    @test_nowarn EAGO.print_iteration!(m)
+    @test_nowarn EAGO.print_iteration!(m, false)
+    @test_nowarn EAGO.print_iteration!(m, true)
     @test_nowarn EAGO.print_node!(m)
     @test_nowarn EAGO.print_problem_summary!(d, "Display Test")
 end
