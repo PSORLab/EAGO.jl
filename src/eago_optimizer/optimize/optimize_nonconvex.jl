@@ -372,8 +372,7 @@ Pseudocode description of the algorithm, as implemented here:
 """
 function global_solve!(m::GlobalOptimizer)
 
-    # Set counts to 1
-    m._iteration_count = 1
+    # Set initial node count
     m._node_count = 1
 
     # Prepare to run branch-and-bound
@@ -384,6 +383,8 @@ function global_solve!(m::GlobalOptimizer)
     # Run branch and bound; terminate when the stack is empty or when some
     # tolerance or limit is hit
     while !termination_check(m)
+        # Update iteration counter
+        m._iteration_count += 1
 
         # Fathom nodes from the stack, then pick a node and temporarily remove
         # it from the stack
@@ -440,10 +441,9 @@ function global_solve!(m::GlobalOptimizer)
         m._run_time = time() - m._start_time
         m._time_left = m._parameters.time_limit - m._run_time
 
-        # Log and print information as needed and update the iteration counter
+        # Log and print information as needed
         log_iteration!(m)
-        print_iteration!(m)
-        m._iteration_count += 1
+        print_iteration!(m, false)
     end
 
     # Since the algorithm has terminated, convert EAGO's end status into
@@ -452,6 +452,7 @@ function global_solve!(m::GlobalOptimizer)
     set_result_status!(m)
 
     # Print final information about the solution
+    print_iteration!(m, true)
     print_solution!(m)
 end
 

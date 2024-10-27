@@ -29,7 +29,7 @@ function print_solution!(m::GlobalOptimizer)
         elseif m._end_state == GS_NODE_LIMIT
             println("Node Limit Exceeded")
         elseif m._end_state == GS_ITERATION_LIMIT
-            println("Maximum Iteration Exceeded")
+            println("Iteration Limit Exceeded")
         elseif m._end_state == GS_RELATIVE_TOL
             println("Relative Tolerance Achieved")
         elseif m._end_state == GS_ABSOLUTE_TOL
@@ -39,24 +39,14 @@ function print_solution!(m::GlobalOptimizer)
         end
         if m._end_state == GS_OPTIMAL || m._end_state == GS_RELATIVE_TOL || m._end_state == GS_ABSOLUTE_TOL
             println("Optimal Solution Found at Node $(m._solution_node)")
-            if !_is_input_min(m)
-                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
-                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
-            else
-                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
-                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
-            end
+            println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+            println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
         elseif m._end_state == GS_INFEASIBLE
             println("No Solution Found")
         else
             println("Best Solution Found at Node $(m._solution_node)")
-            if !_is_input_min(m)
-                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
-                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
-            else
-                println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
-                println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
-            end
+            println("Lower Bound: $(MOI.get(m, MOI.ObjectiveBound()))")
+            println("Upper Bound: $(MOI.get(m, MOI.ObjectiveValue()))")
         end
         if m._feasible_solution_found
             println("Solution:")
@@ -68,7 +58,7 @@ function print_solution!(m::GlobalOptimizer)
             addlen = maxlen .- length.(variable_names)
             print_list = " ".^addlen.*variable_names
             for i = 1:m._input_problem._variable_count
-            println("  $(print_list[i]) = $(m._continuous_solution[i])")
+            println("   $(print_list[i]) = $(m._continuous_solution[i])")
             end
         end
         println(" ")
@@ -106,22 +96,22 @@ Print status information based on iteration count. The header print frequency is
 based on the `header_iterations` setting, and the data print frequency is based on
 the `output_iterations` setting.
 """
-function print_iteration!(m::GlobalOptimizer)
+function print_iteration!(m::GlobalOptimizer, end_flag::Bool)
 
     if _verbosity(m) > 0
 
         # Print header line every `header_iterations` times and print iteration summary every `output_iterations` times
-        if mod(m._iteration_count, m._parameters.output_iterations) === 0
+        if m._last_printed_iteration != m._iteration_count && (mod(m._iteration_count, m._parameters.output_iterations) === 0 || end_flag)
             if m._iteration_count == m._parameters.output_iterations || mod(m._iteration_count, m._parameters.header_iterations) < m._parameters.output_iterations
                 println("---------------------------------------------------------------------------------------------------------------------------------")
                 println("|  Iteration #  |     Nodes     |  Lower Bound  |  Upper Bound  |      Gap      |     Ratio     |     Timer     |   Time Left   |")
                 println("---------------------------------------------------------------------------------------------------------------------------------")
             end
             # Print start
-            print_str = "|  "
+            print_str = "| "
 
             # Print iteration number
-            max_len = 12
+            max_len = 13
             temp_str = string(m._iteration_count)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
@@ -132,24 +122,15 @@ function print_iteration!(m::GlobalOptimizer)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
-            # Determine lower and upper bound
-            if _is_input_min(m)
-                lower = m._global_lower_bound
-                upper = m._global_upper_bound
-            else
-                lower = m._global_lower_bound
-                upper = m._global_upper_bound
-            end
-
             # Print lower bound
             max_len = 13
-            temp_str = @sprintf "%.3E" lower
+            temp_str = @sprintf "%.3E" m._global_lower_bound
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print upper bound
             max_len = 13
-            temp_str = @sprintf "%.3E" upper
+            temp_str = @sprintf "%.3E" m._global_upper_bound
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
@@ -167,17 +148,23 @@ function print_iteration!(m::GlobalOptimizer)
 
             # Print run time
             max_len = 13
-            temp_str = @sprintf "%.3E" m._run_time
+            temp_str = @sprintf "%.2F" m._run_time
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print time remaining
             max_len = 13
-            temp_str = @sprintf "%.3E" m._time_left
+            temp_str = @sprintf "%.2F" m._time_left
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |"
 
             println(print_str)
+
+            # Update printed iteration
+            m._last_printed_iteration = m._iteration_count
+        end
+        if end_flag
+            println("---------------------------------------------------------------------------------------------------------------------------------")
         end
     end
 
@@ -225,8 +212,8 @@ end
 $(FUNCTIONNAME)
 
 Print noteworthy information prior to running branch-and-bound. Currently prints
-a note about flipping `max(f)` to `-min(-f)` internally, if a maximization problem
-is inputted and `verbosity>=3`.
+a note about flipping `max(f)` to `-min(-f)` internally, if the input is a 
+maximization problem and `verbosity>=3`.
 """
 function print_preamble!(m::GlobalOptimizer)
     if _verbosity(m) >= 3

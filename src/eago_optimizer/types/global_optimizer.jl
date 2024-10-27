@@ -706,6 +706,8 @@ Base.@kwdef mutable struct GlobalOptimizer{Q,S,T<:ExtensionType} <: MOI.Abstract
     _last_upper_problem_time::Float64 = 0.0
     "Updated each iteration to track the time of the postprocess step"
     _last_postprocessing_time::Float64 = 0.0
+    "Updated each time an iteration is printed"
+    _last_printed_iteration::Int = 0
 
     # Reset in initial_parse! in parse.jl
     "A field to track convergence progress across iterations"
