@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>ModelingToolkit Example · EAGO.jl</title><meta name="title" content="ModelingToolkit Example · EAGO.jl"/><meta property="og:title" content="ModelingToolkit Example · EAGO.jl"/><meta property="twitter:title" content="ModelingToolkit Example · EAGO.jl"/><meta name="description" content="Documentation for EAGO.jl."/><meta property="og:description" content="Documentation for EAGO.jl."/><meta property="twitter:description" content="Documentation for EAGO.jl."/><meta property="og:url" content="https://PSORLab.github.io/EAGO.jl/stable/examples/modelingtoolkit/"/><meta property="twitter:url" content="https://PSORLab.github.io/EAGO.jl/stable/examples/modelingtoolkit/"/><link rel="canonical" href="https://PSORLab.github.io/EAGO.jl/stable/examples/modelingtoolkit/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="EAGO.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">EAGO.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><input class="collapse-toggle" id="menuitem-2" type="checkbox"/><label class="tocitem" for="menuitem-2"><span class="docs-label">Manual</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><label class="tocitem" for="menuitem-2-1"><span class="docs-label">Optimizer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../optimizer/optimizer/">EAGO Optimizer</a></li><li><a class="tocitem" href="../../optimizer/bnb_back/">EAGO&#39;s Branch and Bound Routine</a></li><li><a class="tocitem" href="../../optimizer/relax_back/">Nonlinear Backend</a></li><li><a class="tocitem" href="../../optimizer/domain_reduction/">Domain Reduction</a></li><li><a class="tocitem" href="../../optimizer/high_performance/">High-Performance Configuration</a></li><li><a class="tocitem" href="../../optimizer/udf_utilities/">User-Defined Functions and Directed Acyclic Graph Utilities</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><label class="tocitem" for="menuitem-2-2"><span class="docs-label">McCormick.jl</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../mccormick/overview/">Overview</a></li><li><a class="tocitem" href="../../mccormick/usage/">Basic Usage</a></li><li><a class="tocitem" href="../../mccormick/operators/">Currently Supported Operators</a></li><li><a class="tocitem" href="../../mccormick/type/">Types</a></li><li><a class="tocitem" href="../../mccormick/implicit/">Relaxation of Implicit Functions</a></li></ul></li><li><a class="tocitem" href="../../semiinfinite/semiinfinite/">Semi-Infinite Programming</a></li></ul></li><li><a class="tocitem" href="../../custom_guidelines/">Customization</a></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../explicit_ann/">Standard-Use Example 1</a></li><li><a class="tocitem" href="../interval_bb/">Standard-Use Example 2</a></li><li><a class="tocitem" href="../quasiconvex/">Advanced-Use Example 1</a></li><li><a class="tocitem" href="../alpha_bb/">Advanced-Use Example 2</a></li><li class="is-active"><a class="tocitem" href>ModelingToolkit Example</a><ul class="internal"><li><a class="tocitem" href="#Defining-Nonlinear-System"><span>Defining Nonlinear System</span></a></li><li><a class="tocitem" href="#Modeling-and-Simplifying-Using-ModelingToolkit"><span>Modeling and Simplifying Using ModelingToolkit</span></a></li><li><a class="tocitem" href="#Converting-to-a-Standard-Function"><span>Converting to a Standard Function</span></a></li><li><a class="tocitem" href="#Solving-the-Optimization-Problem-with-EAGO"><span>Solving the Optimization Problem with EAGO</span></a></li><li><a class="tocitem" href="#Full-Space-Formulation"><span>Full-Space Formulation</span></a></li><li><a class="tocitem" href="#References"><span>References</span></a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API Reference</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../dev/api_types/">Types</a></li><li><a class="tocitem" href="../../dev/api_functions/">Functions</a></li></ul></li><li><a class="tocitem" href="../../dev/contributing/">Contributing</a></li><li><a class="tocitem" href="../../news/">News</a></li><li><a class="tocitem" href="../../cite/">Citing EAGO</a></li><li><a class="tocitem" href="../../ref/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>ModelingToolkit Example</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>ModelingToolkit Example</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PSORLab/EAGO.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/examples/modelingtoolkit.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="ModelingToolkit-Example"><a class="docs-heading-anchor" href="#ModelingToolkit-Example">ModelingToolkit Example</a><a id="ModelingToolkit-Example-1"></a><a class="docs-heading-anchor-permalink" href="#ModelingToolkit-Example" title="Permalink"></a></h1><p>This example is also provided <a href="https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/mtk_system.ipynb">here as a Jupyter Notebook</a>.</p><h3 id="Using-ModelingToolkit-NonlinearSystem-models-with-EAGO"><a class="docs-heading-anchor" href="#Using-ModelingToolkit-NonlinearSystem-models-with-EAGO">Using ModelingToolkit NonlinearSystem models with EAGO</a><a id="Using-ModelingToolkit-NonlinearSystem-models-with-EAGO-1"></a><a class="docs-heading-anchor-permalink" href="#Using-ModelingToolkit-NonlinearSystem-models-with-EAGO" title="Permalink"></a></h3><p>This is a tutorial for exporting ModelingToolkit [<a href="#References">1</a>] <a href="https://docs.sciml.ai/ModelingToolkit/stable/systems/NonlinearSystem/#ModelingToolkit.NonlinearSystem"><code>NonlinearSystem</code></a> models as standard Julia functions, which can then be used as EAGO-compatible equality constraints in JuMP models.</p><h2 id="Defining-Nonlinear-System"><a class="docs-heading-anchor" href="#Defining-Nonlinear-System">Defining Nonlinear System</a><a id="Defining-Nonlinear-System-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-Nonlinear-System" title="Permalink"></a></h2><p>The system of interest is derived from an example originally presented by [<a href="#References">2</a>] that involves a continuous stirred-tank reactor (CSTR) and separator train (with recycle) for the chlorination of benzene with the following reactions taking place:</p><p class="math-container">\[\begin{array}{rcl}
+\text{C}_{6} \text{H}_{6} + \text{Cl}_{2} &amp;\rightarrow&amp; \text{C}_{6} \text{H}_{5} \text{Cl} + \text{HCl}\\
+\text{C}_{6} \text{H}_{5} \text{Cl} + \text{Cl}_{2} &amp;\rightarrow&amp; \text{C}_{6} \text{H}_{4} \text{Cl}_{2} + \text{HCl}
+\end{array}\]</p><p>where the rate constants <span>$k_{1}$</span> and <span>$k_{2}$</span> <span>$[h^{-1}]$</span> are known and the reactor volume <span>$V$</span> <span>$[m^{3}]$</span> and feed flow rate <span>$F_{1}$</span> <span>$[kmol/h]$</span> are considered free design variables. The CSTR is followed by a separation train for product purification and reactant recycle.</p><p><img src="../../assets/mtk_pfd.png" alt="mtk_pfd"/></p><p>For simplicity, the reactions will be first-order (no dependence on <span>$\text{Cl}_{2}$</span>) with respect to benzene (A) and chlorobenzene (B). The molar volumes of each species are: <span>$V_{A} = 8.937 \times 10^{-2} \; m^{3}/kmol$</span>, <span>$V_{B} = 1.018 \times 10^{-1} \;  m^{3}/kmol$</span>, and <span>$V_{C} = 1.13 \times 10^{-1} \; m^{3}/kmol$</span> with dichlorobenzene as C. The feed is considered to be pure A (ignoring <span>$\text{Cl}_{2}$</span>). The rate constants are <span>$k_{1} = 0.40 \; h^{-1}$</span> and <span>$k_{2} = 0.055 \; h^{-1}$</span>. The steady-state model equations are:</p><p class="math-container">\[\begin{array}{rclr}
+    F_{1} + F_{7} &amp;=&amp; F_{2} &amp; (\text{mixer})\\	
+	y_{3,A} F_{3} &amp;=&amp; F_{2} - r_{1} V &amp; (\text{reactor})\\
+	y_{3,B} F_{3} &amp;=&amp;  (r_{1} - r_{2}) V &amp; (\text{reactor})\\
+	y_{3,C} F_{3} &amp;=&amp;  r_{2} V &amp; (\text{reactor})\\
+	F_{3} &amp;=&amp; F_{4} + F_{7} &amp; (\text{separator 1})\\
+	y_{3,B} F_{3} &amp;=&amp; y_{4,B} F_{4} &amp; (\text{separator 1})\\
+	y_{3,C} F_{3} &amp;=&amp; y_{4,C} F_{4} &amp; (\text{separator 1})\\
+	F_{4} &amp;=&amp; F_{5} + F_{6} &amp; (\text{separator 2})\\
+	y_{4,B} F_{4} &amp;=&amp; F_{5} &amp; (\text{separator 2})\\
+	y_{3,A} + y_{3,B} + y_{3,C} &amp;=&amp; 1 &amp; (\text{relationship})\\
+	y_{4,B} + y_{4,C} &amp;=&amp; 1 &amp; (\text{relationship})
+\end{array}\]</p><p>where <span>$y_{i,j}$</span> is the mole fraction of <span>$j \in \{A,B,C\}$</span> in Stream <span>$i \in \{3,4\}$</span> (with <span>$y_{4,A} = 0$</span>) and <span>$r_{1}$</span> and <span>$r_{2}$</span> are the reaction rates <span>$[kmol/(m^{3} h)]$</span> defined as:</p><p class="math-container">\[\begin{array}{rcl}
+r_{1} &amp;=&amp; k_{1} y_{3,A}/(y_{3,A} V_{A} + y_{3,B} V_{B} + y_{3,C} V_{C})\\
+r_{2} &amp;=&amp; k_{2} y_{3,B}/(y_{3,A} V_{A} + y_{3,B} V_{B} + y_{3,C} V_{C})
+\end{array}\]</p><p>with the variable vector <span>$\mathbf{x} \in \mathbb{R}^{12}$</span>:</p><p class="math-container">\[\mathbf{x} = (V, F_{1}, F_{2}, y_{3,A}, y_{3,B}, y_{3,C}, F_{3}, y_{4,B}, y_{4,C}, F_{4}, F_{6}, F_{7}).\]</p><h3 id="Performance-Specifications"><a class="docs-heading-anchor" href="#Performance-Specifications">Performance Specifications</a><a id="Performance-Specifications-1"></a><a class="docs-heading-anchor-permalink" href="#Performance-Specifications" title="Permalink"></a></h3><p>We must produce at least 25 <span>$kmol/h$</span> of B (<span>$F_{5} \ge 25$</span>) and cannot have a reactor larger than 10 <span>$m^{3}$</span> due to space limitations. From a laboratory study, it was found that the residence time <span>$\tau$</span> <span>$[h]$</span> for the reactor must be at least 475 seconds. Residence time can be defined as:</p><p class="math-container">\[\tau = \frac{V}{F_{3} (y_{3,A} V_{A} + y_{3,B} V_{B} + y_{3,C} V_{C})}.\]</p><h3 id="Design-Problem"><a class="docs-heading-anchor" href="#Design-Problem">Design Problem</a><a id="Design-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Design-Problem" title="Permalink"></a></h3><p>We will consider an economic objective for our optimization problem as the total annualized costs of the unit operations. The total annualized cost of the CSTR is given by</p><p class="math-container">\[f_{CSTR} = (25764 + 8178V)/2.5\]</p><p>and the total annualized cost of the separator train is given by:</p><p class="math-container">\[\begin{array}{rcl}
+s_{1}^{cap} &amp;=&amp; 132718 + F_{3} (369 y_{3,A} - 1113.9 y_{3,B})\\
+s_{2}^{cap} &amp;=&amp; 25000 + F_{4} (6984.5 y_{4,B} - 3869.53 y_{4,C}^{2})\\
+s_{1}^{op} &amp;=&amp; F_{3} (3 + 36.11 y_{3,A} + 7.71 y_{3,B}) (26.32 \times 10^{-3})\\
+s_{2}^{op} &amp;=&amp; F_{4} (26.21 + 29.45 y_{4,B}) (26.32 \times 10^{-3})\\
+f_{sep} &amp;=&amp; (s_{1}^{cap} + s_{2}^{cap})/2.5 + 0.52 (s_{1}^{op} + s_{2}^{op}).
+\end{array}\]</p><p>The total annualized cost of the complete system is then given by</p><p class="math-container">\[f_{total} = f_{CSTR} + f_{sep}.\]</p><h2 id="Modeling-and-Simplifying-Using-ModelingToolkit"><a class="docs-heading-anchor" href="#Modeling-and-Simplifying-Using-ModelingToolkit">Modeling and Simplifying Using ModelingToolkit</a><a id="Modeling-and-Simplifying-Using-ModelingToolkit-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling-and-Simplifying-Using-ModelingToolkit" title="Permalink"></a></h2><pre><code class="language-julia hljs">using EAGO, GLPK, JuMP, ModelingToolkit</code></pre><p>First, we define the state variables with <code>@variables</code> and model parameters with <code>@parameters</code>. Note that the design variables <span>$V$</span> and <span>$F_{1}$</span> are considered parameters so we have a square system (10 equations, 10 unknowns).</p><pre><code class="language-julia hljs"># State variables
+ModelingToolkit.@variables F₂ y_3A y_3B y_3C F₃ y_4B y_4C F₄ F₆ F₇
+
+# Model parameters and design variables
+ModelingToolkit.@parameters k₁ k₂ V_A V_B V_C V F₁</code></pre><p>Next, we can write symbolic expressions for <span>$r_{1}$</span>, <span>$r_{2}$</span>, and <span>$F_{5}$</span> to help simplify our model equations.</p><pre><code class="language-julia hljs"># Symbolic expressions for reaction rates and F₅
+r₁ = (k₁*y_3A)/(y_3A*V_A + y_3B*V_B + y_3C*V_C)
+r₂ = (k₂*y_3B)/(y_3A*V_A + y_3B*V_B + y_3C*V_C)
+F₅ = (y_4B*F₄)</code></pre><p>The variables, parameters, and steady-state model equations are then used to construct the <code>NonlinearSystem</code>.</p><pre><code class="language-julia hljs"># Steady-state model equations
+eqs = [
+    F₁ + F₇ ~ F₂
+    (y_3A*F₃) ~ F₂ - r₁*V
+    (y_3B*F₃) ~ (r₁ - r₂)*V
+    (y_3C*F₃) ~ r₂*V
+    F₃ ~ F₄ + F₇
+    (y_3B*F₃) ~ (y_4B*F₄)
+    (y_3C*F₃) ~ (y_4C*F₄)
+    F₄ ~ F₅ + F₆
+    y_3A + y_3B + y_3C ~ 1
+    y_4B + y_4C ~ 1
+]
+
+# Variables and parameters
+vars = [F₂, y_3A, y_3B, y_3C, F₃, y_4B, y_4C, F₄, F₆, F₇]
+pars = [k₁, k₂, V_A, V_B, V_C, V, F₁]
+
+# Building and simplifying model
+@mtkbuild ns = NonlinearSystem(eqs, vars, pars)</code></pre><p><code>@mtkbuild</code> simplifies the model down to 4 equations and 4 unknowns, significantly reducing the dimensionality of this system. The variables that were eliminated during the simplification process are called &quot;observed variables,&quot; and their expressions can be obtained using <code>observed(::NonlinearSystem)</code>.</p><h2 id="Converting-to-a-Standard-Function"><a class="docs-heading-anchor" href="#Converting-to-a-Standard-Function">Converting to a Standard Function</a><a id="Converting-to-a-Standard-Function-1"></a><a class="docs-heading-anchor-permalink" href="#Converting-to-a-Standard-Function" title="Permalink"></a></h2><p>Now that we&#39;ve simplified our model, we need to covert the symbolic model equations into standard Julia functions in order to use them with EAGO. This can be accomplished through the use of <code>Symbolics.build_function</code>, which generates a numerically-usable function from a symbolic expression. Since <code>Symbolics.jl</code> is already built into <code>ModelingToolkit.jl</code>, no additional packages need to be installed.</p><p>To simplify the use of <code>build_function</code> for our purposes, we first create the function <code>ns_to_function()</code> that takes in a <code>NonlinearSystem</code>, a vector of parameters, and a vector of function inputs, and returns a vector of standard Julia functions corresponding to the simplified model equations in the nonlinear system.</p><pre><code class="language-julia hljs"># Converts symbolic model equations into standard Julia functions
+function ns_to_function(ns::NonlinearSystem, params::Vector{Pair{Num,Float64}}, vars::Vector{Num})
+    function_holder = []
+    # For each model equation, substitute parameter values and create function
+    for eqn in full_equations(ns)
+        expr = substitute(eqn.rhs, Dict{Num,Any}(params))
+        new_func = build_function(expr, vars..., expression = Val{false})
+        push!(function_holder, new_func)
+    end
+    return function_holder
+end</code></pre><p>To use this function, we first assign values to our known parameters, define our function inputs, and then call <code>ns_to_function()</code> to obtain our desired functions.</p><pre><code class="language-julia hljs"># Assign parameter values
+params = [
+    k₁ =&gt; 0.40,
+    k₂ =&gt; 0.055,
+    V_A =&gt; 8.937e-2,
+    V_B =&gt; 1.018e-1,
+    V_C =&gt; 1.130e-1
+]
+
+# Function inputs (design and state variables)
+x = [V, F₁, y_3B, y_3C, F₃, y_4C]
+
+# Create functions for each model equation as a function of design and state variables
+f = ns_to_function(ns, params, x)</code></pre><p>We now have standard Julia functions for each model equation which can be used as equality constraints in our JuMP [<a href="#References">3</a>] model. </p><p>We&#39;ll also create functions for our inequality constraints (<span>$F_{5}$</span>, <span>$\tau$</span>) and objective function (<span>$f_{total}$</span>). Since these functions are not expressed in terms of the two design variables (<span>$V$</span> and <span>$F_{1}$</span>) and the four state variables (<span>$y_{3,B}$</span>, <span>$y_{3,C}$</span>, <span>$F_{3}$</span>, <span>$y_{4,C}$</span>), we&#39;ll create a function <code>expr_to_function()</code> to substitute the <code>NonlinearSystem</code> observed variables into our input expression before calling <code>build_function</code>.</p><p>All we have to do now is write the symbolic expressions for <span>$F_{5}$</span>, <span>$\tau$</span>, and <span>$f_{total}$</span>, then call <code>expr_to_function()</code> for each expression.</p><pre><code class="language-julia hljs"># Converts symbolic expression into standard Julia function, substituting parameter and observed variable expressions
+function expr_to_function(expr::Num, ns::NonlinearSystem, params::Vector{Pair{Num,Float64}}, vars::Vector{Num})
+    # Creates a dictionary of parameter and observed variable substitutions
+    substitute_dict = Dict{Num,Any}(params)
+    for eqn in observed(ns)
+        substitute_dict[eqn.lhs] = eqn.rhs
+    end
+    # Makes substitutions until no substitutions can be made
+    while ~isempty(intersect(string.(get_variables(expr)), string.(keys(substitute_dict))))
+        expr = substitute(expr, substitute_dict)
+    end
+    return build_function(expr, vars..., expression = Val{false})
+end
+
+# Symbolic expression for F₅
+exprF5 = y_4B*F₄
+
+# Symbolic expression for τ
+exprTau = V/(F₃*(y_3A*V_A + y_3B*V_B + y_3C*V_C))
+
+# Symbolic expressions for CSTR and separator costs
+f_CSTR = (25764 + 8178*V)/2.5
+s1cap = 132718 + F₃*(369*y_3A - 1113.9*y_3B)
+s2cap = 25000 + F₄*(6984.5*y_4B - 3869.53*y_4C^2)
+s1op = F₃*(3+36.11*y_3A + 7.71*y_3B)*26.32e-3
+s2op = F₄*(26.21 + 29.45*y_4B)*26.32e-3;
+f_Sep = (s1cap+s2cap)/2.5 + 0.52*(s1op+s2op)
+
+# Symbolic expression for total cost (objective function)
+exprTotCost = f_CSTR + f_Sep
+
+# Create functions for each expression as a function of design and state variables
+F5 = expr_to_function(exprF5, ns, params, x)
+Tau = expr_to_function(exprTau, ns, params, x)
+TotCost = expr_to_function(exprTotCost, ns, params, x)</code></pre><h2 id="Solving-the-Optimization-Problem-with-EAGO"><a class="docs-heading-anchor" href="#Solving-the-Optimization-Problem-with-EAGO">Solving the Optimization Problem with EAGO</a><a id="Solving-the-Optimization-Problem-with-EAGO-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-Optimization-Problem-with-EAGO" title="Permalink"></a></h2><p>To formulate and solve the design problem, we&#39;ll begin by creating a JuMP model. We&#39;ll also use GLPK as a subsolver because it greatly accelerates convergence for this particular system.</p><pre><code class="language-julia hljs"># Using GLPK subsolver for EAGO
+factory = () -&gt; EAGO.Optimizer(SubSolvers(; r = GLPK.Optimizer()))
+m = Model(optimizer_with_attributes(factory,
+                                    &quot;branch_cvx_factor&quot; =&gt; 0.75,
+                                    &quot;output_iterations&quot; =&gt; 200))</code></pre><p>Next, we need to define bounds for our design variables (<span>$V$</span>, <span>$F_{1}$</span>) and state variables (<span>$y_{3,B}$</span>, <span>$y_{3,C}$</span>, <span>$F_{3}$</span>, <span>$y_{4,C}$</span>). This gives us a total of 6 decision variables in our optimization problem. </p><pre><code class="language-julia hljs"># Define variable bounds
+xL = [5.0, 25.0, 0.1, 0.001, 75.0, 0.01]
+xU = [10.0, 50.0, 0.5, 0.1, 125.0, 0.1]
+# x = (V, F₁, y_3B, y_3C, F₃, y_4C)
+@variable(m, xL[i] &lt;= x[i=1:6] &lt;= xU[i])</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>It&#39;s important to note that defining &quot;good&quot; bounds is especially important for deterministic global solvers like EAGO because of the set arithmetic and interval and convex analyses required to guarantee global optimality. Based on simple linear constraints and understanding what our variables physically represent, we can easily eliminate erroneous regions from the search space and drastically reduce computational cost. For example, we know the reactor volume must be less than or equal to 10 <span>$m^{3}$</span>, but we also know it should be at least a few cubic meters large, so we bound <span>$V$</span> between 5 and 10. Similarly, we know we must produce at least 25 <span>$kmol/h$</span> of B, but this is only possible if there are at least 25 <span>$kmol/h$</span> of A entering the system since we are operating under steady-state conditions with one influent and two effluent streams.</p></div></div><p>Once proper bounds are defined, we continue by registering our user-defined functions and defining our nonlinear constraints (model equations and performance specifications) and objective (minimizing total annualized costs).</p><pre><code class="language-julia hljs"># Register user-defined functions
+JuMP.register(m, :f1, 6, f[1], autodiff=true)
+JuMP.register(m, :f2, 6, f[2], autodiff=true)
+JuMP.register(m, :f3, 6, f[3], autodiff=true)
+JuMP.register(m, :f4, 6, f[4], autodiff=true)
+JuMP.register(m, :F5, 6, F5, autodiff=true)
+JuMP.register(m, :Tau, 6, Tau, autodiff=true)
+JuMP.register(m, :TotCost, 6, TotCost, autodiff=true)
+
+# Define model equation constraints
+@NLconstraint(m, e1, f1(x...) == 0)
+@NLconstraint(m, e2, f2(x...) == 0)
+@NLconstraint(m, e3, f3(x...) == 0)
+@NLconstraint(m, e4, f4(x...) == 0)
+
+# Define performance specification constraints
+@NLconstraint(m, c1, F5(x...) ≥ 25.0)
+@NLconstraint(m, c2, Tau(x...) ≥ 475.0/3600.0)
+
+# Define objective to minimize total annualized costs
+@NLobjective(m, Min, TotCost(x...))</code></pre><p>We&#39;re now ready to solve the optimal design problem. We&#39;ll <code>@time</code> the solver so we can compare convergence times for reduced-space vs full-space formulations later.</p><pre><code class="language-julia hljs"># Solve optimization problem
+@time JuMP.optimize!(m)</code></pre><p>We&#39;ve identified a global optimal solution <span>$\mathbf{x}^* = (8.4594, 26.3167, 0.2631, 0.01386, 95.0215, 0.05003)$</span>. Keep in mind that we can readily calculate values for the observed variables since we have their explicit expressions written in terms of these decision variables.</p><h2 id="Full-Space-Formulation"><a class="docs-heading-anchor" href="#Full-Space-Formulation">Full-Space Formulation</a><a id="Full-Space-Formulation-1"></a><a class="docs-heading-anchor-permalink" href="#Full-Space-Formulation" title="Permalink"></a></h2><p>To compare and showcase the full-space optimization formulation for this system, we&#39;ll quickly formulate and solve the design problem with all 10 model equations using the full variable vector</p><p class="math-container">\[\mathbf{x} = (V, F_{1}, F_{2}, y_{3,A}, y_{3,B}, y_{3,C}, F_{3}, y_{4,B}, y_{4,C},F_{4}, F_{6}, F_{7}).\]</p><p>We can generate functions for each of the original model equations by first initializing the model using <code>@named</code> instead of <code>@mtkbuild</code> to exclude the structural simplification step.</p><pre><code class="language-julia hljs"># Initialize model without structural simplification
+@named fns = NonlinearSystem(eqs, vars, pars)</code></pre><p>Then, we redefine our function inputs and generate our functions in the same way as before.</p><pre><code class="language-julia hljs"># Full variable vector
+x = [V, F₁, F₂, y_3A, y_3B, y_3C, F₃, y_4B, y_4C, F₄, F₆, F₇]
+
+# Create functions for each model equation as a function of the full variable vector
+ff = ns_to_function(fns, params, x)
+
+# Create functions for each expression as a function of the full variable vector
+fF5 = expr_to_function(exprF5, fns, params, x)
+fTau = expr_to_function(exprTau, fns, params, x)
+fTotCost = expr_to_function(exprTotCost, fns, params, x)</code></pre><p>We&#39;ll define a new JuMP model with the same settings, define bounds for each variable, register functions, define constraints and objective, then solve the optimization problem.</p><pre><code class="language-julia hljs">n = Model(optimizer_with_attributes(factory,
+                                    &quot;branch_cvx_factor&quot; =&gt; 0.75,
+                                    &quot;output_iterations&quot; =&gt; 200))
+
+# Define variable bounds
+# New variables:   v    v                      v           v    v     v
+xL = [ 5.0, 25.0, 75.0, 0.5, 0.1, 0.001, 75.0, 0.9, 0.01, 25.0, 0.0, 50.0]
+xU = [10.0, 50.0, 125.0, 1.0, 0.5, 0.1, 125.0, 1.0, 0.1, 50.0, 10.0, 100.0]
+# x = (V, F₁, F₂, y_3A, y_3B, y_3C, F₃, y_4B, y_4C, F₄, F₆, F₇)
+@variable(n, xL[i] &lt;= x[i=1:12] &lt;= xU[i])
+
+# Register user-defined functions
+JuMP.register(n, :f1, 12, ff[1], autodiff=true)
+JuMP.register(n, :f2, 12, ff[2], autodiff=true)
+JuMP.register(n, :f3, 12, ff[3], autodiff=true)
+JuMP.register(n, :f4, 12, ff[4], autodiff=true)
+JuMP.register(n, :f5, 12, ff[5], autodiff=true)
+JuMP.register(n, :f6, 12, ff[6], autodiff=true)
+JuMP.register(n, :f7, 12, ff[7], autodiff=true)
+JuMP.register(n, :f8, 12, ff[8], autodiff=true)
+JuMP.register(n, :f9, 12, ff[9], autodiff=true)
+JuMP.register(n, :f10, 12, ff[10], autodiff=true)
+JuMP.register(n, :F5, 12, fF5, autodiff=true)
+JuMP.register(n, :Tau, 12, fTau, autodiff=true)
+JuMP.register(n, :TotCost, 12, fTotCost, autodiff=true)
+
+# Define model equation constraints
+@NLconstraint(n, e1, f1(x...) == 0)
+@NLconstraint(n, e2, f2(x...) == 0)
+@NLconstraint(n, e3, f3(x...) == 0)
+@NLconstraint(n, e4, f4(x...) == 0)
+@NLconstraint(n, e5, f5(x...) == 0)
+@NLconstraint(n, e6, f6(x...) == 0)
+@NLconstraint(n, e7, f7(x...) == 0)
+@NLconstraint(n, e8, f8(x...) == 0)
+@NLconstraint(n, e9, f9(x...) == 0)
+@NLconstraint(n, e10, f10(x...) == 0)
+
+# Define performance specification constraints
+@NLconstraint(n, c1, F5(x...) ≥ 25.0)
+@NLconstraint(n, c2, Tau(x...) ≥ 475.0/3600.0)
+
+# Define objective to minimize total annualized costs
+@NLobjective(n, Min, TotCost(x...))
+
+# Solve optimization problem
+@time JuMP.optimize!(n)</code></pre><p>It takes three times as many iterations and significantly more memory allocations for EAGO to converge with the full-space formulation, demonstrating the advantages of reduced-space formulations. Because global solvers suffer from the curse of dimensionality, reducing the number of decision variables through model simplifications can improve performance and therefore broaden the scope of problems for which global solvers can be applied.</p><p>This tutorial introduces user-defined functions that provide an easy way to use ModelingToolkit&#39;s intuitive modeling interface and model simplification features to create reduced-space formulations in a way that is compatible with EAGO.</p><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><ol><li>Yingbo Ma and Shashi Gowda and Ranjan Anantharaman and Chris Laughman and Viral Shah and Chris Rackauckas, ModelingToolkit: A Composable Graph Transformation System For Equation-Based Modeling, <em>arXiv</em>, (2021).</li><li>A. C. Kokossis, C. A. Floudas. Synthesis of isothermal reactor—separator—recycle systems, <em>Chemical Engineering Science</em>, 46:5-6 (1991), pp. 1361-1383.</li><li>Iain Dunning and Joey Huchette and Miles Lubin. JuMP: A Modeling Language for Mathematical Optimization, <em>SIAM Review</em>, 59 (2017), pp. 295-320.</li></ol></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../alpha_bb/">« Advanced-Use Example 2</a><a class="docs-footer-nextpage" href="../../dev/api_types/">Types »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Monday 28 October 2024 01:09">Monday 28 October 2024</span>. Using Julia version 1.9.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
