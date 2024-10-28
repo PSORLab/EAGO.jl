@@ -1,5 +1,11 @@
 # News for EAGO Releases
 
+## [v0.8.2](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.2) (October 27, 2024)
+- Added support for `MOI.ScalarNonlinearFunction`.
+  - Users can now define all constraints using `@constraint` instead of needing to use `@NLconstraint`. This applies to `@objective` as well.
+- Added support for variable names.
+- Updated display.
+
 ## [v0.8.1](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.1) (June 15, 2023)
 
 - Resolved an issue where integer and binary variables would sometimes throw a `MathOptInterface.UpperBoundAlreadySet` error.

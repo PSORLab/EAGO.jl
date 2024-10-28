@@ -14,15 +14,16 @@
 
 function set_default_config_udf!(s, m::MOI.AbstractOptimizer, verbosity::Int)
     if verbosity > 0
-        println("EAGO lacks a specialized configuration routine for the subsolver ($(MOI.get(m, MOI.SolverName())))")
-        println("you selected. As a result, EAGO cannot set the subsolver tolerances based on the")
-        println("absolute_tolerance, relative_tolerance, and absolute_constraint_feas_tolerance")
-        println("parameters passed to the EAGO optimizer. Consequently, need to ensure that the tolerances")
-        println("set in the provided subsolver are appropriate (for instance if the absolute_tolerance = 1E-3")
-        println("then the absolute tolerance for a subsolver should be < 1E-4 and any feasibility tolerances")
-        println("should be as conservative as the absolute_constraint_feas_tolerance). If you see this message")
-        println("please submit an issue at https://github.com/PSORLab/EAGO.jl/issues/new/choose requesting")
-        println("that a configuration routine be added for this subsolver.")
+        @warn("""
+        EAGO lacks a specialized configuration routine for the subsolver ($(MOI.get(m, MOI.SolverName())))
+        you selected. As a result, EAGO cannot set the subsolver tolerances based on the
+        absolute_tolerance, relative_tolerance, and absolute_constraint_feas_tolerance
+        parameters passed to the EAGO optimizer. Consequently, you need to ensure that the tolerances
+        set in the provided subsolver are appropriate (for instance if the absolute_tolerance = 1E-3
+        then the absolute tolerance for a subsolver should be < 1E-4 and any feasibility tolerances
+        should be as conservative as the absolute_constraint_feas_tolerance). If you see this message
+        please submit an issue at https://github.com/PSORLab/EAGO.jl/issues/new/choose requesting
+        that a configuration routine be added for this subsolver.""")
     end
     return
 end
