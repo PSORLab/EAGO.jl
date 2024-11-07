@@ -315,3 +315,20 @@ function MOI.get(m::Optimizer, ::Type{VI}, name::String)
         return index_storage
     end
 end
+
+#####
+##### Support and set user-defined functions
+#####
+MOI.supports(m::Optimizer, ::MOI.UserDefinedFunction) = true
+
+function MOI.set(m::Optimizer, udf::MOI.UserDefinedFunction, f)
+    if isnothing(m._input_problem._nlp_data)
+        model = MOI.Nonlinear.Model()
+        backend = MOI.Nonlinear.SparseReverseMode()
+        vars = MOI.get(m, MOI.ListOfVariableIndices())
+        evaluator = MOI.Nonlinear.Evaluator(model, backend, vars) 
+        m._input_problem._nlp_data = MOI.NLPBlockData(evaluator)
+    end
+    MOI.Nonlinear.register_operator(m._input_problem._nlp_data.evaluator.model, udf.name, udf.arity, f...)
+    return nothing
+end
