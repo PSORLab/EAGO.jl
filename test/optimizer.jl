@@ -621,85 +621,99 @@ end
 end
 
 @testset "Register Special Expressions" begin
-    raw_index(v::MOI.VariableIndex) = v.value
 
     model = Model()
     @variable(model, x)
-    @variable(model, y)
-    register_eago_operators!(model)
+    @variable(model, a in Parameter(2.0))
+    @variable(model, k in Parameter(3.0))
+    @variable(model, α in Parameter(0.3))
+    @variable(model, λ in Parameter(1.1))
+    @variable(model, lb in Parameter(-1.0))
+    @variable(model, ub in Parameter(1.0))
 
-    @NLconstraint(model, c1, relu(x) <= 0.0)
-    @NLconstraint(model, c2, leaky_relu(x) <= 0.0)
-    @NLconstraint(model, c3, maxsig(x) <= 0.0)
-    @NLconstraint(model, c4, maxtanh(x) <= 0.0)
-    @NLconstraint(model, c5, softplus(x) <= 0.0)
-    @NLconstraint(model, c6, pentanh(x) <= 0.0)
+    @test_nowarn @constraint(model, relu(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_relu](0.5), 0.5, atol = 1E-3)
 
-    @NLconstraint(model, c7, sigmoid(x) <= 0.0)
-    @NLconstraint(model, c8, bisigmoid(x) <= 0.0)
+    @test_nowarn @constraint(model, leaky_relu(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_leaky_relu](0.5), 0.5, atol = 1E-3)
 
-    @NLconstraint(model, c9, softsign(x) <= 0.0)
-    @NLconstraint(model, c10, gelu(x) <= 0.0)
-    @NLconstraint(model, c11, swish(x) <= 0.0)
+    @test_nowarn @constraint(model, maxsig(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_maxsig](0.5), 0.6224593312018546, atol = 1E-3)
 
-    @NLconstraint(model, c12, positive(x) <= 0.0)
-    @NLconstraint(model, c13, negative(x) <= 0.0)
+    @test_nowarn @constraint(model, maxtanh(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_maxtanh](0.5), 0.5, atol = 1E-3)
 
-    @NLconstraint(model, c14, xlogx(x) <= 0.0)
+    @test_nowarn @constraint(model, softplus(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_softplus](0.5), 0.9740769841801067, atol = 1E-3)
 
-    @NLconstraint(model, c15, param_relu(x, 0.3) <= 0.0)
-    @NLconstraint(model, c16, elu(x, 0.3) <= 0.0)
-    @NLconstraint(model, c17, selu(x, 1.1, 0.3) <= 0.0)
+    @test_nowarn @constraint(model, pentanh(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_pentanh](0.5), 0.46211715726000974, atol = 1E-3)
 
-    @NLconstraint(model, c18, lower_bnd(x, -1.0) <= 0.0)
-    @NLconstraint(model, c19, upper_bnd(x, 1.0) <= 0.0)
-    @NLconstraint(model, c20, bnd(x, -1.0, 1.0) <= 0.0)
+    @test_nowarn @constraint(model, sigmoid(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_sigmoid](0.5), 0.6224593312018546, atol = 1E-3)
 
-    @NLconstraint(model, c21, arh(x, 3.0) <= 0.0)
-    @NLconstraint(model, c22, xexpax(x, 2.0) <= 0.0)
+    @test_nowarn @constraint(model, bisigmoid(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_bisigmoid](0.5), 0.24491866240370913, atol = 1E-3)
 
-    @NLconstraint(model, c23, f_erf(x) <= 0.0)
-    @NLconstraint(model, c24, f_erfinv(x) <= 0.0)
-    @NLconstraint(model, c25, f_erfc(x) <= 0.0)
-    @NLconstraint(model, c26, f_erfcinv(x) <= 0.0)
+    @test_nowarn @constraint(model, softsign(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_softsign](0.5), 0.3333333333333333, atol = 1E-3)
 
-    values = zeros(2)
-    x_index = raw_index(JuMP.index(x))
-    y_index = raw_index(JuMP.index(y))
-    values[x_index] = 0.5
-    values[y_index] = 0.5
+    @test_nowarn @constraint(model, gelu(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_gelu](0.5), 0.34573123063700656, atol = 1E-3)
 
-    d = NLPEvaluator(model)
-    MOI.initialize(d, Symbol[:Grad])
-    out = zeros(26)
-    MOI.eval_constraint(d, out, values)
+    @test_nowarn @constraint(model, swish(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_swish](0.5), 0.3112296656009273, atol = 1E-3)
 
-    @test isapprox(out[1], 0.5, atol = 1E-3)
-    @test isapprox(out[2], 0.5, atol = 1E-3)
-    @test isapprox(out[3], 0.6224593312018546, atol = 1E-3)
-    @test isapprox(out[4], 0.5, atol = 1E-3)
-    @test isapprox(out[5], 0.9740769841801067, atol = 1E-3)
-    @test isapprox(out[6], 0.46211715726000974, atol = 1E-3)
-    @test isapprox(out[7], 0.6224593312018546, atol = 1E-3)
-    @test isapprox(out[8], 0.24491866240370913, atol = 1E-3)
-    @test isapprox(out[9], 0.3333333333333333, atol = 1E-3)
-    @test isapprox(out[10], 0.34573123063700656, atol = 1E-3)
-    @test isapprox(out[11], 0.3112296656009273, atol = 1E-3)
-    @test isapprox(out[12], 0.5, atol = 1E-3)
-    @test isapprox(out[13], 0.5, atol = 1E-3)
-    @test isapprox(out[14], -0.34657359027997264, atol = 1E-3)
-    @test isapprox(out[15], 0.5, atol = 1E-3)
-    @test isapprox(out[16], 0.5, atol = 1E-3)
-    @test isapprox(out[17], 0.15, atol = 1E-3)
-    @test isapprox(out[18], 0.5, atol = 1E-3)
-    @test isapprox(out[19], 0.5, atol = 1E-3)
-    @test isapprox(out[20], 0.5, atol = 1E-3)
-    @test isapprox(out[21], 0.0024787521766663585, atol = 1E-3)
-    @test isapprox(out[22], 1.3591409142295225, atol = 1E-3)
-    @test isapprox(out[23], 0.5204998778130465, atol = 1E-3)
-    @test isapprox(out[24], 0.4769362762044699, atol = 1E-3)
-    @test isapprox(out[25], 0.4795001221869535, atol = 1E-3)
-    @test isapprox(out[26], 0.4769362762044699, atol = 1E-3)
+    @test_nowarn @constraint(model, xabsx(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_xabsx](0.5), 0.25, atol = 1E-3)
+
+    @test_nowarn @constraint(model, logcosh(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_logcosh](0.5), 0.12011450695827752, atol = 1E-3)
+
+    @test_nowarn @constraint(model, xlogx(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_xlogx](0.5), -0.34657359027997264, atol = 1E-3)
+
+    @test_nowarn @constraint(model, erf(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_erf](0.5), 0.5204998778130465, atol = 1E-3)
+
+    @test_nowarn @constraint(model, erfinv(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_erfinv](0.5), 0.4769362762044699, atol = 1E-3)
+
+    @test_nowarn @constraint(model, erfc(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_erfc](0.5), 0.4795001221869535, atol = 1E-3)
+
+    @test_nowarn @constraint(model, erfcinv(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_erfcinv](0.5), 0.4769362762044699, atol = 1E-3)
+
+    @test_nowarn @constraint(model, xexpax(x, a) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_xexpax](0.5, 2.0), 1.3591409142295225, atol = 1E-3)
+
+    @test_nowarn @constraint(model, arh(x, k) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_arh](0.5, 3.0), 0.0024787521766663585, atol = 1E-3)
+
+    @test_nowarn @constraint(model, param_relu(x, α) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_param_relu](0.5, 0.3), 0.5, atol = 1E-3)
+
+    @test_nowarn @constraint(model, elu(x, α) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_elu](0.5, 0.3), 0.5, atol = 1E-3)
+
+    @test_nowarn @constraint(model, selu(x, α, λ) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_selu](0.5, 0.3, 1.1), 0.55, atol = 1E-3)
+
+    @test_nowarn @constraint(model, lower_bnd(x, lb) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_lower_bnd](0.5, -1.0), 0.5, atol = 1E-3)
+
+    @test_nowarn @constraint(model, upper_bnd(x, ub) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_upper_bnd](0.5, 1.0), 0.5, atol = 1E-3)
+
+    @test_nowarn @constraint(model, bnd(x, lb, ub) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_bnd](0.5, -1.0, 1.0), 0.5, atol = 1E-3)
+
+    @test_nowarn @constraint(model, positive(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_positive](0.5), 0.5, atol = 1E-3)
+
+    @test_nowarn @constraint(model, negative(x) <= 0.0)
+    @test isapprox(model.obj_dict[:EAGO_negative](0.5), 0.5, atol = 1E-3)
 end
 
 @testset "Display Testset" begin

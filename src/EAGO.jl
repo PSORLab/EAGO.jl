@@ -30,6 +30,10 @@ module EAGO
     import Base: setindex!, + , *, -, ^, /, zero, one, inv, log, log10, exp, exp10, isempty, min, max
 
     @reexport using McCormick
+    import McCormick: relu, leaky_relu, maxsig, maxtanh, softplus, pentanh, sigmoid, bisigmoid,
+                      softsign, gelu, swish, xabsx, logcosh, xlogx, erf, erfinv, erfc, erfcinv, 
+                      xexpax, arh, param_relu, elu, selu, lower_bnd, upper_bnd, bnd, positive, negative
+
     @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
 
@@ -83,7 +87,9 @@ module EAGO
            EAGOModel, AuxiliaryVariableRef
     export auxiliary_variable, @auxiliary_variable, add_mimo_expression, @add_mimo_expression 
 
-    export register_eago_operators!
+    export relu, leaky_relu, maxsig, maxtanh, softplus, pentanh, sigmoid, bisigmoid,
+           softsign, gelu, swish, xabsx, logcosh, xlogx, erf, erfinv, erfc, erfcinv, 
+           xexpax, arh, param_relu, elu, selu, lower_bnd, upper_bnd, bnd, positive, negative
 
     # Map/reduce nonallocating no bounds checking map-reduce like utilities
     include(joinpath(@__DIR__, "eago_optimizer", "debug_tools.jl"))
