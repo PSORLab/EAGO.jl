@@ -39,6 +39,7 @@ end
 
 MOI.supports_constraint(::Optimizer, ::Type{VI}, ::Type{S}) where S <: VAR_SETS = true
 MOI.supports_constraint(::Optimizer,::Type{T},::Type{S}) where {T<:Union{SAF,SQF,MOI.ScalarNonlinearFunction},S<:INEQ_SETS} = true
+MOI.supports_add_constrained_variable(::Optimizer, ::Type{MOI.Parameter{Float64}}) = true
 
 MOI.is_valid(m::Optimizer, v::VI) = (1 <= v.value <= m._input_problem._variable_count)
 MOI.is_valid(m::Optimizer, c::CI{VI,S}) where S <: VAR_SETS = (1 <= c.value <= m._input_problem._variable_count)
@@ -60,6 +61,14 @@ function MOI.add_variable(m::Optimizer, name::String)
     vi = VI(m._input_problem._variable_count += 1)
     m._input_problem._variable_names[vi] = name 
     return vi
+end
+
+function MOI.add_constrained_variable(m::Optimizer, p::MOI.Parameter{Float64})
+    vi = VI(m._input_problem._variable_count += 1)
+    m._input_problem._variable_names[vi] = ""
+    ci = CI{VI, MOI.Parameter{Float64}}(m._input_problem._constraint_count += 1)
+    _constraints(m, VI, MOI.Parameter{Float64})[ci] = (vi, p)
+    return vi, ci
 end
 
 function MOI.add_constraint(m::Optimizer, f::F, s::S) where {F<:Union{SAF,SQF,MOI.ScalarNonlinearFunction},S<:INEQ_SETS}

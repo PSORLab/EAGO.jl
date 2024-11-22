@@ -191,9 +191,31 @@ function VariableInfo(v::VariableInfo{T}, s::INT) where {T <: AbstractFloat}
                         upper_bound = u)
 end
 
+function VariableInfo(v::VariableInfo{T}, p::MOI.Parameter{T}) where {T <: AbstractFloat}
+    isempty(v) && return v
+    l = max(p.value, lower_bound(v))
+    u = min(p.value, upper_bound(v))
+    check_isempty(l, u, is_integer(v)) && return empty_variable_info(T)
+    out = VariableInfo(is_integer = is_integer(v),
+    has_lower_bound = !isinf(l),
+    has_upper_bound = !isinf(u),
+    has_constraints = !isinf(l) | !isinf(u),
+    is_fixed = true,
+    lower_bound = l,
+    upper_bound = u)
+    return VariableInfo(is_integer = is_integer(v),
+                        has_lower_bound = !isinf(l),
+                        has_upper_bound = !isinf(u),
+                        has_constraints = !isinf(l) | !isinf(u),
+                        is_fixed = true,
+                        lower_bound = l,
+                        upper_bound = u)
+end
+
 ZO(v::VariableInfo)  = MOI.ZeroOne()
 ET(v::VariableInfo{T}) where {T <: AbstractFloat}  = MOI.EqualTo{T}(v.lower_bound)
 IT(v::VariableInfo{T}) where {T <: AbstractFloat}  = MOI.Interval{T}(v.lower_bound,v.upper_bound)
 GT(v::VariableInfo{T}) where {T <: AbstractFloat}  = MOI.GreaterThan{T}(v.lower_bound)
 LT(v::VariableInfo{T}) where {T <: AbstractFloat}  = MOI.LessThan{T}(v.upper_bound)
 INT(v::VariableInfo{T}) where {T <: AbstractFloat} = MOI.Semiinteger{T}(v.lower_bound, v.upper_bound)
+MOI.Parameter{Float64}(v::VariableInfo{T}) where {T <: AbstractFloat} = MOI.Parameter{T}(v.lower_bound)
