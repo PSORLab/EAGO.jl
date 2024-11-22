@@ -279,12 +279,15 @@ function MOI.set(m::Optimizer, ::MOI.ObjectiveFunction{T}, f::T) where T <: Unio
     if f isa MOI.ScalarNonlinearFunction
         if isnothing(m._input_problem._nlp_data)
             model = MOI.Nonlinear.Model()
+            MOI.Nonlinear.set_objective(model, f)
             backend = MOI.Nonlinear.SparseReverseMode()
             vars = MOI.get(m, MOI.ListOfVariableIndices())
             evaluator = MOI.Nonlinear.Evaluator(model, backend, vars) 
             m._input_problem._nlp_data = MOI.NLPBlockData(evaluator)
+        else
+            MOI.Nonlinear.set_objective(m._input_problem._nlp_data.evaluator.model, f)
+            m._input_problem._nlp_data = MOI.NLPBlockData(m._input_problem._nlp_data.evaluator)
         end
-        MOI.Nonlinear.set_objective(m._input_problem._nlp_data.evaluator.model, f)
     else
         m._input_problem._objective = f
     end
