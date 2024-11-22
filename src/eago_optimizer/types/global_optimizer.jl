@@ -278,6 +278,8 @@ Base.@kwdef mutable struct InputProblem
     _vi_zo_constraints::Dict{CI{VI,ZO}, Tuple{VI,ZO}} = Dict{CI{VI,ZO}, Tuple{VI,ZO}}()
     _vi_int_constraints::Dict{CI{VI,INT}, Tuple{VI,INT}} = Dict{CI{VI,INT}, Tuple{VI,INT}}()
 
+    _parameter_constraints::Dict{CI{VI,MOI.Parameter{Float64}}, Tuple{VI,MOI.Parameter{Float64}}} = Dict{CI{VI,MOI.Parameter{Float64}}, Tuple{VI,MOI.Parameter{Float64}}}()
+
     _linear_leq_constraints::Dict{CI{SAF,LT}, Tuple{SAF,LT}} = Dict{CI{SAF,LT}, Tuple{SAF,LT}}()
     _linear_geq_constraints::Dict{CI{SAF,GT}, Tuple{SAF,GT}} = Dict{CI{SAF,GT}, Tuple{SAF,GT}}()
     _linear_eq_constraints::Dict{CI{SAF,ET}, Tuple{SAF,ET}} = Dict{CI{SAF,ET}, Tuple{SAF,ET}}()
@@ -367,6 +369,8 @@ _constraints(m::InputProblem, ::Type{VI}, ::Type{ET}) = m._vi_eq_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{IT}) = m._vi_it_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{ZO}) = m._vi_zo_constraints
 _constraints(m::InputProblem, ::Type{VI}, ::Type{INT}) = m._vi_int_constraints
+
+_constraints(m::InputProblem, ::Type{VI}, ::Type{MOI.Parameter{Float64}}) = m._parameter_constraints
 
 _constraints(m::InputProblem, ::Type{SAF}, ::Type{LT}) = m._linear_leq_constraints
 _constraints(m::InputProblem, ::Type{SAF}, ::Type{GT}) = m._linear_geq_constraints
