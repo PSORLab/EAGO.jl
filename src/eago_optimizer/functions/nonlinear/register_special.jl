@@ -15,17 +15,17 @@ for operator in (:relu, :leaky_relu, :maxsig, :maxtanh, :softplus, :pentanh, :si
                  :softsign, :gelu, :swish, :xabsx, :logcosh, :xlogx, :erf, :erfinv, :erfc)
     func = quote
         model = owner_model(x)
-        op = get(model.obj_dict, Symbol("EAGO_", $operator), nothing)
+        op = get(model.obj_dict, Symbol("EAGO_", $(String(operator))), nothing)
         if op === nothing
             op = add_nonlinear_operator(
                 model,
                 1,
-                getfield(McCormick, Symbol($operator)),
-                getfield(McCormick, Symbol($operator, "_deriv")),
-                getfield(McCormick, Symbol($operator, "_deriv2"));
-                name = Symbol("EAGO_", $operator),
+                getfield(McCormick, Symbol($(String(operator)))),
+                getfield(McCormick, Symbol($(String(operator)), "_deriv")),
+                getfield(McCormick, Symbol($(String(operator)), "_deriv2"));
+                name = Symbol("EAGO_", $(String(operator))),
             )
-            model[Symbol("EAGO_", $operator)] = op
+            model[Symbol("EAGO_", $(String(operator)))] = op
         end
         return op(x)
     end
