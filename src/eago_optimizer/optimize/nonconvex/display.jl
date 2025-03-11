@@ -58,7 +58,7 @@ function print_solution!(m::GlobalOptimizer)
             addlen = maxlen .- length.(variable_names)
             print_list = " ".^addlen.*variable_names
             for i = 1:m._input_problem._variable_count
-            println("   $(print_list[i]) = $(m._continuous_solution[i])")
+                println("   $(print_list[i]) = $(m._continuous_solution[i])")
             end
         end
         println(" ")
@@ -103,57 +103,57 @@ function print_iteration!(m::GlobalOptimizer, end_flag::Bool)
         # Print header line every `header_iterations` times and print iteration summary every `output_iterations` times
         if m._last_printed_iteration != m._iteration_count && (mod(m._iteration_count, m._parameters.output_iterations) === 0 || end_flag)
             if m._iteration_count == m._parameters.output_iterations || mod(m._iteration_count, m._parameters.header_iterations) < m._parameters.output_iterations
-                println("---------------------------------------------------------------------------------------------------------------------------------")
-                println("|  Iteration #  |     Nodes     |  Lower Bound  |  Upper Bound  |      Gap      |     Ratio     |     Timer     |   Time Left   |")
-                println("---------------------------------------------------------------------------------------------------------------------------------")
+                println("-----------------------------------------------------------------------------------------------------------------")
+                println("| Iteration # |    Nodes    | Lower Bound | Upper Bound |     Gap     |    Ratio    |    Timer    |  Time Left  |")
+                println("-----------------------------------------------------------------------------------------------------------------")
             end
             # Print start
             print_str = "| "
 
             # Print iteration number
-            max_len = 13
+            max_len = 11
             temp_str = string(m._iteration_count)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print node count
-            max_len = 13
+            max_len = 11
             temp_str = string(m._node_count)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print lower bound
-            max_len = 13
+            max_len = 11
             temp_str = @sprintf "%.3E" m._global_lower_bound
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print upper bound
-            max_len = 13
+            max_len = 11
             temp_str = @sprintf "%.3E" m._global_upper_bound
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print absolute gap between lower and upper bound
-            max_len = 13
+            max_len = 11
             temp_str = @sprintf "%.3E" abs(m._global_upper_bound - m._global_lower_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print relative gap between lower and upper bound
-            max_len = 13
+            max_len = 11
             temp_str = @sprintf "%.3E" relative_gap(m._global_lower_bound, m._global_upper_bound)
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print run time
-            max_len = 13
+            max_len = 11
             temp_str = @sprintf "%.2F" m._run_time
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" | "
 
             # Print time remaining
-            max_len = 13
+            max_len = 11
             temp_str = @sprintf "%.2F" m._time_left
             len_str = length(temp_str)
             print_str *= (" "^(max_len - len_str))*temp_str*" |"
@@ -164,7 +164,7 @@ function print_iteration!(m::GlobalOptimizer, end_flag::Bool)
             m._last_printed_iteration = m._iteration_count
         end
         if end_flag
-            println("---------------------------------------------------------------------------------------------------------------------------------")
+            println("-----------------------------------------------------------------------------------------------------------------")
         end
     end
 
@@ -179,7 +179,7 @@ prints information for the lower problem, `lower_flag=false` prints information 
 the upper problem.
 """
 function print_results!(m::GlobalOptimizer, lower_flag::Bool)
-    if _verbosity(m) > 1
+    if _verbosity(m) >= 2
         k = length(m._lower_solution) - (_obj_var_slack_added(m) ? 1 : 0)
         println(" ")
         if lower_flag
@@ -213,16 +213,15 @@ $(FUNCTIONNAME)
 
 Print noteworthy information prior to running branch-and-bound. Currently prints
 a note about flipping `max(f)` to `-min(-f)` internally, if the input is a 
-maximization problem and `verbosity>=3`.
+maximization problem and `verbosity >= 3`.
 """
 function print_preamble!(m::GlobalOptimizer)
     if _verbosity(m) >= 3
-        if !_is_input_min(m) && isone(m._iteration_count)
-            println(" ")
-            println("For maximization problems a max(f) = -min(-f) transformation is applied.")
-            println("Objective values for each subproblem are the negative value of the objective")
-            println("in the original problem and are reconciled after branch-and-bound terminates.")
-            println(" ")
+        if !_is_input_min(m) && iszero(m._iteration_count)
+            @info("""
+            For maximization problems, a transformation from `max(f)` to `-min(-f)` is applied.
+            Objective values for each subproblem are the negative value of the objective
+            in the original problem and are reconciled after branch-and-bound terminates.""")
         end
     end
     return
