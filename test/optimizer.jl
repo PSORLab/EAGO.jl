@@ -210,7 +210,7 @@ end
 end
 
 @testset "Set Objective" begin
-    model = @inferred EAGO.Optimizer()
+    model = EAGO.Optimizer()
 
     x = MOI.add_variables(model, 3)
 
