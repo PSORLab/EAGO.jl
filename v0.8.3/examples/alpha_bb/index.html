@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Advanced-Use Example 2 · EAGO.jl</title><meta name="title" content="Advanced-Use Example 2 · EAGO.jl"/><meta property="og:title" content="Advanced-Use Example 2 · EAGO.jl"/><meta property="twitter:title" content="Advanced-Use Example 2 · EAGO.jl"/><meta name="description" content="Documentation for EAGO.jl."/><meta property="og:description" content="Documentation for EAGO.jl."/><meta property="twitter:description" content="Documentation for EAGO.jl."/><meta property="og:url" content="https://PSORLab.github.io/EAGO.jl/stable/examples/alpha_bb/"/><meta property="twitter:url" content="https://PSORLab.github.io/EAGO.jl/stable/examples/alpha_bb/"/><link rel="canonical" href="https://PSORLab.github.io/EAGO.jl/stable/examples/alpha_bb/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="EAGO.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">EAGO.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><input class="collapse-toggle" id="menuitem-2" type="checkbox"/><label class="tocitem" for="menuitem-2"><span class="docs-label">Manual</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><input class="collapse-toggle" id="menuitem-2-1" type="checkbox"/><label class="tocitem" for="menuitem-2-1"><span class="docs-label">Optimizer</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../optimizer/optimizer/">EAGO Optimizer</a></li><li><a class="tocitem" href="../../optimizer/bnb_back/">EAGO&#39;s Branch and Bound Routine</a></li><li><a class="tocitem" href="../../optimizer/relax_back/">Nonlinear Backend</a></li><li><a class="tocitem" href="../../optimizer/domain_reduction/">Domain Reduction</a></li><li><a class="tocitem" href="../../optimizer/high_performance/">High-Performance Configuration</a></li><li><a class="tocitem" href="../../optimizer/udf_utilities/">User-Defined Functions and Directed Acyclic Graph Utilities</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-2-2" type="checkbox"/><label class="tocitem" for="menuitem-2-2"><span class="docs-label">McCormick.jl</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../mccormick/overview/">Overview</a></li><li><a class="tocitem" href="../../mccormick/usage/">Basic Usage</a></li><li><a class="tocitem" href="../../mccormick/operators/">Currently Supported Operators</a></li><li><a class="tocitem" href="../../mccormick/type/">Types</a></li><li><a class="tocitem" href="../../mccormick/implicit/">Relaxation of Implicit Functions</a></li></ul></li><li><a class="tocitem" href="../../semiinfinite/semiinfinite/">Semi-Infinite Programming</a></li></ul></li><li><a class="tocitem" href="../../custom_guidelines/">Customization</a></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../explicit_ann/">Standard-Use Example 1</a></li><li><a class="tocitem" href="../interval_bb/">Standard-Use Example 2</a></li><li><a class="tocitem" href="../quasiconvex/">Advanced-Use Example 1</a></li><li class="is-active"><a class="tocitem" href>Advanced-Use Example 2</a><ul class="internal"><li><a class="tocitem" href="#Custom-Function-Definitions"><span>Custom Function Definitions</span></a></li><li><a class="tocitem" href="#Redefine-the-Lower-Bounding-Problem"><span>Redefine the Lower-Bounding Problem</span></a></li><li><a class="tocitem" href="#(Optional)-Turn-Off-Processing-Routines"><span>(Optional) Turn Off Processing Routines</span></a></li><li><a class="tocitem" href="#Construct-the-JuMP-Model-and-Optimize"><span>Construct the JuMP Model and Optimize</span></a></li><li><a class="tocitem" href="#Retrieve-Results"><span>Retrieve Results</span></a></li></ul></li><li><a class="tocitem" href="../modelingtoolkit/">ModelingToolkit Example</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API Reference</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../dev/api_types/">Types</a></li><li><a class="tocitem" href="../../dev/api_functions/">Functions</a></li></ul></li><li><a class="tocitem" href="../../dev/contributing/">Contributing</a></li><li><a class="tocitem" href="../../news/">News</a></li><li><a class="tocitem" href="../../cite/">Citing EAGO</a></li><li><a class="tocitem" href="../../ref/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Advanced-Use Example 2</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Advanced-Use Example 2</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/PSORLab/EAGO.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/PSORLab/EAGO.jl/blob/master/docs/src/examples/alpha_bb.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Advanced-Use-Example-2"><a class="docs-heading-anchor" href="#Advanced-Use-Example-2">Advanced-Use Example 2</a><a id="Advanced-Use-Example-2-1"></a><a class="docs-heading-anchor-permalink" href="#Advanced-Use-Example-2" title="Permalink"></a></h1><p>This example is also provided <a href="https://github.com/PSORLab/EAGO-notebooks/blob/master/notebooks/custom_aBB_QCQP.ipynb">here as a Jupyter Notebook</a>.</p><h3 id="An-\\alphaBB-Example-for-a-QCQP."><a class="docs-heading-anchor" href="#An-\\alphaBB-Example-for-a-QCQP.">An <span>$\alpha$</span>BB Example for a QCQP.</a><a id="An-\\alphaBB-Example-for-a-QCQP.-1"></a><a class="docs-heading-anchor-permalink" href="#An-\\alphaBB-Example-for-a-QCQP." title="Permalink"></a></h3><p>In this example, we will demonstrate the use of a user-defined lower-bounding problem that uses <span>$\alpha$</span>BB convex relaxations. In this example, we wish to solve the <em>nonconvex</em> quadratically constrained quadratic program (QCQP):</p><p class="math-container">\[\begin{aligned}
+&amp; \min_{\mathbf x \in \mathbb{IR}^{2}} \frac{1}{2} \mathbf x^{\rm T} \mathbf Q_{f} \mathbf x + \mathbf c_{f}^{\rm T} \mathbf x \\
+{\rm s.t.} \; \; &amp; g_{1}(\mathbf x) = \frac{1}{2} \mathbf x^{\rm T} \mathbf Q_{g_{1}}\mathbf x + \mathbf c_{g_{1}}^{\rm T} \mathbf x \leq 0 \\
+&amp; g_{2}(\mathbf x) = \frac{1}{2} \mathbf x^{\rm T} \mathbf Q_{g_{2}} \mathbf x + \mathbf c_{g_{2}}^{\rm T} \mathbf x \leq 0 \\
+\end{aligned}\]</p><p>with <span>$\mathbf Q_i\in\mathbb R^{2\times 2}$</span> not positive semidefinite for any <span>$i$</span>.</p><pre><code class="language-julia hljs">using JuMP, EAGO, Ipopt, LinearAlgebra</code></pre><h2 id="Custom-Function-Definitions"><a class="docs-heading-anchor" href="#Custom-Function-Definitions">Custom Function Definitions</a><a id="Custom-Function-Definitions-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-Function-Definitions" title="Permalink"></a></h2><p>For convenience, we&#39;ll define the following function that returns all the problem data <span>$\mathbf Q_i$</span> and <span>$\mathbf c_i$</span>.</p><pre><code class="language-julia hljs">function QCQP_setup()
+
+    Qf = [3.0, 3/2; 3/2, -5.0]
+    cf = [3.0; 2.0]
+
+    Qg1 = [-2.0, 5.0; 5.0, -2.0]
+    cg1 = [1.0; 3.0]
+
+    Qg2 = [-6.0, 3.0; 3.0, 2.0]
+    cg2 = [2.0; 1.0]
+    
+    return Qf, cf, Qg1, cg1, Qg2, cg2
+end</code></pre><p>The next function we&#39;ll define will take as input data for a particular quadratic function and the interval bounds on the decision variables, and construct an <span>$\alpha$</span>BB convex relaxation of that function. Since we&#39;re solving a QCQP, we&#39;ll use the <a href="https://docs.julialang.org/en/v1/stdlib/LinearAlgebra/#LinearAlgebra.eigvals"><code>eigvals</code></a> function to directly compute the eigenvalues of the input <span>$\mathbf Q_i$</span> matrix.</p><pre><code class="language-julia hljs">function αBB_relax(Q::Matrix{T}, c::Vector{T}, xL::Vector{T}, xU::Vector{T}, x::Real...) where {T&lt;:Float64}
+    α = max(0.0, -minimum(eigvals(Q))/2)
+    y = [x[1]; x[2]]
+    cv = 1/2*y&#39;*Q*y + c&#39;*y + α*(xL - y)&#39;*(xU - y)
+    return cv
+end</code></pre><h2 id="Redefine-the-Lower-Bounding-Problem"><a class="docs-heading-anchor" href="#Redefine-the-Lower-Bounding-Problem">Redefine the Lower-Bounding Problem</a><a id="Redefine-the-Lower-Bounding-Problem-1"></a><a class="docs-heading-anchor-permalink" href="#Redefine-the-Lower-Bounding-Problem" title="Permalink"></a></h2><p>The following code first defines our EAGO extension (custom version) struct and then it redefines the lower-bounding problem as our own version. That is, when we call this customized version of EAGO to solve the problem, it&#39;ll deploy this version of the lower-bounding problem instead of the default version.  </p><pre><code class="language-julia hljs">import EAGO: Optimizer, GlobalOptimizer
+
+struct αBB_Convex &lt;: EAGO.ExtensionType end
+import EAGO: lower_problem!
+function EAGO.lower_problem!(t::αBB_Convex, opt::GlobalOptimizer)
+    # Get active node
+    n = opt._current_node
+    # Get bounds on active node for calculating relaxations
+    xL = n.lower_variable_bounds[1:2]
+    xU = n.upper_variable_bounds[1:2]
+    # Get the problem data
+    Qf, cf, Qg1, cg1, Qg2, cg2 = QCQP_setup()
+
+    # Define the JuMP model and declare the solver
+    mL = JuMP.Model(JuMP.optimizer_with_attributes(IpoptMathOptInterfaceExt.Optimizer,
+                                &quot;tol&quot; =&gt; 1.0e-6,
+                                &quot;print_level&quot; =&gt; 0))
+    @variable(mL, xL[i] &lt;= x[i=1:2] &lt;= xU[i])
+    
+    # Define the function closures for the user-defined relaxations
+    fcv(x...) = αBB_relax(Qf, cf, xL, xU, x...)
+    g1cv(x...) = αBB_relax(Qg1, cg1, xL, xU, x...)
+    g2cv(x...) = αBB_relax(Qg2, cg2, xL, xU, x...)
+
+    # Register the user-defined functions
+    # Note: If the gradients and Hessians are directly available, they could
+    # be passed as arguments to the register function to speed things up.
+    JuMP.register(mL, :fcv, 2, fcv, autodiff=true)
+    JuMP.register(mL, :g1cv, 2, g1cv, autodiff=true)
+    JuMP.register(mL, :g2cv, 2, g2cv, autodiff=true)
+
+    # Declare the objective function and constraints
+    @NLobjective(mL, Min, fcv(x[1], x[2]))
+    @NLconstraint(mL, g1cv(x[1], x[2]) &lt;= 0.0)
+    @NLconstraint(mL, g2cv(x[1], x[2]) &lt;= 0.0)
+    
+    # Solve the relaxed problem
+    JuMP.optimize!(mL)
+    
+    # Get primal status, termination status, determine if a global solution was obtained
+    tstatus = MOI.get(mL, MOI.TerminationStatus())
+    pstatus = MOI.get(mL, MOI.PrimalStatus())
+
+    solution = JuMP.value.(x)
+    # Interpret status codes for branch-and-bound
+    if EAGO.local_problem_status(tstatus, pstatus) == EAGO.LRS_FEASIBLE
+        opt._lower_objective_value = JuMP.objective_value(mL) 
+        opt._lower_solution[1:length(solution)] = solution
+        opt._lower_feasibility = true
+        opt._cut_add_flag = false
+    else
+        opt._lower_feasibility = false
+        opt._lower_objective_value = -Inf
+        opt._cut_add_flag = false
+    end
+    return
+end</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>By default, EAGO solves the epigraph reformulation of your original problem, which increases the original problem dimensionality by +1 with the introduction of an auxiliary variable. When defining custom routines (such as the lower-bounding problem here) that are intended to work nicely with default EAGO routines (such as preprocessing), the user must account for the <em>new</em> dimensionality of the problem. In the code above, we wish to access the information of the specific B&amp;B node and define an optimization problem based on that information. However, in this example, the node has information for 3 variables (the original 2 plus 1 for the auxiliary variable appended to the original variable vector) as <span>$(x_{1}, x_{2}, \eta)$</span>. The lower-bounding problem was defined to optimize the relaxed problem with respect to the original 2 decision variables. When storing the results of this subproblem to the current B&amp;B node, it is important to take care to store the information at the appropriate indices and not inadvertently redefine the problem dimensionality (i.e., by simply storing the optimization solution as the <code>lower_solution</code> of the current node). For problems that are defined to only branch on a subset of the original variables, the optimizer has a member <code>_sol_to_branch_map</code> that carries the mapping between the indices of the original variables to those of the variables being branched on. Visit our <a href="../quasiconvex/#Advanced-Use-Example-1">quasiconvex example</a> to see how this is done.</p></div></div><h2 id="(Optional)-Turn-Off-Processing-Routines"><a class="docs-heading-anchor" href="#(Optional)-Turn-Off-Processing-Routines">(Optional) Turn Off Processing Routines</a><a id="(Optional)-Turn-Off-Processing-Routines-1"></a><a class="docs-heading-anchor-permalink" href="#(Optional)-Turn-Off-Processing-Routines" title="Permalink"></a></h2><p>Turn off preprocessing routines if you don&#39;t want to use them as defined in EAGO. </p><pre><code class="language-julia hljs">import EAGO: preprocess!
+function EAGO.preprocess!(t::αBB_Convex, x::GlobalOptimizer)
+    x._preprocess_feasibility = true
+    return
+end</code></pre><p>Turn off postprocessing routines if you don&#39;t want to use them as defined in EAGO. </p><pre><code class="language-julia hljs">import EAGO: postprocess!
+function EAGO.postprocess!(t::αBB_Convex, x::GlobalOptimizer)
+    x._postprocess_feasibility = true
+    return
+end</code></pre><h2 id="Construct-the-JuMP-Model-and-Optimize"><a class="docs-heading-anchor" href="#Construct-the-JuMP-Model-and-Optimize">Construct the JuMP Model and Optimize</a><a id="Construct-the-JuMP-Model-and-Optimize-1"></a><a class="docs-heading-anchor-permalink" href="#Construct-the-JuMP-Model-and-Optimize" title="Permalink"></a></h2><p>Now, we&#39;ll tell EAGO to use our custom/extended solver, set up the main JuMP model, and solve it with our custom solver. </p><pre><code class="language-julia hljs">factory = () -&gt; EAGO.Optimizer(SubSolvers(; t = αBB_Convex() ))
+m = JuMP.Model(optimizer_with_attributes(factory,
+                                &quot;relative_tolerance&quot; =&gt; 1e-3,
+                                &quot;verbosity&quot; =&gt; 1,
+                                &quot;output_iterations&quot; =&gt; 1, 
+                                &quot;branch_variable&quot; =&gt; Bool[true; true],
+                                ))
+Qf, cf, Qg1, cg1, Qg2, cg2 = QCQP_setup()   # Get QCQP data
+xL = [-3.0; -5.0]                           # Lower bounds on x
+xU = [1.0; 2.0]                             # Upper bounds on x
+@variable(m, xL[i] &lt;= x[i=1:2] &lt;= xU[i])
+
+# Define objective and constraints
+@objective(m, Min, 1/2*x&#39;*Qf*x + cf&#39;*x)
+@constraint(m, 1/2*x&#39;*Qg1*x + cg1&#39;*x &lt;= 0.0)
+@constraint(m, 1/2*x&#39;*Qg2*x + cg2&#39;*x &lt;= 0.0)
+
+# Solve the problem
+@time optimize!(m)</code></pre><h2 id="Retrieve-Results"><a class="docs-heading-anchor" href="#Retrieve-Results">Retrieve Results</a><a id="Retrieve-Results-1"></a><a class="docs-heading-anchor-permalink" href="#Retrieve-Results" title="Permalink"></a></h2><p>We then recover the objective value, the solution values, and termination status codes using standard JuMP syntax.</p><pre><code class="language-julia hljs">println(&quot;x1* = &quot;, JuMP.value(x[1]), &quot; x2* = &quot;,
+         JuMP.value(x[2]),&quot; f* = &quot;,JuMP.objective_value(m))
+TermStatus = JuMP.termination_status(m)
+PrimStatus = JuMP.primal_status(m)
+println(&quot;Algorithm terminated with a status of $TermStatus and result code of $PrimStatus&quot;)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quasiconvex/">« Advanced-Use Example 1</a><a class="docs-footer-nextpage" href="../modelingtoolkit/">ModelingToolkit Example »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.10.2 on <span class="colophon-date" title="Thursday 1 May 2025 23:31">Thursday 1 May 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
