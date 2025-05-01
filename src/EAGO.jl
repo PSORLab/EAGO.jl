@@ -80,6 +80,8 @@ module EAGO
 
     const LT_ZERO = LT(0.0)
 
+    const IpoptMathOptInterfaceExt = Base.get_extension(Ipopt, :IpoptMathOptInterfaceExt)
+
     # Add storage types for EAGO optimizers
     export NodeBB, get_history, get_lower_bound, get_upper_bound, get_lower_time,
            get_upper_time, get_preprocess_time, get_postprocess_time, get_lower_bound, get_solution_time,
