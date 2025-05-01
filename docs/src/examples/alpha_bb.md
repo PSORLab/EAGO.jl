@@ -70,7 +70,7 @@ function EAGO.lower_problem!(t::αBB_Convex, opt::GlobalOptimizer)
     Qf, cf, Qg1, cg1, Qg2, cg2 = QCQP_setup()
 
     # Define the JuMP model and declare the solver
-    mL = JuMP.Model(JuMP.optimizer_with_attributes(Ipopt.Optimizer,
+    mL = JuMP.Model(JuMP.optimizer_with_attributes(IpoptMathOptInterfaceExt.Optimizer,
                                 "tol" => 1.0e-6,
                                 "print_level" => 0))
     @variable(mL, xL[i] <= x[i=1:2] <= xU[i])

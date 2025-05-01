@@ -1,5 +1,5 @@
 using JuMP, EAGO, Gurobi, CSV, DataFrames, Ipopt
-#m = Model(with_optimizer(Ipopt.Optimizer))
+#m = Model(with_optimizer(IpoptMathOptInterfaceExt.Optimizer))
 
 m = Model(with_optimizer(EAGO.Optimizer, relaxed_optimizer = Gurobi.Optimizer(OutputFlag=0)))
 
