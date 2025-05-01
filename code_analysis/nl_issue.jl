@@ -8,7 +8,7 @@ println("EAGO using ")
 
 
 function make_model()
-    m = Model(Ipopt.Optimizer)
+    m = Model(IpoptMathOptInterfaceExt.Optimizer)
     #set_optimizer_attribute(m, "output_iterations", 1)
     #set_optimizer_attribute(m, "iteration_limit", 5)
     #set_optimizer_attribute(m, "verbosity", 0)

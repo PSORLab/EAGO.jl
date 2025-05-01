@@ -31,7 +31,7 @@ m = Model(optimizer_with_attributes(EAGO.Optimizer, "verbosity" => 1,
                                                     "fbbt_lp_repetitions" => 3,
                                                     "relax_tag" => NS()))
 
-#m = Model(Ipopt.Optimizer)
+#m = Model(IpoptMathOptInterfaceExt.Optimizer)
 
 # ----- Variables ----- #
 x_Idx = Any[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
