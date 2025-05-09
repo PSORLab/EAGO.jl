@@ -229,9 +229,9 @@ user_multivariate_operator(g::DAT, i) = g.user_operators.registered_multivariate
 
 function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,Vector{Int}}, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
     
-    nd = copy(d.nodes)
-    adj = copy(d.adj)
-    const_values = copy(d.const_values)
+    nd = copy(MOI.Nonlinear.expression(d).nodes)
+    adj = copy(MOI.Nonlinear.adjacency_matrix(d))
+    const_values = copy(MOI.Nonlinear.expression(d).values)
 
     sparsity, dependent_subexpressions = _compute_sparsity(d, sub_sparsity, is_sub, subexpr_indx)
     dependent_subexpression_dict = Dict{Int,Int}()
@@ -243,7 +243,7 @@ function DirectedTree(aux_info, d, op::OperatorRegistry, sub_sparsity::Dict{Int,
         rev_sparsity[s] = i
     end
 
-    nodes = _convert_node_list(aux_info, d.nodes, op)
+    nodes = _convert_node_list(aux_info, MOI.Nonlinear.expression(d).nodes, op)
     lin = linearity(nd, adj, subexpr_linearity)
     DirectedTree(nodes = nodes,
                     variables = rev_sparsity,

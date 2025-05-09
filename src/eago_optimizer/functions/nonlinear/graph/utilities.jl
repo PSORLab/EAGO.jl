@@ -48,7 +48,7 @@ sparsity(d::MOIRAD._FunctionStorage) = d.grad_sparsity
 function _compute_sparsity(d::MOIRAD._FunctionStorage, sparse_dict::Dict{Int,Vector{Int}}, is_sub, subexpr_indx)
     dep_subexpression = Int[]
     variable_dict = Dict{Int,Bool}()
-    for n in d.nodes
+    for n in MOI.Nonlinear.expression(d).nodes
         if n.type == MOINL.NODE_VARIABLE
             if !haskey(variable_dict, n.index)
                 variable_dict[n.index] = true
@@ -74,7 +74,7 @@ end
 function _compute_sparsity(d::MOIRAD._SubexpressionStorage, sparse_dict::Dict{Int,Vector{Int}}, is_sub, subexpr_indx)
     dep_subexpression = Int[]
     variable_dict = Dict{Int,Bool}()
-    for n in d.nodes
+    for n in MOI.Nonlinear.expression(d).nodes
         if n.type == MOINL.NODE_VARIABLE
             if !haskey(variable_dict, n.index)
                 variable_dict[n.index] = true
