@@ -81,6 +81,7 @@ function test_runtests()
             "test_quadratic_integration",
             "test_quadratic_nonhomogeneous",
             "test_modification_affine_deletion_edge_cases",
+            "test_nonlinear_expression_hs109",
             # These test check `isapprox` between the `VectorNonlinearFunction`
             # and another one that was modified by bridges so they fail
             # See https://github.com/jump-dev/MathOptInterface.jl/issues/2553

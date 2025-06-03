@@ -16,3 +16,25 @@
     # lvb[3] doesn't tighten since dbbt assumes variables aren't fixed
     @test isapprox(lvb[4], 3.33333333, atol= 1E-5); @test uvb[4] == 4.0
 end
+
+@testset "Constraint Propagation" begin
+
+    # POW
+    model = JuMP.Model(EAGO.Optimizer)
+    @variable(model, x)
+    @constraint(model, x^1.852 <= 1)
+    JuMP.optimize!(model)
+
+    @test isapprox(JuMP.value(x), 0.0, atol=1E-3)
+
+    # LOG
+    model = JuMP.Model(EAGO.Optimizer)
+    @variable(model, x <= 2)
+    @variable(model, t)
+    @constraint(model, log(x) >= t)
+    @objective(model, Max, t)
+    JuMP.optimize!(model)
+
+    @test isapprox(JuMP.value(x), 2, atol=1E-3)
+    @test isapprox(JuMP.value(t), log(2), atol=1E-3)
+end
