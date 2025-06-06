@@ -311,7 +311,7 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     set_first_relax_point!(m)
     # Nonlinear CP can detect infeasibility and bound objective even if
     # the relaxation is ill-posed, so one is always used to mitigate numerical issues 
-    cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 1
+    cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 0
     for _ = 1:cp_reps
         ns = NodeBB(_current_node(m))
         feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)

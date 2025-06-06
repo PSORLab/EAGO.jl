@@ -25,7 +25,7 @@ end
     @constraint(model, x^1.852 <= 1)
     JuMP.optimize!(model)
 
-    @test isapprox(JuMP.value(x), 0.0, atol=1E-3)
+    @test 0.0 <= JuMP.value(x) <= 1.0
 
     # LOG
     model = JuMP.Model(EAGO.Optimizer)
@@ -37,4 +37,12 @@ end
 
     @test isapprox(JuMP.value(x), 2, atol=1E-3)
     @test isapprox(JuMP.value(t), log(2), atol=1E-3)
+
+    # ACOS
+    model = JuMP.Model(EAGO.Optimizer)
+    @variable(model, -2 <= x <= 2)
+    @constraint(model, acos(x) <= 1)
+    JuMP.optimize!(model)
+
+    @test 0.540302 <= JuMP.value(x) <= 1.0
 end

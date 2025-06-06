@@ -175,6 +175,38 @@ function rprop_n!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
     return true
 end
 
+function rprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
+    is_num(b, k) && (return true)
+    if is_unary(g, k)
+        x = child(g, 1, k)
+        z, u = IntervalContractors.minus_rev(interval(b, k), interval(b, x))
+        if !is_num(b, x)
+            isempty(u) && (return false)
+            b[x] = MC{N,T}(u)
+        end
+    else
+        x = child(g, 1, k)
+        y = child(g, 2, k)
+
+        if xset_ynum(b, x, y)
+            z, u, v = IntervalContractors.minus_rev(interval(b, k), interval(b, x), num(b, y))
+        elseif xnum_yset(b, x, y)
+            z, u, v = IntervalContractors.minus_rev(interval(b, k), num(b, x), interval(b, y))
+        else
+            z, u, v = IntervalContractors.minus_rev(interval(b, k), interval(b, x), interval(b, y))
+        end
+        if !is_num(b, x)
+            isempty(u) && (return false)
+            b[x] = MC{N,T}(u)
+        end
+        if !is_num(b, y)
+            isempty(v) && (return false)
+            b[y] = MC{N,T}(v)
+        end
+    end
+    return true
+end
+
 for (f, fc, F) in ((^, POW, IntervalContractors.power_rev),
                    (/, DIV, IntervalContractors.div_rev))
     @eval function rprop!(t::Relax, v::Val{$fc}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
@@ -204,8 +236,7 @@ end
 rprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache, k::Int) = true
 rprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache, k::Int) = true
 
-for (fc, F) in ((MINUS, IntervalContractors.minus_rev),
-                (SQRT, IntervalContractors.sqrt_rev),
+for (fc, F) in ((SQRT, IntervalContractors.sqrt_rev),
                 (ABS, IntervalContractors.abs_rev),
                 (EXP, IntervalContractors.exp_rev),
                 (EXP2, IntervalContractors.exp2_rev),

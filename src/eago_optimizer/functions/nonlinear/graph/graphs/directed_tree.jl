@@ -213,6 +213,7 @@ arity(g::DAT, i)           = arity(node(g, i))
 children(g::DAT, i)        = children(node(g, i))
 child(g::DAT, i, j)        = child(node(g, j), i)
 
+is_unary(g::DAT, i) = arity(g, i) == 1
 is_binary(g::DAT, i) = arity(g, i) == 2
 
 node_count(g::DAT)     = g.node_count
