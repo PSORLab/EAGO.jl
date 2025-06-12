@@ -38,6 +38,17 @@ end
     @test isapprox(JuMP.value(x), 2, atol=1E-3)
     @test isapprox(JuMP.value(t), log(2), atol=1E-3)
 
+    # SIN 
+    model = JuMP.Model(EAGO.Optimizer)
+    @variable(model, 0 <= x <= 2pi)
+    @variable(model, y <= 3)
+    @constraint(model, sin(x) + y >= 1.5)
+    @objective(model, Min, x + y)
+    JuMP.optimize!(model)
+
+    @test isapprox(JuMP.value(x), 0.00567, atol=1E-3)
+    @test isapprox(JuMP.value(y), 1.4943, atol=1E-3)
+
     # ACOS
     model = JuMP.Model(EAGO.Optimizer)
     @variable(model, -2 <= x <= 2)
