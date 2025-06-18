@@ -19,6 +19,19 @@ end
 
 @testset "Constraint Propagation" begin
 
+    # SQRT
+    model = JuMP.Model(EAGO.Optimizer)
+
+    @variable(model, 0 <= x )
+    @variable(model, 0 <= y )
+    @constraint(model, sqrt(x) + y <= 4)
+
+    @objective(model, Min, x^2 + y^2)
+    JuMP.optimize!(model)
+
+    @test isapprox(JuMP.value(x), 0.000297, atol=1E-6)
+    @test isapprox(JuMP.value(y), 0.000297, atol=1E-6)
+    
     # POW
     model = JuMP.Model(EAGO.Optimizer)
     @variable(model, x)
