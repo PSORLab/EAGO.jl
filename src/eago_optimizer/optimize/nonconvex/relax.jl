@@ -72,7 +72,10 @@ function relax! end
 
 Default routine for relaxing quadratic constraint `func < 0.0` on node `n`.
 Takes affine bounds of convex part at point `x0` and secant line bounds on
-concave parts.
+concave parts. This approach comes from Section 2.4.3.2 of:
+Vigerske, S. and Gleixner, A. "SCIP: global optimization of mixed-integer 
+nonlinear programs in a branch-and-cut framework". Optimization Methods 
+and Software, 33:3, 563-593 (2018). DOI: 10.1080/10556788.2017.1335312.
 """
 function affine_relax_quadratic!(m::GlobalOptimizer, func::SQF, buffer::Dict{Int,Float64}, saf::SAF)
 
