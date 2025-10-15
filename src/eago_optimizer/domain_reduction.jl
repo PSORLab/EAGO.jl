@@ -416,6 +416,7 @@ function fbbt! end
 
 function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
 
+    fbbt_tolerance = _fbbt_tolerance(m)
     # Compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
@@ -444,9 +445,15 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
             if aik > 0.0
                 (xh < xL) && return false
                 (xh > xL) && (@inbounds upper_bounds[i] = min(xh, xU))
+                if abs(upper_bounds[i] - lower_bounds[i]) <= fbbt_tolerance
+                    @inbounds upper_bounds[i] = lower_bounds[i]
+                end
             elseif aik < 0.0
                 (xh > xU) && return false
                 (xh < xU) && (@inbounds lower_bounds[i] = max(xh, xL))
+                if abs(upper_bounds[i] - lower_bounds[i]) <= fbbt_tolerance
+                    @inbounds lower_bounds[i] = upper_bounds[i]
+                end
             else
                 temp_sum -= min(aik_xL, aik_xU)
                 continue
@@ -460,6 +467,8 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
 end
 
 function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
+
+    fbbt_tolerance = _fbbt_tolerance(m)
     # Compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
@@ -495,11 +504,17 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionEq)
                 (xh_leq > xL) && (@inbounds upper_bounds[i] = min(xh_leq, xU))
                 (xh_geq > xU) && return false
                 (xh_geq < xU) && (@inbounds lower_bounds[i] = max(xh_geq, xL))
+                if abs(upper_bounds[i] - lower_bounds[i]) <= fbbt_tolerance
+                    @inbounds lower_bounds[i] = upper_bounds[i]
+                end
             elseif aik < 0.0
                 (xh_leq > xU) && return false
                 (xh_leq < xU) && (@inbounds lower_bounds[i] = max(xh_leq, xL))
                 (xh_geq < xL) && return false
                 (xh_geq > xL) && (@inbounds upper_bounds[i] = min(xh_geq, xU))
+                if abs(upper_bounds[i] - lower_bounds[i]) <= fbbt_tolerance
+                    @inbounds lower_bounds[i] = upper_bounds[i]
+                end
             else
                 temp_sum_leq -= min(aik_xL, aik_xU)
                 temp_sum_geq -= max(aik_xL, aik_xU)
