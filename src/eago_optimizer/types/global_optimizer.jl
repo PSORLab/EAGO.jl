@@ -163,11 +163,11 @@ Base.@kwdef mutable struct EAGOParameters
     obbt_depth::Int = 6
     "Number of repetitions of OBBT to perform in preprocessing (default = 3)"
     obbt_repetitions::Int = 3
-    "Turn on aggresive OBBT (default = true)"
+    "Turn on aggressive OBBT (default = true)"
     obbt_aggressive_on::Bool = true
-    "Maximum iteration to perform aggresive OBBT (default = 2)"
+    "Maximum iteration to perform aggressive OBBT (default = 2)"
     obbt_aggressive_max_iteration::Int = 2
-    "Minimum dimension to perform aggresive OBBT (default = 2)"
+    "Minimum dimension to perform aggressive OBBT (default = 2)"
     obbt_aggressive_min_dimension::Int = 2
     "Tolerance to consider bounds equal (default = 1E-10)"
     obbt_tolerance::Float64 = 1E-10
@@ -177,6 +177,8 @@ Base.@kwdef mutable struct EAGOParameters
     fbbt_lp_depth::Int = 1000
     "Number of repetitions of linear FBBT to perform in preprocessing (default = 3)"
     fbbt_lp_repetitions::Int = 3
+    "Tolerance to consider bounds equal (default = 1E-8)"
+    fbbt_tolerance::Float64 = 1E-8
 
     # Duality-Based Bound Tightening (DBBT) options
     "Depth in B&B tree above which duality-based bound tightening should be disabled (default = 1E10)"
@@ -196,10 +198,10 @@ Base.@kwdef mutable struct EAGOParameters
     "Outer-round computed subgradient bounds by this amount (default = 1E-10)"
     subgrad_tol::Float64 = 1E-10
     "Select the type of relaxation to use for the bilinear term (multiplication): 0 corresponds to
-     a standard McCormick arithmetic approach. Settings 1-3 augment the standard McCormick relaxation
-     with implied apriori relaxations: (1) corresponds to a subgradient-based apriori relaxation approach; (2) 
-     corresponds to an affine arithmetic-based apriori approach; and (3) corresponds to a enumerative apriori
-     relaxation-based approach (default = 0)"
+    a standard McCormick arithmetic approach. Settings 1-3 augment the standard McCormick relaxation
+    with implied a priori relaxations: (1) corresponds to a subgradient-based a priori relaxation approach; (2) 
+    corresponds to an affine arithmetic-based a priori approach; and (3) corresponds to a enumerative a priori
+    relaxation-based approach (default = 0)"
     mul_relax_style::Int = 0
 
     # Tolerance to add cuts and max number of cuts
@@ -914,6 +916,7 @@ end
 
 @inline _fbbt_lp_depth(m::GlobalOptimizer) = m._parameters.fbbt_lp_depth
 @inline _fbbt_lp_repetitions(m::GlobalOptimizer) = m._parameters.fbbt_lp_repetitions
+@inline _fbbt_tolerance(m::GlobalOptimizer) = m._parameters.fbbt_tolerance
 
 @inline _obbt_depth(m::GlobalOptimizer) = m._parameters.obbt_depth
 @inline _obbt_repetitions(m::GlobalOptimizer) = m._parameters.obbt_repetitions
