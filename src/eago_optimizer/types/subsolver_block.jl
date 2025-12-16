@@ -8,7 +8,7 @@ $(TYPEDFIELDS)
 """
 mutable struct SubSolvers{Q<:MOI.AbstractOptimizer, S<:MOI.AbstractOptimizer, T<:ExtensionType}
     "Optimizer used to solve relaxed subproblems. Set using `r = [...]` (<: `MOI.AbstractOptimizer`) 
-        (default = `Cbc.Optimizer()`)"
+        (default = `GLPK.Optimizer()`)"
     relaxed_optimizer::Q
     "Optimizer used to solve upper bounding problems. Set using `u = [...]` (<: `MOI.AbstractOptimizer`) 
         (default = `Ipopt.Optimizer()`)"
@@ -16,8 +16,8 @@ mutable struct SubSolvers{Q<:MOI.AbstractOptimizer, S<:MOI.AbstractOptimizer, T<
     "User-defined extension to use. Set using `t = [...]`(<: `EAGO.ExtensionType`)"
     ext::T
 end
-SubSolvers{Q,S,T}(; r::Q = Cbc.Optimizer(), u::S = IpoptMathOptInterfaceExt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r, u, t)
-SubSolvers(; r::Q = Cbc.Optimizer(), u::S = IpoptMathOptInterfaceExt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r,u,t)
+SubSolvers{Q,S,T}(; r::Q = GLPK.Optimizer(), u::S = IpoptMathOptInterfaceExt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r, u, t)
+SubSolvers(; r::Q = GLPK.Optimizer(), u::S = IpoptMathOptInterfaceExt.Optimizer(), t::T = DefaultExt()) where {Q,S,T} = SubSolvers{Q,S,T}(r,u,t)
 
 """
     _relaxed_optimizer(::GlobalOptimizer)
