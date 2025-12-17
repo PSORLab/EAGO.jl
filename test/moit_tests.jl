@@ -57,11 +57,10 @@ function test_runtests()
             # INFEASIBLE
             "test_conic_NormInfinityCone_INFEASIBLE",
             "test_conic_NormOneCone_INFEASIBLE",
-            # EAGO gives returns 1 (which is the requirement of test) if only MOI.FEASIBLE_POINT, but the test 
-            # requries INFEASIBLE status to return 1, but EAGO solves the problem correctly.
+            # EAGO doesn't store result if the termination status is not FEASIBLE_POINT
             "test_linear_DUAL_INFEASIBLE",
             "test_linear_DUAL_INFEASIBLE_2",
-            # EAGO Gives INVALID_MODEL while the test requires INFEASIBLE
+            # Okay to exclude: returns INVALID_MODEL instead of INFEASIBLE
             "test_constraint_ZeroOne_bounds_3",
             # Okay to exclude: these tests throw the following warning and don't
             # terminate quickly.
