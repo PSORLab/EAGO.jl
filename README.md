@@ -104,6 +104,10 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 ## Recent News
 
+### [v0.8.4](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.4) (December 18, 2025)
+- Switched from Cbc to GLPK as the default relaxed optimizer.
+- Added an EAGO parameter `fbbt_tolerance` for FBBT to consider lower and upper bounds equal which defaults to 1E-8.
+
 ### [v0.8.3](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.3) (May 1, 2025)
 - Added support for `MOI.UserDefinedFunction`.
 - Updated bounds in `unbounded_check` from +/- 1E10 to +/- 1E6.
