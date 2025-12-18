@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 
-using Test, Printf, EAGO, MathOptInterface, Cbc, JuMP, Ipopt
+using Test, Printf, EAGO, MathOptInterface, GLPK, JuMP, Ipopt
 
 const MOI = MathOptInterface
 const MOIT = MOI.Test
