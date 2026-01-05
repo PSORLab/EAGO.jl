@@ -213,6 +213,7 @@ arity(g::DAT, i)           = arity(node(g, i))
 children(g::DAT, i)        = children(node(g, i))
 child(g::DAT, i, j)        = child(node(g, j), i)
 
+is_unary(g::DAT, i) = arity(g, i) == 1
 is_binary(g::DAT, i) = arity(g, i) == 2
 
 node_count(g::DAT)     = g.node_count
@@ -222,6 +223,7 @@ constant_count(g::DAT) = g.constant_count
 dependent_subexpression_index(g::DAT, i) = g.dependent_subexpression_dict[i]
 dep_subexpr_count(g::DAT)                = length(g.dependent_subexpressions)
 sparsity(g::DAT, i)                      = g.sparsity
+sparsity(g::DAT)                         = g.sparsity
 rev_sparsity(g::DAT, i::Int, k::Int)     = g.rev_sparsity[i]
 
 user_univariate_operator(g::DAT, i) = g.user_operators.registered_univariate_operators[i].f

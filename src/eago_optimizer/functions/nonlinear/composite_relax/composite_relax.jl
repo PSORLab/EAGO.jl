@@ -250,8 +250,9 @@ function rprop!(t::RELAX_ATTRIBUTE, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:
     flag = r_init!(t, g, b)
     for k = 1:node_count(g)
         nt = node_class(g, k)
+        ex = ex_type(g, k)
         if nt == EXPRESSION
-            flag = rprop!(t, Expression(), g, b, k)
+            flag = rprop!(t, Val(ex), g, b, k)
         elseif nt == VARIABLE
             flag = rprop!(t, Variable(), g, b, k)
         elseif nt == SUBEXPRESSION
