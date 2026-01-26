@@ -21,7 +21,7 @@ routine. Additional options and temporary storage are located in the
 be constant over the entire solve are stored in the `_parameters::EAGOParameters` field. 
 Some user-facing keywords not in the `EAGOParameters` field include:
 - `relaxed_optimizer::MOI.AbstractOptimizer`: An instance of the optimizer used to solve 
-    the relaxed subproblems (default = `Cbc.Optimizer()`). Located in `subsolver_block::SubSolvers{Q,S,T}`.
+    the relaxed subproblems (default = `GLPK.Optimizer()`). Located in `subsolver_block::SubSolvers{Q,S,T}`.
 - `upper_optimizer::MOI.AbstractOptimizer`: Optimizer used to solve upper bounding problems 
     (default = `Ipopt.Optimizer()`). Located in `subsolver_block::SubSolvers{Q,S,T}`.
 - `ext::ExtensionType`: Holds an instance of a subtype of `EAGO.ExtensionType`, used to define
