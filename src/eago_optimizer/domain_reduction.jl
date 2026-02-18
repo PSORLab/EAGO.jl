@@ -104,6 +104,7 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
         d = _relaxed_optimizer(m)
         variable_number = _variable_num(FullVar(), m)
         v = -ones(variable_number)
+        obbt_tolerance = _obbt_tolerance(m)
 
         # Copy prior index set (ignores linear and binary terms)
         obbt_variable_count = m._obbt_variable_count
@@ -114,6 +115,7 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
 
         # Exclude unbounded directions
         @__dot__ m._new_low_index = m._new_low_index & !isinf(n.lower_variable_bounds)
+        @__dot__ m._new_upp_index = m._new_upp_index & !isinf(n.upper_variable_bounds)
 
         # Begin the main algorithm
         for k = 1:_obbt_aggressive_max_iteration(m)
@@ -149,14 +151,14 @@ function aggressive_filtering!(m::GlobalOptimizer{R,S,Q}, n::NodeBB) where {R,S,
 
             if set_preprocess_status(m,d) == RRS_OPTIMAL
                 variable_primal = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index)
-                copyto!(m._new_low_index, m._old_low_index)
-                copyto!(m._new_upp_index, m._old_upp_index)
+                copyto!(m._old_low_index, m._new_low_index)
+                copyto!(m._old_upp_index, m._new_upp_index)
                 for i = 1:obbt_variable_count
                     vp_value = variable_primal[i]
-                    if m._old_low_index[i] && vp_value == n.lower_variable_bounds[i]
+                    if m._old_low_index[i] && abs(vp_value - n.lower_variable_bounds[i]) <= obbt_tolerance
                         m._new_low_index[i] = false
                     end
-                    if m._old_upp_index[i] && vp_value == n.upper_variable_bounds[i]
+                    if m._old_upp_index[i] && abs(vp_value - n.upper_variable_bounds[i]) <= obbt_tolerance
                         m._new_upp_index[i] = false
                     end
                 end
@@ -224,11 +226,11 @@ function active_argmin(f, b, n)
     end
     vi, v
 end
-function Δxl(m, i)
-    _lower_solution(BranchVar(),m,i) - _lower_bound(BranchVar(),m,i)
+function Δxl(xLP, m, i)
+    xLP[i] - _lower_bound(BranchVar(),m,i)
 end
-function Δxu(m, i) 
-    _upper_bound(BranchVar(),m,i) - _lower_solution(BranchVar(),m,i)
+function Δxu(xLP, m, i) 
+    _upper_bound(BranchVar(),m,i) - xLP[i]
 end
 
 function reset_objective!(m::GlobalOptimizer{R,S,Q}, d) where {R,S,Q<:ExtensionType}
@@ -251,7 +253,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
     feasibility = true
     n = m._current_node
     d = _relaxed_optimizer(m)
-     
+
     validity, feasibility = relax_problem!(m)
     #println(" post relax problem initial obbt")
     #print_problem_summary!(_relaxed_optimizer(m), "post relax problem initial obbt ...")
@@ -264,7 +266,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
         fill!(m._obbt_working_lower_index, true)
         fill!(m._obbt_working_upper_index, true)
 
-        # Filters out any indicies with active bounds on variables
+        # Filters out any indices with active bounds on variables
         # determined by solving the feasibility problem
         trivial_filtering!(m, n)
         feasibility = aggressive_filtering!(m, n)
@@ -281,8 +283,8 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
         while (any(m._obbt_working_lower_index) || any(m._obbt_working_upper_index)) && !isempty(n)
 
               # Determine min of xLP - yL and xU - xLP for potential directions
-            lower_indx, lower_value = active_argmin(i -> Δxl(m, i), m._obbt_working_lower_index, obbt_variable_count)
-            upper_indx, upper_value = active_argmin(i -> Δxu(m, i), m._obbt_working_upper_index, obbt_variable_count)
+            lower_indx, lower_value = active_argmin(i -> Δxl(xLP, m, i), m._obbt_working_lower_index, obbt_variable_count)
+            upper_indx, upper_value = active_argmin(i -> Δxu(xLP, m, i), m._obbt_working_upper_index, obbt_variable_count)
  
             # Default to upper bound if no lower bound is found, use maximum distance otherwise
             if lower_value <= upper_value && lower_indx > 0
@@ -301,7 +303,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                     # We assume branching does not occur on fixed variables and interval
                     # constraints are internally bridged by EAGO. So the only L <= x
                     # constraint in the model is a GreaterThan.
-                    if updated_value > previous_value && (updated_value - previous_value) > 1E-6
+                    if (updated_value - previous_value) > 1E-6
                         sv_geq_ci = m._node_to_sv_geq_ci[lower_indx]
                         MOI.set(d, MOI.ConstraintSet(), sv_geq_ci, GT(updated_value))
                         n.lower_variable_bounds[lower_indx] = updated_value
@@ -337,7 +339,7 @@ function obbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
                     # We assume branching does not occur on fixed variables and interval
                     # constraints are internally bridged by EAGO. So the only U => x
                     # constraint in the model is a LessThan.
-                    if updated_value < previous_value && (previous_value - updated_value) > 1E-6
+                    if (previous_value - updated_value) > 1E-6
                         sv_leq_ci = m._node_to_sv_leq_ci[upper_indx]
                         MOI.set(d, MOI.ConstraintSet(), sv_leq_ci, LT(updated_value))
                         n.upper_variable_bounds[upper_indx] = updated_value
@@ -536,6 +538,112 @@ function _propagate_constraint!(d, f::BufferedNonlinearFunction)
     d.interval_intersect = true
     is_feasible && forward_pass!(d, f)
 end
+
+function forward_reverse_sqf_eq(m::GlobalOptimizer{R,S,Q}, constr::SQF) where {R,S,Q<:ExtensionType}
+    affine_term_count = length(constr.affine_terms)
+    quad_term_count = length(constr.quadratic_terms)
+    total_term_count = quad_term_count +affine_term_count
+    add_terms = zeros(Interval{Float64}, total_term_count)
+    other_add_terms = zeros(Interval{Float64}, total_term_count)
+    variables = zeros(Interval{Float64}, m._input_problem._variable_count)
+
+    # Fill variables with node bounds
+    for i in 1:m._input_problem._variable_count
+        variables[i] = Interval(m._current_node.lower_variable_bounds[i], m._current_node.upper_variable_bounds[i])
+    end
+
+    # Forward pass
+    full_expr = Interval(0.0)
+    for i in 1:quad_term_count
+        term = constr.quadratic_terms[i]
+        if term.variable_1 == term.variable_2
+            v1_index = term.variable_1.value
+            full_expr += 0.5*term.coefficient*variables[v1_index]^2
+            add_terms[i] += 0.5*term.coefficient*variables[v1_index]^2
+            for j = 1:total_term_count
+                if i != j
+                    other_add_terms[j] += 0.5*term.coefficient*variables[v1_index]^2
+                end
+            end
+        else
+            v1_index = term.variable_1.value
+            v2_index = term.variable_2.value
+            full_expr += term.coefficient*variables[v1_index]*variables[v2_index]
+            add_terms[i] += term.coefficient*variables[v1_index]*variables[v2_index]
+            for j = 1:total_term_count
+                if i != j
+                    other_add_terms[j] += term.coefficient*variables[v1_index]*variables[v2_index]
+                end
+            end
+        end
+    end
+    for i in quad_term_count+1:total_term_count
+        term = constr.affine_terms[i-quad_term_count]
+        v_index = term.variable.value
+        full_expr += term.coefficient*variables[v_index]
+        add_terms[i] += term.coefficient*variables[v_index]
+        for j = 1:total_term_count
+            if i != j
+                other_add_terms[j] += term.coefficient*variables[v_index]
+            end
+        end
+    end
+    full_expr = Interval(-constr.constant) ∩ full_expr
+    isempty(full_expr) && return false
+
+    # Reverse pass
+    for i in 1:quad_term_count
+        # We have:
+        # variables[v_index] = current variable bounds
+        # add_terms[i] = "a" (could be const*x^2, const*x*y, const*x)
+        # other_add_terms[i] = "b+c+d" (sum of all other terms)
+        term = constr.quadratic_terms[i]
+        if term.variable_1 == term.variable_2
+            # const*x^2 case
+            v1_index = term.variable_1.value
+            _, new_term, _ = IntervalContractors.plus_rev(full_expr, add_terms[i], other_add_terms[i])
+            new_term = new_term / (0.5*term.coefficient)
+            _, new_var, _ = IntervalContractors.power_rev(new_term, variables[v1_index], 2)
+            variables[v1_index] = variables[v1_index] ∩ new_var
+        else
+            # const*x*y case
+            v1_index = term.variable_1.value
+            v2_index = term.variable_2.value
+            _, new_term, _ = IntervalContractors.plus_rev(full_expr, add_terms[i], other_add_terms[i])
+            new_term = new_term / (term.coefficient)
+            _, new_var1, new_var2 = IntervalContractors.mul_rev(new_term, variables[v1_index], variables[v2_index])
+            variables[v1_index] = variables[v1_index] ∩ new_var1
+            variables[v2_index] = variables[v2_index] ∩ new_var2
+        end
+    end
+    for i in quad_term_count+1:total_term_count
+        # const*x case
+        term = constr.affine_terms[i-quad_term_count]
+        v_index = term.variable.value
+        _, new_term, _ = IntervalContractors.plus_rev(full_expr, add_terms[i], other_add_terms[i])
+        new_term = new_term / (term.coefficient)
+        variables[v_index] = variables[v_index] ∩ new_term
+    end
+    any(isempty.(variables)) && return false
+
+    # Pass intervals to current_node
+    m._current_node = update_node(m, variables)
+    return true
+end
+
+function update_node(m::GlobalOptimizer, new_bounds::Vector{Interval{Float64}})
+    n = m._current_node
+    new_lower = copy(n.lower_variable_bounds)
+    new_upper = copy(n.upper_variable_bounds)
+    new_lower[1:length(new_bounds)] .= getfield.(new_bounds, :lo)
+    new_upper[1:length(new_bounds)] .= getfield.(new_bounds, :hi)
+    return NodeBB(new_lower,
+                  new_upper,
+                  copy(n.is_integer), n.continuous,
+                  n.lower_bound, n.upper_bound, n.depth, n.cont_depth, n.id,
+                  n.branch_direction, n.last_branch, n.branch_extent)
+end
+
 """
 $(TYPEDSIGNATURES)
 
@@ -546,6 +654,9 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
     feasible_flag = true
 
     wp = m._working_problem
+    # for constr in wp._sqf_eq
+    #     feasible_flag &= forward_reverse_sqf_eq(m, constr.func)
+    # end
     if m._nonlinear_evaluator_created
         evaluator = wp._relaxed_evaluator
         set_node!(wp._relaxed_evaluator, m._current_node)
@@ -559,7 +670,6 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
                 evaluator.interval_intersect = true
             end
         end
-
         wp._relaxed_evaluator.is_first_eval = m._new_eval_constraint
         for constr in wp._nonlinear_constr
             feasible_flag && forward_pass!(evaluator, constr)
@@ -572,6 +682,7 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
         m._new_eval_constraint = false
         m._new_eval_objective = false
         _get_x!(BranchVar, m._current_xref, evaluator)
+        # evaluator -> current_node
         m._current_node = retrieve_node(evaluator)
 
         interval_objective_bound!(m)

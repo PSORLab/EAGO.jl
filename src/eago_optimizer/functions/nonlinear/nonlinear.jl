@@ -29,7 +29,7 @@ _set_has_value!(d, v) = nothing
 """
 $(TYPEDEF)
 
-Stores a general quadratic function with a buffer.
+Stores a general nonlinear function with a buffer.
 """
 mutable struct NonlinearExpression{V,N,T<:RelaxTag} <: AbstractEAGOConstraint
     g::DirectedTree

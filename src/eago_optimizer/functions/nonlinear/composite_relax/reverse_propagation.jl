@@ -11,46 +11,45 @@
 # r_init!, rprop!, rprop_2!, rprop_n!
 ################################################################################
 
-function r_init!(t::Relax, g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
-    if !is_num(b, 1)
-        b[1] = set(b, 1) ∩ g.sink_bnd
+function r_init!(t::Relax, tree::DAT, cache::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
+    if !is_num(cache, 1)
+        cache[1] = set(cache, 1) ∩ tree.sink_bnd
     end
-    return !isempty(set(b, 1))
+    return !isempty(set(cache, 1))
 end
 
-function rprop!(t::RelaxCacheAttribute, v::Variable, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-    i = first_index(g, k)
-    x = val(b, i)
-    l = lbd(b, i)
-    u = ubd(b, i)
-    if l == u
-        b[k] = x
+function rprop!(t::RelaxCacheAttribute, v::Variable, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+    variable_index = first_index(tree, node_index)
+    variable_value = val(cache, variable_index)
+    variable_lower_bound = lbd(cache, variable_index)
+    variable_upper_bound = ubd(cache, variable_index)
+    node_interval = interval(cache, node_index)
+    if variable_lower_bound == variable_upper_bound
+        cache[node_index] = variable_value
     else
-        z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
-        if first_eval(t, b)
-            z = z ∩ interval(b, k)
-        end
-        b[k] = z
-        b.ic.v.lower_variable_bounds[i] = z.Intv.lo
-        b.ic.v.upper_variable_bounds[i] = z.Intv.hi
+        variable_node = varset(MC{N,T}, rev_sparsity(tree, variable_index, node_index), variable_value, variable_value, variable_lower_bound, variable_upper_bound)
+        variable_node = variable_node ∩ node_interval
+        cache[node_index] = variable_node
+        cache.ic.v.lower_variable_bounds[variable_index] = variable_node.Intv.lo
+        cache.ic.v.upper_variable_bounds[variable_index] = variable_node.Intv.hi
     end
-    return !isempty(set(b, k))
+    return !isempty(set(cache, node_index))
 end
 
-function rprop!(t::Relax, ex::Subexpression, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-    i = first_index(g, k)
-    x = dependent_subexpression_index(g, i)
-    if subexpression_is_num(b, x)
-        b[k] = subexpression_num(b, x)
+function rprop!(t::Relax, ex::Subexpression, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+    first_child_index = first_index(tree, node_index)
+    subexpression_index = dependent_subexpression_index(tree, first_child_index)
+    if subexpression_is_num(cache, subexpression_index)
+        cache[node_index] = subexpression_num(cache, subexpression_index)
     else
-        b[k] = subexpression_set(b, x)
+        cache[node_index] = subexpression_set(cache, subexpression_index)
     end
     return true
 end
 
 for F in (PLUS, MULT)
-    @eval function rprop!(t::Relax, v::Val{$F}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-        is_binary(g, k) ? rprop_2!(Relax(), Val($F), g, b, k) : rprop_n!(Relax(), Val($F), g, b, k)
+    @eval function rprop!(t::Relax, v::Val{$F}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+        is_binary(tree, node_index) ? rprop_2!(Relax(), Val($F), tree, cache, node_index) : rprop_n!(Relax(), Val($F), tree, cache, node_index)
     end
 end
 
@@ -61,24 +60,28 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evaluation of node representing `n = x + y` which updates x and y.
 """
-function rprop_2!(t::Relax, v::Val{PLUS}, g::DAT, c::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-    is_num(c, k) && return true
-    x = child(g, 1, k)
-    y = child(g, 2, k)
-    if xset_ynum(c, x, y)
-        b, a, q = IntervalContractors.plus_rev(interval(c, k), interval(c, x), num(c, y))
-    elseif xnum_yset(c, x, y)
-        b, a, q = IntervalContractors.plus_rev(interval(c, k), num(c, x), interval(c, y))
+function rprop_2!(t::Relax, v::Val{PLUS}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+    is_num(cache, node_index) && return true
+    first_child_index = child(tree, 1, node_index)
+    second_child_index = child(tree, 2, node_index)
+    node_interval = interval(cache, node_index)
+    old_first_child_interval = interval(cache, first_child_index)
+    old_second_child_interval = interval(cache, second_child_index)
+
+    if xset_ynum(cache, first_child_index, second_child_index)
+        _, new_first_child_interval, new_second_child_interval = IntervalContractors.plus_rev(node_interval, old_first_child_interval, num(cache, second_child_index))
+    elseif xnum_yset(cache, first_child_index, second_child_index)
+        _, new_first_child_interval, new_second_child_interval = IntervalContractors.plus_rev(node_interval, num(cache, first_child_index), old_second_child_interval)
     else
-        b, a, q = IntervalContractors.plus_rev(interval(c, k), interval(c, x), interval(c, y))
+        _, new_first_child_interval, new_second_child_interval = IntervalContractors.plus_rev(node_interval, old_first_child_interval, old_second_child_interval)
     end
-        if !is_num(c, x)
-            isempty(a) && return false
-            c[x] = MC{N,T}(a)
+        if !is_num(cache, first_child_index)
+            isempty(new_first_child_interval) && return false
+            cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
-        if !is_num(c, y)
-            isempty(q) && return false
-            c[y] = MC{N,T}(q)
+        if !is_num(cache, second_child_index)
+            isempty(new_second_child_interval) && return false
+            cache[second_child_index] = MC{N,T}(new_second_child_interval)
         end
     return true
 end
@@ -88,28 +91,30 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evaluation of node representing `n = +(x,y,z...)` which updates x, y, z and so on.
 """
-function rprop_n!(t::Relax, v::Val{PLUS}, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+function rprop_n!(t::Relax, v::Val{PLUS}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
     # Outer loop makes a temporary sum (minus one argument)
     # A reverse is then computed with respect to this argument
     count = 0
-    children_idx = children(g, k)
-    for i in children_idx
-        is_num(c, i) && continue                     # Don't contract a number valued argument
+    children_indices = children(tree, node_index)
+    node_interval = interval(cache, node_index)
+    for current_child_index in children_indices
+        is_num(cache, current_child_index) && continue                     # Don't contract a number valued argument
         (count >= MAX_ASSOCIATIVE_REVERSE) && break
-        tsum = zero(MC{N,T})
+        old_current_child_interval = interval(cache, current_child_index)
+        temp_sum = zero(MC{N,T})
         count += 1
-        for j in children_idx
-            if j != i
-                if is_num(c, j)
-                    tsum += num(c, j)
+        for other_child_index in children_indices
+            if other_child_index != current_child_index
+                if is_num(cache, other_child_index)
+                    temp_sum += num(cache, other_child_index)
                 else
-                    tsum += set(c, j)
+                    temp_sum += set(cache, other_child_index)
                 end
             end
         end
-        _, w, _ = IntervalContractors.plus_rev(interval(c, k), interval(c, i), Intv(tsum))
-        isempty(w) && (return false)
-        c[i] = MC{N,T}(w)
+        _, new_current_child_interval, _ = IntervalContractors.plus_rev(node_interval, old_current_child_interval, Intv(temp_sum))
+        isempty(new_current_child_interval) && (return false)
+        cache[current_child_index] = MC{N,T}(new_current_child_interval)
     end
     return true
 end
@@ -119,27 +124,30 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evaluation of node representing `n = x * y` which updates x and y.
 """
-function rprop_2!(t::Relax, v::Val{MULT}, g::DAT, c::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
+function rprop_2!(t::Relax, v::Val{MULT}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
 
-    is_num(c, k) && (return true)
-    x = child(g, 1, k)
-    y = child(g, 2, k)
+    is_num(cache, node_index) && (return true)
+    first_child_index = child(tree, 1, node_index)
+    second_child_index = child(tree, 2, node_index)
+    node_interval = interval(cache, node_index)
+    old_first_child_interval = interval(cache, first_child_index)
+    old_second_child_interval = interval(cache, second_child_index)
 
-    if xset_ynum(c, x, y)
-        b, a, q = IntervalContractors.mul_rev(interval(c, k), interval(c, x), num(c, y))
-    elseif xnum_yset(c, x, y)
-        b, a, q = IntervalContractors.mul_rev(interval(c, k), num(c, x), interval(c, y))
+    if xset_ynum(cache, first_child_index, second_child_index)
+        _, new_first_child_interval, new_second_child_interval = IntervalContractors.mul_rev(node_interval, old_first_child_interval, num(cache, second_child_index))
+    elseif xnum_yset(cache, first_child_index, second_child_index)
+        _, new_first_child_interval, new_second_child_interval = IntervalContractors.mul_rev(node_interval, num(cache, first_child_index), old_second_child_interval)
     else
-        b, a, q = IntervalContractors.mul_rev(interval(c, k), interval(c, x), interval(c, y))
+        _, new_first_child_interval, new_second_child_interval = IntervalContractors.mul_rev(node_interval, old_first_child_interval, old_second_child_interval)
     end
 
-    if !is_num(c, x)
-        isempty(a) && (return false)
-        c[x] = MC{N,T}(a)
+    if !is_num(cache, first_child_index)
+        isempty(new_first_child_interval) && (return false)
+        cache[first_child_index] = MC{N,T}(new_first_child_interval)
     end
-    if !is_num(c, x)
-        isempty(q) && (return false)
-        c[y] = MC{N,T}(q)
+    if !is_num(cache, second_child_index)
+        isempty(new_second_child_interval) && (return false)
+        cache[second_child_index] = MC{N,T}(new_second_child_interval)
     end
     return true
 end
@@ -149,59 +157,66 @@ $(FUNCTIONNAME)
 
 Updates storage tapes with reverse evaluation of node representing `n = *(x,y,z...)` which updates x, y, z and so on.
 """
-function rprop_n!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) where {V,N,T<:RelaxTag}
-    # Outer loop makes a temporary sum (minus one argument)
+function rprop_n!(t::Relax, v::Val{MULT}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+    # Outer loop makes a temporary product (minus one argument)
     # A reverse is then computed with respect to this argument
     count = 0
-    children_idx = children(g, k)
-    for i in children_idx
-        is_num(b, i) && continue                     # Don't contract a number valued argument
+    children_indices = children(tree, node_index)
+    node_interval = interval(cache, node_index)
+    for current_child_index in children_indices
+        is_num(cache, current_child_index) && continue                     # Don't contract a number valued argument
         (count >= MAX_ASSOCIATIVE_REVERSE) && break
-        tmul = one(MC{N,T})
+        old_current_child_interval = interval(cache, current_child_index)
+        temp_prod = one(MC{N,T})
         count += 1
-        for j in children_idx
-            if i != j
-                if is_num(b, j)
-                    tmul *= num(b, j)
+        for other_child_index in children_indices
+            if current_child_index != other_child_index
+                if is_num(cache, other_child_index)
+                    temp_prod *= num(cache, other_child_index)
                 else
-                    tmul *= set(b, j)
+                    temp_prod *= set(cache, other_child_index)
                 end
             end
         end
-        _, w, _ = IntervalContractors.mul_rev(interval(b, k), interval(b, i), Intv(tmul))
-        isempty(w) && (return false)
-        b[i] = MC{N,T}(w)
+        _, new_current_child_interval, _ = IntervalContractors.mul_rev(node_interval, old_current_child_interval, Intv(temp_prod))
+        isempty(new_current_child_interval) && (return false)
+        cache[current_child_index] = MC{N,T}(new_current_child_interval)
     end
     return true
 end
 
-function rprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-    is_num(b, k) && (return true)
-    if is_unary(g, k)
-        x = child(g, 1, k)
-        z, u = IntervalContractors.minus_rev(interval(b, k), interval(b, x))
-        if !is_num(b, x)
-            isempty(u) && (return false)
-            b[x] = MC{N,T}(u)
+function rprop!(t::Relax, v::Val{MINUS}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+    is_num(cache, node_index) && (return true)
+    if is_unary(tree, node_index)
+        first_child_index = child(tree, 1, node_index)
+        node_interval = interval(cache, node_index)
+        old_first_child_interval = interval(cache, first_child_index)
+        _, new_first_child_interval = IntervalContractors.minus_rev(node_interval, old_first_child_interval)
+        if !is_num(cache, first_child_index)
+            isempty(new_first_child_interval) && (return false)
+            cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
     else
-        x = child(g, 1, k)
-        y = child(g, 2, k)
+        first_child_index = child(tree, 1, node_index)
+        second_child_index = child(tree, 2, node_index)
+        node_interval = interval(cache, node_index)
+        old_first_child_interval = interval(cache, first_child_index)
+        old_second_child_interval = interval(cache, second_child_index)
 
-        if xset_ynum(b, x, y)
-            z, u, v = IntervalContractors.minus_rev(interval(b, k), interval(b, x), num(b, y))
-        elseif xnum_yset(b, x, y)
-            z, u, v = IntervalContractors.minus_rev(interval(b, k), num(b, x), interval(b, y))
+        if xset_ynum(cache, first_child_index, second_child_index)
+            _, new_first_child_interval, new_second_child_interval = IntervalContractors.minus_rev(node_interval, old_first_child_interval, num(cache, second_child_index))
+        elseif xnum_yset(cache, first_child_index, second_child_index)
+            _, new_first_child_interval, new_second_child_interval = IntervalContractors.minus_rev(node_interval, num(cache, first_child_index), old_second_child_interval)
         else
-            z, u, v = IntervalContractors.minus_rev(interval(b, k), interval(b, x), interval(b, y))
+            _, new_first_child_interval, new_second_child_interval = IntervalContractors.minus_rev(node_interval, old_first_child_interval, old_second_child_interval)
         end
-        if !is_num(b, x)
-            isempty(u) && (return false)
-            b[x] = MC{N,T}(u)
+        if !is_num(cache, first_child_index)
+            isempty(new_first_child_interval) && (return false)
+            cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
-        if !is_num(b, y)
-            isempty(v) && (return false)
-            b[y] = MC{N,T}(v)
+        if !is_num(cache, second_child_index)
+            isempty(new_second_child_interval) && (return false)
+            cache[second_child_index] = MC{N,T}(new_second_child_interval)
         end
     end
     return true
@@ -209,32 +224,35 @@ end
 
 for (f, fc, F) in ((^, POW, IntervalContractors.power_rev),
                    (/, DIV, IntervalContractors.div_rev))
-    @eval function rprop!(t::Relax, v::Val{$fc}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-        is_num(b, k) && (return true)
-        x = child(g, 1, k)
-        y = child(g, 2, k)
+    @eval function rprop!(t::Relax, v::Val{$fc}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+        is_num(cache, node_index) && (return true)
+        first_child_index = child(tree, 1, node_index)
+        second_child_index = child(tree, 2, node_index)
+        node_interval = interval(cache, node_index)
+        old_first_child_interval = interval(cache, first_child_index)
+        old_second_child_interval = interval(cache, second_child_index)
 
-        if xset_ynum(b, x, y)
-            z, u, v = ($F)(interval(b, k), interval(b, x), num(b, y))
-        elseif xnum_yset(b, x, y)
-            z, u, v = ($F)(interval(b, k), num(b, x), interval(b, y))
+        if xset_ynum(cache, first_child_index, second_child_index)
+            _, new_first_child_interval, new_second_child_interval = ($F)(node_interval, old_first_child_interval, num(cache, second_child_index))
+        elseif xnum_yset(cache, first_child_index, second_child_index)
+            _, new_first_child_interval, new_second_child_interval = ($F)(node_interval, num(cache, first_child_index), old_second_child_interval)
         else
-            z, u, v = ($F)(interval(b, k), interval(b, x), interval(b, y))
+            _, new_first_child_interval, new_second_child_interval = ($F)(node_interval, old_first_child_interval, old_second_child_interval)
         end
-        if !is_num(b, x)
-            isempty(u) && (return false)
-            b[x] = MC{N,T}(u)
+        if !is_num(cache, first_child_index)
+            isempty(new_first_child_interval) && (return false)
+            cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
-        if !is_num(b, y)
-            isempty(v) && (return false)
-            b[y] = MC{N,T}(v)
+        if !is_num(cache, second_child_index)
+            isempty(new_second_child_interval) && (return false)
+            cache[second_child_index] = MC{N,T}(new_second_child_interval)
         end
         return true
     end
 end
 
-rprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache, k::Int) = true
-rprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache, k::Int) = true
+rprop!(t::Relax, v::Val{USER}, tree::DAT, cache::RelaxCache, k::Int) = true
+rprop!(t::Relax, v::Val{USERN}, tree::DAT, cache::RelaxCache, k::Int) = true
 
 for (fc, F) in ((SQRT, IntervalContractors.sqrt_rev),
                 (ABS, IntervalContractors.abs_rev),
@@ -259,13 +277,15 @@ for (fc, F) in ((SQRT, IntervalContractors.sqrt_rev),
                 (ACOSH, IntervalContractors.acosh_rev),
                 (ATANH, IntervalContractors.atanh_rev),
                 )
-    @eval function rprop!(t::Relax, v::Val{$fc}, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
-        is_num(b, k) && (return true)
-        x = child(g, 1, k)
-        z, u = ($F)(interval(b, k), interval(b, x))
-        if !is_num(b, x)
-            isempty(u) && (return false)
-            b[x] = MC{N,T}(u)
+    @eval function rprop!(t::Relax, v::Val{$fc}, tree::DAT, cache::RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag}
+        is_num(cache, node_index) && (return true)
+        first_child_index = child(tree, 1, node_index)
+        node_interval = interval(cache, node_index)
+        old_first_child_interval = interval(cache, first_child_index)
+        _, new_first_child_interval = ($F)(node_interval, old_first_child_interval)
+        if !is_num(cache, first_child_index)
+            isempty(new_first_child_interval) && (return false)
+            cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
         return true
     end

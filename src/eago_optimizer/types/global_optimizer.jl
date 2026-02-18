@@ -245,8 +245,6 @@ Base.@kwdef mutable struct EAGOParameters
     # Other forcing options
     "Ignore EAGO's ability to parse problem types and force it to run global optimization (default = false)"
     force_global_solve::Bool = false
-    "Check that all branching variables have finite bounds and set them to +/- 1E10 if not (default = true)"
-    unbounded_check::Bool = true
 end
 const EAGO_PARAMETERS = fieldnames(EAGOParameters)
 
