@@ -193,9 +193,9 @@ function set_reference_point!(m::GlobalOptimizer)
             if isfinite(l) && isfinite(u)
                 x = node_x
             elseif isfinite(l)
-                x = min(0.0, u)
-            elseif isfinite(u)
                 x = max(0.0, l)
+            elseif isfinite(u)
+                x = min(0.0, u)
             else
                 x = 0.0
             end
@@ -576,6 +576,19 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
         _get_x!(BranchVar, m._current_xref, evaluator)
         # evaluator -> current_node
         m._current_node = retrieve_node(evaluator)
+        if m._current_node.depth == 1
+            for i in 1:m._input_problem._variable_count
+                start = wp._variable_info[i]
+                wp._variable_info[i] = VariableInfo(start.is_integer,
+                                                    ~isinf(m._current_node.lower_variable_bounds[i]),
+                                                    ~isinf(m._current_node.upper_variable_bounds[i]),
+                                                    m._current_node.lower_variable_bounds[i] == m._current_node.upper_variable_bounds[i],
+                                                    start.has_constraints,
+                                                    m._current_node.lower_variable_bounds[i],
+                                                    m._current_node.upper_variable_bounds[i]
+                )
+            end
+        end
 
         interval_objective_bound!(m)
     end

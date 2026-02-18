@@ -156,7 +156,7 @@ end
 """
 
 Constructs and solves the problem locally on node `y` updated the upper
-solution informaton in the optimizer.
+solution information in the optimizer.
 """
 function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 

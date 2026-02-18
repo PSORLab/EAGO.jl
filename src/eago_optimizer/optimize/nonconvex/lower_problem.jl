@@ -159,9 +159,9 @@ function set_first_relax_point!(m::GlobalOptimizer)
             if isfinite(l) && isfinite(u)
                 x = 0.5*(l + u)
             elseif isfinite(l)
-                x = min(0.0, u)
-            elseif isfinite(u)
                 x = max(0.0, l)
+            elseif isfinite(u)
+                x = min(0.0, u)
             else
                 x = 0.0
             end
