@@ -539,111 +539,6 @@ function _propagate_constraint!(d, f::BufferedNonlinearFunction)
     is_feasible && forward_pass!(d, f)
 end
 
-function forward_reverse_sqf_eq(m::GlobalOptimizer{R,S,Q}, constr::SQF) where {R,S,Q<:ExtensionType}
-    affine_term_count = length(constr.affine_terms)
-    quad_term_count = length(constr.quadratic_terms)
-    total_term_count = quad_term_count +affine_term_count
-    add_terms = zeros(Interval{Float64}, total_term_count)
-    other_add_terms = zeros(Interval{Float64}, total_term_count)
-    variables = zeros(Interval{Float64}, m._input_problem._variable_count)
-
-    # Fill variables with node bounds
-    for i in 1:m._input_problem._variable_count
-        variables[i] = Interval(m._current_node.lower_variable_bounds[i], m._current_node.upper_variable_bounds[i])
-    end
-
-    # Forward pass
-    full_expr = Interval(0.0)
-    for i in 1:quad_term_count
-        term = constr.quadratic_terms[i]
-        if term.variable_1 == term.variable_2
-            v1_index = term.variable_1.value
-            full_expr += 0.5*term.coefficient*variables[v1_index]^2
-            add_terms[i] += 0.5*term.coefficient*variables[v1_index]^2
-            for j = 1:total_term_count
-                if i != j
-                    other_add_terms[j] += 0.5*term.coefficient*variables[v1_index]^2
-                end
-            end
-        else
-            v1_index = term.variable_1.value
-            v2_index = term.variable_2.value
-            full_expr += term.coefficient*variables[v1_index]*variables[v2_index]
-            add_terms[i] += term.coefficient*variables[v1_index]*variables[v2_index]
-            for j = 1:total_term_count
-                if i != j
-                    other_add_terms[j] += term.coefficient*variables[v1_index]*variables[v2_index]
-                end
-            end
-        end
-    end
-    for i in quad_term_count+1:total_term_count
-        term = constr.affine_terms[i-quad_term_count]
-        v_index = term.variable.value
-        full_expr += term.coefficient*variables[v_index]
-        add_terms[i] += term.coefficient*variables[v_index]
-        for j = 1:total_term_count
-            if i != j
-                other_add_terms[j] += term.coefficient*variables[v_index]
-            end
-        end
-    end
-    full_expr = Interval(-constr.constant) ∩ full_expr
-    isempty(full_expr) && return false
-
-    # Reverse pass
-    for i in 1:quad_term_count
-        # We have:
-        # variables[v_index] = current variable bounds
-        # add_terms[i] = "a" (could be const*x^2, const*x*y, const*x)
-        # other_add_terms[i] = "b+c+d" (sum of all other terms)
-        term = constr.quadratic_terms[i]
-        if term.variable_1 == term.variable_2
-            # const*x^2 case
-            v1_index = term.variable_1.value
-            _, new_term, _ = IntervalContractors.plus_rev(full_expr, add_terms[i], other_add_terms[i])
-            new_term = new_term / (0.5*term.coefficient)
-            _, new_var, _ = IntervalContractors.power_rev(new_term, variables[v1_index], 2)
-            variables[v1_index] = variables[v1_index] ∩ new_var
-        else
-            # const*x*y case
-            v1_index = term.variable_1.value
-            v2_index = term.variable_2.value
-            _, new_term, _ = IntervalContractors.plus_rev(full_expr, add_terms[i], other_add_terms[i])
-            new_term = new_term / (term.coefficient)
-            _, new_var1, new_var2 = IntervalContractors.mul_rev(new_term, variables[v1_index], variables[v2_index])
-            variables[v1_index] = variables[v1_index] ∩ new_var1
-            variables[v2_index] = variables[v2_index] ∩ new_var2
-        end
-    end
-    for i in quad_term_count+1:total_term_count
-        # const*x case
-        term = constr.affine_terms[i-quad_term_count]
-        v_index = term.variable.value
-        _, new_term, _ = IntervalContractors.plus_rev(full_expr, add_terms[i], other_add_terms[i])
-        new_term = new_term / (term.coefficient)
-        variables[v_index] = variables[v_index] ∩ new_term
-    end
-    any(isempty.(variables)) && return false
-
-    # Pass intervals to current_node
-    m._current_node = update_node(m, variables)
-    return true
-end
-
-function update_node(m::GlobalOptimizer, new_bounds::Vector{Interval{Float64}})
-    n = m._current_node
-    new_lower = copy(n.lower_variable_bounds)
-    new_upper = copy(n.upper_variable_bounds)
-    new_lower[1:length(new_bounds)] .= getfield.(new_bounds, :lo)
-    new_upper[1:length(new_bounds)] .= getfield.(new_bounds, :hi)
-    return NodeBB(new_lower,
-                  new_upper,
-                  copy(n.is_integer), n.continuous,
-                  n.lower_bound, n.upper_bound, n.depth, n.cont_depth, n.id,
-                  n.branch_direction, n.last_branch, n.branch_extent)
-end
-
 """
 $(TYPEDSIGNATURES)
 
@@ -654,9 +549,6 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
     feasible_flag = true
 
     wp = m._working_problem
-    # for constr in wp._sqf_eq
-    #     feasible_flag &= forward_reverse_sqf_eq(m, constr.func)
-    # end
     if m._nonlinear_evaluator_created
         evaluator = wp._relaxed_evaluator
         set_node!(wp._relaxed_evaluator, m._current_node)
