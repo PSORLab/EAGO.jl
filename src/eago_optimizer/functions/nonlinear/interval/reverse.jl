@@ -20,8 +20,8 @@ end
 function hukuhara_diff(x::Interval{T}, y::Interval{T}) where T<:Real
     isempty(x) && return x
     isempty(y) && return y
-    l = sub_round(x.lo, y.lo, RoundDown)
-    u = sub_round(x.hi, y.hi, RoundUp)
+    l = sub_round(x.bareinterval.lo, y.bareinterval.lo, RoundDown)
+    u = sub_round(x.bareinterval.hi, y.bareinterval.hi, RoundUp)
     Interval{T}(l, u)
 end
 
@@ -46,39 +46,39 @@ end
 function hukuhara_div(x::Interval{T}, y::Interval{T}) where T<:Real
     isempty(x) && return x
     isempty(y) && return y
-    if y.lo >= zero(T)
-        if x.lo >= zero(T)
-            l = div_round(x.lo, y.lo, RoundDown)
-            u = div_round(x.hi, y.hi, RoundUp)
-        elseif x.hi <= zero(T)
-            l = div_round(x.lo, y.hi, RoundDown)
-            u = div_round(x.hi, y.lo, RoundUp)
+    if y.bareinterval.lo >= zero(T)
+        if x.bareinterval.lo >= zero(T)
+            l = div_round(x.bareinterval.lo, y.bareinterval.lo, RoundDown)
+            u = div_round(x.bareinterval.hi, y.bareinterval.hi, RoundUp)
+        elseif x.bareinterval.hi <= zero(T)
+            l = div_round(x.bareinterval.lo, y.bareinterval.hi, RoundDown)
+            u = div_round(x.bareinterval.hi, y.bareinterval.lo, RoundUp)
         else
-            l = div_round(x.lo, y.hi, RoundDown)
-            u = div_round(x.hi, y.hi, RoundUp)
+            l = div_round(x.bareinterval.lo, y.bareinterval.hi, RoundDown)
+            u = div_round(x.bareinterval.hi, y.bareinterval.hi, RoundUp)
         end
-        return Interval(l, u), true
-    elseif y.hi <= zero(T)
-        if x.lo >= zero(T)
-            l = div_round(x.hi, y.lo, RoundDown)
-            u = div_round(x.lo, y.hi, RoundUp)
-        elseif x.hi <= zero(T)
-            l = div_round(x.hi, y.hi, RoundDown)
-            u = div_round(x.lo, y.lo, RoundUp)
+        return interval(l, u), true
+    elseif y.bareinterval.hi <= zero(T)
+        if x.bareinterval.lo >= zero(T)
+            l = div_round(x.bareinterval.hi, y.bareinterval.lo, RoundDown)
+            u = div_round(x.bareinterval.lo, y.bareinterval.hi, RoundUp)
+        elseif x.bareinterval.hi <= zero(T)
+            l = div_round(x.bareinterval.hi, y.bareinterval.hi, RoundDown)
+            u = div_round(x.bareinterval.lo, y.bareinterval.lo, RoundUp)
         else
-            l = div_round(x.hi, y.lo, RoundDown)
-            u = div_round(x.lo, y.lo, RoundUp)
+            l = div_round(x.bareinterval.hi, y.bareinterval.lo, RoundDown)
+            u = div_round(x.bareinterval.lo, y.bareinterval.lo, RoundUp)
         end
-        return Interval(l, u), true
+        return interval(l, u), true
     else
-        if x.lo > zero(T)
-            l = div_round(x.hi, y.lo, RoundDown)
-            u = div_round(x.hi, y.hi, RoundUp)
-            return Interval(l, u), true
-        elseif x.hi < zero(T) 
-            l = div_round(x.lo, y.hi, RoundDown)
-            u = div_round(x.lo, y.lo, RoundUp)
-            return Interval(l, u), true
+        if x.bareinterval.lo > zero(T)
+            l = div_round(x.bareinterval.hi, y.bareinterval.lo, RoundDown)
+            u = div_round(x.bareinterval.hi, y.bareinterval.hi, RoundUp)
+            return interval(l, u), true
+        elseif x.bareinterval.hi < zero(T) 
+            l = div_round(x.bareinterval.lo, y.bareinterval.hi, RoundDown)
+            u = div_round(x.bareinterval.lo, y.bareinterval.lo, RoundUp)
+            return interval(l, u), true
         end
         
     end

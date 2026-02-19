@@ -176,7 +176,7 @@ Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
     variable_count::Int                         = 0
     "Number of constants"
     constant_count::Int                         = 0
-    sink_bnd::Interval{Float64}                 = Interval{Float64}(-Inf,Inf)
+    sink_bnd::Interval{Float64}                 = interval(-Inf, Inf)
     ""
     sparsity::Vector{Int}                       = Int[]
     ""

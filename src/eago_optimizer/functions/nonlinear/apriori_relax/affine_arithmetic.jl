@@ -13,14 +13,14 @@ function AffineEAGO(x::AffineEAGO{N}, p::Float64, q::Float64, δ::Float64) where
     Δ = p * x.Δ + δ
     AffineEAGO{N}(c, γ, δ)
 end
-mid(x::Interval{Float64}) = 0.5*(x.lo + x.hi)
+mid(x::Interval{Float64}) = 0.5*(x.bareinterval.lo + x.bareinterval.hi)
 AffineEAGO{N}(x::Float64, X::Interval{Float64}, i::Int) where N = AffineEAGO{N}(mid(X), radius(X)*seed_gradient(i, Val(N)), 0.0)
 
-const UNIT_INTERVAL = Interval{Float64}(-1,1)
-Interval(x::AffineEAGO{N}) where N = x.c + x.Δ*UNIT_INTERVAL + sum(y -> abs(y)*UNIT_INTERVAL, x.γ)
+const UNIT_INTERVAL = interval(-1.0, 1.0)
+interval(x::AffineEAGO{N}) where N = x.c + x.Δ*UNIT_INTERVAL + sum(y -> abs(y)*UNIT_INTERVAL, x.γ)
 function bounds(x::AffineEAGO{N}) where N
-    z = Interval(x)
-    z.lo, z.hi
+    z = interval(x)
+    z.bareinterval.lo, z.bareinterval.hi
 end
 
 zero(::Type{AffineEAGO{N}}) where N = AffineEAGO{N}(0.0, zero(SVector{N,Float64}), 0.0)
@@ -281,25 +281,25 @@ for op in (:inv, :log, :log10, :exp, :exp10)
     @eval ($op)(x::MCAffPnt{N,T}) where {N,T} = MCAffPnt{N,T}(($op)(x.v), ($op)(x.box))
 end
 
-Interval(x::MCAffPnt{N,T}) where {N,T<:RelaxTag} = Interval(x.v) ∩ Interval(x.box)
+interval(x::MCAffPnt{N,T}) where {N,T<:RelaxTag} = intersect_interval(interval(x.v), interval(x.box))
 
 function cut(x::MCAffPnt{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
-    (pflag & cflag)  && (return set_value_post(x ∩ Interval(z), v, s, ϵ))
+    (pflag & cflag)  && (return set_value_post(intersect(x, interval(z)), v, s, ϵ))
     (pflag & !cflag) && (return set_value_post(x, v, s, ϵ))
-    (pflag & cflag)  && (return x ∩ Interval(z))
+    (pflag & cflag)  && (return intersect(x, interval(z)))
     return x
 end
 
 function cut(x::MC{N,T}, z::MCAffPnt{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
-    (pflag & cflag)  && (return set_value_post(x ∩ Interval(z), v, s, ϵ))
+    (pflag & cflag)  && (return set_value_post(intersect(x, interval(z)), v, s, ϵ))
     (pflag & !cflag) && (return set_value_post(x, v, s, ϵ))
-    (pflag & cflag)  && (return x ∩ Interval(z))
+    (pflag & cflag)  && (return intersect(x, interval(z)))
     return x
 end
 
 function varset(::Type{MCAffPnt{N,T}}, i, x_cv, x_cc, l, u) where {N,T<:RelaxTag}
     v = seed_gradient(i, Val(N))
-    v_Intv = Interval{Float64}(l, u)
+    v_Intv = interval(l, u)
     v_mc = MC{N,T}(x_cv, x_cc, v_Intv, v, v, false) 
     v_aff = AffineEAGO{N}(x_cv, v_Intv, i)
     return MCAffPnt{N,T}(v_mc, v_aff)
@@ -316,7 +316,7 @@ function fprop!(t::RelaxAAInfo, vt::Variable, g::DAT, b::RelaxCache{MCAffPnt{N,T
     else
         z = varset(MCAffPnt{N,T}, rev_sparsity(g, i, k), x, x, l, u)
         if !first_eval(t, b)
-            z = z ∩ interval(b, k)
+            z = intersect(z, interval(b, k))
         end
         b._info[k] = z
         b._is_num[k] = false
@@ -471,15 +471,15 @@ function fprop_2!(t::RelaxAAInfo, v::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
                 zv = xv*yv
                 wIntv = zv.Intv
-                if (u1max < xv.Intv.hi) || (u2max < yv.Intv.hi)
+                if (u1max < xv.Intv.bareinterval.hi) || (u2max < yv.Intv.bareinterval.hi)
                     u1cv, u2cv, u1cvg, u2cvg = estimator_under(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
                     za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
-                    zv = zv ∩ za_l
+                    zv = intersect(zv, za_l)
                 end
-                if (v1nmax > -xv.Intv.lo) || (v2nmax > -yv.Intv.lo)
+                if (v1nmax > -xv.Intv.bareinterval.lo) || (v2nmax > -yv.Intv.bareinterval.lo)
                     v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_over(xv, yv, xr, yr, s, dp, dP, p_rel, p_diam)
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
-                    zv = zv ∩ za_u
+                    zv = intersect(zv, za_u)
                 end
                 z = MCAffPnt{N,T}(zv, xr.box*yr.box)
             else
@@ -519,15 +519,15 @@ function fprop_n!(t::RelaxAAInfo, ::Val{MULT}, g::DAT, b::RelaxCache{MCAffPnt{N,
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(zr, xr, s, dP)
                 zv = z*x
                 wIntv = zv.Intv
-                if (u1max < z.Intv.hi) || (u2max < x.Intv.hi)
+                if (u1max < z.Intv.bareinterval.hi) || (u2max < x.Intv.bareinterval.hi)
                     u1cv, u2cv, u1cvg, u2cvg = estimator_under(zr, xr, s, dp, dP)
                     za_l = McCormick.mult_apriori_kernel(z, x, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
-                    zv = zv ∩ za_l
+                    zv = intersect(zv, za_l)
                 end
-                if (v1nmax > -z.Intv.lo) || (v2nmax > -x.Intv.lo)
+                if (v1nmax > -z.Intv.bareinterval.lo) || (v2nmax > -x.Intv.bareinterval.lo)
                     v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(zr, xr, s, dp, dP)
                     za_u = McCormick.mult_apriori_kernel(-z, -x, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
-                    zv = zv ∩ za_u
+                    zv = intersect(zv, za_u)
                 end
                 zr = zr*xr
                 zv = cut(zv, zv, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
@@ -696,12 +696,12 @@ end
 function estimator_extrema(x::MCAffPnt{N,T}, y::MCAffPnt{N,T}, s, dP) where {N,T}
 
     xIntv = x.box.c + sum(z -> z*UNIT_INTERVAL, x.box.γ)
-    xcvU = xIntv.hi - x.box.Δ
-    xccL = xIntv.lo + x.box.Δ
+    xcvU = xIntv.bareinterval.hi - x.box.Δ
+    xccL = xIntv.bareinterval.lo + x.box.Δ
 
     yIntv = y.box.c + sum(z -> z*UNIT_INTERVAL, y.box.γ)
-    ycvU = yIntv.hi - y.box.Δ
-    yccL = yIntv.lo + y.box.Δ
+    ycvU = yIntv.bareinterval.hi - y.box.Δ
+    yccL = yIntv.bareinterval.lo + y.box.Δ
 
     return xcvU, ycvU, -xccL, -yccL
 end

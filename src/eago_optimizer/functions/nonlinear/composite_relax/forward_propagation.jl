@@ -18,7 +18,7 @@ xyset(b, x, y) = !(is_num(b, x) || is_num(b, y))
 
 function varset(::Type{MC{N,T}}, i, x_cv, x_cc, l, u) where {N,T<:RelaxTag}
     v = seed_gradient(i, Val(N))
-    return MC{N,T}(x_cv, x_cc, Interval{Float64}(l, u), v, v, false)
+    return MC{N,T}(x_cv, x_cc, interval(l, u), v, v, false)
 end
 
 function fprop!(t::RelaxCacheAttribute, vt::Variable, g::DAT, b::RelaxCache{V,N,T}, k) where {V,N,T<:RelaxTag}
@@ -170,15 +170,15 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
                 z = xv*yv
                 wIntv = z.Intv
-                if (u1max < xv.Intv.hi) || (u2max < yv.Intv.hi)
+                if (u1max < xv.Intv.bareinterval.hi) || (u2max < yv.Intv.bareinterval.hi)
                     u1cv, u2cv, u1cvg, u2cvg = estimator_under(xr, yr, s, dp)
                     za_l = McCormick.mult_apriori_kernel(xv, yv, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
-                    z = z ∩ za_l
+                    z = intersect(z, za_l)
                 end
-                if (v1nmax > -xv.Intv.lo) || (v2nmax > -yv.Intv.lo)
+                if (v1nmax > -xv.Intv.bareinterval.lo) || (v2nmax > -yv.Intv.bareinterval.lo)
                     v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_over(xr, yr, s, dp)
                     za_u = McCormick.mult_apriori_kernel(-xv, -yv, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
-                    z = z ∩ za_u
+                    z = intersect(z, za_u)
                 end
             else
                 z = xv*yv
@@ -214,15 +214,15 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(zr, xr, s, dP)
                 zv = z*x
                 wIntv = zv.Intv
-                if (u1max < z.Intv.hi) || (u2max < x.Intv.hi)
+                if (u1max < z.Intv.bareinterval.hi) || (u2max < x.Intv.bareinterval.hi)
                     u1cv, u2cv, u1cvg, u2cvg = estimator_under(zr, xr, s, dp)
                     za_l = McCormick.mult_apriori_kernel(z, x, wIntv, u1cv, u2cv, u1max, u2max, u1cvg, u2cvg)
-                    zv = zv ∩ za_l
+                    zv = intersect(zv, za_l)
                 end
-                if (v1nmax > -z.Intv.lo) || (v2nmax > -x.Intv.lo)
+                if (v1nmax > -z.Intv.bareinterval.lo) || (v2nmax > -x.Intv.bareinterval.lo)
                     v1ccn, v2ccn, v1ccgn, v2ccgn = estimator_under(zr, xr, s, dp)
                     za_u = McCormick.mult_apriori_kernel(-z, -x, wIntv, v1ccn, v2ccn, v1nmax, v2nmax, v1ccgn, v2ccgn)
-                    zv = zv ∩ za_u
+                    zv = intersect(zv, za_u)
                 end
                 zr = zr*xr
                 zv = cut(zv, zv, b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)

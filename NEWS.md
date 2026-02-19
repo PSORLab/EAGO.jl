@@ -1,12 +1,25 @@
 # News for EAGO Releases
 
+## [v0.9.0](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.9.0) (February 19, 2026)
+
+- EAGO now requires Julia v1.10 or later.
+- Bumped IntervalArithmetic.jl compatibility to v1.0.
+- Bumped ForwardDiff.jl compatibility to v1.0.
+
+## [v0.8.4](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.4) (December 18, 2025)
+
+- Switched from Cbc to GLPK as the default relaxed optimizer.
+- Added an EAGO parameter `fbbt_tolerance` for FBBT to consider lower and upper bounds equal which defaults to 1E-8.
+
 ## [v0.8.3](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.3) (May 1, 2025)
+
 - Added support for `MOI.UserDefinedFunction`.
 - Updated bounds in `unbounded_check` from +/- 1E10 to +/- 1E6.
 - Bumped requirement for Ipopt.jl to 1.10 for type stability: https://github.com/jump-dev/Ipopt.jl?tab=readme-ov-file#type-stability.
 - Updated display.
 
 ## [v0.8.2](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.2) (October 27, 2024)
+
 - Added support for `MOI.ScalarNonlinearFunction`.
   - Users can now define all constraints using `@constraint` instead of needing to use `@NLconstraint`. This applies to `@objective` as well.
 - Added support for variable names.

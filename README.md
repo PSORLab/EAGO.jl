@@ -104,35 +104,11 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 ## Recent News
 
-### [v0.8.4](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.4) (December 18, 2025)
-- Switched from Cbc to GLPK as the default relaxed optimizer.
-- Added an EAGO parameter `fbbt_tolerance` for FBBT to consider lower and upper bounds equal which defaults to 1E-8.
+### [v0.9.0](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.9.0) (February 19, 2026)
 
-### [v0.8.3](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.3) (May 1, 2025)
-- Added support for `MOI.UserDefinedFunction`.
-- Updated bounds in `unbounded_check` from +/- 1E10 to +/- 1E6.
-- Bumped requirement for Ipopt.jl to 1.10 for type stability: https://github.com/jump-dev/Ipopt.jl?tab=readme-ov-file#type-stability.
-- Updated display.
-
-### [v0.8.2](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.2) (October 27, 2024)
-- Added support for `MOI.ScalarNonlinearFunction`.
-  - Users can now define all constraints using `@constraint` instead of needing to use `@NLconstraint`. This applies to `@objective` as well.
-- Added support for variable names.
-- Updated display.
-
-### [v0.8.1](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.1) (June 15, 2023)
-
-- Resolved an issue where integer and binary variables would sometimes throw a `MathOptInterface.UpperBoundAlreadySet` error.
-- Added the function `unbounded_check!` which warns users if they are missing variable bounds and sets them to +/- 1E10 by default.
-  - Added an EAGO parameter `unbounded_check` which defaults to `true` and enables `unbounded_check!`.
-- Bumped requirement for PrettyTables.jl to v2+ to accommodate the latest version of DataFrames.jl.
-
-### [v0.8.0](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.8.0) (June 12, 2023)
-
-- Updated EAGO for compatibility with the nonlinear expression API changes introduced in JuMP v1.2: https://discourse.julialang.org/t/ann-upcoming-refactoring-of-jumps-nonlinear-api/83052.
-  - EAGO now uses the `MOI.Nonlinear` submodule instead of `JuMP._Derivatives`.
-  - Models, nodes, expressions, constraints, and operators are now compatible with MOI.
-- Added logic and comparison operators to `EAGO.OperatorRegistry`.
+- EAGO now requires Julia v1.10 or later.
+- Bumped IntervalArithmetic.jl compatibility to v1.0.
+- Bumped ForwardDiff.jl compatibility to v1.0.
 
 For a full list of EAGO release news, click [here](https://github.com/PSORLab/EAGO.jl/blob/master/NEWS.md).
 

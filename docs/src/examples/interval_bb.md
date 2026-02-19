@@ -40,9 +40,9 @@ function lower_problem!(t::IntervalExt, x::EAGO.GlobalOptimizer)
     upper = n.upper_variable_bounds
     
     # Define X for the node and compute the interval extension
-    x_value = Interval.(lower, upper)
+    x_value = interval.(lower, upper)
     F = sin(x_value[1])*x_value[2]^2 - cos(x_value[3])/x_value[4]
-    x._lower_objective_value = F.lo
+    x._lower_objective_value = F.bareinterval.lo
     x._lower_solution = IntervalArithmetic.mid.(x_value)
     x._lower_feasibility = true
     x._cut_add_flag = false
