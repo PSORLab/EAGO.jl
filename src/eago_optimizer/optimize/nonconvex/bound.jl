@@ -44,7 +44,7 @@ end
 ###
 
 function lower_interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
-    fval = Interval{Float64}(f.func.constant)
+    fval = interval(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
         j = t.variable.value
@@ -67,20 +67,20 @@ function lower_interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
         else
             yL = _lower_bound(FullVar(), m, j)
             yU = _upper_bound(FullVar(), m, j)
-            fval += c*Interval{Float64}(xL, xU)*Interval{Float64}(yL, yU)
+            fval += c*interval(xL, xU)*interval(yL, yU)
         end
     end
-    return fval.lo
+    return fval.bareinterval.lo
 end
 function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
 
-    fval = Interval{Float64}(f.func.constant)
+    fval = interval(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
         j = t.variable.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
-        fval += c*Interval(xL, xU)
+        fval += c*interval(xL, xU)
     end
     for t in f.func.quadratic_terms
         c = t.coefficient
@@ -89,25 +89,25 @@ function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticIneq)
         xL = _lower_bound(FullVar(), m, i)
         xU = _upper_bound(FullVar(), m, i)
         if i == j
-            fval += 0.5*c*pow(Interval(xL, xU), 2)
+            fval += 0.5*c*pow(interval(xL, xU), 2)
         else
             yL = _lower_bound(FullVar(), m, j)
             yU = _upper_bound(FullVar(), m, j)
-            fval += c*Interval(xL, xU)*Interval(yL, yU)
+            fval += c*interval(xL, xU)*interval(yL, yU)
         end
     end
-    return fval.lo, fval.hi
+    return fval.bareinterval.lo, fval.bareinterval.hi
 end
 
 function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticEq)
 
-    fval = Interval{Float64}(f.func.constant)
+    fval = interval(f.func.constant)
     for t in f.func.affine_terms
         c = t.coefficient
         j = t.variable.value
         xL = _lower_bound(FullVar(), m, j)
         xU = _upper_bound(FullVar(), m, j)
-        fval += c*Interval(xL, xU)
+        fval += c*interval(xL, xU)
     end
     for t in f.func.quadratic_terms
         c = t.coefficient
@@ -116,14 +116,14 @@ function interval_bound(m::GlobalOptimizer, f::BufferedQuadraticEq)
         xL = _lower_bound(FullVar(), m, i)
         xU = _upper_bound(FullVar(), m, i)
         if i == j
-            fval += 0.5*c*pow(Interval(xL, xU), 2)
+            fval += 0.5*c*pown(interval(xL, xU), 2)
         else
             yL = _lower_bound(FullVar(), m, j)
             yU = _upper_bound(FullVar(), m, j)
-            fval += c*Interval(xL, xU)*Interval(yL, yU)
+            fval += c*interval(xL, xU)*interval(yL, yU)
         end
     end
-    return fval.lo, fval.hi
+    return fval.bareinterval.lo, fval.bareinterval.hi
 end
 
 ###
@@ -136,16 +136,16 @@ function lower_interval_bound(m::GlobalOptimizer, d::BufferedSOC)
     up_bnds = n.upper_variable_bounds
     vec_of_vi = d.variables.variables
 
-    norm_bound = Interval(0.0)
+    norm_bound = interval(0.0)
     for i = 2:length(vec_of_vi)
         mapped_vi = @inbounds sol_branch_map[vec_of_vi[i].value]
-        x = Interval{Float64}(lo_bnds[mapped_vi], up_bnds[mapped_vi])
+        x = interval(lo_bnds[mapped_vi], up_bnds[mapped_vi])
         norm_bound += pow(x, 2)
     end
     norm_bound = sqrt(norm_bound)
 
     mapped_vi = @inbounds sol_branch_map[vec_of_vi[1].value]
-    lower_bound = norm_bound.lo -(@inbounds up_bnds[mapped_vi])
+    lower_bound = norm_bound.bareinterval.lo -(@inbounds up_bnds[mapped_vi])
 
     return lower_bound
 end
@@ -156,12 +156,12 @@ end
 ###
 function lower_interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
     !has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
-    is_num(d) ? num(d) : interval(d).lo
+    is_num(d) ? num(d) : interval(d).bareinterval.lo
 end
 function interval_bound(m::GlobalOptimizer, d::BufferedNonlinearFunction{V,N,T}) where {V,N,T}
     !has_value(d) && forward_pass!(m._working_problem._relaxed_evaluator, d)
-    v = is_num(d) ? Interval{Float64}(num(d)) : interval(d)
-    return v.lo, v.hi
+    v = is_num(d) ? interval(num(d)) : interval(d)
+    return v.bareinterval.lo, v.bareinterval.hi
 end
 
 """

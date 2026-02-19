@@ -15,7 +15,7 @@ using McCormick
 f(x) = x*(x - 5.0)*sin(x)
 
 x = 2.0                          # Value of independent variable x
-Intv = Interval(1.0, 4.0)        # Define interval to relax over
+Intv = interval(1.0, 4.0)        # Define interval to relax over
                                  # Note that McCormick.jl reexports IntervalArithmetic.jl
                                  # and StaticArrays. So no using statement for these is
                                  # necessary.
@@ -57,10 +57,10 @@ f(x, y) = (4.0 - 2.1*x^2 + (x^4)/6.0)*x^2 + x*y + (-4.0 + 4.0*y^2)*y^2
 
 # Define intervals for independent variables
 n = 30
-X = Interval{Float64}(-2,0)
-Y = Interval{Float64}(-0.5, 0.5)
-xrange = range(X.lo, stop=X.hi, length=n)
-yrange = range(Y.lo, stop=Y.hi, length=n)
+X = interval(-2,0)
+Y = interval(-0.5, 0.5)
+xrange = range(X.bareinterval.lo, stop=X.bareinterval.hi, length=n)
+yrange = range(Y.bareinterval.lo, stop=Y.bareinterval.hi, length=n)
 
 # Calculate differentiable McCormick relaxation
 for (i,x) in enumerate(xrange)

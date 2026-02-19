@@ -37,6 +37,7 @@ module EAGO
     @reexport using SpecialFunctions
     #@reexport using ReverseMcCormick
 
+    import IntervalArithmetic: interval
     using IntervalContractors
     #=
     using IntervalContractors: plus_rev, minus_rev, inv_rev,

@@ -3,7 +3,7 @@ function fprop!(::RelaxInterval, vt::Variable, g::DAT, b::IntervalCache{T}, k) w
     i = first_index(g, k)
     l = lbd(b, i)
     u = ubd(b, i)
-    b[k] = (l == u) ? Interval(l) : Interval(l, u)
+    b[k] = (l == u) ? interval(l) : interval(l, u)
     nothing
 end
 
@@ -21,7 +21,7 @@ function fprop!(t::RelaxInterval, v::Val{MINUS}, g::DAT, b::IntervalCache{T}, k)
 end
 
 for (F, f) in ((PLUS, :sum), (MIN, :minimum), (MAX, :maximum), (MULT, :prod))
-    @eval fprop!(t::Interval, v::Val{$F}, g::DAT, b::IntervalCache{T}, k) where T<:Real = (b[k] = ($f)(i -> set(t, b, i), children(g, k)); nothing)
+    @eval fprop!(t::RelaxInterval, v::Val{$F}, g::DAT, b::IntervalCache{T}, k) where T<:Real = (b[k] = ($f)(i -> set(t, b, i), children(g, k)); nothing)
 end
 
 function fprop!(t::RelaxInterval, v::Val{USER}, g::DAT, b::IntervalCache{T}, k) where T<:Real 
