@@ -161,7 +161,7 @@ lower_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.
 upper_bound(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = d.ex.upper_bound
 
 # Returns the interval bounds associated with the set
-interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = Interval{Float64}(set(d))
+interval(d::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = interval(set(d))
 is_num(d::BufferedNonlinearFunction) = is_num(d.ex)
 
 mc_type(rc::BufferedNonlinearFunction{V,N,T}) where {V,N,T<:RelaxTag} = MC{N,T}
@@ -307,7 +307,7 @@ function forward_pass!(z::Evaluator, d::NonlinearExpression{V,N,T}) where {V,N,T
             l = lbd(b, j)
             u = ubd(b, j)
             b.dp[j] = x[j] - x0[j]
-            b.dP[j] = Interval(l, u) - x0[j]
+            b.dP[j] = interval(l, u) - x0[j]
             b.p_rel[j] = (x[j] - 0.5*(u + l))/(0.5*(u - l))
             b.p_diam[j] = u - l
         end

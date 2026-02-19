@@ -12,7 +12,7 @@ function affine_expand_del(dx::Vector{Interval{Float64}}, fx0::Float64, ∇fx0::
         t = ∇fx0[i]
         tdx = dx[s[i]]
         if !iszero(t)
-            v += t > 0.0 ? t*tdx.hi : t*tdx.lo
+            v += t > 0.0 ? t*tdx.bareinterval.hi : t*tdx.bareinterval.lo
         end
     end
     return v
@@ -26,7 +26,7 @@ function affine_expand(x::Vector{Float64}, x0::Vector{Float64}, fx0::Float64, �
     return v
 end
 function affine_expand(x::Vector{Interval{Float64}}, x0::Vector{Float64}, fx0::Float64, ∇fx0::SVector{N,Float64}) where N
-    v = Interval{Float64}(fx0)
+    v = interval(fx0)
     for i=1:N
         v += ∇fx0[i]*(x[i] - x0[i])
     end
@@ -105,23 +105,23 @@ function set_value_post(z::MC{N,T}, v::VariableValues{Float64}, s::Vector{Int}, 
         end
     end
 
-    if lower_refinement && (z.Intv.lo + ϵ > l)
-        l = z.Intv.lo
+    if lower_refinement && (z.Intv.bareinterval.lo + ϵ > l)
+        l = z.Intv.bareinterval.lo
     elseif !lower_refinement
-        l = z.Intv.lo
+        l = z.Intv.bareinterval.lo
     else
         l -= ϵ
     end
 
-    if upper_refinement && (z.Intv.hi - ϵ < u)
-        u = z.Intv.hi
+    if upper_refinement && (z.Intv.bareinterval.hi - ϵ < u)
+        u = z.Intv.bareinterval.hi
     elseif !upper_refinement
-        u = z.Intv.hi
+        u = z.Intv.bareinterval.hi
     else
         u += ϵ
     end
 
-    return MC{N,T}(z.cv, z.cc, Interval{Float64}(l, u), z.cv_grad, z.cc_grad, z.cnst)
+    return MC{N,T}(z.cv, z.cc, interval(l, u), z.cv_grad, z.cc_grad, z.cnst)
 end
 
 """
@@ -144,8 +144,8 @@ Intersects the new set valued operator with the prior and performs affine bound 
    the prior values may correspond to different points of evaluation.
 """
 function cut(x::MC{N,T}, z::MC{N,T}, v::VariableValues, ϵ::Float64, s::Vector{Int}, cflag::Bool, pflag::Bool) where {N,T<:RelaxTag}
-    (pflag & cflag)  && (return set_value_post(x ∩ z.Intv, v, s, ϵ))
+    (pflag & cflag)  && (return set_value_post(intersect(x, z.Intv), v, s, ϵ))
     (pflag & !cflag) && (return set_value_post(x, v, s, ϵ))
-    (pflag & cflag)  && (return x ∩ z.Intv)
+    (pflag & cflag)  && (return intersect(x, z.Intv))
     return x
 end

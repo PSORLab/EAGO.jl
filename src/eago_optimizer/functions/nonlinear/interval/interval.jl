@@ -17,7 +17,7 @@ function initialize!(c::IntervalCache{T}, g::DirectedTree) where T<:Real
 end
 
 set(::RelaxInterval, b::IntervalCache{T}, i) where T<:Real = b._set[i]
-num(::RelaxInterval, b::IntervalCache{T}, i) where T<:Real = b._set[i].lo
+num(::RelaxInterval, b::IntervalCache{T}, i) where T<:Real = b._set[i].bareinterval.lo
 is_num(::RelaxInterval, b::IntervalCache{T}, i) where T<:Real = b._set[i]
 subexpression_set(::RelaxInterval, b::IntervalCache{T}, i) where T<:Real = b._subexpression_set[i]
 set_mv_buffer(::RelaxInterval, b::IntervalCache{T}, i) where T<:Real = b._set_mv_buffer[i]
@@ -30,7 +30,7 @@ function Base.setindex!(b::IntervalCache{T}, v::Interval{T}, i::Int) where T<:Re
     if first_eval
         b._set[i] = v
     else
-        b._set[i] = b._set[i] ∩ v
+        b._set[i] = intersect(b._set[i], v)
     end
     nothing
 end
