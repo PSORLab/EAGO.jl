@@ -1,9 +1,9 @@
-# Copyright (c) 2018: Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
-# Matthew Stuber, and the University of Connecticut (UConn).
+# Copyright (c) 2018 Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
+# Alireza Miraliakbar, Matthew Stuber, and the University of Connecticut (UConn)
 # This code is licensed under the MIT license (see LICENSE.md for full details).
 ################################################################################
 # EAGO
-# A development environment for robust and global optimization.
+# A development environment for robust and global optimization
 # https://github.com/PSORLab/EAGO.jl
 ################################################################################
 # src/EAGO.jl
@@ -18,7 +18,7 @@ module EAGO
     import MathOptInterface
     import MathOptInterface.Nonlinear: DEFAULT_MULTIVARIATE_OPERATORS, DEFAULT_UNIVARIATE_OPERATORS
     using Reexport, Requires, Cassette, IntervalArithmetic, DocStringExtensions,
-          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf, PrettyTables
+          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf
 
     using JuMP
     import JuMP
