@@ -3,7 +3,7 @@
 # This code is licensed under the MIT license (see LICENSE.md for full details).
 ################################################################################
 # EAGO
-# A development environment for robust and global optimization.
+# A development environment for robust and global optimization
 # https://github.com/PSORLab/EAGO.jl
 ################################################################################
 # src/eago_script/patterns.jl

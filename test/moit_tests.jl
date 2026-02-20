@@ -1,6 +1,14 @@
 # Copyright (c) 2018 Matthew Wilhelm, Robert Gottlieb, Dimitri Alston,
 # Alireza Miraliakbar, Matthew Stuber, and the University of Connecticut (UConn)
 # This code is licensed under the MIT license (see LICENSE.md for full details).
+################################################################################
+# EAGO
+# A development environment for robust and global optimization
+# https://github.com/PSORLab/EAGO.jl
+################################################################################
+# test/moit_tests.jl
+# The file runs all of the MathOptInterface tests on EAGO.
+################################################################################
 
 module TestEAGO
 
