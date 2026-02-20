@@ -104,6 +104,11 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 ## Recent News
 
+### [v0.9.1](https://github.com/PSORLab/EAGO.jl#master) (Unreleased)
+
+- Removed PrettyTables.jl dependency.
+  - The `display_table!` function now prints information in a similar manner to the `print_iteration!` function.
+
 ### [v0.9.0](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.9.0) (February 19, 2026)
 
 - EAGO now requires Julia v1.10 or later.
