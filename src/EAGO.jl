@@ -18,7 +18,7 @@ module EAGO
     import MathOptInterface
     import MathOptInterface.Nonlinear: DEFAULT_MULTIVARIATE_OPERATORS, DEFAULT_UNIVARIATE_OPERATORS
     using Reexport, Requires, Cassette, IntervalArithmetic, DocStringExtensions,
-          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf, PrettyTables
+          FastRounding, SpecialFunctions, Ipopt, GLPK, Printf
 
     using JuMP
     import JuMP

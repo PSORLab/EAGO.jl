@@ -281,8 +281,49 @@ end
 
 function display_table!(g::DAT, b::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
     nc = node_count(g)
-    val = [b._is_num[i] ? b._num[i] : b._set[i] for i in 1:nc]
-    exr = [display_expr(g, i)  for i in 1:nc]
-    data = hcat(exr, b._is_num, val)
-    pretty_table(data, header = ["Expr", "Is Num", "Val"]; show_row_number = true)
+    values = [b._is_num[i] ? b._num[i] : b._set[i] for i in 1:nc]
+    exr = [display_expr(g, i) for i in 1:nc]
+    max_len = 0
+    for value in values
+        max_len = max(max_len, length(string(value)))
+    end
+
+    # Print header
+    print_sep = "-"^(max_len + 33)
+    println(print_sep)
+    print_str = "| Node | Expression | Is Num | "
+    print_str *= (" "^(ceil(Int, (max_len - 5)/2)))*"Value"*(" "^(floor(Int, (max_len - 5)/2)))*" | "
+    println(print_str)
+    println(print_sep)
+
+    for i = 1:nc
+        # Print start
+        print_str = "| "
+
+        # Print node number
+        col_len = 4
+        len_str = length(string(i))
+        print_str *= (" "^(col_len - len_str))*string(i)*" | "
+
+        # Print DAG expression
+        col_len = 10
+        len_str = length(string(exr[i]))
+        print_str *= (" "^(col_len - len_str))*string(exr[i])*" | "
+
+        # Print is_num
+        col_len = 6
+        len_str = length(string(b._is_num[i]))
+        print_str *= (" "^(col_len - len_str))*string(b._is_num[i])*" | "
+
+        # Print value or set
+        if b._is_num[i]
+            len_str = length(string(b._num[i]))
+            print_str *= (" "^(max_len - len_str))*string(b._num[i])*" |"
+        else
+            len_str = length(string(b._set[i]))
+            print_str *= (" "^(max_len - len_str))*string(b._set[i])*" |"
+        end
+        println(print_str)
+    end
+    println(print_sep)
 end
