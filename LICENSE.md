@@ -1,6 +1,7 @@
 MIT License
 
-Copyright (c) 2023 Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, Matthew Stuber, and the University of Connecticut (UConn)
+Copyright (c) 2018 Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, 
+Alireza Miraliakbar, Matthew Stuber, and the University of Connecticut (UConn)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

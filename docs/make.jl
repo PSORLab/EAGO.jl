@@ -29,7 +29,7 @@ makedocs(modules = [EAGO, McCormick],
                   collapselevel = 1,
                   assets = ["assets/favicon.ico"]
          ),
-         authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, and Matthew Stuber",
+         authors = "Matthew Wilhelm, Robert Gottlieb, Dimitri Alston, Alireza Miraliakbar, and Matthew Stuber",
          sitename = "EAGO.jl",
          pages = Any["Introduction" => "index.md",
                      "Manual" => Any["Optimizer" => Any["optimizer/optimizer.md",

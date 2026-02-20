@@ -1,6 +1,6 @@
 # Customization Guidelines
 
-This section contains general guidelines on how the functionality of EAGO can be extended for specific use cases. Many functions in EAGO are extensible, so examples are not provided for every possible case, but some important functions are covered. If there is a use case you do not see provided here, but would like to see, please contact [Robert Gottlieb](https://psor.uconn.edu/person/robert-gottlieb/).
+This section contains general guidelines on how the functionality of EAGO can be extended for specific use cases. Many functions in EAGO are extensible, so examples are not provided for every possible case, but some important functions are covered. If there is a use case you do not see provided here, but would like to see, please post an issue using the GitHub [issue tracker](https://github.com/PSORLab/EAGO.jl/issues).
 
 ## 1) Creating an Extension
 
