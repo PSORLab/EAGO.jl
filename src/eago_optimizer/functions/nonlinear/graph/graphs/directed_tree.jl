@@ -168,7 +168,7 @@ Base.@kwdef mutable struct DirectedTree <: AbstractDirectedAcyclicGraph
     v::VariableValues{Float64}                  = VariableValues{Float64}()
     "List of constant values"
     constant_values::Vector{Float64}            = Float64[]
-    "List of constant values"
+    "List of parameter values"
     parameter_values::Vector{Float64}           = Float64[]
     "Number of nodes"
     node_count::Int                             = 0
@@ -213,6 +213,7 @@ arity(g::DAT, i)           = arity(node(g, i))
 children(g::DAT, i)        = children(node(g, i))
 child(g::DAT, i, j)        = child(node(g, j), i)
 
+is_unary(g::DAT, i) = arity(g, i) == 1
 is_binary(g::DAT, i) = arity(g, i) == 2
 
 node_count(g::DAT)     = g.node_count
@@ -222,6 +223,7 @@ constant_count(g::DAT) = g.constant_count
 dependent_subexpression_index(g::DAT, i) = g.dependent_subexpression_dict[i]
 dep_subexpr_count(g::DAT)                = length(g.dependent_subexpressions)
 sparsity(g::DAT, i)                      = g.sparsity
+sparsity(g::DAT)                         = g.sparsity
 rev_sparsity(g::DAT, i::Int, k::Int)     = g.rev_sparsity[i]
 
 user_univariate_operator(g::DAT, i) = g.user_operators.registered_univariate_operators[i].f
@@ -265,7 +267,7 @@ end
 
 forward_uni = [i for i in instances(AtomType)]
 setdiff!(forward_uni, [VAR_ATOM; PARAM_ATOM; CONST_ATOM; SELECT_ATOM; SUBEXPR])
-f_switch = binary_switch(forward_uni, is_forward = true)
+f_switch = binary_switch(forward_uni, true)
 @eval function fprop!(t::T, ex::Expression, g::DAT, c::AbstractCache , k::Int) where T<:AbstractCacheAttribute
     id = ex_type(g, k)
     $f_switch
@@ -275,7 +277,7 @@ end
 
 reverse_uni = [i for i in instances(AtomType)]
 setdiff!(reverse_uni, [VAR_ATOM; PARAM_ATOM; CONST_ATOM; SELECT_ATOM; SUBEXPR])
-r_switch = binary_switch(reverse_uni, is_forward = false)
+r_switch = binary_switch(reverse_uni, false)
 @eval function rprop!(t::T, ex::Expression, g::DAT, c::AbstractCache, k::Int) where T<:AbstractCacheAttribute
     id = ex_type(g, k)
     $r_switch

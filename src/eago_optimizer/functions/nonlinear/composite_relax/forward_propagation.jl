@@ -27,13 +27,12 @@ function fprop!(t::RelaxCacheAttribute, vt::Variable, g::DAT, b::RelaxCache{V,N,
     l = lbd(b, i)
     u = ubd(b, i)
     if l == u
-        b[k] = x
+        b[k] = l
     else
         z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
-        if !first_eval(t, b)
-            z = intersect(z, interval(b, k))
-        end
         b[k] = z
+        b.ic.v.lower_variable_bounds[i] = z.Intv.lo
+        b.ic.v.upper_variable_bounds[i] = z.Intv.hi
     end
     nothing
 end
@@ -60,7 +59,7 @@ for (F, f) in ((PLUS, :+), (MIN, :min), (MAX, :max), (DIV, :/), (ARH, :arh))
             else
                 z = ($f)(num(b, x), set(b, y))
             end
-            b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
         else
             b[k] = ($f)(num(b, x), num(b, y))
         end
@@ -79,7 +78,7 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where 
             else
                 z = num(b, x) - set(b, y)
             end
-            b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
         else
             b[k] = num(b, x) - num(b, y)
         end
@@ -88,7 +87,7 @@ function fprop!(t::Relax, v::Val{MINUS}, g::DAT, b::RelaxCache{V,N,T}, k) where 
             b[k] = -num(b, x)
         else
             z = -set(b, x)
-            b[k] = cut(-set(b, x), set(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+            b[k] = cut(-set(b, x), set(b, k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
         end
     end
 end
@@ -109,7 +108,7 @@ function fprop_n!(t::Relax, v::Val{PLUS}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
         b[k] = znum
     else
         z += znum
-        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
     end
 end
 
@@ -129,7 +128,7 @@ function fprop_n!(t::Relax, v::Val{MIN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
         b[k] = znum
     else
         z = min(z, znum)
-        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
     end
 end
 
@@ -149,7 +148,7 @@ function fprop_n!(t::Relax, v::Val{MAX}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
         b[k] = znum
     else
         z = max(z, znum)
-        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b[k] = cut(z, set(b, k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
     end
 end
 
@@ -165,7 +164,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
             if b.use_apriori_mul
                 dp = b.dp
                 dP = b.dP
-                s = sparsity(g, 1)
+                s = sparsity(g)
                 xr = info(b, x)
                 yr = info(b, y)
                 u1max, u2max, v1nmax, v2nmax = estimator_extrema(xr, yr, s, dP)
@@ -189,7 +188,7 @@ function fprop_2!(t::Relax, v::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) 
         else
             z = num(b, x)*set(b, y)
         end
-        b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
     else
         b[k] = num(b, x)*num(b, y)
     end
@@ -204,7 +203,7 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
         zr = one(V)
         dp = b.dp
         dP = b.dP
-        s = sparsity(g, 1)
+        s = sparsity(g)
         for (q,i) in enumerate(children(g, k))
             if is_num(b, i)
                 znum = znum*num(b, i)
@@ -226,7 +225,7 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                     zv = intersect(zv, za_u)
                 end
                 zr = zr*xr
-                zv = cut(zv, zv, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
+                zv = cut(zv, zv, b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
                 z = zv
             end
         end
@@ -238,7 +237,7 @@ function fprop_n!(t::Relax, ::Val{MULT}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
                 numval = false
                 x = set(b, i)
                 z = z*x
-                z = cut(z, z, b.ic.v, b.ϵ_sg, sparsity(g, i), b.cut, false)
+                z = cut(z, z, b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
             end
         end
     end
@@ -274,7 +273,7 @@ function fprop!(t::Relax, v::Val{POW}, g::DAT, b::RelaxCache{V,N,T}, k::Int) whe
         else
             z = num(b, x)^set(b, y)
         end
-        b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g, k), b.cut, false)
+        b[k] = cut(z, set(b,k), b.ic.v, b.ϵ_sg, sparsity(g), b.cut, false)
     else
         b[k] = num(b, x)^num(b, y)
     end
@@ -287,7 +286,7 @@ function fprop!(t::Relax, v::Val{USER}, g::DAT, b::RelaxCache{V,N,T}, k::Int) wh
         b[k] = f(num(b, x))
     else
         z = f(set(b, x))
-        b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g, k), b.cut, b.post)
+        b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g), b.cut, b.post)
     end
 end
 
@@ -313,7 +312,7 @@ function fprop!(t::Relax, v::Val{USERN}, g::DAT, b::RelaxCache{V,N,T}, k::Int) w
     end
     if anysets
         z = mv.f(set_input)::MC{N,T}
-        b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+        b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g), b.cut, b.post)
     else
         b[k] = mv.f(num_input)
     end
@@ -328,7 +327,7 @@ for ft in UNIVARIATE_ATOM_TYPES
             return b[k] = ($f)(num(b, x))
         else
             z = ($f)(set(b, x))
-            b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+            b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g), b.cut, b.post)
         end
     end
 end
@@ -339,7 +338,7 @@ for (F, f) in ((LOWER_BND, :lower_bnd), (UPPER_BND, :upper_bnd))
         if is_num(b, y)
             z = set(b, child(g, 1, k))
             z = ($f)(z, num(b, y))
-            b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g, k), b.cut, b.post)
+            b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g), b.cut, b.post)
         end
     end
 end
@@ -351,7 +350,7 @@ function fprop!(t::Relax, v::Val{BND}, g::DAT, b::RelaxCache{V,N,T}, k) where {V
     if is_num(b, y) && is_num(b, r)
         z = bnd(z, num(b, y),num(b, r))
     end
-    b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g,k), b.cut, b.post)
+    b[k] = cut(z, set(b, k), b.ic.v, zero(Float64), sparsity(g), b.cut, b.post)
 end
 
 function f_init!(t::Relax, g::DAT, b::RelaxCache)

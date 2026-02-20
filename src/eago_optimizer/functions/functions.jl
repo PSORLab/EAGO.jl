@@ -53,7 +53,7 @@ function interval_bound end
 """
     eliminate_fixed_variables!(::T, ::Vector{VariableInfo})
 
-Eliminate fixed variables by rearrangment or restructuring of the `AbstractEAGOConstraint`.
+Eliminate fixed variables by rearrangement or restructuring of the `AbstractEAGOConstraint`.
 
 # Options for T (all are subtypes of AbstractEAGOConstraint):
 - AffineFunctionEq
