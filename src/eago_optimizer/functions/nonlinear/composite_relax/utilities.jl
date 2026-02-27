@@ -67,8 +67,8 @@ function set_value_post(z::MC{N,T}, v::VariableValues{Float64}, s::Vector{Int}, 
         cc_val = z.cc_grad[i]
         i_sol = s[i]
         x_z = v.x[i_sol]
-        lower_bound = _lbd(v, i_sol)
-        upper_bound = _ubd(v, i_sol)
+        lower_bound = lbd(v, i_sol)
+        upper_bound = ubd(v, i_sol)
         if lower_refinement
             if cv_val > zero(Float64)
                 if isinf(lower_bound)

@@ -148,10 +148,10 @@ Base.@kwdef mutable struct EAGOParameters
     absolute_constraint_feas_tolerance::Float64 = 1E-8
 
     # Options for constraint propagation
-    "Depth in B&B tree above which constraint propagation should be disabled (default = 0)"
-    cp_depth::Int = 0
-    "Number of times to repeat forward-reverse pass routine (default = 0)"
-    cp_repetitions::Int = 0
+    "Depth in B&B tree above which constraint propagation should be disabled (default = 20)"
+    cp_depth::Int = 20
+    "Number of times to repeat forward-reverse pass routine (default = 3)"
+    cp_repetitions::Int = 3
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
     this number (default = 0.99)"
     cp_tolerance::Float64 = 0.99
@@ -245,8 +245,6 @@ Base.@kwdef mutable struct EAGOParameters
     # Other forcing options
     "Ignore EAGO's ability to parse problem types and force it to run global optimization (default = false)"
     force_global_solve::Bool = false
-    "Check that all branching variables have finite bounds and set them to +/- 1E10 if not (default = true)"
-    unbounded_check::Bool = true
 end
 const EAGO_PARAMETERS = fieldnames(EAGOParameters)
 

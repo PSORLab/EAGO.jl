@@ -67,14 +67,13 @@ function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
             u = floor(u)
         end
         is_fixed_int = l == u
-        vi = _working_variable_info(m,i)
-        if is_fixed(vi) || is_fixed_int
+        if is_fixed_int
             MOI.add_constraint(d, v, ET(l))
-        elseif is_less_than(vi)
+        elseif isinf(l) && ~isinf(u)
             MOI.add_constraint(d, v, LT(u))
-        elseif is_greater_than(vi)
+        elseif isinf(u) && ~isinf(l)
             MOI.add_constraint(d, v, GT(l))
-        elseif is_real_interval(vi)
+        elseif ~isinf(u) && ~isinf(l)
             MOI.add_constraint(d, v, LT(u))
             MOI.add_constraint(d, v, GT(l))
         end
@@ -157,7 +156,7 @@ end
 """
 
 Constructs and solves the problem locally on node `y` updated the upper
-solution informaton in the optimizer.
+solution information in the optimizer.
 """
 function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 

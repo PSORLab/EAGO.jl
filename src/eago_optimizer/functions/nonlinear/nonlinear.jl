@@ -29,7 +29,7 @@ _set_has_value!(d, v) = nothing
 """
 $(TYPEDEF)
 
-Stores a general quadratic function with a buffer.
+Stores a general nonlinear function with a buffer.
 """
 mutable struct NonlinearExpression{V,N,T<:RelaxTag} <: AbstractEAGOConstraint
     g::DirectedTree
@@ -54,6 +54,7 @@ function NonlinearExpression!(aux_info, rtype::S, sub::Union{MOIRAD._Subexpressi
                               op::OperatorRegistry, parameter_values,
                               tag::T, use_apriori_flag::Bool; is_sub::Bool = false) where {S,T}
     g = DirectedTree(aux_info, sub, op, sub_sparsity, subexpr_linearity, parameter_values, is_sub, subexpr_indx)
+    g.sink_bnd = Interval(b.lower, b.upper)
     grad_sparsity = sparsity(g, 1)
     n = length(grad_sparsity)
     V = relax_info(rtype, n, tag)
