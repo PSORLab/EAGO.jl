@@ -105,8 +105,19 @@ function store_lower_solution!(m::GlobalOptimizer{R,S,Q}, d::T) where {R,S,Q<:Ex
     for i = 1:_variable_num(FullVar(), m)
         l = _lower_bound(FullVar(), m, i)
         u = _upper_bound(FullVar(), m, i)
-        ladj = l + SOLUTION_EPS*(u - l)
-        uadj = u - SOLUTION_EPS*(u - l)
+        if isfinite(l) && isfinite(u)
+            ladj = l + SOLUTION_EPS*(u - l)
+            uadj = u - SOLUTION_EPS*(u - l)
+        elseif isfinite(l)
+            ladj = l + SOLUTION_EPS
+            uadj = u
+        elseif isfinite(u)
+            ladj = l
+            uadj = u - SOLUTION_EPS
+        else
+            ladj = x
+            uadj = x
+        end
         x = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
         (x < ladj) && (x = ladj)
         (x > uadj) && (x = uadj)
