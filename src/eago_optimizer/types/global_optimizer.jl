@@ -223,10 +223,13 @@ Base.@kwdef mutable struct EAGOParameters
     "Constant tolerance for safe-lp cut, Khajavirad 2018 (default = 1E9)"
     cut_safe_b::Float64 = 1E9
 
+    # Upper bounding options
     "Solve upper problem for every node with depth less than `upper_bounding_depth`,
     and otherwise solve upper problems with a probability of `(1/2)^(depth-upper_bounding_depth)`
     (default = 8)"
     upper_bounding_depth::Int = 8
+    "Shifts the local nlp objective value `f*` by `(1.0 + relative_tolerance/100.0)*f* + absolute_tolerance/100.0` (default = false)"
+    upper_result_adjust::Bool = false
 
     # Handling for domain violations
     "(Unused) Protect against domain violation (default = false)"

@@ -46,7 +46,7 @@ Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_toleranc
 This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
 tolerance (local problem is minimum).
 """
-function stored_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
+function store_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
     adj_atol = d._parameters.absolute_tolerance/100.0
     adj_rtol = d._parameters.relative_tolerance/100.0
     if v > 0.0
@@ -138,7 +138,11 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
 
             m._upper_feasibility = true
             obj_val = MOI.get(d, MOI.ObjectiveValue())
-            stored_adjusted_upper_bound!(m, obj_val)
+            if m._parameters.upper_result_adjust
+                store_adjusted_upper_bound!(m, obj_val)
+            else
+                m._upper_objective_value = obj_val
+            end
             m._best_upper_value = min(obj_val, m._best_upper_value)
             m._upper_solution .= MOI.get(d, MOI.VariablePrimal(), m._upper_variables)
             
