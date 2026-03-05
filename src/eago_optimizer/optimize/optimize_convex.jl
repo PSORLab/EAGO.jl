@@ -46,7 +46,7 @@ Shifts the resulting local nlp objective value `f*` by `(1.0 + relative_toleranc
 This assumes that the local solvers relative tolerance and absolute tolerance is significantly lower than the global
 tolerance (local problem is minimum).
 """
-function stored_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
+function store_adjusted_upper_bound!(d::GlobalOptimizer, v::Float64)
     adj_atol = d._parameters.absolute_tolerance/100.0
     adj_rtol = d._parameters.relative_tolerance/100.0
     if v > 0.0
@@ -67,14 +67,13 @@ function _update_upper_variables!(d, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:Ex
             u = floor(u)
         end
         is_fixed_int = l == u
-        vi = _working_variable_info(m,i)
-        if is_fixed(vi) || is_fixed_int
+        if is_fixed_int
             MOI.add_constraint(d, v, ET(l))
-        elseif is_less_than(vi)
+        elseif isinf(l) && ~isinf(u)
             MOI.add_constraint(d, v, LT(u))
-        elseif is_greater_than(vi)
+        elseif isinf(u) && ~isinf(l)
             MOI.add_constraint(d, v, GT(l))
-        elseif is_real_interval(vi)
+        elseif ~isinf(u) && ~isinf(l)
             MOI.add_constraint(d, v, LT(u))
             MOI.add_constraint(d, v, GT(l))
         end
@@ -139,7 +138,11 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
 
             m._upper_feasibility = true
             obj_val = MOI.get(d, MOI.ObjectiveValue())
-            stored_adjusted_upper_bound!(m, obj_val)
+            if m._parameters.upper_result_adjust
+                store_adjusted_upper_bound!(m, obj_val)
+            else
+                m._upper_objective_value = obj_val
+            end
             m._best_upper_value = min(obj_val, m._best_upper_value)
             m._upper_solution .= MOI.get(d, MOI.VariablePrimal(), m._upper_variables)
             
@@ -157,7 +160,7 @@ end
 """
 
 Constructs and solves the problem locally on node `y` updated the upper
-solution informaton in the optimizer.
+solution information in the optimizer.
 """
 function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 

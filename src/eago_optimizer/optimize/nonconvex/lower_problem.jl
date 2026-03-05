@@ -105,9 +105,20 @@ function store_lower_solution!(m::GlobalOptimizer{R,S,Q}, d::T) where {R,S,Q<:Ex
     for i = 1:_variable_num(FullVar(), m)
         l = _lower_bound(FullVar(), m, i)
         u = _upper_bound(FullVar(), m, i)
-        ladj = l + SOLUTION_EPS*(u - l)
-        uadj = u - SOLUTION_EPS*(u - l)
         x = MOI.get(d, MOI.VariablePrimal(), m._relaxed_variable_index[i])
+        if isfinite(l) && isfinite(u)
+            ladj = l + SOLUTION_EPS*(u - l)
+            uadj = u - SOLUTION_EPS*(u - l)
+        elseif isfinite(l)
+            ladj = l + SOLUTION_EPS
+            uadj = u
+        elseif isfinite(u)
+            ladj = l
+            uadj = u - SOLUTION_EPS
+        else
+            ladj = x
+            uadj = x
+        end
         (x < ladj) && (x = ladj)
         (x > uadj) && (x = uadj)
         m._lower_solution[i] = x
@@ -159,9 +170,9 @@ function set_first_relax_point!(m::GlobalOptimizer)
             if isfinite(l) && isfinite(u)
                 x = 0.5*(l + u)
             elseif isfinite(l)
-                x = min(0.0, u)
-            elseif isfinite(u)
                 x = max(0.0, l)
+            elseif isfinite(u)
+                x = min(0.0, u)
             else
                 x = 0.0
             end
@@ -311,8 +322,8 @@ function preprocess!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:
     set_first_relax_point!(m)
     # Nonlinear CP can detect infeasibility and bound objective even if
     # the relaxation is ill-posed, so one is always used to mitigate numerical issues 
-    cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 1
-    for _ = 1:_cp_repetitions(m)
+    cp_reps = _cp_depth(m) >= _iteration_count(m) ? _cp_repetitions(m) : 0
+    for _ = 1:cp_reps
         ns = NodeBB(_current_node(m))
         feasible_flag = feasible_flag && set_constraint_propagation_fbbt!(m)
         (same_box(ns,_current_node(m),0.0) || !feasible_flag) && break

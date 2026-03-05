@@ -1,18 +1,18 @@
 
 # Define standard forward and reverse propagation to switch of expression definitions
 # for expressions.
-function binary_switch(ids; is_forward = true)
+function binary_switch(ids::Vector{EAGO.AtomType}, is_forward::Bool)
     if length(ids) <= 3
         if is_forward
             out = Expr(:if, Expr(:call, :(==), :id, ids[1]), :(return fprop!(t, Val($(ids[1])), g, c, k)))
         else
-            out = Expr(:if, Expr(:call, :(==), :id, ids[1]), :(return rprop!(t, Val$((ids[1])), g, c, k)))
+            out = Expr(:if, Expr(:call, :(==), :id, ids[1]), :(return rprop!(t, Val($(ids[1])), g, c, k)))
         end
-        (length(ids) > 1) && push!(out.args, binary_switch(ids[2:end]))
+        (length(ids) > 1) && push!(out.args, binary_switch(ids[2:end], is_forward))
         return out
     else
         mid = length(ids) >>> 1
-        return Expr(:if, Expr(:call, :(<=), :id, ids[mid]), binary_switch(ids[1:mid]), binary_switch(ids[mid+1:end]))
+        return Expr(:if, Expr(:call, :(<=), :id, ids[mid]), binary_switch(ids[1:mid], is_forward), binary_switch(ids[mid+1:end], is_forward))
     end
 end
 
