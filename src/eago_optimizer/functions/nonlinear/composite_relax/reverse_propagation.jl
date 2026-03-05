@@ -13,7 +13,7 @@
 
 function r_init!(t::Relax, tree::DAT, cache::RelaxCache{V,N,T}) where {V,N,T<:RelaxTag}
     if !is_num(cache, 1)
-        cache[1] = set(cache, 1) ∩ tree.sink_bnd
+        cache[1] = intersect(set(cache, 1), tree.sink_bnd)
     end
     return !isempty(set(cache, 1))
 end
@@ -28,10 +28,10 @@ function rprop!(t::RelaxCacheAttribute, v::Variable, tree::DAT, cache::RelaxCach
         cache[node_index] = variable_value
     else
         variable_node = varset(MC{N,T}, rev_sparsity(tree, variable_index, node_index), variable_value, variable_value, variable_lower_bound, variable_upper_bound)
-        variable_node = variable_node ∩ node_interval
+        variable_node = intersect(variable_node, node_interval)
         cache[node_index] = variable_node
-        cache.ic.v.lower_variable_bounds[variable_index] = variable_node.Intv.lo
-        cache.ic.v.upper_variable_bounds[variable_index] = variable_node.Intv.hi
+        cache.ic.v.lower_variable_bounds[variable_index] = variable_node.Intv.bareinterval.lo
+        cache.ic.v.upper_variable_bounds[variable_index] = variable_node.Intv.bareinterval.hi
     end
     return !isempty(set(cache, node_index))
 end
@@ -76,11 +76,11 @@ function rprop_2!(t::Relax, v::Val{PLUS}, tree::DAT, cache::RelaxCache{V,N,T}, n
         _, new_first_child_interval, new_second_child_interval = IntervalContractors.plus_rev(node_interval, old_first_child_interval, old_second_child_interval)
     end
         if !is_num(cache, first_child_index)
-            isempty(new_first_child_interval) && return false
+            isempty_interval(new_first_child_interval) && return false
             cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
         if !is_num(cache, second_child_index)
-            isempty(new_second_child_interval) && return false
+            isempty_interval(new_second_child_interval) && return false
             cache[second_child_index] = MC{N,T}(new_second_child_interval)
         end
     return true
@@ -113,7 +113,7 @@ function rprop_n!(t::Relax, v::Val{PLUS}, tree::DAT, cache::RelaxCache{V,N,T}, n
             end
         end
         _, new_current_child_interval, _ = IntervalContractors.plus_rev(node_interval, old_current_child_interval, Intv(temp_sum))
-        isempty(new_current_child_interval) && (return false)
+        isempty_interval(new_current_child_interval) && (return false)
         cache[current_child_index] = MC{N,T}(new_current_child_interval)
     end
     return true
@@ -142,11 +142,11 @@ function rprop_2!(t::Relax, v::Val{MULT}, tree::DAT, cache::RelaxCache{V,N,T}, n
     end
 
     if !is_num(cache, first_child_index)
-        isempty(new_first_child_interval) && (return false)
+        isempty_interval(new_first_child_interval) && (return false)
         cache[first_child_index] = MC{N,T}(new_first_child_interval)
     end
     if !is_num(cache, second_child_index)
-        isempty(new_second_child_interval) && (return false)
+        isempty_interval(new_second_child_interval) && (return false)
         cache[second_child_index] = MC{N,T}(new_second_child_interval)
     end
     return true
@@ -179,7 +179,7 @@ function rprop_n!(t::Relax, v::Val{MULT}, tree::DAT, cache::RelaxCache{V,N,T}, n
             end
         end
         _, new_current_child_interval, _ = IntervalContractors.mul_rev(node_interval, old_current_child_interval, Intv(temp_prod))
-        isempty(new_current_child_interval) && (return false)
+        isempty_interval(new_current_child_interval) && (return false)
         cache[current_child_index] = MC{N,T}(new_current_child_interval)
     end
     return true
@@ -193,7 +193,7 @@ function rprop!(t::Relax, v::Val{MINUS}, tree::DAT, cache::RelaxCache{V,N,T}, no
         old_first_child_interval = interval(cache, first_child_index)
         _, new_first_child_interval = IntervalContractors.minus_rev(node_interval, old_first_child_interval)
         if !is_num(cache, first_child_index)
-            isempty(new_first_child_interval) && (return false)
+            isempty_interval(new_first_child_interval) && (return false)
             cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
     else
@@ -211,11 +211,11 @@ function rprop!(t::Relax, v::Val{MINUS}, tree::DAT, cache::RelaxCache{V,N,T}, no
             _, new_first_child_interval, new_second_child_interval = IntervalContractors.minus_rev(node_interval, old_first_child_interval, old_second_child_interval)
         end
         if !is_num(cache, first_child_index)
-            isempty(new_first_child_interval) && (return false)
+            isempty_interval(new_first_child_interval) && (return false)
             cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
         if !is_num(cache, second_child_index)
-            isempty(new_second_child_interval) && (return false)
+            isempty_interval(new_second_child_interval) && (return false)
             cache[second_child_index] = MC{N,T}(new_second_child_interval)
         end
     end
@@ -240,11 +240,11 @@ for (f, fc, F) in ((^, POW, IntervalContractors.power_rev),
             _, new_first_child_interval, new_second_child_interval = ($F)(node_interval, old_first_child_interval, old_second_child_interval)
         end
         if !is_num(cache, first_child_index)
-            isempty(new_first_child_interval) && (return false)
+            isempty_interval(new_first_child_interval) && (return false)
             cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
         if !is_num(cache, second_child_index)
-            isempty(new_second_child_interval) && (return false)
+            isempty_interval(new_second_child_interval) && (return false)
             cache[second_child_index] = MC{N,T}(new_second_child_interval)
         end
         return true
@@ -284,7 +284,7 @@ for (fc, F) in ((SQRT, IntervalContractors.sqrt_rev),
         old_first_child_interval = interval(cache, first_child_index)
         _, new_first_child_interval = ($F)(node_interval, old_first_child_interval)
         if !is_num(cache, first_child_index)
-            isempty(new_first_child_interval) && (return false)
+            isempty_interval(new_first_child_interval) && (return false)
             cache[first_child_index] = MC{N,T}(new_first_child_interval)
         end
         return true

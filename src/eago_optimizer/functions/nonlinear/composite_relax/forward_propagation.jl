@@ -31,8 +31,8 @@ function fprop!(t::RelaxCacheAttribute, vt::Variable, g::DAT, b::RelaxCache{V,N,
     else
         z = varset(MC{N,T}, rev_sparsity(g, i, k), x, x, l, u)
         b[k] = z
-        b.ic.v.lower_variable_bounds[i] = z.Intv.lo
-        b.ic.v.upper_variable_bounds[i] = z.Intv.hi
+        b.ic.v.lower_variable_bounds[i] = z.Intv.bareinterval.lo
+        b.ic.v.upper_variable_bounds[i] = z.Intv.bareinterval.hi
     end
     nothing
 end
