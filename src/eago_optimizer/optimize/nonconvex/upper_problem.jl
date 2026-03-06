@@ -71,8 +71,7 @@ the NLP locally.
 """
 function upper_problem!(t::ExtensionType, m::GlobalOptimizer)
     if !default_upper_heuristic(m)
-        m._upper_feasibility = false # Ensures that global upper bound not updated
-        m._upper_objective_value = Inf
+        evaluate_local_nlp!(m)
     else
         solve_local_nlp!(m)
     end

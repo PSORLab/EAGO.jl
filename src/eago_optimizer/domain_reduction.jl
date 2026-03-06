@@ -562,9 +562,9 @@ function set_constraint_propagation_fbbt!(m::GlobalOptimizer{R,S,Q}) where {R,S,
         # evaluator -> current_node
         m._current_node = retrieve_node(evaluator)
         if m._current_node.depth == 1
-            for i in 1:m._input_problem._variable_count
-                start = wp._variable_info[i]
-                wp._variable_info[i] = VariableInfo(start.is_integer,
+            for (i, j) in enumerate(m._branch_to_sol_map)
+                start = wp._variable_info[j]
+                wp._variable_info[j] = VariableInfo(start.is_integer,
                                                     ~isinf(m._current_node.lower_variable_bounds[i]),
                                                     ~isinf(m._current_node.upper_variable_bounds[i]),
                                                     m._current_node.lower_variable_bounds[i] == m._current_node.upper_variable_bounds[i],

@@ -158,9 +158,10 @@ function _unpack_local_nlp_solve!(m::GlobalOptimizer, d::T) where T
 end
 
 """
+$(SIGNATURES)
 
-Constructs and solves the problem locally on node `y` updated the upper
-solution information in the optimizer.
+Construct and solve the problem locally on the current node and update
+the upper solution information in the optimizer.
 """
 function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
 
@@ -187,6 +188,143 @@ function solve_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType
     # Optimizes the object
     MOI.optimize!(upper_optimizer)
     _unpack_local_nlp_solve!(m, upper_optimizer)
+end
+
+"""
+$(SIGNATURES)
+
+Evaluate the problem locally using the current node lower solution and, if feasible, 
+update the upper solution information for the current node.
+"""
+function evaluate_local_nlp!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType}
+
+    ip = m._input_problem
+    feasibility = true
+
+    for constraint in values(ip._linear_leq_constraints)
+        !feasibility && break
+        constraint_value = constraint[1].constant
+        for term in constraint[1].terms
+            constraint_value += term.coefficient*m._lower_solution[term.variable.value]
+        end
+        feasibility &= constraint_value <= constraint[2].upper + _constraint_tol(m)
+    end
+
+    for constraint in values(ip._linear_geq_constraints)
+        !feasibility && break
+        constraint_value = constraint[1].constant
+        for term in constraint[1].terms
+            constraint_value += term.coefficient*m._lower_solution[term.variable.value]
+        end
+        feasibility &= constraint_value >= constraint[2].lower - _constraint_tol(m)
+    end
+
+    for constraint in values(ip._linear_eq_constraints)
+        !feasibility && break
+        constraint_value = constraint[1].constant
+        for term in constraint[1].terms
+            constraint_value += term.coefficient*m._lower_solution[term.variable.value]
+        end
+        feasibility &= abs(constraint_value - constraint[2].value) <= + _constraint_tol(m)
+    end
+
+    for constraint in values(ip._quadratic_leq_constraints)
+        !feasibility && break
+        constraint_value = constraint[1].constant
+        for term in constraint[1].quadratic_terms
+            if term.variable_1 == term.variable_2
+                constraint_value += 0.5*term.coefficient*m._lower_solution[term.variable_1.value]^2
+            else
+                constraint_value += term.coefficient*m._lower_solution[term.variable_1.value]*m._lower_solution[term.variable_2.value]
+            end
+        end
+        for term in constraint[1].affine_terms
+            constraint_value += term.coefficient*m._lower_solution[term.variable.value]
+        end
+        feasibility &= constraint_value <= constraint[2].upper + _constraint_tol(m)
+    end
+
+    for constraint in values(ip._quadratic_geq_constraints)
+        !feasibility && break
+        constraint_value = constraint[1].constant
+        for term in constraint[1].quadratic_terms
+            if term.variable_1 == term.variable_2
+                constraint_value += 0.5*term.coefficient*m._lower_solution[term.variable_1.value]^2
+            else
+                constraint_value += term.coefficient*m._lower_solution[term.variable_1.value]*m._lower_solution[term.variable_2.value]
+            end
+        end
+        for term in constraint[1].affine_terms
+            constraint_value += term.coefficient*m._lower_solution[term.variable.value]
+        end
+        feasibility &= constraint_value >= constraint[2].lower - _constraint_tol(m)
+    end
+
+    for constraint in values(ip._quadratic_eq_constraints)
+        !feasibility && break
+        constraint_value = constraint[1].constant
+        for term in constraint[1].quadratic_terms
+            if term.variable_1 == term.variable_2
+                constraint_value += 0.5*term.coefficient*m._lower_solution[term.variable_1.value]^2
+            else
+                constraint_value += term.coefficient*m._lower_solution[term.variable_1.value]*m._lower_solution[term.variable_2.value]
+            end
+        end
+        for term in constraint[1].affine_terms
+            constraint_value += term.coefficient*m._lower_solution[term.variable.value]
+        end
+        feasibility &= abs(constraint_value - constraint[2].value) <= _constraint_tol(m)
+    end
+
+    if !isnothing(ip._nlp_data)
+        g = fill(0.0, length(ip._nlp_data.evaluator.model.constraints))
+        MOI.eval_constraint(ip._nlp_data.evaluator, g, m._lower_solution)
+        for (i, constraint) in enumerate(values(ip._nlp_data.evaluator.model.constraints))
+            (m._epigraph_occurred && i == length(ip._nlp_data.evaluator.model.constraints)) && break
+            !feasibility && break
+            if constraint.set isa LT
+                feasibility &= g[i] <= constraint.set.upper + _constraint_tol(m)
+            elseif constraint.set isa GT
+                feasibility &= g[i] >= constraint.set.lower - _constraint_tol(m)
+            elseif constraint.set isa ET
+                feasibility &= abs(g[i] - constraint.set.value) <=  _constraint_tol(m)
+            end
+        end
+    end
+
+    if feasibility
+        m._upper_feasibility = true
+        m._upper_solution .= m._lower_solution
+        if !isnothing(ip._nlp_data) && m._epigraph_occurred
+            m._upper_objective_value = g[end] + m._lower_solution[end]
+        elseif !isnothing(ip._objective)
+            if ip._objective isa SQF
+                m._upper_objective_value = ip._objective.constant
+                for term in ip._objective.quadratic_terms
+                    if term.variable_1 == term.variable_2
+                        m._upper_objective_value += 0.5*term.coefficient*m._lower_solution[term.variable_1.value]^2
+                    else
+                        m._upper_objective_value += term.coefficient*m._lower_solution[term.variable_1.value]*m._lower_solution[term.variable_2.value]
+                    end
+                end
+                for term in ip._objective.affine_terms
+                    m._upper_objective_value += term.coefficient*m._lower_solution[term.variable.value]
+                end
+            elseif ip._objective isa SAF
+                m._upper_objective_value = ip._objective.constant
+                for term in ip._objective.terms
+                    m._upper_objective_value += term.coefficient*m._lower_solution[term.variable.value]
+                end
+            else
+                m._upper_objective_value = m._lower_solution[ip._objective.value]
+            end
+        end
+    else
+        m._upper_feasibility = false
+        m._upper_objective_value = Inf
+    end
+
+    return
 end
 
 optimize!(::DIFF_CVX, m::Optimizer) = solve_local_nlp!(m._global_optimizer)

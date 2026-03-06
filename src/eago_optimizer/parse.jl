@@ -268,6 +268,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedN
     expr = MOINL.convert_to_expr(ip._nlp_data.evaluator.model,ip._nlp_data.evaluator.model.objective)
     MOINL.set_objective(ip._nlp_data.evaluator.model, :($η))
     wp._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
+    m._epigraph_occurred = true
 
     # Check if input problem is min or max
     if !_is_input_min(m)
