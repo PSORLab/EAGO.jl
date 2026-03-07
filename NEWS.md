@@ -1,6 +1,6 @@
 # News for EAGO Releases
 
-## [v0.9.1](https://github.com/PSORLab/EAGO.jl#master) (Unreleased)
+## [v0.9.1](https://github.com/PSORLab/EAGO.jl#master) (March 7, 2026)
 
 - Removed PrettyTables.jl dependency.
   - The `display_table!` function now prints information in a similar manner to the `print_iteration!` function.
