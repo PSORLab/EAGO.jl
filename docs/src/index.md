@@ -11,6 +11,7 @@ A development environment for robust and global optimization in Julia.
   - Current Position: Alexion Pharmaceuticals
 - [Robert Gottlieb](https://psor.uconn.edu/person/robert-gottlieb/), Department of Chemical and Biomolecular Engineering, University of Connecticut (UConn)
 - [Dimitri Alston](https://psor.uconn.edu/person/dimitri-alston/), Department of Chemical and Biomolecular Engineering, University of Connecticut (UConn)
+- [Alireza Miraliakbar](https://psor.uconn.edu/person/alireza-miraliakbar/), Department of Chemical and Biomolecular Engineering, University of Connecticut (UConn)
 - [Matthew Stuber](https://chemical-biomolecular.engr.uconn.edu/people/faculty/stuber-matthew/), Pratt & Whitney Associate Professor in Advanced Systems Engineering, University of Connecticut (UConn)
 
 If you would like to contribute, [contact us](@ref "How to Contribute to EAGO").
