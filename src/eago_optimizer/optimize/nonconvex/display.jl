@@ -102,6 +102,9 @@ function print_iteration!(m::GlobalOptimizer, end_flag::Bool)
 
         # Print header line every `header_iterations` times and print iteration summary every `output_iterations` times
         if m._last_printed_iteration != m._iteration_count && (mod(m._iteration_count, m._parameters.output_iterations) === 0 || end_flag)
+            if end_flag
+                m._global_lower_bound = m._min_converged_value
+            end
             if m._iteration_count == m._parameters.output_iterations || mod(m._iteration_count, m._parameters.header_iterations) < m._parameters.output_iterations
                 println("-----------------------------------------------------------------------------------------------------------------")
                 println("| Iteration # |    Nodes    | Lower Bound | Upper Bound |     Gap     |    Ratio    |    Timer    |  Time Left  |")

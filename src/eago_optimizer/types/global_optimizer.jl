@@ -134,8 +134,8 @@ Base.@kwdef mutable struct EAGOParameters
     branch_repetition_tol::Float64 = 0.9
 
     # Termination limits
-    "Maximum number of nodes (default = 1E7)"
-    node_limit::Int = 1E7
+    "Maximum number of nodes (default = 1E9)"
+    node_limit::Int = 1E9
     "Maximum CPU time in seconds (default = 3600)"
     time_limit::Float64 = 3600.0
     "Maximum number of iterations (default 1E9)"
@@ -685,9 +685,9 @@ Base.@kwdef mutable struct GlobalOptimizer{Q,S,T<:ExtensionType} <: MOI.Abstract
     _upper_feasibility::Bool = true
     "Objective value result from the upper problem"
     _upper_objective_value::Float64 = Inf
-    ""
+    "Variables in the upper problem"
     _upper_variables::Vector{VI} =  VI[]
-    ""
+    "Storage for the current node upper solution"
     _upper_solution::Vector{Float64} = Float64[]
 
     "(Unused) Flag to ensure postprocessing result is feasible"
@@ -836,6 +836,8 @@ Base.@kwdef mutable struct GlobalOptimizer{Q,S,T<:ExtensionType} <: MOI.Abstract
     "(FUTURE FEATURE, NOT CURRENTLY IMPLEMENTED) Information on the infeasibility
     of each constraint"
     _constraint_infeasiblity::Vector{Float64} = Float64[]
+    "Flag for checking if epigraph reformulation occurred for nonlinear objective"
+    _epigraph_occurred::Bool = false
 end
 
 const EAGO_OPTIMIZER_ATTRIBUTES = Symbol[:relaxed_optimizer, :upper_optimizer,

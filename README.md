@@ -108,6 +108,13 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 - Removed PrettyTables.jl dependency.
   - The `display_table!` function now prints information in a similar manner to the `print_iteration!` function.
+- Updated constraint propagation routines to do interval reverse passes for nonlinear constraints.
+- Updated `fbbt!` and `obbt!` to account for infinite bounds
+- Updated `select_branch_point` to account for infinite bounds
+- Added an EAGO parameter `upper_result_adjust` to shift the upper objective value `f*` by `(1.0 + relative_tolerance/100.0)*f* + absolute_tolerance/100.0` which defaults to `false`.
+- Added `evaluate_local_nlp!` function to evaluate the problem locally using the current node lower solution information and update the upper solution information for the current node if it is feasible. This occurs when `default_upper_heuristic` returns `false`.
+- Updated the condition for fathoming nodes in `fathom!` to check if their lower bounds are within absolute and/or relative tolerances of the global upper bound.
+- Updated default `node_limit` from 1E7 to 1E9.
 
 ### [v0.9.0](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.9.0) (February 19, 2026)
 

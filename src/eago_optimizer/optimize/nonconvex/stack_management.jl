@@ -225,15 +225,17 @@ node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_s
 $(TYPEDSIGNATURES)
 
 Remove nodes from the stack. By default, delete nodes from the stack if their
-lower bounds are greater than the current global upper bound.
+lower bound is within absolute and/or relative tolerances of the global upper bound.
 """
 function fathom!(t::ExtensionType, m::GlobalOptimizer)
     u = m._global_upper_bound
     continue_flag = !isempty(m._stack)
     while continue_flag
         n = maximum(m._stack)
-        max_check = n.lower_bound > u
+        l = n.lower_bound
+        max_check = ((u - l) <= m._parameters.absolute_tolerance) || (abs(u - l)/(max(abs(l), abs(u))) <= m._parameters.relative_tolerance)
         if max_check
+            m._min_converged_value = min(m._min_converged_value, l)
             popmax!(m._stack)
             m._node_count -= 1
         end
