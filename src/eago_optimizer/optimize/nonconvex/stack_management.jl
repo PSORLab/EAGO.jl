@@ -225,7 +225,7 @@ node_selection!(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = node_s
 $(TYPEDSIGNATURES)
 
 Remove nodes from the stack. By default, delete nodes from the stack if their
-lower bounds are greater than the current global upper bound.
+lower bound is within absolute and/or relative tolerances of the global upper bound.
 """
 function fathom!(t::ExtensionType, m::GlobalOptimizer)
     u = m._global_upper_bound
