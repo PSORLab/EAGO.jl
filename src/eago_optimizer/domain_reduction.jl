@@ -419,30 +419,25 @@ function fbbt! end
 function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
 
     fbbt_tolerance = _fbbt_tolerance(m)
-    # Compute full sum
     lower_bounds = m._lower_fbbt_buffer
     upper_bounds = m._upper_fbbt_buffer
     terms = f.terms
-    temp_sum = -f.constant
-    for k = 1:f.len
-        aik, i = @inbounds terms[k]
-        if !iszero(aik)
-            aik_xL = aik*(@inbounds lower_bounds[i])
-            aik_xU = aik*(@inbounds upper_bounds[i])
-            temp_sum -= min(aik_xL, aik_xU)
-        end
-    end
 
-    # Subtract extra term and check to see if implied bound is better. If so,
-    # update the node and the working sum. If the node is now empty, then break.
     for k = 1:f.len
+        temp_sum = -f.constant
+        for j = 1:f.len
+            k == j && continue
+            aik, i = @inbounds terms[j]
+            if !iszero(aik)
+                aik_xL = aik*(@inbounds lower_bounds[i])
+                aik_xU = aik*(@inbounds upper_bounds[i])
+                temp_sum -= min(aik_xL, aik_xU)
+            end
+        end
         aik, i = @inbounds terms[k]
         if !iszero(aik)
             xL = @inbounds lower_bounds[i]
             xU = @inbounds upper_bounds[i]
-            aik_xL = aik*xL
-            aik_xU = aik*xU
-            temp_sum += min(aik_xL, aik_xU)
             xh = temp_sum/aik
             if aik > 0.0
                 (xh < xL) && return false
@@ -456,13 +451,7 @@ function fbbt!(m::GlobalOptimizer, f::AffineFunctionIneq)
                 if abs(upper_bounds[i] - lower_bounds[i]) <= fbbt_tolerance
                     @inbounds lower_bounds[i] = upper_bounds[i]
                 end
-            else
-                temp_sum -= min(aik_xL, aik_xU)
-                continue
             end
-            aik_xL = aik*(@inbounds lower_bounds[i])
-            aik_xU = aik*(@inbounds upper_bounds[i])
-            temp_sum -= min(aik_xL, aik_xU)
         end
     end
     return true
