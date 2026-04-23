@@ -1,6 +1,6 @@
+*.cov
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
 *.mem
-*.cov
 docs/build/
