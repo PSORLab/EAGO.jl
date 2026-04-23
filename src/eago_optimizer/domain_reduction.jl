@@ -191,7 +191,7 @@ function set_reference_point!(m::GlobalOptimizer)
             l = _lower_bound(FullVar(), m, i)
             u = _upper_bound(FullVar(), m, i)
             if isfinite(l) && isfinite(u)
-                x = 0.5*(l + u)
+                x = node_x
             elseif isfinite(l)
                 x = max(0.0, l)
             elseif isfinite(u)
