@@ -148,8 +148,8 @@ Base.@kwdef mutable struct EAGOParameters
     absolute_constraint_feas_tolerance::Float64 = 1E-8
 
     # Options for constraint propagation
-    "Depth in B&B tree above which constraint propagation should be disabled (default = 20)"
-    cp_depth::Int = 20
+    "Depth in B&B tree above which constraint propagation should be disabled (default = 5)"
+    cp_depth::Int = 5
     "Number of times to repeat forward-reverse pass routine (default = 3)"
     cp_repetitions::Int = 3
     "Disable constraint propagation if the ratio of new node volume to beginning node volume exceeds
