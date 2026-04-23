@@ -238,24 +238,24 @@ $(TYPEDSIGNATURES)
 
 Check for problem convergence.
     
-By default, check if the lower and upper bounds have converged to within absolute
+By default, checks if the lower and upper bounds have converged to within absolute
 and/or relative tolerances.
 """
 function convergence_check(t::ExtensionType, m::GlobalOptimizer)
 
     L = m._lower_objective_value
     U = m._global_upper_bound
-    t = (U - L) <= m._parameters.absolute_tolerance
-    if (U < Inf) && (L > Inf)
-        t |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
+    flag = (U - L) <= m._parameters.absolute_tolerance
+    if (U < Inf) && (L > -Inf)
+        flag |= (abs(U - L)/(max(abs(L), abs(U))) <= m._parameters.relative_tolerance)
     end
-    if t && m._min_converged_value < Inf
+    if flag && m._min_converged_value < Inf
          m._min_converged_value = min(m._min_converged_value, L)
-    else
+    elseif flag
         m._min_converged_value = L
     end
 
-    return t
+    return flag
 end
 convergence_check(m::GlobalOptimizer{R,S,Q}) where {R,S,Q<:ExtensionType} = convergence_check(_ext(m), m)
 
@@ -392,7 +392,7 @@ function global_solve!(m::GlobalOptimizer)
         node_selection!(m)
         print_node!(m)
 
-        # Perform prepocessing and log the time
+        # Perform preprocessing and log the time
         m._last_preprocess_time += @elapsed preprocess!(m)
 
         # Continue if the node has not been proven infeasible
@@ -403,7 +403,7 @@ function global_solve!(m::GlobalOptimizer)
             print_results!(m, true)
 
             # Continue if lower problem is not infeasible and problem
-            # problem has not yet converged
+            # has not yet converged
             if m._lower_feasibility && !convergence_check(m)
 
                 # Solve the upper bounding problem and log the time
