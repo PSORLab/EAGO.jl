@@ -55,7 +55,7 @@ end
 """
     scrub(f::Function, n::Int, inplace = false)
 
-Replaces storage objects and circumvents assertions that present a UDF from
+Replaces storage objects and circumvents assertions that prevent a UDF from
 being overloaded with subtype Real objects by creating a function which
 overdubs `f` in `ScrubCtx`.
 """
@@ -86,7 +86,7 @@ Applies scrub to every user-defined function in the a `MOI.NLPBlockData` structu
 """
 function scrub!(d::MOI.NLPBlockData)
     error("Function not updated for newest version of EAGO. Please submit an issue.")
-    # Scrub multivariant
+    # Scrub multivariates
     user_ops = d.user_operators
     mvop_num = length(user_ops.multivariate_operator_evaluator)
     for i in 1:mvop_num
@@ -100,7 +100,7 @@ function scrub!(d::MOI.NLPBlockData)
         user_ops.multivariate_operator_evaluator[i] = evalr
     end
 
-    # Scrub univariants
+    # Scrub univariates
     svop_num = length(user_ops.univariate_operator_f)
 
     for i in 1:svop_num
