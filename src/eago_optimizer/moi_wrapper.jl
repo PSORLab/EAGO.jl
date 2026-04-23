@@ -79,7 +79,7 @@ function MOI.add_constraint(m::Optimizer, f::F, s::S) where {F<:Union{SAF,SQF,MO
             model = MOI.Nonlinear.Model()
             backend = MOI.Nonlinear.SparseReverseMode()
             vars = MOI.get(m, MOI.ListOfVariableIndices())
-            evaluator = MOI.Nonlinear.Evaluator(model, backend, vars) 
+            evaluator = MOI.Nonlinear.Evaluator(model, backend, vars)
             m._input_problem._nlp_data = MOI.NLPBlockData(evaluator)
         end
         MOI.Nonlinear.add_constraint(m._input_problem._nlp_data.evaluator.model, f, s)
