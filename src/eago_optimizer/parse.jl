@@ -235,7 +235,7 @@ function reform_epigraph_min!(m::GlobalOptimizer, d::ParsedProblem, f::BufferedQ
     if !_is_input_min(m)
         MOIU.operate!(-, Float64, sqf_obj)
     end
-    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)    
+    d._objective_saf = SAF([SAT(1.0, VI(ηi))], 0.0)
     push!(sqf_obj.affine_terms, SAT(-1.0, VI(ηi)))
     _constraints(ip, SQF, LT)[CI{SQF,LT}(ip._constraint_count += 1)] = (sqf_obj, LT(0.0))
     push!(wp._sqf_leq, BufferedQuadraticIneq(sqf_obj, LT(0.0)))
