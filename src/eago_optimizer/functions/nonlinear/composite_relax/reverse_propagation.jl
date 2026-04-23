@@ -251,9 +251,6 @@ for (f, fc, F) in ((^, POW, IntervalContractors.power_rev),
     end
 end
 
-rprop!(t::Relax, v::Val{USER}, tree::DAT, cache::RelaxCache, k::Int) = true
-rprop!(t::Relax, v::Val{USERN}, tree::DAT, cache::RelaxCache, k::Int) = true
-
 for (fc, F) in ((SQRT, IntervalContractors.sqrt_rev),
                 (ABS, IntervalContractors.abs_rev),
                 (EXP, IntervalContractors.exp_rev),
@@ -289,4 +286,51 @@ for (fc, F) in ((SQRT, IntervalContractors.sqrt_rev),
         end
         return true
     end
+end
+
+for fc in (ABS2,
+           INV,
+           RAD2DEG,
+           DEG2RAD,
+           ONE,
+           ZERO,
+           MIN,
+           MAX,
+           STEP,
+           SIGN,
+           CSC,
+           SEC,
+           COT,
+           ACSC,
+           ASEC,
+           ACOT,
+           CSCH,
+           SECH,
+           COTH,
+           ACSCH,
+           ASECH,
+           ACOTH,
+           ERF,
+           ERFC,
+           ERFINV,
+           ERFCINV,
+           CBRT,
+           RELU,
+           LEAKYRELU,
+           SOFTPLUS,
+           SOFTSIGN,
+           GELU,
+           SILU,
+           SIGMOID,
+           XLOGX,
+           ARH,
+           POS,
+           NEG,
+           LOWER_BND,
+           UPPER_BND,
+           BND,
+           USER,
+           USERN,
+           )
+    @eval rprop!(t::Relax, v::Val{$fc}, tree::DAT, cache:: RelaxCache{V,N,T}, node_index::Int) where {V,N,T<:RelaxTag} = true
 end
