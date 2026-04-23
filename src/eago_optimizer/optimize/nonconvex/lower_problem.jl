@@ -464,7 +464,7 @@ function lower_problem!(t::ExtensionType, m::GlobalOptimizer{R,S,Q}) where {R,S,
         status = RRS_INFEASIBLE
     end
     if status == RRS_INFEASIBLE
-        m._lower_feasibility  = false
+        m._lower_feasibility = false
         m._lower_objective_value = -Inf
         return
     end
