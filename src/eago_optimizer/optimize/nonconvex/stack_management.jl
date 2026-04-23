@@ -257,7 +257,10 @@ function unbounded_check!(m::GlobalOptimizer)
     if m._parameters.unbounded_check
         unbounded_flag = false
         wp = m._working_problem
-        for i = 1:_variable_num(BranchVar(), m)
+        for i in m._branch_to_sol_map
+            if m._epigraph_occurred && i == m._branch_to_sol_map[end]
+                continue
+            end
             if !wp._variable_info[i].has_lower_bound
                 unbounded_flag = true
                 wp._variable_info[i] = VariableInfo(wp._variable_info[i], GT(-1E6)) # Some solvers break if bounds are too large
