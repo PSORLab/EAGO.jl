@@ -6,7 +6,7 @@ EAGO is an open-source development environment for **robust and global optimizat
 
 | **PSOR Lab** | **Build Status**                                                                                |
 |:------------:|:-----------------------------------------------------------------------------------------------:|
-| [![](https://img.shields.io/badge/Developed_by-PSOR_Lab-342674)](https://psor.uconn.edu/) | [![Build Status](https://github.com/PSORLab/EAGO.jl/workflows/CI/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl)|
+| [![](https://img.shields.io/badge/Developed_by-PSOR_Lab-342674)](https://psor.uconn.edu/) | [![Build Status](https://github.com/PSORLab/EAGO.jl/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/PSORLab/EAGO.jl/actions?query=workflow%3ACI) [![codecov](https://codecov.io/gh/PSORLab/EAGO.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/PSORLab/EAGO.jl)|
 
 | **Documentation**                                                 | **Persistent DOI**                                                                              |
 |:-----------------------------------------------------------------:|:-----------------------------------------------------------------------------------------------:|
