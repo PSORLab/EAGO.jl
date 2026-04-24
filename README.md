@@ -104,7 +104,14 @@ The EAGO package has numerous features: a solver accessible from JuMP/MathOptInt
 
 ## Recent News
 
-### [v0.9.1](https://github.com/PSORLab/EAGO.jl#master) (March 7, 2026)
+### [v0.9.2](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.9.2) (April 24, 2026)
+
+- Bumped DataStructures.jl compatibility to include v0.19.
+- Bumped MINLPTests.jl compatibility to v0.6.
+- Updated `unbounded_check!` to correctly bound branch variables excluding the epigraph variable.
+- Updated default `cp_depth` from 20 to 5.
+
+### [v0.9.1](https://github.com/PSORLab/EAGO.jl/releases/tag/v0.9.1) (March 7, 2026)
 
 - Removed PrettyTables.jl dependency.
   - The `display_table!` function now prints information in a similar manner to the `print_iteration!` function.
